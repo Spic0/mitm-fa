@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-brand-title="Sign in — {brand} Admin">Sign in — ProFit Admin</title>
+    <link rel="shortcut icon" href="../assets/images/favicon.png" data-brand-favicon>
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../assets/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+
+<body class="admin-body">
+    <div class="admin-auth">
+        <div class="admin-auth__card">
+            <div class="admin-auth__logo"><img src="../assets/images/logo/logo.svg" alt="ProFit" data-brand-logo></div>
+            <p class="admin-auth__title">Admin Sign In</p>
+            <p class="admin-auth__subtitle">Admin access only. We'll email you a one-time sign-in link.</p>
+
+            <form id="magicLinkForm">
+                <input type="email" id="adminEmail" placeholder="you@company.com" required autocomplete="email">
+                <button class="a-btn a-btn-primary" type="submit">Send sign-in link</button>
+            </form>
+            <p id="magicLinkMessage" class="u-hidden u-fs-13 u-mt-14"></p>
+
+            <div class="admin-auth__divider">Or sign in with a password</div>
+            <form id="passwordLoginForm">
+                <input type="email" id="passwordEmail" placeholder="you@company.com" required autocomplete="email">
+                <input type="password" id="passwordLoginPassword" placeholder="Password" required autocomplete="current-password">
+                <button class="a-btn a-btn-primary" type="submit">Sign in</button>
+            </form>
+            <p id="passwordLoginMessage" class="u-hidden u-fs-13 u-mt-14"></p>
+
+            <div id="devToolsSection" class="u-hidden">
+                <div class="admin-auth__divider">Development mode</div>
+                <button class="a-btn a-btn-secondary" id="devLoginBtn" type="button">
+                    <i class="fa-solid fa-bolt"></i> Login as Admin (dev only)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/admin/api.js"></script>
+    <script src="../assets/js/admin/ui.js"></script>
+    <script src="../assets/js/branding.js"></script>
+    <script src="../assets/js/admin/login.js"></script>
+</body>
+
+</html>

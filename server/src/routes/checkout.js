@@ -1,0 +1,161 @@
+const express = require("express");
+const { prisma } = require("../db");
+const { stripe } = require("../lib/stripe");
+const paypal = require("../lib/paypal");
+const { resolveCheckoutItems } = require("../lib/checkoutItems");
+const { fulfillOrder } = require("../lib/fulfillOrder");
+const { fulfillFromPaymentIntent } = require("../lib/stripeFulfillment");
+const { setSessionCookie } = require("../lib/session");
+const { logPaymentEvent } = require("../lib/paymentLog");
+const { apiLimiter } = require("../middleware/rateLimit");
+
+const router = express.Router();
+router.use(apiLimiter);
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function requireValidEmail(email) {
+  if (!EMAIL_RE.test(email)) throw new Error("A valid email is required");
+}
+
+router.post("/stripe/create-intent", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    requireValidEmail(email);
+    const { totalCents } = await resolveCheckoutItems(req.body.items);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalCents,
+      currency: "usd",
+      receipt_email: email,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        email,
+        items: JSON.stringify(req.body.items),
+      },
+    });
+
+    res.json({
+      id: paymentIntent.id,
+      clientSecret: paymentIntent.client_secret,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      totalCents,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Called whenever the cart changes after a PaymentIntent already exists
+// (e.g. the shopper adds a checkout-page recommendation) — keeps both the
+// charge amount AND the metadata.items list in sync with the intent, since
+// fulfillment (stripeFulfillment.js) rebuilds the order purely from
+// metadata.items. Updating amount without also updating metadata.items
+// would charge the shopper correctly but deliver only the original items —
+// the two must always change together.
+router.post("/stripe/update-intent", async (req, res) => {
+  try {
+    const paymentIntentId = String(req.body.paymentIntentId || "");
+    if (!paymentIntentId) throw new Error("paymentIntentId is required");
+    const { totalCents } = await resolveCheckoutItems(req.body.items);
+
+    const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
+      amount: totalCents,
+      metadata: { items: JSON.stringify(req.body.items) },
+    });
+
+    res.json({ totalCents: paymentIntent.amount });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Called by the browser right after Stripe's client-side confirmPayment()
+// redirect returns. The webhook is the durable source of truth for
+// fulfillment; this endpoint is what actually authenticates the browser,
+// since Set-Cookie on a webhook response is invisible to the shopper.
+router.post("/stripe/finalize", async (req, res) => {
+  try {
+    const paymentIntentId = String(req.body.paymentIntentId || "");
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const { sessionToken } = await fulfillFromPaymentIntent(paymentIntent);
+    setSessionCookie(res, sessionToken);
+    res.json({ ok: true, redirect: "/my-library.html" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/paypal/create-order", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    requireValidEmail(email);
+    const { totalCents } = await resolveCheckoutItems(req.body.items);
+
+    const pending = await prisma.pendingCheckout.create({
+      data: { email, itemsJson: JSON.stringify(req.body.items), totalCents },
+    });
+
+    const order = await paypal.createOrder(totalCents, pending.id);
+    res.json({ orderId: order.id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/paypal/capture-order", async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const capture = await paypal.captureOrder(orderId);
+
+    if (capture.status !== "COMPLETED") {
+      await logPaymentEvent({
+        provider: "paypal",
+        eventType: "checkout.capture",
+        status: "failed",
+        providerRef: orderId,
+        providerResponse: capture,
+      });
+      return res.status(402).json({ error: "Payment was not completed" });
+    }
+
+    const customId = capture.purchase_units?.[0]?.payments?.captures?.[0]?.custom_id;
+    const pending = customId ? await prisma.pendingCheckout.findUnique({ where: { id: customId } }) : null;
+    if (!pending) return res.status(400).json({ error: "Checkout session not found" });
+
+    const rawItems = JSON.parse(pending.itemsJson);
+    const { resolvedItems, totalCents } = await resolveCheckoutItems(rawItems);
+
+    const { order, sessionToken } = await fulfillOrder({
+      email: pending.email,
+      provider: "paypal",
+      providerRef: orderId,
+      items: resolvedItems,
+      totalCents,
+    });
+
+    await logPaymentEvent({
+      provider: "paypal",
+      eventType: "checkout.capture",
+      status: "succeeded",
+      providerRef: orderId,
+      customerEmail: pending.email,
+      orderId: order.id,
+      providerResponse: { status: capture.status },
+    });
+
+    setSessionCookie(res, sessionToken);
+    res.json({ ok: true, redirect: "/my-library.html" });
+  } catch (err) {
+    await logPaymentEvent({
+      provider: "paypal",
+      eventType: "checkout.capture",
+      status: "failed",
+      providerRef: req.body.orderId,
+      providerResponse: { error: err.message },
+    });
+    res.status(400).json({ error: err.message });
+  }
+});
+
+module.exports = router;

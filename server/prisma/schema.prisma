@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Simple key/value store for editable, non-secret platform settings (store
+// name, currency, tax rate, logo, etc). Deliberately not a rigid column-per-
+// setting model, so new settings don't need a migration. Actual secrets
+// (Stripe/PayPal/Resend keys) stay in environment variables and are never
+// stored here — see server/src/routes/admin/settings.js's allowlist.
+model Setting {
+  key   String @id
+  value String
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  passwordHash    String?
+  role            String           @default("customer") // "customer" | "admin"
+  status          String           @default("active") // "active" | "suspended"
+  country         String?
+  notes           String? // admin-only free-text notes, set when manually creating/editing a customer
+  lastLoginAt     DateTime?
+  createdAt       DateTime         @default(now())
+  orders          Order[]
+  sessions        Session[]
+  magicLinkTokens MagicLinkToken[]
+  orderNotes      OrderNote[]      @relation("OrderNoteAuthor")
+  systemLogs      SystemLog[]
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  priceCents Int
+  imageUrl   String?
+  thumbnailUrl String?
+  description  String? // short description shown on shop grid/cards
+  status       String   @default("published") // "draft" | "published" | "archived"
+  featured     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  // Platform program content — what the customer actually consumes after
+  // purchase, inside the platform, instead of a downloaded file.
+  creator         String?
+  difficulty      String? // "beginner" | "intermediate" | "advanced"
+  durationWeeks   Int?
+  overview        String? // long-form program intro, powers the "Overview" tab
+  trainingContent Json? // { weeks: [{ id, title, days: [{ id, title, exercises: [{ id, name, sets, reps, notes, substitutions }] }] }] }
+  nutritionContent Json? // { notes, meals: [{ id, name, macros, ingredients, notes }], samplePlans: [...] }
+  bonusNotes      String?
+
+  // Freeform SEO/search keywords — deliberately separate from taxonomy nodes:
+  // these never drive storefront navigation or filters, only meta
+  // keywords/structured data/on-site search relevance.
+  seoTags String[] @default([])
+
+  orderItems OrderItem[]
+  faqs       ProductFaq[]
+  resources  ProductResource[]
+  taxonomies ProductTaxonomy[]
+}
+
+// One tree per top-level nav root (Shop by Goal / Browse Athletes / Browse
+// Creators) — the admin-managed source of truth for both storefront
+// navigation and product categorization (see TaxonomyNode/ProductTaxonomy).
+model Taxonomy {
+  id    String         @id @default(cuid())
+  key   String         @unique // "goals" | "athletes" | "creators"
+  label String // "Shop by Goal"
+  route String         @unique // "/shop/goals"
+  order Int            @default(0)
+  // Explicit, stored shape flag — Athletes/Creators are category ->
+  // subcategory (Football -> Cristiano Ronaldo); Goals is a flat list. This
+  // has to be an explicit column rather than inferred from whether a node
+  // currently has children, because a brand-new, still-empty category (e.g.
+  // an admin just added "Cricket") would otherwise look identical to a flat
+  // leaf and render with the wrong picker UI.
+  hasSubcategories Boolean        @default(false)
+  nodes            TaxonomyNode[]
+}
+
+// A node in a taxonomy tree, arbitrary depth (e.g. Athletes: root -> Football
+// -> Cristiano Ronaldo). Leaf nodes are what products actually get tagged
+// with via ProductTaxonomy; branch nodes exist purely to organize the menu.
+model TaxonomyNode {
+  id         String            @id @default(cuid())
+  taxonomyId String
+  taxonomy   Taxonomy          @relation(fields: [taxonomyId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     TaxonomyNode?     @relation("TaxonomyNodeChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children   TaxonomyNode[]    @relation("TaxonomyNodeChildren")
+  name       String
+  slug       String
+  order      Int               @default(0)
+  createdAt  DateTime          @default(now())
+  products   ProductTaxonomy[]
+
+  @@unique([taxonomyId, parentId, slug])
+}
+
+// Replaces the old free-text Product.category/.tags/.goals — a product
+// references taxonomy nodes directly instead of arbitrary strings, so
+// renaming/moving a node in the CMS reorganizes products everywhere
+// automatically.
+model ProductTaxonomy {
+  id             String       @id @default(cuid())
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  taxonomyNodeId String
+  taxonomyNode   TaxonomyNode @relation(fields: [taxonomyNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, taxonomyNodeId])
+}
+
+model ProductFaq {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  question  String
+  answer    String
+  order     Int     @default(0)
+}
+
+// Optional supplementary material for a purchased program (a bonus PDF, a
+// spreadsheet, a link to an external video, etc) — never the core product
+// itself, which is the structured content on Product.
+model ProductResource {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  title       String
+  description String?
+  type        String // "file" | "link"
+  fileName    String? // set when type = "file"; stored in server/storage/resources
+  url         String? // set when type = "link"
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  provider       String
+  providerRef    String      @unique
+  status         String      @default("pending") // payment status: pending | paid | failed | refunded
+  deliveryStatus String      @default("pending") // pending | delivered | resent | failed
+  totalCents     Int
+  createdAt      DateTime    @default(now())
+  items          OrderItem[]
+  notes          OrderNote[]
+}
+
+model OrderNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  authorId  String
+  author    User     @relation("OrderNoteAuthor", fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  category  String // "auth" | "order" | "product" | "user" | "payment" | "admin" | "dev"
+  message   String
+  metadata  String?
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model EmailLog {
+  id               String    @id @default(cuid())
+  recipient        String
+  subject          String
+  status           String // "sent" | "failed"
+  providerResponse String?
+  openedAt         DateTime? // not populated yet — no open-tracking webhook wired up
+  sentAt           DateTime  @default(now())
+}
+
+model PaymentEvent {
+  id               String   @id @default(cuid())
+  provider         String // "stripe" | "paypal"
+  eventType        String // e.g. "payment_intent.succeeded", "checkout.capture"
+  status           String // "succeeded" | "failed"
+  providerRef      String? // PaymentIntent id / PayPal order id
+  customerEmail    String?
+  orderId          String?
+  providerResponse String?
+  createdAt        DateTime @default(now())
+}
+
+// One row per Stripe webhook event.id ever accepted (signature-verified),
+// independent of and in addition to the Order.providerRef uniqueness that
+// already makes fulfillment itself idempotent — this is the outer guard: it
+// stops an event from being *processed* at all a second time, which matters
+// for event types (payment_intent.payment_failed) that have no natural
+// business-level idempotency key of their own and would otherwise write a
+// duplicate log row on every retry/duplicate delivery. See
+// server/src/routes/webhooksStripe.js.
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  provider   String // "stripe"
+  eventId    String   @unique // Stripe's event.id, e.g. "evt_..."
+  eventType  String
+  receivedAt DateTime @default(now())
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id])
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  priceCents Int
+}
+
+// Short-lived record bridging a checkout attempt to its PayPal order, since
+// PayPal's custom_id field is too small to carry a full cart + email payload.
+model PendingCheckout {
+  id         String   @id @default(cuid())
+  email      String
+  itemsJson  String
+  totalCents Int
+  createdAt  DateTime @default(now())
+}
+
+model MagicLinkToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

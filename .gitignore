@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+server/generated/
+*.log
+.DS_Store
+
+# Runtime uploads (product images/resources/media) — persisted on the
+# server's disk, not version-controlled; mixes real product deliverables
+# with orphaned/test uploads that shouldn't ride along in source history.
+server/storage/

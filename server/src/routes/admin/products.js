@@ -1,0 +1,546 @@
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+const multer = require("multer");
+const { prisma } = require("../../db");
+const { logEvent } = require("../../lib/adminLog");
+const { verifyUploadedFile } = require("../../lib/uploadVerify");
+
+const router = express.Router();
+
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+const SITE_ROOT = path.join(__dirname, "..", "..", "..", "..");
+const IMAGE_DIR = path.join(SITE_ROOT, "assets", "images", "product", "uploads");
+const RESOURCE_DIR = path.join(__dirname, "..", "..", "..", "storage", "resources");
+fs.mkdirSync(IMAGE_DIR, { recursive: true });
+fs.mkdirSync(RESOURCE_DIR, { recursive: true });
+
+// Every stored filename is a fresh UUID — the client's original filename is
+// never trusted or preserved on disk (no path traversal surface, no leaking
+// internal naming, nothing for a "double extension" trick to ride on). The
+// declared mimetype/extension only pick a *provisional* name; verifyAndRename
+// below corrects it to match the file's real, sniffed content type before
+// anything is allowed to be referenced by a product or served.
+function provisionalName(declaredMime) {
+  const ext = (declaredMime.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+  return `${crypto.randomUUID()}.${ext}`;
+}
+
+// Runs after multer has already written the file to disk. Sniffs the actual
+// content (magic bytes, not the client-supplied Content-Type header, which
+// is trivially spoofed) and renames the file to match its real type. Deletes
+// and rejects anything that doesn't match the allowlist — this is the actual
+// security boundary; multer's fileFilter is only a fast-fail UX nicety.
+async function verifyAndRename(file, allowedMimes) {
+  const result = await verifyUploadedFile(file.path, allowedMimes);
+  if (!result.ok) return result;
+
+  const finalName = `${path.basename(file.filename, path.extname(file.filename))}.${result.ext}`;
+  const finalPath = path.join(path.dirname(file.path), finalName);
+  await fs.promises.rename(file.path, finalPath);
+  file.filename = finalName;
+  file.path = finalPath;
+  return result;
+}
+
+const IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const imageStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, IMAGE_DIR);
+  },
+  filename(req, file, cb) {
+    cb(null, provisionalName(file.mimetype));
+  },
+});
+const upload = multer({
+  storage: imageStorage,
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    if (!IMAGE_MIME.has(file.mimetype)) {
+      const err = new Error("Cover image and thumbnail must be PNG, JPG, WebP, or GIF");
+      err.status = 400;
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
+const uploadFields = upload.fields([
+  { name: "coverImage", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 },
+]);
+
+// Verifies every file multer attached to req.files (an { fieldName: [file] }
+// map, as produced by .fields()) against allowedMimes, deleting and
+// collecting an error for any that fail real-content sniffing.
+async function verifyReqFiles(files, allowedMimes) {
+  const errors = [];
+  for (const fieldFiles of Object.values(files || {})) {
+    for (const file of fieldFiles) {
+      const result = await verifyAndRename(file, allowedMimes);
+      if (!result.ok) errors.push(`${file.fieldname}: ${result.reason}`);
+    }
+  }
+  return errors;
+}
+
+// Bonus attachments (PDF, Office docs, zip, images) — resources are never
+// served inline/renderable (see library.js's res.download()), but still need
+// a real content check so a malicious admin session can't smuggle malware
+// out to paying customers under a trusted-looking title.
+const RESOURCE_MIME = new Set([
+  "application/pdf",
+  "application/zip",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+const resourceStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, RESOURCE_DIR);
+  },
+  filename(req, file, cb) {
+    cb(null, `${crypto.randomUUID()}.bin`);
+  },
+});
+const uploadResource = multer({ storage: resourceStorage, limits: { fileSize: 50 * 1024 * 1024 } });
+
+// Exercise demo media (GIF / short video / image). Stored per-product under
+// server/storage/media/<productId>/ — NOT in public assets — and served to
+// entitled customers via the gated GET /api/library/media/:productId/:file.
+const MEDIA_DIR = path.join(__dirname, "..", "..", "..", "storage", "media");
+const MEDIA_MIME = new Set(["image/gif", "image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"]);
+const mediaStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    const dir = path.join(MEDIA_DIR, req.params.id);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename(req, file, cb) {
+    cb(null, provisionalName(file.mimetype));
+  },
+});
+const uploadMedia = multer({
+  storage: mediaStorage,
+  limits: { fileSize: 30 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    if (!MEDIA_MIME.has(file.mimetype)) return cb(new Error("Use a GIF, image (PNG/JPG/WebP), or short MP4/WebM video"));
+    cb(null, true);
+  },
+});
+
+function hasTrainingContent(product) {
+  return !!(product.trainingContent && Array.isArray(product.trainingContent.weeks) && product.trainingContent.weeks.length > 0);
+}
+
+function hasNutritionContent(product) {
+  const n = product.nutritionContent;
+  return !!(n && (n.notes || (Array.isArray(n.meals) && n.meals.length > 0)));
+}
+
+// Which wizard steps have the data they need — computed on read rather than
+// stored, so there's no separate "completion" column that can drift out of
+// sync with the actual product fields.
+function wizardProgress(product) {
+  return {
+    basics: !!(product.name && product.slug && product.description && product.imageUrl && (product.taxonomies || []).length > 0),
+    pricing: product.priceCents != null && !!product.status,
+    structure: !!(product.overview && product.difficulty && product.durationWeeks),
+    training: hasTrainingContent(product) || hasNutritionContent(product),
+    nutrition: hasNutritionContent(product) || hasTrainingContent(product),
+    faqBonus: (product.faqs || []).length > 0 || (product.resources || []).length > 0 || !!product.bonusNotes,
+    // SEO tags are optional metadata, never a publish blocker — always
+    // reported complete so the wizard step never shows a false "missing" warning.
+    seoTags: true,
+    preview: !!(product.name && product.slug && product.priceCents != null && product.overview),
+  };
+}
+
+// "Browse Athletes / Football / Marcus Reyes" — walks a ProductTaxonomy row's
+// node up through its parents so the admin table/wizard can show where a
+// product sits without a second round trip.
+function taxonomyPath(productTaxonomy) {
+  const names = [];
+  let node = productTaxonomy.taxonomyNode;
+  const taxonomyLabel = node.taxonomy.label;
+  while (node) {
+    names.unshift(node.name);
+    node = node.parent || null;
+  }
+  return `${taxonomyLabel} / ${names.join(" / ")}`;
+}
+
+function serialize(product) {
+  return {
+    id: product.id,
+    slug: product.slug,
+    name: product.name,
+    priceCents: product.priceCents,
+    imageUrl: product.imageUrl,
+    thumbnailUrl: product.thumbnailUrl,
+    description: product.description,
+    status: product.status,
+    featured: product.featured,
+    createdAt: product.createdAt,
+    creator: product.creator,
+    difficulty: product.difficulty,
+    durationWeeks: product.durationWeeks,
+    overview: product.overview,
+    trainingContent: product.trainingContent,
+    nutritionContent: product.nutritionContent,
+    bonusNotes: product.bonusNotes,
+    seoTags: product.seoTags || [],
+    faqs: product.faqs || [],
+    resources: product.resources || [],
+    taxonomyNodeIds: (product.taxonomies || []).map((t) => t.taxonomyNodeId),
+    taxonomyPaths: (product.taxonomies || []).map(taxonomyPath),
+    wizardProgress: wizardProgress(product),
+  };
+}
+
+const withRelations = {
+  faqs: { orderBy: { order: "asc" } },
+  resources: { orderBy: { order: "asc" } },
+  taxonomies: { include: { taxonomyNode: { include: { taxonomy: true, parent: { include: { parent: true } } } } } },
+};
+
+router.get("/", async (req, res) => {
+  const { search, status, taxonomyNodeId } = req.query;
+  const where = {
+    AND: [
+      status ? { status } : {},
+      taxonomyNodeId ? { taxonomies: { some: { taxonomyNodeId: String(taxonomyNodeId) } } } : {},
+      search ? { name: { contains: String(search), mode: "insensitive" } } : {},
+    ],
+  };
+  const products = await prisma.product.findMany({ where, include: withRelations, orderBy: { createdAt: "desc" } });
+  res.json({ products: products.map(serialize) });
+});
+
+router.get("/:id", async (req, res) => {
+  const product = await prisma.product.findUnique({ where: { id: req.params.id }, include: withRelations });
+  if (!product) return res.status(404).json({ error: "Product not found" });
+  res.json({ product: serialize(product) });
+});
+
+// Creates the draft the wizard operates on from just the fields collected in
+// Step 1 — every later step is a partial PUT against this same id, which is
+// what makes "save draft between steps" work without a separate draft model.
+router.post("/", uploadFields, async (req, res) => {
+  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME);
+  if (uploadErrors.length) return res.status(400).json({ error: uploadErrors.join("; ") });
+
+  const { name, slug, description, priceCents, status, featured, creator } = req.body;
+  if (!name || !slug) {
+    return res.status(400).json({ error: "name and slug are required" });
+  }
+  if (!SLUG_RE.test(slug)) {
+    return res.status(400).json({ error: "slug must be lowercase letters, numbers, and hyphens only" });
+  }
+
+  const coverImage = req.files?.coverImage?.[0];
+  const thumbnail = req.files?.thumbnail?.[0];
+
+  const product = await prisma.product.create({
+    data: {
+      name,
+      slug,
+      description: description || null,
+      priceCents: priceCents ? parseInt(priceCents, 10) : 0,
+      creator: creator || null,
+      status: status || "draft",
+      featured: featured === "true" || featured === true,
+      imageUrl: coverImage ? `assets/images/product/uploads/${coverImage.filename}` : null,
+      thumbnailUrl: thumbnail ? `assets/images/product/uploads/${thumbnail.filename}` : null,
+    },
+    include: withRelations,
+  });
+
+  await logEvent({ category: "product", message: `Created product "${product.name}"`, actorId: req.user.id });
+  res.status(201).json({ product: serialize(product) });
+});
+
+// Step 1/2/3 scalar fields — partial update, same pattern the old PUT used.
+router.put("/:id", uploadFields, async (req, res) => {
+  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME);
+  if (uploadErrors.length) return res.status(400).json({ error: uploadErrors.join("; ") });
+
+  const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "Product not found" });
+
+  const {
+    name, slug, description, priceCents, status, featured,
+    creator, difficulty, durationWeeks,
+  } = req.body;
+  if (slug !== undefined && !SLUG_RE.test(slug)) {
+    return res.status(400).json({ error: "slug must be lowercase letters, numbers, and hyphens only" });
+  }
+  const coverImage = req.files?.coverImage?.[0];
+  const thumbnail = req.files?.thumbnail?.[0];
+
+  const product = await prisma.product.update({
+    where: { id: existing.id },
+    data: {
+      ...(name !== undefined ? { name } : {}),
+      ...(slug !== undefined ? { slug } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(priceCents !== undefined ? { priceCents: parseInt(priceCents, 10) } : {}),
+      ...(status !== undefined ? { status } : {}),
+      ...(featured !== undefined ? { featured: featured === "true" || featured === true } : {}),
+      ...(creator !== undefined ? { creator } : {}),
+      ...(difficulty !== undefined ? { difficulty } : {}),
+      ...(durationWeeks !== undefined ? { durationWeeks: durationWeeks ? parseInt(durationWeeks, 10) : null } : {}),
+      ...(coverImage ? { imageUrl: `assets/images/product/uploads/${coverImage.filename}` } : {}),
+      ...(thumbnail ? { thumbnailUrl: `assets/images/product/uploads/${thumbnail.filename}` } : {}),
+    },
+    include: withRelations,
+  });
+
+  await logEvent({ category: "product", message: `Updated product "${product.name}"`, actorId: req.user.id });
+  res.json({ product: serialize(product) });
+});
+
+// Replaces the product's full taxonomy assignment set in one go — the wizard
+// sends the complete selected set of leaf node ids every time, same "treat
+// this slice as one replaceable unit" pattern as PUT /:id/content above.
+router.put("/:id/taxonomy", async (req, res) => {
+  const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "Product not found" });
+
+  const nodeIds = Array.isArray(req.body.nodeIds) ? req.body.nodeIds.filter(Boolean) : [];
+
+  await prisma.$transaction([
+    prisma.productTaxonomy.deleteMany({ where: { productId: existing.id } }),
+    ...(nodeIds.length
+      ? [prisma.productTaxonomy.createMany({
+          data: nodeIds.map((taxonomyNodeId) => ({ productId: existing.id, taxonomyNodeId })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ]);
+
+  const product = await prisma.product.findUnique({ where: { id: existing.id }, include: withRelations });
+  await logEvent({ category: "product", message: `Updated navigation placement for "${product.name}"`, actorId: req.user.id });
+  res.json({ product: serialize(product) });
+});
+
+// Steps 3-5: the actual program content (overview, training, nutrition,
+// bonus notes, SEO tags) — plain JSON, no file upload involved.
+router.put("/:id/content", async (req, res) => {
+  const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "Product not found" });
+
+  const { overview, trainingContent, nutritionContent, bonusNotes, seoTags } = req.body;
+  const product = await prisma.product.update({
+    where: { id: existing.id },
+    data: {
+      ...(overview !== undefined ? { overview } : {}),
+      ...(trainingContent !== undefined ? { trainingContent } : {}),
+      ...(nutritionContent !== undefined ? { nutritionContent } : {}),
+      ...(bonusNotes !== undefined ? { bonusNotes } : {}),
+      ...(seoTags !== undefined ? { seoTags: Array.isArray(seoTags) ? seoTags.filter(Boolean) : [] } : {}),
+    },
+    include: withRelations,
+  });
+
+  await logEvent({ category: "product", message: `Updated program content for "${product.name}"`, actorId: req.user.id });
+  res.json({ product: serialize(product) });
+});
+
+// Upload one exercise demo media file. Returns the gated URL the wizard
+// stores on the exercise (trainingContent JSON — no schema change needed);
+// the file itself is only reachable through /api/library/media, so program
+// media is never publicly downloadable.
+router.post("/:id/media", (req, res) => {
+  uploadMedia.single("media")(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Upload failed" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const verified = await verifyAndRename(req.file, MEDIA_MIME);
+    if (!verified.ok) return res.status(400).json({ error: verified.reason });
+
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!product) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    await logEvent({
+      category: "product",
+      message: `Uploaded exercise media "${req.file.filename}" for "${product.name}"`,
+      actorId: req.user.id,
+    });
+    res.json({
+      fileName: req.file.filename,
+      mediaType: verified.mime.startsWith("video/") ? "video" : "image",
+      url: `/api/library/media/${product.id}/${req.file.filename}`,
+    });
+  });
+});
+
+router.delete("/:id", async (req, res) => {
+  const product = await prisma.product.findUnique({
+    where: { id: req.params.id },
+    include: { _count: { select: { orderItems: true } } },
+  });
+  if (!product) return res.status(404).json({ error: "Product not found" });
+  if (product._count.orderItems > 0) {
+    return res.status(409).json({ error: "This product has existing orders — archive it instead of deleting" });
+  }
+
+  await prisma.productFaq.deleteMany({ where: { productId: product.id } });
+  await prisma.productResource.deleteMany({ where: { productId: product.id } });
+  await prisma.productTaxonomy.deleteMany({ where: { productId: product.id } });
+  await prisma.product.delete({ where: { id: product.id } });
+  await logEvent({ category: "product", message: `Deleted product "${product.name}"`, actorId: req.user.id });
+  res.json({ ok: true });
+});
+
+router.post("/:id/archive", async (req, res) => {
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: { status: "archived" },
+    include: withRelations,
+  });
+  await logEvent({ category: "product", message: `Archived product "${product.name}"`, actorId: req.user.id });
+  res.json({ product: serialize(product) });
+});
+
+router.post("/:id/duplicate", async (req, res) => {
+  const original = await prisma.product.findUnique({
+    where: { id: req.params.id },
+    include: { taxonomies: true },
+  });
+  if (!original) return res.status(404).json({ error: "Product not found" });
+
+  let slug = `${original.slug}-copy`;
+  let suffix = 2;
+  while (await prisma.product.findUnique({ where: { slug } })) {
+    slug = `${original.slug}-copy-${suffix++}`;
+  }
+
+  const duplicate = await prisma.product.create({
+    data: {
+      name: `${original.name} (Copy)`,
+      slug,
+      description: original.description,
+      priceCents: original.priceCents,
+      imageUrl: original.imageUrl,
+      thumbnailUrl: original.thumbnailUrl,
+      creator: original.creator,
+      difficulty: original.difficulty,
+      durationWeeks: original.durationWeeks,
+      overview: original.overview,
+      trainingContent: original.trainingContent,
+      nutritionContent: original.nutritionContent,
+      bonusNotes: original.bonusNotes,
+      seoTags: original.seoTags,
+      status: "draft",
+      featured: false,
+      taxonomies: {
+        create: original.taxonomies.map((t) => ({ taxonomyNodeId: t.taxonomyNodeId })),
+      },
+    },
+    include: withRelations,
+  });
+
+  await logEvent({
+    category: "product",
+    message: `Duplicated product "${original.name}" as "${duplicate.name}"`,
+    actorId: req.user.id,
+  });
+  res.status(201).json({ product: serialize(duplicate) });
+});
+
+// ---- FAQ (wizard step 6) ----
+
+router.post("/:id/faqs", async (req, res) => {
+  const { question, answer } = req.body;
+  if (!question || !answer) return res.status(400).json({ error: "question and answer are required" });
+
+  const count = await prisma.productFaq.count({ where: { productId: req.params.id } });
+  const faq = await prisma.productFaq.create({
+    data: { productId: req.params.id, question, answer, order: count },
+  });
+  res.status(201).json({ faq });
+});
+
+router.put("/:id/faqs/:faqId", async (req, res) => {
+  const { question, answer, order } = req.body;
+  const faq = await prisma.productFaq.update({
+    where: { id: req.params.faqId },
+    data: {
+      ...(question !== undefined ? { question } : {}),
+      ...(answer !== undefined ? { answer } : {}),
+      ...(order !== undefined ? { order } : {}),
+    },
+  });
+  res.json({ faq });
+});
+
+router.delete("/:id/faqs/:faqId", async (req, res) => {
+  await prisma.productFaq.delete({ where: { id: req.params.faqId } });
+  res.json({ ok: true });
+});
+
+// ---- Resources (wizard step 6) — optional bonus attachments/links, never
+// the core product itself. ----
+
+router.post("/:id/resources", uploadResource.single("resourceFile"), async (req, res) => {
+  const { title, description, type, url } = req.body;
+  if (!title || !type) return res.status(400).json({ error: "title and type are required" });
+  if (type === "file" && !req.file) return res.status(400).json({ error: "A file is required for type 'file'" });
+  if (type === "link") {
+    if (!url) return res.status(400).json({ error: "A URL is required for type 'link'" });
+    // Rejects javascript:/data: schemes here so a malicious admin-entered
+    // "link" resource can't execute script when a customer clicks it —
+    // HTML-escaping the URL on render only stops attribute breakout, not a
+    // scheme that's dangerous as a bare href value.
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return res.status(400).json({ error: "Enter a valid http(s) URL" });
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return res.status(400).json({ error: "Enter a valid http(s) URL" });
+    }
+  }
+
+  if (req.file) {
+    const verified = await verifyAndRename(req.file, RESOURCE_MIME);
+    if (!verified.ok) return res.status(400).json({ error: verified.reason });
+  }
+
+  const count = await prisma.productResource.count({ where: { productId: req.params.id } });
+  const resource = await prisma.productResource.create({
+    data: {
+      productId: req.params.id,
+      title,
+      description: description || null,
+      type,
+      fileName: req.file ? req.file.filename : null,
+      url: type === "link" ? url : null,
+      order: count,
+    },
+  });
+  res.status(201).json({ resource });
+});
+
+router.delete("/:id/resources/:resourceId", async (req, res) => {
+  const resource = await prisma.productResource.findUnique({ where: { id: req.params.resourceId } });
+  if (!resource) return res.status(404).json({ error: "Resource not found" });
+
+  if (resource.fileName) {
+    fs.unlink(path.join(RESOURCE_DIR, resource.fileName), () => {});
+  }
+  await prisma.productResource.delete({ where: { id: resource.id } });
+  res.json({ ok: true });
+});
+
+module.exports = router;

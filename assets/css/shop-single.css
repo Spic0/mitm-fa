@@ -1,0 +1,126 @@
+/* No breadcrumb/topbar section on this page — product content starts
+   immediately below the (now compact) header, with enough clearance
+   that the fixed header never overlaps it. */
+.product-details-single { margin-top: 64px; padding-top: 32px; padding-bottom: 48px; }
+
+/* Gallery — sized by aspect-ratio, not a fixed pixel height, so it
+   scales naturally at every breakpoint instead of being cropped or
+   squeezed. object-fit:cover only ever crops overflow *within* a
+   correctly-proportioned box, never forces a mismatched one. */
+#productGallery { width: 100%; }
+#productGallery .shop-single-slide .product-gallery-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 12px;
+}
+#productGallery .shop-slider-thumb { margin-top: 12px !important; }
+#productGallery .slide-smoll .product-gallery-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+}
+@media (min-width: 992px) {
+    .product-details-single .col-lg-7 { padding-left: 32px; }
+}
+
+/* Subtle category eyebrow — supports the title, never competes with it */
+.product-eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--paragraph-light);
+    margin-bottom: 10px;
+    transition: var(--transition);
+}
+.product-eyebrow:hover { color: var(--primary-color); }
+
+.product-title { font-size: 26px; margin-bottom: 8px; line-height: 1.25; }
+.product-price { font-size: 22px; color: var(--primary-color); font-weight: 700; margin-bottom: 14px; }
+.product-summary { color: var(--paragraph); font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+
+/* Purchase area — everything needed to buy, nothing that competes with it */
+.purchase-area { padding-top: 8px; border-top: 1px solid var(--border); }
+
+.discount-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 14px 0 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--paragraph-light);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.discount-toggle:hover { color: var(--primary-color); }
+.discount-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    max-width: 360px;
+}
+.discount-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--sub-bg);
+    font-size: 13px;
+}
+.discount-row button {
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--heading-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.discount-row button:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+/* Premium single CTA — big, thumb-friendly, visually dominant on mobile */
+.btn-add-to-bag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 18px 24px;
+    margin-top: 6px;
+    border-radius: var(--radius);
+    background: var(--primary-color);
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 16px rgba(26, 26, 26, 0.28);
+    transition: var(--transition);
+}
+.btn-add-to-bag:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(26, 26, 26, 0.36); color: #ffffff; }
+.btn-add-to-bag:active { transform: translateY(0); }
+.btn-add-to-bag.added { background: var(--success); box-shadow: 0 6px 22px rgba(5, 150, 105, 0.32); }
+
+.purchase-note {
+    font-size: 12px;
+    color: var(--paragraph-light);
+    text-align: center;
+    margin-top: 12px;
+}
+
+@media (max-width: 991px) {
+    .product-title { font-size: 22px; }
+    .product-price { font-size: 19px; }
+}

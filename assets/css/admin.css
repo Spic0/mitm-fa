@@ -1,0 +1,646 @@
+/* Admin dashboard — built on top of assets/css/style.css (loaded before this
+   file on every admin page), reusing the storefront's own design tokens
+   (--primary-color, --sub-bg, --border, --prosto-one/--montserrat, --transition,
+   the 10px/100px/50% radius scale, the bordered-flat-card idiom) rather than a
+   separate invented palette. This file only adds the handful of structural
+   pieces the storefront doesn't have: sidebar, topbar, data table, metric
+   cards, modal, toast, skeleton. Everything else (typography, colors, .btn-one
+   etc.) comes straight from style.css so the dashboard renders as an
+   extension of the same product, not a different one. */
+
+:root {
+  --a-surface: var(--sub-bg);
+  --a-surface-2: rgba(15, 23, 42, 0.035);
+  --a-border: var(--border);
+  --a-text: var(--heading-color);
+  --a-text-muted: var(--footer-color);
+  --a-primary: var(--primary-color);
+  --a-primary-hover: var(--primary-hover);
+  --a-success: var(--success);
+  --a-warning: var(--warning);
+  --a-danger: var(--danger);
+  --a-radius: 10px;
+  --a-radius-pill: 100px;
+  --a-sidebar-w: 260px;
+
+  /* Admin-local motion tokens — deliberately separate from the storefront's
+     blanket `--transition: all .3s ease-in-out` (used everywhere on the
+     public site) so admin components can animate specific properties at a
+     snappier, more purposeful SaaS-style rhythm without touching that
+     shared variable. */
+  --a-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --a-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --a-dur-fast: 150ms;
+  --a-dur: 220ms;
+  --a-shadow-btn: 0 1px 2px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(26, 26, 26, 0.22);
+  --a-shadow-btn-hover: 0 2px 4px rgba(15, 23, 42, 0.1), 0 8px 22px rgba(26, 26, 26, 0.3);
+  --a-shadow-modal: 0 24px 64px rgba(15, 23, 42, 0.22), 0 4px 16px rgba(15, 23, 42, 0.1);
+  --a-shadow-toast: 0 12px 32px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body.admin-body {
+  min-height: 100vh;
+  /* font-family/color/background/text-transform inherit from style.css's
+     global `body` rule — no need to redeclare them here. */
+}
+
+/* ---- Auth pages (login / 403) ---- */
+.admin-auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.admin-auth__card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--a-surface);
+  border: var(--border-1px);
+  border-radius: var(--a-radius);
+  padding: 44px 36px;
+  text-align: center;
+}
+.admin-auth__logo { max-width: 110px; margin: 0 auto 22px; }
+.admin-auth__logo img { width: 100%; display: block; }
+.admin-auth__title { font-size: 20px; margin: 0 0 8px; }
+.admin-auth__subtitle { color: var(--a-text-muted); font-size: 14px; margin: 0 0 30px; line-height: 22px; }
+.admin-auth__card input[type="email"] {
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: var(--a-radius);
+  border: 1px solid var(--a-border);
+  background: var(--a-surface-2);
+  color: var(--a-text);
+  font-size: 14px;
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+.admin-auth__card input[type="email"]:focus { border-color: var(--a-primary); }
+.admin-auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--a-text-muted);
+  font-size: 12px;
+  margin: 26px 0;
+}
+.admin-auth__divider::before, .admin-auth__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--a-border);
+}
+.admin-auth__icon {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2px solid var(--a-danger); color: var(--a-danger);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin: 0 auto 22px;
+}
+
+/* ---- Buttons — reuse the storefront's pill idiom (.btn-one / .off-btn),
+   upgraded with a real elevation/motion system so primary actions read as
+   premium, clickable surfaces rather than flat filled rectangles. ---- */
+.a-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 22px; border-radius: var(--a-radius-pill); border: 1px solid transparent;
+  font-size: 14px; font-weight: 600; letter-spacing: .01em; cursor: pointer;
+  transition: background-color var(--a-dur) var(--a-ease), color var(--a-dur) var(--a-ease),
+    box-shadow var(--a-dur) var(--a-ease), border-color var(--a-dur) var(--a-ease),
+    transform var(--a-dur-fast) var(--a-ease-out);
+  width: 100%;
+  position: relative;
+}
+.a-btn-primary {
+  background: var(--a-primary);
+  color: #ffffff;
+  box-shadow: var(--a-shadow-btn);
+}
+.a-btn-primary:hover:not(:disabled) {
+  background: var(--a-primary-hover);
+  box-shadow: var(--a-shadow-btn-hover);
+  transform: translateY(-1px);
+}
+.a-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 2px 8px rgba(26, 26, 26, .22);
+}
+.a-btn-secondary {
+  background: var(--a-surface); color: var(--a-text); border-color: var(--a-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+}
+.a-btn-secondary:hover:not(:disabled) {
+  border-color: var(--a-primary); color: var(--a-primary); background: var(--a-surface-2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .07);
+}
+.a-btn-secondary:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.a-btn:focus-visible { outline: 2px solid var(--a-primary); outline-offset: 2px; }
+.a-btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+.a-btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.a-btn:disabled:hover { border-color: var(--a-border); color: var(--a-text); background: transparent; }
+.a-btn-primary:disabled { background: var(--a-primary); color: #ffffff; }
+.a-btn-secondary:disabled { background: var(--a-surface); }
+
+/* Generic loading state, toggled via JS (`btn.classList.add("is-loading")`)
+   for any async action — Save Draft, Publish, form submits — so a click
+   always gets an immediate, visible response instead of feeling dead. */
+.a-btn.is-loading { color: transparent !important; pointer-events: none; }
+.a-btn.is-loading::after {
+  content: ""; position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .4); border-top-color: #ffffff;
+  animation: a-btn-spin .6s linear infinite;
+}
+.a-btn-secondary.is-loading::after { border-color: rgba(26, 26, 26, .25); border-top-color: var(--a-primary); }
+@keyframes a-btn-spin { to { transform: rotate(360deg); } }
+
+/* ---- App shell ---- */
+.admin-shell { display: flex; min-height: 100vh; }
+
+.admin-sidebar {
+  width: var(--a-sidebar-w);
+  background: var(--a-surface);
+  border-right: 1px solid var(--a-border);
+  padding: 24px 16px;
+  position: fixed;
+  top: 0; bottom: 0; left: 0;
+  overflow-y: auto;
+  z-index: 40;
+  transition: transform .3s var(--transition);
+}
+.admin-sidebar__brand {
+  display: flex; align-items: center;
+  padding: 4px 10px 28px;
+}
+.admin-sidebar__brand img { max-width: 108px; }
+.admin-nav { list-style: none; margin: 0; padding: 0; }
+.admin-nav li { margin-bottom: 2px; }
+.admin-nav a {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--a-radius); color: var(--a-text-muted);
+  font-size: 14px; font-weight: 600; transition: var(--transition);
+}
+.admin-nav a i { width: 16px; text-align: center; font-size: 14px; }
+.admin-nav a:hover { color: var(--a-text); }
+.admin-nav a.active { color: var(--a-primary); position: relative; }
+.admin-nav a.active::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 18px; border-radius: 4px; background: var(--a-primary);
+}
+.admin-nav .soon { margin-left: auto; font-size: 10px; padding: 2px 8px; border-radius: var(--a-radius-pill); border: 1px solid var(--a-border); color: var(--a-text-muted); font-weight: 600; }
+.admin-nav .disabled { cursor: default; opacity: .5; pointer-events: none; }
+.admin-nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--a-text-muted); padding: 22px 14px 8px; font-weight: 600; }
+
+.admin-main { flex: 1; margin-left: var(--a-sidebar-w); min-width: 0; }
+
+.admin-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 16px 32px;
+  border-bottom: 1px solid var(--a-border);
+  background: var(--a-surface);
+  position: sticky; top: 0; z-index: 30;
+  box-shadow: var(--shadow-sm);
+}
+.admin-breadcrumb { font-size: 14px; color: var(--a-text-muted); }
+.admin-breadcrumb strong { color: var(--a-text); font-weight: 600; }
+.admin-topbar__actions { display: flex; align-items: center; gap: 12px; }
+.admin-search {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--a-surface-2); border: 1px solid var(--a-border);
+  border-radius: var(--a-radius-pill); padding: 9px 18px; min-width: 220px;
+}
+.admin-search input { border: none; background: transparent; outline: none; color: var(--a-text); font-size: 13px; width: 100%; }
+.admin-search i { color: var(--a-text-muted); font-size: 13px; }
+.admin-icon-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: var(--a-primary); color: #ffffff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: var(--transition); flex-shrink: 0;
+}
+.admin-icon-btn:hover { opacity: .85; }
+.admin-user { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; }
+.admin-user__avatar {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--a-primary); color: #ffffff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+
+.admin-content { padding: 30px 32px 64px; }
+
+/* SPA panels — router.js clones a <template> into one of these per section
+   the first time it's visited, then just toggles which one is visible.
+   Only the active panel is ever laid out/painted. */
+.panel { display: none; }
+.panel.active { display: block; }
+
+.admin-page-title { font-size: 24px; margin: 0 0 4px; }
+.admin-page-subtitle { color: var(--a-text-muted); font-size: 14px; margin: 0 0 28px; }
+
+/* ---- Cards / metrics — the same bordered-flat idiom as .product__item ---- */
+.a-card {
+  background: var(--a-surface); border: 1px solid var(--a-border);
+  border-radius: var(--a-radius); transition: var(--transition);
+}
+.a-card-pad { padding: 22px; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 26px; }
+.metric-card { padding: 20px 22px; }
+.metric-card:hover { border-color: var(--a-primary); }
+.metric-card__label { font-size: 13px; color: var(--a-text-muted); margin-bottom: 10px; }
+.metric-card__value { font-size: 26px; font-family: var(--prosto-one); color: var(--a-text); }
+.metric-card__sub { font-size: 12px; color: var(--a-text-muted); margin-top: 4px; }
+
+.chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 26px; }
+.chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; }
+@media (max-width: 992px) { .chart-grid, .chart-grid-2 { grid-template-columns: 1fr; } }
+.chart-card { padding: 22px; }
+.chart-card h6 { font-size: 15px; margin: 0 0 18px; }
+.chart-card canvas { max-height: 260px; }
+
+/* ---- Tables ---- */
+.a-table-wrap { overflow-x: auto; }
+table.a-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.a-table th {
+  text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--a-text-muted); padding: 12px 18px; border-bottom: 1px solid var(--a-border); white-space: nowrap; font-weight: 600;
+}
+table.a-table td { padding: 15px 18px; border-bottom: 1px solid var(--a-border); vertical-align: middle; text-transform: none; }
+table.a-table tbody tr { transition: var(--transition); }
+table.a-table tbody tr:hover { background: var(--a-surface-2); }
+table.a-table tbody tr:last-child td { border-bottom: none; }
+
+.a-badge {
+  display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--a-radius-pill);
+  font-size: 12px; font-weight: 600; border: 1px solid transparent; background: transparent; text-transform: capitalize;
+}
+.a-badge-success { color: var(--a-success); border-color: var(--a-success); }
+.a-badge-warning { color: var(--a-warning); border-color: var(--a-warning); }
+.a-badge-danger { color: var(--a-danger); border-color: var(--a-danger); }
+.a-badge-neutral { color: var(--a-text-muted); border-color: var(--a-border); }
+
+.a-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.a-toolbar input, .a-toolbar select {
+  padding: 10px 16px; border-radius: var(--a-radius-pill); border: 1px solid var(--a-border);
+  background: var(--a-surface-2); color: var(--a-text); font-size: 13px;
+  transition: border-color var(--a-dur) var(--a-ease), box-shadow var(--a-dur) var(--a-ease), background-color var(--a-dur) var(--a-ease);
+}
+.a-toolbar input:hover, .a-toolbar select:hover { border-color: var(--a-text-muted); }
+.a-toolbar input:focus, .a-toolbar select:focus { border-color: var(--a-primary); box-shadow: 0 0 0 3px rgba(26, 26, 26, .1); }
+.a-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 18px; font-size: 13px; color: var(--a-text-muted); }
+
+.a-activity-item { display: flex; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--a-border); font-size: 13px; }
+.a-activity-item:last-child { border-bottom: none; }
+.a-activity-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; background: var(--a-primary); }
+.a-activity-msg { color: var(--a-text); text-transform: none; }
+.a-activity-time { color: var(--a-text-muted); font-size: 12px; }
+
+/* ---- Skeletons ---- */
+@keyframes a-shimmer { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
+.a-skeleton {
+  background: linear-gradient(90deg, var(--a-surface-2) 0px, var(--a-border) 40px, var(--a-surface-2) 80px);
+  background-size: 200px 100%;
+  animation: a-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px; height: 14px;
+}
+
+/* Applied via JS right when real content replaces a skeleton (or an empty/
+   error state replaces either), so every one of those swaps reads as a soft
+   reveal instead of an abrupt pop-in — same motion tokens as everything
+   else in the admin, so it feels like one continuous system. */
+@keyframes a-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.a-fade-in { animation: a-fade-in var(--a-dur) var(--a-ease-out); }
+
+/* Row-level enter/exit/flash for dynamic tables (AdminUI.animateRowRemoval /
+   animateRowsIn / flashRow) — used around a specific add/delete/status-change
+   action so that row visibly moves instead of the whole table just
+   reappearing with different contents. */
+@keyframes a-row-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+table.a-table tbody tr.a-row-enter { animation: a-row-in var(--a-dur) var(--a-ease-out); }
+table.a-table tbody tr.a-row-exit {
+  transition: opacity var(--a-dur) var(--a-ease), transform var(--a-dur) var(--a-ease);
+  opacity: 0; transform: translateX(8px); pointer-events: none;
+}
+@keyframes a-row-flash-bg { from { background-color: rgba(26, 26, 26, .12); } to { background-color: transparent; } }
+table.a-table tbody tr.a-row-flash { animation: a-row-flash-bg 1.1s var(--a-ease); }
+
+/* ---- Empty state ---- */
+.a-empty { text-align: center; padding: 64px 20px; color: var(--a-text-muted); }
+.a-empty i { font-size: 30px; margin-bottom: 14px; opacity: .6; color: var(--a-primary); }
+.a-empty p { margin: 0; font-size: 14px; text-transform: none; }
+
+/* ---- Modal — entrance/exit animation driven by AdminUI.openModal/closeModal
+   toggling .a-modal-open / .a-modal-closing on the backdrop; every modal in
+   the admin (confirm dialogs, product wizard, customer forms) shares this
+   same polished show/hide instead of an instant appendChild/remove. ---- */
+/* Applied to <body> by AdminUI.openModal/closeModal — without it the page
+   behind the fixed backdrop still scrolls (wheel/touch/keyboard), since a
+   `position: fixed` overlay does not stop scroll from reaching the document
+   on its own. */
+body.a-modal-body-lock { overflow: hidden; }
+
+.a-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+  transition: background-color var(--a-dur) var(--a-ease);
+}
+.a-modal-backdrop.a-modal-open { background: rgba(0, 0, 0, .6); }
+.a-modal-backdrop.a-modal-closing { background: rgba(0, 0, 0, 0); transition-duration: 150ms; }
+.a-modal {
+  background: var(--a-surface); border-radius: var(--a-radius);
+  border: 1px solid var(--a-border); box-shadow: var(--a-shadow-modal);
+  width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 32px;
+  opacity: 0; transform: scale(.96) translateY(6px);
+  transition: opacity var(--a-dur) var(--a-ease-out), transform var(--a-dur) var(--a-ease-out);
+}
+.a-modal-backdrop.a-modal-open .a-modal { opacity: 1; transform: scale(1) translateY(0); }
+.a-modal-backdrop.a-modal-closing .a-modal { opacity: 0; transform: scale(.97) translateY(4px); transition-duration: 150ms; }
+.a-modal.a-modal-lg { max-width: 680px; }
+.a-modal h5 { margin: 0 0 8px; font-size: 18px; }
+.a-modal p.a-modal-desc { color: var(--a-text-muted); font-size: 13px; margin: 0 0 22px; text-transform: none; }
+.a-modal h6 { font-size: 14px; margin: 18px 0 10px; }
+.a-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.a-modal-actions .a-btn { width: auto; }
+.a-form-row { margin-bottom: 16px; }
+.a-form-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; color: var(--a-text); }
+.a-form-row input, .a-form-row select, .a-form-row textarea {
+  width: 100%; padding: 13px 18px; border-radius: var(--a-radius); border: 1px solid var(--a-border);
+  background: var(--a-surface-2); color: var(--a-text); font-size: 14px; transition: var(--transition);
+}
+.a-form-row input:focus, .a-form-row select:focus, .a-form-row textarea:focus { border-color: var(--a-primary); }
+.a-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 560px) { .a-form-grid { grid-template-columns: 1fr; } }
+
+/* ---- Toasts — layered surface + per-variant icon chip + auto-dismiss
+   progress bar, so feedback (Save Draft, publish, errors) reads as a
+   deliberate premium notification instead of a flat browser-style banner. ---- */
+.a-toast-stack { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
+.a-toast {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--a-surface); border: 1px solid var(--a-border);
+  border-radius: var(--a-radius); padding: 14px 16px 16px; font-size: 13px; min-width: 260px; color: var(--a-text);
+  text-transform: none; box-shadow: var(--a-shadow-toast);
+  position: relative; overflow: hidden;
+  opacity: 0; transform: translateX(24px) scale(.98);
+  /* max-height/margin/padding are only ever touched by JS at dismiss time
+     (collapsing the toast's own footprint) so the rest of the stack closes
+     the gap smoothly instead of snapping the instant this node is removed. */
+  transition: opacity var(--a-dur) var(--a-ease-out), transform var(--a-dur) var(--a-ease-out),
+    max-height 220ms var(--a-ease), margin-bottom 220ms var(--a-ease), padding-top 220ms var(--a-ease), padding-bottom 220ms var(--a-ease);
+}
+.a-toast.a-toast-in { opacity: 1; transform: translateX(0) scale(1); }
+.a-toast.a-toast-out { opacity: 0; transform: translateX(12px) scale(.98); transition-duration: 180ms; }
+.a-toast__icon {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.a-toast__body { flex: 1; min-width: 0; line-height: 1.5; padding-top: 3px; font-weight: 500; }
+.a-toast__close {
+  background: none; border: none; color: var(--a-text-muted); cursor: pointer; padding: 5px; flex-shrink: 0;
+  border-radius: 50%; transition: background-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease);
+}
+.a-toast__close:hover { background: var(--a-surface-2); color: var(--a-text); }
+.a-toast__progress {
+  position: absolute; left: 0; bottom: 0; height: 3px; background: currentColor; opacity: .3;
+  animation: a-toast-progress 4.2s linear forwards;
+}
+@keyframes a-toast-progress { from { width: 100%; } to { width: 0%; } }
+.a-toast-success .a-toast__icon { background: rgba(5, 150, 105, .12); color: var(--a-success); }
+.a-toast-success .a-toast__progress { color: var(--a-success); }
+.a-toast-error .a-toast__icon { background: rgba(220, 38, 38, .12); color: var(--a-danger); }
+.a-toast-error .a-toast__progress { color: var(--a-danger); }
+.a-toast-warning .a-toast__icon { background: rgba(217, 119, 6, .12); color: var(--a-warning); }
+.a-toast-warning .a-toast__progress { color: var(--a-warning); }
+.a-toast-info .a-toast__icon { background: rgba(26, 26, 26, .12); color: var(--a-primary); }
+.a-toast-info .a-toast__progress { color: var(--a-primary); }
+
+/* ---- Dev tools panel ---- */
+.dev-panel { border: 1px solid var(--a-warning); background: var(--a-surface); border-radius: var(--a-radius); padding: 20px 22px; margin-bottom: 26px; }
+.dev-panel h6 { margin: 0 0 4px; font-size: 14px; color: var(--a-warning); }
+.dev-panel p { margin: 0 0 16px; font-size: 12px; color: var(--a-text-muted); text-transform: none; }
+.dev-panel .a-btn { width: auto; }
+.dev-panel__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .admin-sidebar { transform: translateX(-100%); }
+  .admin-sidebar.open { transform: translateX(0); }
+  .admin-main { margin-left: 0; }
+  .admin-search { display: none; }
+}
+
+/* ---- Product Setup Wizard ----
+   One fixed-height shell (never resizes step to step) split into: a stable
+   left step rail, a scrollable body that only the active step's content
+   lives in, and a footer pinned outside that scroll region so Back/Save/Next
+   never move. Step changes only animate the body's content, not the shell. */
+.a-modal.a-wizard {
+  max-width: 960px; width: 100%; height: min(86vh, 720px);
+  padding: 0; display: flex; overflow: hidden;
+}
+.a-wizard-steps { width: 230px; flex-shrink: 0; background: var(--a-surface-2); border-right: 1px solid var(--a-border); padding: 24px 0; height: 100%; overflow-y: auto; }
+.a-wizard-step {
+  display: flex; align-items: center; gap: 10px; padding: 12px 22px; font-size: 13px; font-weight: 600;
+  color: var(--a-text-muted); cursor: pointer; border-left: 3px solid transparent;
+  transition: color var(--a-dur) var(--a-ease), border-color var(--a-dur) var(--a-ease), background-color var(--a-dur) var(--a-ease);
+}
+.a-wizard-step .a-wizard-step-icon { width: 18px; text-align: center; flex-shrink: 0; }
+.a-wizard-step.active { color: var(--a-text); border-left-color: var(--a-primary); background: var(--a-surface); font-weight: 700; }
+/* untouched (default muted) / complete (visited, all required fields filled) /
+   incomplete (visited, still missing something) — never a navigation gate,
+   purely a "here's what still needs attention" signal. */
+.a-wizard-step.complete .a-wizard-step-icon { color: var(--a-success); }
+.a-wizard-step.incomplete .a-wizard-step-icon { color: var(--a-warning); }
+.a-wizard-step.incomplete:not(.active) { color: var(--a-text); }
+.a-wizard-main { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
+.a-wizard-body { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 32px 28px; }
+.a-wizard-body h5 { margin: 0 0 4px; font-size: 18px; }
+.a-wizard-body p.a-modal-desc { margin: 0 0 24px; }
+
+/* Fresh content node per step (renderBody creates a new one each time), so
+   this animation just plays on insert — no replay bookkeeping needed. */
+@keyframes a-wizard-step-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.a-wizard-step-content { animation: a-wizard-step-in var(--a-dur) var(--a-ease-out); }
+
+.a-wizard-footer { flex-shrink: 0; padding: 18px 32px; border-top: 1px solid var(--a-border); background: var(--a-surface); }
+.a-wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.a-wizard-actions .a-btn { width: auto; }
+.a-wizard-repeat-item { border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; margin-bottom: 14px; position: relative; }
+.a-wizard-repeat-item .a-wizard-remove { position: absolute; top: 12px; right: 14px; color: var(--a-danger); cursor: pointer; font-size: 13px; background: none; border: none; }
+.a-wizard-add-btn { margin-bottom: 20px; }
+
+/* Exercise demo media (GIF / short video) inside the training builder */
+.a-wizard-media { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.a-wizard-media img,
+.a-wizard-media video { width: 96px; height: 96px; object-fit: cover; border-radius: var(--a-radius); border: 1px solid var(--a-border); background: var(--a-bg); }
+.a-wizard-media-add { margin-top: 8px; cursor: pointer; }
+.a-wizard-media-add.is-loading { opacity: 0.6; pointer-events: none; }
+
+/* Access Type option cards — icon centered in a fixed circle, title/description
+   on a clean text column, a check glyph that fades in only when selected. */
+.a-wizard-option-card {
+  border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 14px 18px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  transition: border-color var(--a-dur) var(--a-ease), background-color var(--a-dur) var(--a-ease), box-shadow var(--a-dur) var(--a-ease);
+}
+.a-wizard-option-icon {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--a-surface-2); color: var(--a-text-muted); font-size: 15px;
+  transition: background-color var(--a-dur) var(--a-ease), color var(--a-dur) var(--a-ease);
+}
+.a-wizard-option-text { flex: 1; min-width: 0; }
+.a-wizard-option-text strong { display: block; margin-bottom: 3px; font-size: 14px; }
+.a-wizard-option-text span { font-size: 12px; color: var(--a-text-muted); }
+.a-wizard-option-check { flex-shrink: 0; width: 18px; text-align: center; color: var(--a-primary); font-size: 17px; opacity: 0; transition: opacity var(--a-dur) var(--a-ease); }
+.a-wizard-option-card.selected { border-color: var(--a-primary); background: var(--a-surface-2); box-shadow: 0 0 0 3px rgba(26, 26, 26, .08); }
+.a-wizard-option-card.selected .a-wizard-option-icon { background: var(--a-primary); color: #ffffff; }
+.a-wizard-option-card.selected .a-wizard-option-check { opacity: 1; }
+.a-wizard-option-card:not(.disabled):not(.selected):hover { border-color: var(--a-text-muted); }
+.a-wizard-option-card.disabled { opacity: .5; cursor: not-allowed; }
+
+.a-wizard-preview-section { margin-bottom: 22px; }
+.a-wizard-preview-section h6 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--a-text-muted); margin: 0 0 8px; }
+
+/* Inline validation-as-guidance banners — per-step "missing fields" reminder
+   and the Preview step's full publish-readiness summary. Never blocks
+   anything by itself; the error variant's fix-links are the only thing that
+   navigates. */
+.a-wizard-alert {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--a-radius);
+  font-size: 13px; margin-bottom: 20px; border: 1px solid transparent;
+}
+.a-wizard-alert i { font-size: 15px; margin-top: 2px; flex-shrink: 0; }
+.a-wizard-alert strong { display: block; margin-bottom: 4px; font-size: 13px; }
+.a-wizard-alert p { margin: 0; color: inherit; opacity: .85; text-transform: none; }
+.a-wizard-alert p + .a-wizard-fix-list { margin-top: 8px; }
+.a-wizard-fix-list { margin: 0; padding-left: 18px; }
+.a-wizard-fix-list li { margin-bottom: 4px; }
+.a-wizard-fix-list a { color: inherit; text-decoration: underline; font-weight: 600; cursor: pointer; }
+.a-wizard-alert-warning { background: rgba(217, 119, 6, .08); border-color: rgba(217, 119, 6, .25); color: var(--a-warning); }
+.a-wizard-alert-error { background: rgba(220, 38, 38, .08); border-color: rgba(220, 38, 38, .25); color: var(--a-danger); }
+.a-wizard-alert-success { background: rgba(5, 150, 105, .08); border-color: rgba(5, 150, 105, .25); color: var(--a-success); }
+@keyframes a-wizard-alert-shake {
+  10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); } 40%, 60% { transform: translateX(3px); }
+}
+.a-wizard-alert-shake { animation: a-wizard-alert-shake .4s var(--a-ease); }
+
+.a-wizard-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--a-text-muted); font-size: 14px; }
+
+@media (max-width: 720px) {
+  .a-modal.a-wizard { flex-direction: column; height: 92vh; }
+  .a-wizard-steps { width: 100%; height: auto; display: flex; overflow-x: auto; padding: 12px; }
+  .a-wizard-step { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .a-wizard-step.active { border-bottom-color: var(--a-primary); }
+  .a-wizard-main { min-height: 0; }
+}
+
+/* ---- Respect prefers-reduced-motion: every custom animation/transition
+   added across the admin (toasts, modals, wizard steps, row enter/exit/
+   flash, fade-ins, button motion) collapses to effectively instant, without
+   removing the state changes themselves. ---- */
+@media (prefers-reduced-motion: reduce) {
+  .a-toast, .a-toast *, .a-modal, .a-modal-backdrop, .a-wizard-step-content, .a-wizard-step, .a-wizard-alert-shake,
+  table.a-table tbody tr, .a-fade-in, .a-btn, .a-skeleton, .a-wizard-option-card, .a-wizard-option-icon, .a-wizard-option-check {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---- Navigation section: taxonomy tree editor ---- */
+.tax-card .tax-route { display: block; font-size: 12px; color: var(--a-text-muted); margin-top: 2px; }
+.tax-tree { list-style: none; margin: 0; padding: 0; }
+.tax-tree--nested { padding-left: 26px; margin-top: 8px; border-left: 1px dashed var(--a-border); }
+.tax-node { margin-bottom: 8px; }
+.tax-node__row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius);
+  background: var(--a-surface-2);
+}
+.tax-node__name { font-weight: 600; color: var(--a-text); cursor: text; padding: 2px 4px; border-radius: 4px; }
+.tax-node__name:hover { background: rgba(15, 23, 42, 0.06); }
+.tax-badge {
+  font-size: 11px; font-weight: 600; color: var(--a-text-muted);
+  background: var(--a-surface); border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
+  padding: 2px 10px;
+}
+.tax-node__actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.tax-icon-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent; background: transparent;
+  color: var(--a-text-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: var(--transition);
+}
+.tax-icon-btn:hover:not(:disabled) { background: var(--a-surface); border-color: var(--a-border); color: var(--a-text); }
+.tax-icon-btn--danger:hover:not(:disabled) { color: var(--a-danger); border-color: var(--a-danger); }
+.tax-icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+.tax-inline-input {
+  flex: 1 1 160px; min-width: 140px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--a-primary);
+  background: var(--a-surface); color: var(--a-text); font-size: 14px; font-weight: 600;
+}
+.tax-empty { color: var(--a-text-muted); font-size: 13px; margin: 0; }
+
+/* ---- Product wizard: Navigation Placement taxonomy picker ---- */
+.a-wizard-tax-group { margin-bottom: 20px; }
+.a-wizard-tax-group-title { font-size: 13px; margin: 0 0 4px; }
+.a-wizard-tax-group-hint { font-size: 12px; color: var(--a-text-muted); margin: 0 0 8px; }
+.a-wizard-tax-pills { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.a-wizard-tax-leaf {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500;
+  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
+  background: var(--a-surface-2); cursor: pointer;
+}
+.a-wizard-tax-leaf:has(input:checked), .a-wizard-tax-leaf.is-checked { border-color: var(--a-primary); background: rgba(var(--a-primary-rgb, 26, 26, 26), .08); }
+.a-wizard-tax-count { font-size: 11px; color: var(--a-text-muted); }
+
+/* The category row is a plain flex-wrap row with NO item in it ever forced
+   to flex-basis:100% — its contents (the pills themselves) never change
+   size or count when a category is opened, so the row itself never reflows.
+   Only .a-wizard-tax-subpanel-area, a fully separate block below the row,
+   changes when a different category is selected. */
+.a-wizard-tax-cat-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.a-wizard-tax-cat-pill {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
+  background: var(--a-surface-2); cursor: pointer; color: var(--a-text);
+}
+.a-wizard-tax-cat-pill.has-selection { border-color: var(--a-primary); }
+.a-wizard-tax-cat-pill.is-open { background: var(--a-surface); box-shadow: inset 0 0 0 1px var(--a-primary); }
+.a-wizard-tax-cat-pill i { font-size: 10px; color: var(--a-text-muted); transition: transform .15s ease; }
+.a-wizard-tax-cat-pill.is-open i { transform: rotate(180deg); }
+.a-wizard-tax-subpanel-area { margin-top: 10px; }
+.a-wizard-tax-subpanel {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px;
+  padding: 14px; border: 1px solid var(--a-border);
+  background: var(--a-surface-2); border-radius: var(--a-radius);
+}
+.a-wizard-tax-add-trigger {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--a-text-muted);
+  padding: 7px 12px; border: 1px dashed var(--a-border); border-radius: var(--a-radius-pill); background: transparent; cursor: pointer;
+}
+.a-wizard-tax-add-trigger:hover { color: var(--a-primary); border-color: var(--a-primary); }
+.a-wizard-tax-add-form { display: inline-flex; align-items: center; gap: 6px; }
+.a-wizard-tax-add-form .tax-inline-input { padding: 6px 10px; font-size: 12px; width: 150px; min-width: 0; }
+
+/* ---- Product wizard: SEO & Tags step ---- */
+.a-wizard-tag-input-wrap {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px;
+  border: 1px solid var(--a-border); border-radius: var(--a-radius); background: var(--a-surface-2);
+}
+.a-wizard-tag-chips { display: contents; }
+.a-wizard-tag-chip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500;
+  padding: 6px 6px 6px 12px; border-radius: var(--a-radius-pill); background: var(--a-surface); border: 1px solid var(--a-border);
+}
+.a-wizard-tag-chip button {
+  width: 18px; height: 18px; border: none; border-radius: 50%; background: transparent; color: var(--a-text-muted);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px;
+}
+.a-wizard-tag-chip button:hover { background: var(--a-border); color: var(--a-text); }
+#newTagInput { flex: 1 1 140px; min-width: 140px; border: none; background: transparent; outline: none; color: var(--a-text); font-size: 13px; padding: 6px 4px; }
+
+/* CSP hardening: replaces a one-off inline style="" (see assets/css/style.css's
+   own "CSP hardening" block for the shared utility classes used everywhere else). */
+.a-pill-btn {
+  padding: 10px 16px; border-radius: var(--a-radius-pill); border: 1px solid var(--a-border);
+  background: var(--a-surface-2); color: var(--a-text); font-size: 13px;
+}

@@ -1,0 +1,51 @@
+/* Mobile-first: most buyers open their program on a phone (Meta Ads
+   traffic), so the base styles are the phone layout and desktop is
+   the enhancement. */
+.program-hero { display: flex; gap: 20px; flex-direction: column; }
+.program-hero img { width: 100%; max-width: 220px; aspect-ratio: 1; height: auto; object-fit: cover; border-radius: 12px; }
+.program-meta span { display: inline-block; margin: 0 14px 8px 0; font-size: 14px; color: var(--paragraph); }
+.program-meta span i { color: var(--primary-color, #1a1a1a); margin-right: 6px; }
+
+/* Tabs: one horizontal, swipeable row — never wrapped into two lines
+   of tiny targets; every tab keeps a ≥44px tap height. */
+.program-tabs { list-style: none; display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding: 0; margin: 40px 0 25px; border-bottom: 1px solid rgba(0,0,0,.08); }
+.program-tabs li a { display: flex; align-items: center; min-height: 46px; padding: 12px 18px; font-weight: 600; text-transform: uppercase; font-size: 13px; white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent; touch-action: manipulation; }
+.program-tabs li a.active { border-bottom-color: var(--primary-color, #1a1a1a); }
+.program-panel { display: none; }
+.program-panel.active { display: block; }
+
+/* Weeks are native <details> accordions — a long program collapses
+   to a scannable list; the summary row is a full-width tap target. */
+.program-week { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; margin-bottom: 14px; }
+.program-week > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px; padding: 14px 20px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.program-week > summary::-webkit-details-marker { display: none; }
+.program-week-meta { font-size: 13px; font-weight: 500; color: var(--paragraph-light, #999); white-space: nowrap; }
+.program-week-meta i { transition: transform .25s ease; }
+.program-week[open] .program-week-meta i { transform: rotate(180deg); }
+.program-week-body { padding: 0 20px 20px; }
+.program-day { border-top: 1px solid rgba(0,0,0,.06); padding-top: 14px; margin-top: 14px; }
+
+/* Exercise card: demo media (GIF/video) beside the prescription.
+   The media box reserves its square via aspect-ratio, so lazy-loaded
+   GIFs never shift the layout while you scroll mid-workout. */
+.program-exercise { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px dashed rgba(0,0,0,.08); }
+.program-exercise:last-child { border-bottom: none; }
+.program-exercise-media { flex: 0 0 104px; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.05); }
+.program-exercise-media img, .program-exercise-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.program-exercise-info { min-width: 0; }
+.program-exercise-info strong { display: block; }
+.program-exercise-reps { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 100px; background: rgba(0,0,0,.06); font-size: 13px; font-weight: 600; }
+.program-exercise-notes { margin: 6px 0 0; font-size: 13px; color: var(--paragraph-light, #777); }
+
+.program-locked { text-align: center; padding: 80px 20px; }
+.resource-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border: 1px solid rgba(0,0,0,.08); border-radius: 10px; margin-bottom: 12px; }
+
+/* Customer Preview bar (admins only — injected by program.js) */
+.program-preview-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 99999; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; background: #1a1a1a; color: #fff; font-size: 14px; }
+.program-preview-bar a { color: #fff; text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
+body.has-preview-bar { padding-bottom: 72px; }
+
+@media (min-width: 768px) {
+    .program-hero { flex-direction: row; align-items: center; gap: 30px; }
+    .program-exercise-media { flex-basis: 130px; }
+}

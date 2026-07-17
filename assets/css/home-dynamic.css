@@ -1,0 +1,524 @@
+/* Homepage dynamic sections: a dynamic product hero slideshow (.hero-
+   slideshow), a scrolling people-marquee directly under it, an Athletes/
+   Creators people-strip, and a deal-cards product strip. Mobile-first: base
+   rules below target phones, larger screens are added via min-width media
+   queries further down. The strips are native horizontal-scroll +
+   scroll-snap (no swiper dependency) so they work with any item count the
+   backend returns, including very few or zero. */
+
+/* ---- Hero slideshow: real admin-managed product data, driven by
+   assets/js/hero-slideshow.js (GET /api/products + GET /api/taxonomy).
+   Slide 0's content/background is server-rendered directly into index.html
+   (server/src/index.js -> applyHeroContext) for SEO/no-JS; this file only
+   lays out and animates what that markup (SSR'd or client-added) contains —
+   nothing here is itself hardcoded to a specific product. ---- */
+.hero-slideshow {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-height: 520px;
+  padding: 84px 0 32px;
+  background: var(--color-text); /* dark fallback while the first image loads */
+}
+
+/* Background layer: fills the section, sits behind everything else. */
+.hero-slideshow__bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.hero-slideshow__swiper,
+.hero-slideshow__swiper .swiper-wrapper,
+.hero-slideshow__slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Crossfade between slides: assets/js/hero-slideshow.js toggles each
+   slide's opacity directly (plain JS, no Swiper) — this is what animates
+   that change. Duration must match the JS SPEED constant. Defaults to
+   fully opaque so the server-rendered first slide is visible with no JS
+   at all; slides added by JS start at opacity 0 via inline style. */
+.hero-slideshow__slide {
+  transition: opacity 900ms ease;
+}
+.hero-slideshow__bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  /* Large, slightly blurred, slightly darkened — never the focal point.
+     Scaled up so the blur's soft edge never shows inside the frame. */
+  filter: blur(22px) brightness(0.55) saturate(1.05);
+  transform: scale(1.18);
+  animation: heroSlowPan 22s ease-in-out infinite alternate;
+}
+/* Very subtle pan/zoom — a premium touch, never fast or distracting enough
+   to compete with the foreground content. Respects reduced-motion. */
+@keyframes heroSlowPan {
+  0% { transform: scale(1.18) translate(0, 0); }
+  100% { transform: scale(1.26) translate(-1.4%, -1%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slideshow__bg-img {
+    animation: none;
+  }
+}
+.hero-slideshow__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  /* Belt-and-suspenders on top of the brightness filter above — guarantees
+     readable contrast for light text regardless of how bright/busy a given
+     admin-uploaded cover image is. */
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.55) 0%, rgba(10, 10, 10, 0.72) 100%);
+}
+
+.hero-slideshow__content {
+  position: relative;
+  z-index: 2;
+  max-width: 620px;
+  color: #ffffff;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.hero-slideshow__content--out {
+  opacity: 0;
+  transform: translateX(-14px);
+}
+.hero-slideshow__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill, 100px);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 14px;
+  backdrop-filter: blur(4px);
+}
+.hero-slideshow__badge img {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1); /* the fire icon is dark-line art; make it read on a dark badge */
+}
+.hero-slideshow__meta {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 8px;
+  min-height: 1.2em; /* reserves its line even before content loads/swaps, avoiding CLS */
+}
+.hero-slideshow h1 {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 10px;
+}
+.hero-slideshow__desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0 0 18px;
+  max-width: 48ch;
+  /* Fixed 2-line box regardless of a given product's description length —
+     content swaps never reflow the hero's height (no CLS between slides). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+.hero-slideshow__cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.hero-slideshow__cta.btn-one {
+  /* Inverted from the sitewide dark .btn-one — a near-black button would
+     nearly disappear against this section's own dark, blurred backdrop. A
+     light, high-contrast button is what actually needs to pop here. */
+  width: 100%;
+  text-align: center;
+  background-color: #ffffff;
+  color: var(--color-text);
+  padding-left: 32px;
+  padding-right: 32px;
+}
+.hero-slideshow__cta.btn-one:hover {
+  background-color: #f0f0f0;
+  color: var(--color-text);
+}
+.hero-slideshow__cta.btn-one span {
+  color: inherit;
+}
+.hero-slideshow__price {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+@media (min-width: 420px) {
+  .hero-slideshow__cta.btn-one {
+    width: auto;
+  }
+}
+@media (min-width: 576px) {
+  .hero-slideshow {
+    min-height: 560px;
+  }
+  .hero-slideshow h1 {
+    font-size: 34px;
+  }
+  .hero-slideshow__desc {
+    font-size: 15px;
+  }
+  .hero-slideshow__cta-row {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+@media (min-width: 768px) {
+  .hero-slideshow {
+    padding: 116px 0 60px;
+    min-height: 600px;
+  }
+  .hero-slideshow h1 {
+    font-size: 44px;
+  }
+}
+@media (min-width: 992px) {
+  .hero-slideshow {
+    padding: 136px 0 70px;
+    min-height: 640px;
+  }
+  .hero-slideshow h1 {
+    font-size: 54px;
+  }
+  .hero-slideshow__desc {
+    font-size: 16px;
+    -webkit-line-clamp: 3;
+    min-height: 4.6em;
+  }
+}
+@media (min-width: 1300px) {
+  .hero-slideshow h1 {
+    font-size: 60px;
+  }
+}
+
+.people-strip-area,
+.deal-cards-area {
+  overflow: hidden; /* clip the peeking last card's shadow/edge cleanly */
+}
+
+/* ---- People marquee: slim override of the theme's .marquee-wrapper/
+   .text-slider (style.css: 105px tall, 80px font — the "oversized" ticker).
+   Combined-class selectors here (.marquee-wrapper.people-marquee etc.) beat
+   the base rules on specificity regardless of stylesheet load order, and
+   this file is only linked from index.html, so no other page that still
+   uses the full-size ticker is affected. Reuses the existing
+   .marquee-inner.to-left / @keyframes marqueeLeft animation as-is.
+
+   height MUST be an explicit px value here, never `auto`: .marquee-inner
+   (style.css) is `position: absolute` with no `top` set, so it does not
+   contribute to a `height: auto` parent's size at all — that previously
+   collapsed this wrapper down to just its padding while the real scrolling
+   text still rendered at full height and got clipped mid-line by the
+   inherited `overflow: hidden`, which is what showed up as a corrupted/
+   leaking text row jammed above "Shop by Athlete & Creator". Centering the
+   absolutely-positioned track with top:50%/translateY keeps it correct
+   regardless of exact font metrics. ---- */
+.marquee-wrapper.people-marquee {
+  height: 40px;
+  padding: 0;
+  background: var(--sub-bg, #f7f7f7);
+}
+.people-marquee .marquee-inner {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.text-slider.people-marquee {
+  font-size: 13px;
+  line-height: 1.4;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+.people-marquee .marqee-list {
+  align-items: center;
+}
+.people-marquee .marquee-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+.people-marquee .marquee-item a {
+  color: inherit;
+  text-decoration: none;
+}
+.people-marquee .marquee-item__kind {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary-color);
+  opacity: 0.8;
+}
+.people-marquee .marquee-item img {
+  width: 12px;
+  height: 12px;
+  margin-top: 0;
+  opacity: 0.5;
+}
+@media (min-width: 576px) {
+  .marquee-wrapper.people-marquee {
+    height: 44px;
+  }
+  .text-slider.people-marquee {
+    font-size: 15px;
+  }
+}
+@media (min-width: 768px) {
+  .marquee-wrapper.people-marquee {
+    height: 52px;
+  }
+  .text-slider.people-marquee {
+    font-size: 18px;
+  }
+  .people-marquee .marquee-item {
+    padding: 0 20px;
+  }
+}
+
+.people-strip__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.people-strip__head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.people-strip__track,
+.deal-cards__track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.people-strip__track::-webkit-scrollbar,
+.deal-cards__track::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- People chips (Athletes / Creators) ---- */
+.people-strip__track {
+  gap: 10px;
+  padding: 2px 2px 10px;
+}
+.people-chip {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 148px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 100px;
+  padding: 7px 18px 7px 7px;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: var(--transition);
+}
+.people-chip:hover,
+.people-chip:active {
+  border-color: var(--primary-color);
+}
+.people-chip__avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.people-chip__body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+.people-chip__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.people-chip__kind {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(26, 26, 26, 0.55);
+}
+
+/* ---- Deal cards ---- */
+.deal-cards__track {
+  gap: 14px;
+  padding: 2px 2px 12px;
+}
+.deal-card {
+  scroll-snap-align: start;
+  flex: 0 0 82%; /* ~1.2 cards visible on a phone screen, signals swipeability */
+  max-width: 320px;
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
+  touch-action: manipulation;
+  transition: var(--transition);
+}
+.deal-card:active {
+  transform: scale(0.98);
+}
+.deal-card__off {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  line-height: 15px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.deal-card__image {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: #f2f2f2;
+  overflow: hidden;
+}
+.deal-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.deal-card__content {
+  display: block;
+  padding: 14px 16px 16px;
+}
+.deal-card__name {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deal-card__price {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+}
+.deal-card__cta.btn-two {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+/* ---- Small-phone tightening ---- */
+@media (max-width: 400px) {
+  .deal-card {
+    flex-basis: 88%;
+  }
+  .people-chip {
+    min-width: 132px;
+  }
+}
+
+/* ---- Progressively show more per row on larger screens ---- */
+@media (min-width: 480px) {
+  .deal-card {
+    flex-basis: 68%;
+  }
+}
+@media (min-width: 576px) {
+  .deal-card {
+    flex-basis: 46%;
+  }
+  .people-strip__head h3 {
+    font-size: 18px;
+  }
+}
+@media (min-width: 768px) {
+  .deal-card {
+    flex-basis: 31%;
+  }
+  .people-chip {
+    min-width: 168px;
+  }
+  .people-strip__head h3 {
+    font-size: 20px;
+  }
+}
+@media (min-width: 992px) {
+  .deal-card {
+    flex-basis: 23.5%;
+  }
+}
+@media (min-width: 1300px) {
+  .deal-card {
+    flex-basis: 18.5%;
+  }
+}

@@ -139,7 +139,6 @@ window.AdminPanels.orders = {
           "</div>";
         window.AdminUI.openModal(backdrop);
 
-        backdrop.addEventListener("click", function (e) { if (e.target === backdrop) window.AdminUI.closeModal(backdrop); });
         backdrop.querySelector("#closeOrderModal").addEventListener("click", function () { window.AdminUI.closeModal(backdrop); });
 
         backdrop.querySelector("#resendEmailBtn").addEventListener("click", function () {

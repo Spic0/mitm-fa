@@ -170,6 +170,7 @@ window.AdminProductWizard = (function () {
     backdrop.className = "a-modal-backdrop";
     backdrop.innerHTML =
       '<div class="a-modal a-wizard">' +
+      '<button type="button" class="a-wizard-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
       '<div class="a-wizard-steps"></div>' +
       '<div class="a-wizard-main">' +
       '<div class="a-wizard-body"><div class="a-wizard-step-content a-wizard-loading">Setting up your program…</div></div>' +
@@ -187,7 +188,19 @@ window.AdminProductWizard = (function () {
       // and re-rendering the whole table on every wizard close.
       if (onDone) onDone(state.product);
     }
-    backdrop.addEventListener("click", function (e) { if (e.target === backdrop) close(); });
+    function requestClose() {
+      if (state.stepDirty) {
+        window.AdminUI.confirmDialog({
+          title: "Discard changes?",
+          message: "This step has unsaved changes that haven't been saved as a draft yet. Closing now will lose them.",
+          confirmLabel: "Discard",
+          danger: true,
+        }).then(function (ok) { if (ok) close(); });
+      } else {
+        close();
+      }
+    }
+    backdrop.querySelector(".a-wizard-close").addEventListener("click", requestClose);
 
     // Every sidebar step is always clickable once the draft exists (which is
     // immediately — see the bottom of this function) — no progression lock.
@@ -227,6 +240,7 @@ window.AdminProductWizard = (function () {
       siblingBtns.forEach(function (b) { b.disabled = true; });
       return saveFn().then(function (result) {
         siblingBtns.forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
+        state.stepDirty = false;
         return result;
       }).catch(function (err) {
         siblingBtns.forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
@@ -250,7 +264,7 @@ window.AdminProductWizard = (function () {
         '<button type="button" class="a-btn a-btn-primary" data-act="next">Next</button>' +
         "</div></div>";
 
-      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", close);
+      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", requestClose);
       var backBtn = footerEl.querySelector('[data-act="back"]');
       if (backBtn) backBtn.addEventListener("click", function () {
         runSave(backBtn, handlers.save).then(function () { goToStep(state.stepIndex - 1); }).catch(function () {});
@@ -858,7 +872,7 @@ window.AdminProductWizard = (function () {
         // a paying customer lands on, including on a phone.
         '<div class="a-wizard-preview-section"><h6>Customer Preview</h6>' +
         '<p style="font-size:13px;color:var(--a-text-muted);">Open the exact program page a customer sees after buying — check it on your phone before running ads.</p>' +
-        '<a class="a-btn a-btn-primary a-btn-sm" href="/program.html?product=' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener"><i class="fa-regular fa-eye" style="margin-right:6px;"></i>View as Customer</a></div>' +
+        '<a class="a-btn a-btn-primary a-btn-sm" href="/my-library/' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener"><i class="fa-regular fa-eye" style="margin-right:6px;"></i>View as Customer</a></div>' +
         '<div class="a-wizard-preview-section"><h6>Overview</h6>' +
         "<p><strong>" + esc(p.name) + "</strong> — " + window.AdminUI.formatCents(p.priceCents || 0) + "</p>" +
         '<p style="font-size:13px;color:var(--a-text-muted);">' + esc(p.creator ? "By " + p.creator + " · " : "") + esc((p.taxonomyPaths || []).join(" · ")) + (p.durationWeeks ? " · " + p.durationWeeks + " weeks" : "") + (p.difficulty ? " · " + p.difficulty : "") + "</p>" +
@@ -882,7 +896,7 @@ window.AdminProductWizard = (function () {
         '<button type="button" class="a-btn a-btn-primary" data-act="publish">Publish</button>' +
         "</div></div>";
 
-      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", close);
+      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", requestClose);
       footerEl.querySelector('[data-act="back"]').addEventListener("click", function () { goToStep(state.stepIndex - 1); });
       footerEl.querySelector('[data-act="save-draft-status"]').addEventListener("click", function (e) {
         var btn = e.currentTarget;
@@ -964,6 +978,13 @@ window.AdminProductWizard = (function () {
       bodyEl.innerHTML = "";
       bodyEl.appendChild(wrapper);
       bodyEl.scrollTop = 0;
+
+      // Every step starts clean; any input/change inside it before its own
+      // save handler runs marks it dirty, so closing mid-edit can warn
+      // instead of silently discarding what was just typed.
+      state.stepDirty = false;
+      wrapper.addEventListener("input", function () { state.stepDirty = true; });
+      wrapper.addEventListener("change", function () { state.stepDirty = true; });
 
       var key = STEPS[state.stepIndex].key;
       state.visitedSteps[key] = true;

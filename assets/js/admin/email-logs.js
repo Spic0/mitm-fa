@@ -73,7 +73,6 @@ window.AdminPanels["email-logs"] = {
         '<div class="a-modal-actions"><button class="a-btn a-btn-secondary" id="closeResponseModal">Close</button></div>' +
         "</div>";
       window.AdminUI.openModal(backdrop);
-      backdrop.addEventListener("click", function (e) { if (e.target === backdrop) window.AdminUI.closeModal(backdrop); });
       backdrop.querySelector("#closeResponseModal").addEventListener("click", function () { window.AdminUI.closeModal(backdrop); });
     }
 

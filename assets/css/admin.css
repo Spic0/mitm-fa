@@ -226,6 +226,29 @@ body.admin-body {
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
 }
 
+/* ---- Notification bell/dropdown (promotion notification center) ---- */
+.admin-notif { position: relative; }
+.admin-notif__badge {
+  position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: var(--a-radius-pill); background: var(--a-danger); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+}
+.admin-notif__dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; width: 360px; max-height: 420px; overflow-y: auto;
+  background: var(--a-surface); border: 1px solid var(--a-border); border-radius: var(--a-radius);
+  box-shadow: var(--a-shadow-modal); z-index: 90; padding: 8px;
+}
+.admin-notif-item { padding: 12px; border-bottom: 1px solid var(--a-border); font-size: 13px; }
+.admin-notif-item:last-child { border-bottom: none; }
+.admin-notif-item__title { font-weight: 600; margin-bottom: 4px; }
+.admin-notif-item__time { color: var(--a-text-muted); font-size: 11px; margin-bottom: 8px; }
+.admin-notif-item__actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-notif-item__actions button {
+  background: none; border: 1px solid var(--a-border); border-radius: var(--a-radius-sm, 6px);
+  padding: 4px 9px; font-size: 11px; color: var(--a-text-muted); cursor: pointer;
+}
+.admin-notif-item__actions button:hover { color: var(--a-text); border-color: var(--a-text-muted); }
+
 .admin-content { padding: 30px 32px 64px; }
 
 /* SPA panels — router.js clones a <template> into one of these per section
@@ -249,6 +272,13 @@ body.admin-body {
 .metric-card__label { font-size: 13px; color: var(--a-text-muted); margin-bottom: 10px; }
 .metric-card__value { font-size: 26px; font-family: var(--prosto-one); color: var(--a-text); }
 .metric-card__sub { font-size: 12px; color: var(--a-text-muted); margin-top: 4px; }
+/* Compact variant for widgets embedded inside another .a-card (e.g. the
+   dashboard's Promotions widget) — smaller tiles, no nested card chrome, so
+   it doesn't look like a card-inside-a-card. */
+.metric-grid-compact { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 0; }
+.metric-grid-compact .metric-card { padding: 0; border: none; background: none; box-shadow: none; }
+.metric-grid-compact .metric-card:hover { border-color: transparent; }
+.metric-grid-compact .metric-card__value { font-size: 20px; }
 
 .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 26px; }
 .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; }
@@ -268,6 +298,14 @@ table.a-table td { padding: 15px 18px; border-bottom: 1px solid var(--a-border);
 table.a-table tbody tr { transition: var(--transition); }
 table.a-table tbody tr:hover { background: var(--a-surface-2); }
 table.a-table tbody tr:last-child td { border-bottom: none; }
+/* Secondary line under a table cell's primary value (e.g. code under name,
+   date under email) — smaller and muted, never its own column. */
+.a-subtext { font-size: 12px; color: var(--a-text-muted); margin-top: 2px; }
+/* Quick-action buttons in a table row's last cell shouldn't trigger the
+   row's own click handler (used for rows that open a drawer/modal on
+   click) — stopPropagation in JS handles that; this just keeps the
+   buttons from wrapping awkwardly. */
+.a-row-actions { white-space: nowrap; }
 
 .a-badge {
   display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--a-radius-pill);
@@ -355,6 +393,41 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-modal-backdrop.a-modal-open .a-modal { opacity: 1; transform: scale(1) translateY(0); }
 .a-modal-backdrop.a-modal-closing .a-modal { opacity: 0; transform: scale(.97) translateY(4px); transition-duration: 150ms; }
 .a-modal.a-modal-lg { max-width: 680px; }
+/* For forms with many field groups (e.g. the Promotion create/edit form) —
+   wide enough for the two-column .a-form-grid to breathe without the modal
+   itself needing to scroll horizontally. */
+.a-modal.a-modal-xl { max-width: 860px; max-height: 88vh; overflow-y: auto; }
+
+/* ---- Drawer — a slide-over side panel (the Promotion "expanded statistics"
+   view). Shares AdminUI.openModal/closeModal's backdrop element and its
+   a-modal-open/a-modal-closing state classes (they're class-name agnostic),
+   so it gets the same body-scroll-lock/ESC-to-close/reference-counting for
+   free; only the backdrop alignment and the panel's own enter/exit motion
+   (slide from the right, not scale+fade) differ from a centered .a-modal. */
+.a-drawer-backdrop { justify-content: flex-end; padding: 0; }
+.a-drawer {
+  background: var(--a-surface); border-left: 1px solid var(--a-border); box-shadow: var(--a-shadow-modal);
+  width: 100%; max-width: 620px; height: 100vh; overflow-y: auto; padding: 28px;
+  transform: translateX(100%);
+  transition: transform var(--a-dur) var(--a-ease-out);
+}
+.a-drawer-backdrop.a-modal-open .a-drawer { transform: translateX(0); }
+.a-drawer-backdrop.a-modal-closing .a-drawer { transform: translateX(100%); transition-duration: 150ms; }
+@media (max-width: 680px) { .a-drawer { max-width: 100%; } }
+
+.a-drawer-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.a-drawer-close { background: none; border: none; font-size: 18px; color: var(--a-text-muted); cursor: pointer; padding: 4px; }
+.a-drawer-close:hover { color: var(--a-text); }
+
+.a-drawer-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--a-border); margin-bottom: 20px; }
+.a-drawer-tab {
+  background: none; border: none; padding: 10px 14px; font-size: 13px; font-weight: 600;
+  color: var(--a-text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.a-drawer-tab:hover { color: var(--a-text); }
+.a-drawer-tab.active { color: var(--a-primary); border-bottom-color: var(--a-primary); }
+.a-drawer-panel { display: none; }
+.a-drawer-panel.active { display: block; }
 .a-modal h5 { margin: 0 0 8px; font-size: 18px; }
 .a-modal p.a-modal-desc { color: var(--a-text-muted); font-size: 13px; margin: 0 0 22px; text-transform: none; }
 .a-modal h6 { font-size: 14px; margin: 18px 0 10px; }
@@ -420,11 +493,20 @@ body.a-modal-body-lock { overflow: hidden; }
 .dev-panel .a-btn { width: auto; }
 .dev-panel__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
+.admin-menu-btn { display: none; }
+.admin-sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 39; background: rgba(0, 0, 0, 0);
+  transition: background-color var(--a-dur) var(--a-ease);
+}
+
 @media (max-width: 900px) {
-  .admin-sidebar { transform: translateX(-100%); }
-  .admin-sidebar.open { transform: translateX(0); }
+  .admin-sidebar { transform: translateX(-100%); z-index: 45; }
+  .admin-sidebar.open { transform: translateX(0); box-shadow: var(--a-shadow-modal); }
   .admin-main { margin-left: 0; }
   .admin-search { display: none; }
+  .admin-menu-btn { display: flex; }
+  .admin-sidebar-overlay.visible { display: block; background: rgba(0, 0, 0, .5); }
 }
 
 /* ---- Product Setup Wizard ----
@@ -525,6 +607,33 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-wizard-alert-shake { animation: a-wizard-alert-shake .4s var(--a-ease); }
 
 .a-wizard-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--a-text-muted); font-size: 14px; }
+
+/* Explicit X close affordance in the wizard's top-right corner — on top of
+   the footer's "Close" button, never a substitute for it. Modals in this
+   admin never close on an outside click (see AdminUI.openModal), so this and
+   the footer button are the only two click targets that do. */
+.a-wizard-close {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  width: 32px; height: 32px; border-radius: 50%; border: none; background: none;
+  color: var(--a-text-muted); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease);
+}
+.a-wizard-close:hover { background: var(--a-surface-2); color: var(--a-text); }
+
+/* Promotion wizard: Type step selection cards reuse .a-wizard-option-card's
+   look but lay out in a responsive grid (2 up) instead of a single stacked
+   column, since there are 3 short options rather than a long list. */
+.a-wizard-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+@media (max-width: 560px) { .a-wizard-type-grid { grid-template-columns: 1fr; } }
+.a-wizard-type-grid .a-wizard-option-card { margin-bottom: 0; flex-direction: column; text-align: center; gap: 10px; padding: 20px 16px; }
+.a-wizard-type-grid .a-wizard-option-check { position: absolute; top: 12px; right: 14px; }
+.a-wizard-type-grid .a-wizard-option-card { position: relative; }
+
+.a-wizard-review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; font-size: 13px; }
+@media (max-width: 560px) { .a-wizard-review-grid { grid-template-columns: 1fr; } }
+.a-wizard-review-grid > div { padding: 8px 0; border-bottom: 1px solid var(--a-border); }
+.a-wizard-review-grid strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--a-text-muted); margin-bottom: 3px; font-weight: 600; }
 
 @media (max-width: 720px) {
   .a-modal.a-wizard { flex-direction: column; height: 92vh; }

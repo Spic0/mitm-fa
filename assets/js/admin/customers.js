@@ -122,7 +122,6 @@ window.AdminPanels.customers = {
           "</div></div>";
         window.AdminUI.openModal(backdrop);
 
-        backdrop.addEventListener("click", function (e) { if (e.target === backdrop) window.AdminUI.closeModal(backdrop); });
         backdrop.querySelector("#closeProfileModal").addEventListener("click", function () { window.AdminUI.closeModal(backdrop); });
 
         backdrop.querySelector("#emailForm").addEventListener("submit", function (e) {
@@ -183,8 +182,20 @@ window.AdminPanels.customers = {
         '<button type="submit" class="a-btn a-btn-primary">Create Customer</button></div>' +
         "</form></div>";
       window.AdminUI.openModal(backdrop);
-      backdrop.addEventListener("click", function (e) { if (e.target === backdrop) window.AdminUI.closeModal(backdrop); });
-      backdrop.querySelector('[data-act="cancel"]').addEventListener("click", function () { window.AdminUI.closeModal(backdrop); });
+      var form = backdrop.querySelector("#createCustomerForm");
+      var dirty = false;
+      form.addEventListener("input", function () { dirty = true; });
+      form.addEventListener("change", function () { dirty = true; });
+      function requestClose() {
+        if (!dirty) return window.AdminUI.closeModal(backdrop);
+        window.AdminUI.confirmDialog({
+          title: "Discard changes?",
+          message: "You've entered details for this customer that haven't been saved.",
+          confirmLabel: "Discard",
+          danger: true,
+        }).then(function (ok) { if (ok) window.AdminUI.closeModal(backdrop); });
+      }
+      backdrop.querySelector('[data-act="cancel"]').addEventListener("click", requestClose);
 
       var productSelect = backdrop.querySelector('select[name="grantProductId"]');
       window.AdminAPI.listProducts({ status: "published" }).then(function (data) {

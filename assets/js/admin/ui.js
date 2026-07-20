@@ -136,9 +136,6 @@ window.AdminUI = (function () {
         closeModal(backdrop);
         resolve(result);
       }
-      backdrop.addEventListener("click", function (e) {
-        if (e.target === backdrop) close(false);
-      });
       backdrop.querySelector('[data-action="cancel"]').addEventListener("click", function () { close(false); });
       backdrop.querySelector('[data-action="confirm"]').addEventListener("click", function () { close(true); });
     });

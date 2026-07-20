@@ -15,6 +15,7 @@
 <body class="admin-body">
     <div class="admin-shell">
         <aside class="admin-sidebar" id="adminSidebar"></aside>
+        <div class="admin-sidebar-overlay" id="adminSidebarOverlay"></div>
         <div class="admin-main">
             <header class="admin-topbar" id="adminTopbar"></header>
             <main class="admin-content" id="panelHost"></main>
@@ -43,6 +44,11 @@
         </div>
 
         <div class="metric-grid" id="metricGrid"></div>
+
+        <div class="a-card a-card-pad" id="promotionsWidget">
+            <h6 class="u-mb-12"><i class="fa-solid fa-tag"></i> Promotions</h6>
+            <div class="metric-grid metric-grid-compact" id="promotionsWidgetGrid"></div>
+        </div>
 
         <div class="chart-grid">
             <div class="a-card chart-card">
@@ -141,7 +147,7 @@
                 <h1 class="admin-page-title">Products</h1>
                 <p class="admin-page-subtitle">Manage the plans and guides sold on the storefront.</p>
             </div>
-            <button class="a-btn a-btn-primary" id="createProductBtn" class="u-w-auto"><i class="fa-solid fa-plus"></i> Create Product</button>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createProductBtn"><i class="fa-solid fa-plus"></i> New Product</button>
         </div>
 
         <div class="a-card">
@@ -182,13 +188,64 @@
         <div id="taxonomyList"></div>
     </template>
 
+    <template id="tpl-promotions">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="admin-page-title">Promotions</h1>
+                <p class="admin-page-subtitle">Discount codes, influencer/affiliate codes, and campaign promotions.</p>
+            </div>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createPromotionBtn"><i class="fa-solid fa-plus"></i> New Promotion</button>
+        </div>
+
+        <div class="a-card">
+            <div class="a-card-pad u-pb-0">
+                <div class="a-toolbar">
+                    <input type="text" id="promotionSearch" placeholder="Search name or code…" class="u-minw-260">
+                    <select id="promotionStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="enabled">Enabled</option>
+                        <option value="paused">Paused</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                    <select id="promotionKindFilter">
+                        <option value="">All code kinds</option>
+                        <option value="STANDARD">Standard</option>
+                        <option value="AFFILIATE">Affiliate</option>
+                        <option value="INFLUENCER">Influencer</option>
+                        <option value="CAMPAIGN">Campaign</option>
+                    </select>
+                </div>
+            </div>
+            <div class="a-table-wrap">
+                <table class="a-table">
+                    <thead>
+                        <tr>
+                            <th>Promotion</th>
+                            <th>Status</th>
+                            <th>Discount</th>
+                            <th>Creator / Campaign</th>
+                            <th>Uses</th>
+                            <th>Revenue</th>
+                            <th>Expiration</th>
+                            <th>Created By</th>
+                            <th>Last Used</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="promotionsTableBody"></tbody>
+                </table>
+            </div>
+            <div class="a-pagination" id="promotionsPagination"></div>
+        </div>
+    </template>
+
     <template id="tpl-customers">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
                 <h1 class="admin-page-title">Customers</h1>
                 <p class="admin-page-subtitle">Everyone who has an account on the storefront.</p>
             </div>
-            <button class="a-btn a-btn-primary" id="createCustomerBtn" class="u-w-auto"><i class="fa-solid fa-user-plus"></i> Add Customer</button>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createCustomerBtn"><i class="fa-solid fa-user-plus"></i> New Customer</button>
         </div>
 
         <div class="a-card">
@@ -410,6 +467,10 @@
     <script src="/assets/js/admin/product-wizard.js"></script>
     <script src="/assets/js/admin/navigation.js"></script>
     <script src="/assets/js/admin/customers.js"></script>
+    <script src="/assets/js/admin/promotion-wizard.js"></script>
+    <script src="/assets/js/admin/promotions.js"></script>
+    <script src="/assets/js/admin/promotion-drawer.js"></script>
+    <script src="/assets/js/admin/notifications.js"></script>
     <script src="/assets/js/admin/analytics.js"></script>
     <script src="/assets/js/admin/email-logs.js"></script>
     <script src="/assets/js/admin/payment-logs.js"></script>

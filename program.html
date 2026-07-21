@@ -37,6 +37,7 @@
     <!-- Style css -->
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/program.css">
+    <link rel="stylesheet" href="/assets/css/program-viewer.css">
 </head>
 
 <body>
@@ -108,6 +109,12 @@
                                 <span id="programDifficulty" class="u-hidden"><i class="fa-solid fa-signal"></i><span></span></span>
                                 <span id="programDuration" class="u-hidden"><i class="fa-regular fa-calendar"></i><span></span></span>
                             </div>
+                            <!-- Primary way into the program. The tabbed panels
+                                 below remain as the desktop/no-JS fallback and
+                                 stay in sync from the same payload. -->
+                            <button type="button" class="btn-one mt-20" id="openHandbook">
+                                <span><i class="fa-solid fa-book-open me-2"></i>Open Handbook</span>
+                            </button>
                         </div>
                     </div>
 
@@ -184,7 +191,12 @@
     <script src="/assets/js/api.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/nav-featured.js" defer></script>
-    <script src="/assets/js/program.js" defer></script>
+    <script src="/assets/js/program-viewer.js" defer></script>
+    <!-- ?v= is a manual cache-bust. JS/CSS are served with max-age=3600 and the
+         app has no build-time hashing, so without this a returning visitor gets
+         this (no-cache) HTML alongside an hour-stale program.js and the Open
+         Handbook button does nothing. Bump the stamp whenever this file changes. -->
+    <script src="/assets/js/program.js?v=20260721" defer></script>
 </body>
 
 </html>

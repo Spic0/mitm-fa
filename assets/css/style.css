@@ -3995,6 +3995,69 @@ input {
   .footer__bottombar-right { justify-content: center; }
 }
 
+/* ---------------------------------------------------------------------------
+   Mobile footer polish
+   Applies to every page: the footer markup is duplicated across 18 HTML files,
+   so all of this is deliberately CSS-only.
+   --------------------------------------------------------------------------- */
+
+/* The send button is absolutely positioned over the right edge of the field, so
+   the input needs a right gutter wide enough to clear it (50px + 6px inset +
+   breathing room) or the typed email runs underneath the button. */
+.footer__item.newsletter .subscribe input {
+  box-sizing: border-box;
+  padding-right: 68px;
+  /* 16px prevents iOS Safari zooming the page when the field takes focus */
+  font-size: 16px;
+}
+
+@media (max-width: 991px) {
+  /* Reclaim the desktop 65px/50px rhythm, which is disproportionate once the
+     four columns stack into a single tall scroll. */
+  .footer-area .footer__wrp { padding-top: 44px; padding-bottom: 8px; }
+  .footer-area .footer__copy-text { padding-top: 28px; padding-bottom: 22px; }
+
+  /* Each stacked column reads as its own band rather than one long list. */
+  .footer-area .footer__item { margin-bottom: 30px; }
+  .footer-area .footer__item .footer-title { margin-bottom: 14px; }
+
+  /* Touch targets: a 14px link on a 6px gap is roughly a 20px tap area. Giving
+     each row a 44px minimum meets the accessibility floor without visually
+     spacing the list out, since the box grows around the text. */
+  .footer-area .footer__item ul li:not(:last-child) { margin-bottom: 0; }
+  .footer-area .footer__item ul li a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .footer-area .footer__item.newsletter .social-icon { margin-top: 24px !important; }
+
+  /* Logo tracks viewport width instead of sitting at a fixed 90px. */
+  .footer-area .footer__copy-text .logo { max-width: clamp(76px, 22vw, 110px); }
+  .footer-area .footer__copy-text { justify-content: center; }
+
+  /* Legal links also need real tap height, and centred wrapping avoids the
+     ragged single-column stack at narrow widths. */
+  .footer-area .footer__legal { justify-content: center; gap: 0 18px; }
+  .footer-area .footer__legal a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    font-size: 13px;
+  }
+  .footer-area .footer__bottombar { padding-bottom: 24px; }
+  .footer-area .footer__bottombar .payment { max-width: 128px; }
+}
+
+/* Nothing in the footer may push the page horizontally at 320px. */
+@media (max-width: 400px) {
+  .footer-area .footer__item.newsletter .subscribe input { padding-left: 18px; }
+  .footer-area .footer__legal { gap: 0 14px; }
+  .footer-area .footer__bottombar-copy { font-size: 11.5px; line-height: 1.6; }
+}
+
 @keyframes moveLeft {
   0% {
     transform: translateX(0);

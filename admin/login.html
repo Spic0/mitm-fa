@@ -9,7 +9,9 @@
     <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="../assets/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <!-- ?v= cache-bust: admin.css is served max-age=3600 with no build hashing,
+         so returning admins would keep the broken login layout for an hour. -->
+    <link rel="stylesheet" href="../assets/css/admin.css?v=20260721">
 </head>
 
 <body class="admin-body">

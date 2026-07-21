@@ -180,6 +180,20 @@
       renderFaqs(p.faqs);
       renderResources(p.resources, p.bonusNotes);
       wireTabs();
+
+      // Fullscreen handbook viewer. Handed the same payload the tabs were
+      // built from, so the two can never show different content.
+      var openBtn = document.getElementById("openHandbook");
+      if (openBtn && window.ProgramViewer) {
+        openBtn.addEventListener("click", function () {
+          window.ProgramViewer.open(data);
+        });
+        // Deep link: /my-library/<id>#handbook opens straight into the reader,
+        // which is what the "Continue" action in the library links to.
+        if (window.location.hash === "#handbook") window.ProgramViewer.open(data);
+      } else if (openBtn) {
+        openBtn.style.display = "none";
+      }
     }).catch(function () {
       document.getElementById("programLocked").style.display = "block";
     });

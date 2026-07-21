@@ -49,10 +49,12 @@ body.admin-body {
 /* ---- Auth pages (login / 403) ---- */
 .admin-auth {
   min-height: 100vh;
+  /* dvh follows the collapsing mobile browser chrome; the vh above is fallback */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 16px;
 }
 .admin-auth__card {
   width: 100%;
@@ -67,18 +69,46 @@ body.admin-body {
 .admin-auth__logo img { width: 100%; display: block; }
 .admin-auth__title { font-size: 20px; margin: 0 0 8px; }
 .admin-auth__subtitle { color: var(--a-text-muted); font-size: 14px; margin: 0 0 30px; line-height: 22px; }
-.admin-auth__card input[type="email"] {
+/* Both field types must be listed. When this rule covered only [type="email"]
+   the password input fell back to browser defaults with no bottom margin, and
+   the submit button collided with it. */
+.admin-auth__card input[type="email"],
+.admin-auth__card input[type="password"] {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
   padding: 15px 20px;
   border-radius: var(--a-radius);
   border: 1px solid var(--a-border);
   background: var(--a-surface-2);
   color: var(--a-text);
-  font-size: 14px;
+  /* 16px keeps iOS Safari from zooming the viewport on focus */
+  font-size: 16px;
   margin-bottom: 16px;
   transition: var(--transition);
 }
-.admin-auth__card input[type="email"]:focus { border-color: var(--a-primary); }
+.admin-auth__card input[type="email"]:focus,
+.admin-auth__card input[type="password"]:focus { border-color: var(--a-primary); }
+
+/* Buttons sit in normal flow at full width so they can never ride over a field */
+.admin-auth__card .a-btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+}
+.admin-auth__card form { margin: 0; }
+
+@media (max-width: 400px) {
+  .admin-auth__card { padding: 32px 22px; }
+  .admin-auth__logo { max-width: 92px; margin-bottom: 18px; }
+  .admin-auth__subtitle { margin-bottom: 24px; }
+  .admin-auth__divider { margin: 22px 0; }
+}
 .admin-auth__divider {
   display: flex;
   align-items: center;
@@ -793,13 +823,60 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-wizard-tax-group-title { font-size: 13px; margin: 0 0 4px; }
 .a-wizard-tax-group-hint { font-size: 12px; color: var(--a-text-muted); margin: 0 0 8px; }
 .a-wizard-tax-pills { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
-.a-wizard-tax-leaf {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500;
-  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
-  background: var(--a-surface-2); cursor: pointer;
+/* Goals renders flat .a-wizard-tax-leaf pills while Athletes/Creators render
+   .a-wizard-tax-cat-pill — a data-shape difference (hasSubcategories), not a
+   design decision. The two therefore have to be styled as ONE pill so the three
+   selectors read as a single component. Shared resting/hover/focus/press
+   treatment lives here; only the selected-state affordance differs, because a
+   leaf is a checkbox and a category pill is an expander. */
+.a-wizard-tax-leaf,
+.a-wizard-tax-cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border: 1px solid var(--a-border);
+  border-radius: var(--a-radius-pill);
+  background: var(--a-surface-2);
+  color: var(--a-text);
+  cursor: pointer;
+  transition: background-color var(--a-dur) var(--a-ease), color var(--a-dur) var(--a-ease),
+    box-shadow var(--a-dur) var(--a-ease), border-color var(--a-dur) var(--a-ease),
+    transform var(--a-dur-fast) var(--a-ease-out);
 }
-.a-wizard-tax-leaf:has(input:checked), .a-wizard-tax-leaf.is-checked { border-color: var(--a-primary); background: rgba(var(--a-primary-rgb, 26, 26, 26), .08); }
+
+/* Hover only where a pointer can actually hover — on touch this would stick
+   after tapping. */
+@media (hover: hover) {
+  .a-wizard-tax-leaf:hover,
+  .a-wizard-tax-cat-pill:hover {
+    border-color: var(--a-primary);
+    background: var(--a-surface);
+  }
+}
+.a-wizard-tax-leaf:active,
+.a-wizard-tax-cat-pill:active { transform: translateY(1px); }
+
+.a-wizard-tax-leaf:focus-within,
+.a-wizard-tax-cat-pill:focus-visible {
+  outline: 2px solid var(--a-primary);
+  outline-offset: 2px;
+}
+
+/* Selected leaf now carries the same inset ring the open category pill uses,
+   so a chosen Goal reads as firmly as a chosen Athlete. */
+.a-wizard-tax-leaf:has(input:checked), .a-wizard-tax-leaf.is-checked {
+  border-color: var(--a-primary);
+  background: rgba(var(--a-primary-rgb, 26, 26, 26), .08);
+  box-shadow: inset 0 0 0 1px var(--a-primary);
+}
+.a-wizard-tax-leaf input[type="checkbox"] { accent-color: var(--a-primary); cursor: pointer; }
 .a-wizard-tax-count { font-size: 11px; color: var(--a-text-muted); }
+
+/* The flat Goals row is a pill row exactly like the category row above it. */
+.a-wizard-tax-pills { row-gap: 8px; }
 
 /* The category row is a plain flex-wrap row with NO item in it ever forced
    to flex-basis:100% — its contents (the pills themselves) never change
@@ -807,11 +884,8 @@ body.a-modal-body-lock { overflow: hidden; }
    Only .a-wizard-tax-subpanel-area, a fully separate block below the row,
    changes when a different category is selected. */
 .a-wizard-tax-cat-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
-.a-wizard-tax-cat-pill {
-  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
-  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
-  background: var(--a-surface-2); cursor: pointer; color: var(--a-text);
-}
+/* Base pill styling is shared with .a-wizard-tax-leaf above; only the
+   expander-specific states live here. */
 .a-wizard-tax-cat-pill.has-selection { border-color: var(--a-primary); }
 .a-wizard-tax-cat-pill.is-open { background: var(--a-surface); box-shadow: inset 0 0 0 1px var(--a-primary); }
 .a-wizard-tax-cat-pill i { font-size: 10px; color: var(--a-text-muted); transition: transform .15s ease; }

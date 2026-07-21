@@ -10,7 +10,7 @@
 window.ProductCard = (function () {
   function build(p, opts) {
     opts = opts || {};
-    var link = "shop-single.html?slug=" + encodeURIComponent(p.slug);
+    var link = "/program/" + encodeURIComponent(p.slug);
     var price = window.ProFitAPI.formatPrice(p.priceCents);
 
     var col = document.createElement("div");
@@ -55,6 +55,7 @@ window.ProductCard = (function () {
     cta.setAttribute("data-add-to-cart", "");
     cta.setAttribute("aria-label", "Add " + p.name + " to cart, " + price);
     cta.dataset.id = p.id;
+    cta.dataset.slug = p.slug;
     cta.dataset.name = p.name;
     cta.dataset.price = (p.priceCents / 100).toFixed(2);
     cta.dataset.img = p.imageUrl || "";

@@ -39,4 +39,17 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { authLimiter, magicLinkLimiter, apiLimiter };
+// Promo code guessing surface: /api/promotions/validate lets an anonymous
+// caller test arbitrary strings against real codes. apiLimiter's 100/15min
+// is far too loose to slow down enumeration of short alphanumeric codes —
+// this mirrors authLimiter's tightness instead.
+const promoValidateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { error: "Too many promo code attempts. Please wait a few minutes and try again." },
+});
+
+module.exports = { authLimiter, magicLinkLimiter, apiLimiter, promoValidateLimiter };

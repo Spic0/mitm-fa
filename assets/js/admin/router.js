@@ -10,6 +10,7 @@
     products: { title: "Products", needsChartJs: false },
     navigation: { title: "Navigation", needsChartJs: false },
     customers: { title: "Customers", needsChartJs: false },
+    promotions: { title: "Promotions", needsChartJs: false },
     analytics: { title: "Analytics", needsChartJs: true },
     "email-logs": { title: "Email Logs", needsChartJs: false },
     "payment-logs": { title: "Payment Logs", needsChartJs: false },

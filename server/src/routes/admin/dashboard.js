@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../../db");
+const { getPromotionsDashboardSummary } = require("../../lib/promotionStats");
 
 const router = express.Router();
 
@@ -101,6 +102,10 @@ router.get("/overview", async (req, res) => {
     .sort((a, b) => b.revenueCents - a.revenueCents)
     .slice(0, 5);
 
+  // Cheap, count/aggregate-shaped query — doesn't fan out per-order like the
+  // rest of this endpoint, so it doesn't change this route's cost profile.
+  const promotions = await getPromotionsDashboardSummary();
+
   const recentActivity = [
     ...recentLogs.map((l) => ({
       type: "log",
@@ -144,6 +149,7 @@ router.get("/overview", async (req, res) => {
       paymentMethods: Object.entries(paymentMethodCounts).map(([provider, count]) => ({ provider, count })),
     },
     recentActivity,
+    promotions,
   });
 });
 

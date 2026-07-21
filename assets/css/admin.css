@@ -159,11 +159,17 @@ body.admin-body {
 /* ---- App shell ---- */
 .admin-shell { display: flex; min-height: 100vh; }
 
+/* Safe-area padding throughout the admin shell: manage.html ships
+   `viewport-fit=cover`, so the layout viewport runs under the Dynamic
+   Island and home indicator and every fixed/sticky surface has to inset
+   itself back out. The `, 0px` fallback keeps the calc() valid where
+   env() is unsupported. */
 .admin-sidebar {
   width: var(--a-sidebar-w);
   background: var(--a-surface);
   border-right: 1px solid var(--a-border);
-  padding: 24px 16px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(16px + env(safe-area-inset-left, 0px));
   position: fixed;
   top: 0; bottom: 0; left: 0;
   overflow-y: auto;
@@ -197,15 +203,21 @@ body.admin-body {
 
 .admin-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 16px 32px;
+  gap: 16px;
+  padding: 16px 32px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-right: calc(32px + env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--a-border);
   background: var(--a-surface);
   position: sticky; top: 0; z-index: 30;
   box-shadow: var(--shadow-sm);
 }
-.admin-breadcrumb { font-size: 14px; color: var(--a-text-muted); }
+/* min-width:0 so a long breadcrumb can shrink instead of forcing the whole
+   sticky row wider than the viewport — a flex item defaults to
+   min-width:auto, which refuses to shrink below its content. */
+.admin-breadcrumb { font-size: 14px; color: var(--a-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-breadcrumb strong { color: var(--a-text); font-weight: 600; }
-.admin-topbar__actions { display: flex; align-items: center; gap: 12px; }
+.admin-topbar__actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .admin-search {
   display: flex; align-items: center; gap: 10px;
   background: var(--a-surface-2); border: 1px solid var(--a-border);
@@ -307,6 +319,36 @@ table.a-table tbody tr:last-child td { border-bottom: none; }
    buttons from wrapping awkwardly. */
 .a-row-actions { white-space: nowrap; }
 
+/* Row action buttons (Edit / Preview / Duplicate / Archive / Delete, and
+   the promotion row's equivalents) measured 31-39px tall — under the 44px
+   minimum, and these sit side by side, which is exactly the arrangement
+   where an undersized target causes a mis-tap on a destructive action
+   like Delete. Raised on touch-sized viewports only; the desktop admin
+   keeps its denser row height. */
+@media (max-width: 991px) {
+  .a-row-actions .a-btn,
+  td .a-btn-sm {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Toolbar filters/search and every standalone button — all measured
+     39-43px, just under the minimum. */
+  .a-toolbar input,
+  .a-toolbar select,
+  .a-btn {
+    min-height: 44px;
+  }
+  /* Toast dismiss — small, and toasts auto-expire, so a missed tap means
+     waiting the message out. */
+  .a-toast__close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 .a-badge {
   display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--a-radius-pill);
   font-size: 12px; font-weight: 600; border: 1px solid transparent; background: transparent; text-transform: capitalize;
@@ -407,7 +449,11 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-drawer-backdrop { justify-content: flex-end; padding: 0; }
 .a-drawer {
   background: var(--a-surface); border-left: 1px solid var(--a-border); box-shadow: var(--a-shadow-modal);
-  width: 100%; max-width: 620px; height: 100vh; overflow-y: auto; padding: 28px;
+  /* height: 100dvh so the drawer tracks iOS Safari's collapsing toolbar
+     instead of running underneath it; 100vh first as the fallback. */
+  width: 100%; max-width: 620px; height: 100vh; height: 100dvh; overflow-y: auto;
+  padding: 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   transform: translateX(100%);
   transition: transform var(--a-dur) var(--a-ease-out);
 }
@@ -431,7 +477,7 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-modal h5 { margin: 0 0 8px; font-size: 18px; }
 .a-modal p.a-modal-desc { color: var(--a-text-muted); font-size: 13px; margin: 0 0 22px; text-transform: none; }
 .a-modal h6 { font-size: 14px; margin: 18px 0 10px; }
-.a-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.a-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
 .a-modal-actions .a-btn { width: auto; }
 .a-form-row { margin-bottom: 16px; }
 .a-form-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; color: var(--a-text); }
@@ -507,7 +553,36 @@ body.a-modal-body-lock { overflow: hidden; }
   .admin-search { display: none; }
   .admin-menu-btn { display: flex; }
   .admin-sidebar-overlay.visible { display: block; background: rgba(0, 0, 0, .5); }
+
+  /* The topbar was the single biggest source of horizontal overflow in the
+     admin on phones: its 32px side padding plus a never-truncated
+     #adminUserEmail plus a fixed-size logout button added up to more than
+     the viewport, so the whole page scrolled sideways (measured at 405px
+     of content in a 320px viewport). The email is the part with unbounded
+     width — it's identity, not a control, and the avatar beside it already
+     conveys "you're signed in" — so it drops out here while every actual
+     control stays. */
+  .admin-topbar {
+    gap: 10px;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
+  }
+  #adminUserEmail { display: none; }
+  .admin-topbar__actions { gap: 8px; flex-shrink: 0; }
+  .admin-breadcrumb { flex: 1 1 auto; font-size: 13px; }
+  /* Every topbar control keeps a full 44px tap target on touch. */
+  .admin-icon-btn { width: 44px; height: 44px; }
 }
+
+/* Grid children default to min-width:auto and so refuse to shrink below
+   their content's intrinsic width. A Chart.js <canvas> reports a wide
+   intrinsic size, which pushed .chart-card past its column and past the
+   viewport (measured overflowing at 1024px, and again at 360/375px).
+   min-width:0 lets the column win, and the canvas scales to it. */
+.chart-card, .chart-grid > *, .chart-grid-2 > * { min-width: 0; }
+.chart-card canvas { max-width: 100%; }
 
 /* ---- Product Setup Wizard ----
    One fixed-height shell (never resizes step to step) split into: a stable
@@ -518,7 +593,20 @@ body.a-modal-body-lock { overflow: hidden; }
   max-width: 960px; width: 100%; height: min(86vh, 720px);
   padding: 0; display: flex; overflow: hidden;
 }
-.a-wizard-steps { width: 230px; flex-shrink: 0; background: var(--a-surface-2); border-right: 1px solid var(--a-border); padding: 24px 0; height: 100%; overflow-y: auto; }
+.a-wizard-rail { width: 230px; flex-shrink: 0; background: var(--a-surface-2); border-right: 1px solid var(--a-border); height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Step X of Y / NN% Complete, plus the "Saved just now" autosave readout —
+   both shared verbatim by every wizard via wizard-shell.js, sitting above
+   the step list so they're visible no matter how many steps there are. */
+.a-wizard-progress { padding: 20px 22px 16px; border-bottom: 1px solid var(--a-border); flex-shrink: 0; }
+.a-wizard-progress-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--a-text-muted); margin-bottom: 8px; }
+.a-wizard-progress-pct { color: var(--a-primary); }
+.a-wizard-progress-bar { height: 4px; border-radius: 2px; background: var(--a-border); overflow: hidden; }
+.a-wizard-progress-fill { height: 100%; width: 0; background: var(--a-primary); border-radius: 2px; transition: width var(--a-dur) var(--a-ease); }
+.a-wizard-saved-label { margin-top: 10px; font-size: 11px; color: var(--a-text-muted); display: flex; align-items: center; gap: 5px; min-height: 14px; }
+.a-wizard-saved-label i { color: var(--a-success); font-size: 10px; }
+
+.a-wizard-steps { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 0; }
 .a-wizard-step {
   display: flex; align-items: center; gap: 10px; padding: 12px 22px; font-size: 13px; font-weight: 600;
   color: var(--a-text-muted); cursor: pointer; border-left: 3px solid transparent;
@@ -526,12 +614,15 @@ body.a-modal-body-lock { overflow: hidden; }
 }
 .a-wizard-step .a-wizard-step-icon { width: 18px; text-align: center; flex-shrink: 0; }
 .a-wizard-step.active { color: var(--a-text); border-left-color: var(--a-primary); background: var(--a-surface); font-weight: 700; }
-/* untouched (default muted) / complete (visited, all required fields filled) /
-   incomplete (visited, still missing something) — never a navigation gate,
-   purely a "here's what still needs attention" signal. */
-.a-wizard-step.complete .a-wizard-step-icon { color: var(--a-success); }
-.a-wizard-step.incomplete .a-wizard-step-icon { color: var(--a-warning); }
-.a-wizard-step.incomplete:not(.active) { color: var(--a-text); }
+/* Four states, identical vocabulary in both wizards (wizard-shell.js decides
+   which applies): not-started (default muted "○") / current (active step,
+   "●") / complete (all required fields filled, "✓") / missing (visited, still
+   missing something, "⚠"). Never a navigation gate — purely a "here's what
+   still needs attention" signal. */
+.a-wizard-step-complete .a-wizard-step-icon { color: var(--a-success); }
+.a-wizard-step-missing .a-wizard-step-icon { color: var(--a-warning); }
+.a-wizard-step-missing:not(.active) { color: var(--a-text); }
+.a-wizard-step-current .a-wizard-step-icon { color: var(--a-primary); }
 .a-wizard-main { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
 .a-wizard-body { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 32px 28px; }
 .a-wizard-body h5 { margin: 0 0 4px; font-size: 18px; }
@@ -545,6 +636,10 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-wizard-footer { flex-shrink: 0; padding: 18px 32px; border-top: 1px solid var(--a-border); background: var(--a-surface); }
 .a-wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .a-wizard-actions .a-btn { width: auto; }
+/* Close | Back Skip "Save Draft" Next — same order/placement in both
+   wizards, enforced by both routing through wizard-shell.js's standardFooter
+   instead of building their own footer markup. */
+.a-wizard-actions-right { display: flex; gap: 10px; flex-wrap: wrap; }
 .a-wizard-repeat-item { border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; margin-bottom: 14px; position: relative; }
 .a-wizard-repeat-item .a-wizard-remove { position: absolute; top: 12px; right: 14px; color: var(--a-danger); cursor: pointer; font-size: 13px; background: none; border: none; }
 .a-wizard-add-btn { margin-bottom: 20px; }
@@ -637,8 +732,13 @@ body.a-modal-body-lock { overflow: hidden; }
 
 @media (max-width: 720px) {
   .a-modal.a-wizard { flex-direction: column; height: 92vh; }
-  .a-wizard-steps { width: 100%; height: auto; display: flex; overflow-x: auto; padding: 12px; }
-  .a-wizard-step { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  /* Left sidebar becomes a top progress bar + horizontal stepper — every
+     step still tappable, nothing hidden, per the "no hidden functionality"
+     mobile requirement. */
+  .a-wizard-rail { width: 100%; height: auto; flex-direction: column; border-right: none; border-bottom: 1px solid var(--a-border); }
+  .a-wizard-progress { padding: 14px 16px 10px; }
+  .a-wizard-steps { flex: none; display: flex; overflow-x: auto; padding: 10px 12px; }
+  .a-wizard-step { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; flex-shrink: 0; }
   .a-wizard-step.active { border-bottom-color: var(--a-primary); }
   .a-wizard-main { min-height: 0; }
 }
@@ -752,4 +852,55 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-pill-btn {
   padding: 10px 16px; border-radius: var(--a-radius-pill); border: 1px solid var(--a-border);
   background: var(--a-surface-2); color: var(--a-text); font-size: 13px;
+}
+
+/* ===================================================
+   SETUP WIZARD — TOUCH TARGET MINIMUMS
+   ===================================================
+   Deliberately placed at the END of this file. The wizard's own base rules
+   (.a-wizard-close's 32x32, .a-wizard-tax-cat-pill's compact height, ...)
+   are single-class selectors defined further up; a media query adds no
+   specificity, so an equally-specific override has to come later in source
+   order to win. Putting these last is what makes them apply, and keeps the
+   next person from re-hitting the same trap by editing in place.
+
+   Both wizards share this chrome (assets/js/admin/wizard-shell.js), so
+   every rule here lands on the Product and Promotion wizards identically
+   and they cannot drift apart on touch sizing. */
+@media (max-width: 991px) {
+  .a-wizard-close {
+    width: 44px;
+    height: 44px;
+  }
+  .a-wizard input:not([type="checkbox"]):not([type="radio"]),
+  .a-wizard select,
+  .a-wizard textarea,
+  .a-wizard-tax-add-trigger,
+  .a-wizard-tax-leaf,
+  .a-wizard-tax-cat-pill,
+  .a-wizard-media-add,
+  .a-wizard-tag-input-wrap {
+    min-height: 44px;
+  }
+  /* A 13x13 checkbox is far under any touch minimum. The wrapping <label>
+     is the real target and gets the 44px row height below; the box itself
+     is scaled up enough to also be aimed at directly. */
+  .a-wizard input[type="checkbox"],
+  .a-wizard input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .a-wizard .a-form-row label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+  }
+  /* "Fix this step" links in the publish-readiness summary. */
+  .a-wizard-fix-list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }

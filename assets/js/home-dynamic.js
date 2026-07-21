@@ -1,4 +1,4 @@
-// Homepage-only dynamic sections: a slim scrolling Athletes/Creators marquee
+// Homepage-only dynamic sections: a slim scrolling product-title marquee
 // directly under the hero, the "Shop by Athlete & Creator" card strip below
 // it, and a "deal cards" product strip. All driven entirely by real backend
 // data (GET /api/taxonomy, GET /api/products) — nothing here is hardcoded
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
             name: athlete.name,
             kind: "Athlete",
             productCount: athlete.productCount || 0,
-            href: "shop.html?sport=" + encodeURIComponent(sport.slug) + "&athlete=" + encodeURIComponent(athlete.slug),
+            href: "/athlete/" + encodeURIComponent(athlete.slug),
           });
         });
       });
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
             name: creator.name,
             kind: "Creator",
             productCount: creator.productCount || 0,
-            href: "shop.html?creator=" + encodeURIComponent(creator.slug),
+            href: "/creator/" + encodeURIComponent(creator.slug),
           });
         });
       });
@@ -108,46 +108,35 @@ document.addEventListener("DOMContentLoaded", function () {
     people.forEach(function (p) { peopleTrack.appendChild(personChip(p)); });
   }
 
-  // ---- People marquee: same real people list as the strip below, rendered
-  // as a continuously-scrolling ticker directly under the hero. The theme's
-  // marquee CSS (.marquee-inner.to-left, @keyframes marqueeLeft in
-  // style.css) loops by scrolling exactly one copy-width to the left, so the
-  // list is rendered twice back-to-back for a seamless wrap — same technique
-  // the old static ticker used, just built from real data instead of a
-  // hand-duplicated hardcoded string. ----
-  function marqueeItem(person) {
+  // ---- Product marquee: real admin-managed product titles, rendered as a
+  // continuously-scrolling ticker directly under the hero — plain title
+  // only (no category/creator/athlete labels or icons) so it reinforces
+  // product discovery without competing visually with the hero above it.
+  // The theme's marquee CSS (.marquee-inner.to-left, @keyframes
+  // marqueeLeft in style.css) loops by scrolling exactly one copy-width to
+  // the left, so the list is rendered twice back-to-back for a seamless
+  // wrap. ----
+  function marqueeItem(product) {
     var li = document.createElement("li");
     li.className = "marquee-item";
 
     var a = document.createElement("a");
-    a.href = person.href;
-    a.textContent = person.name;
+    a.href = "/program/" + encodeURIComponent(product.slug);
+    a.textContent = product.name;
     li.appendChild(a);
-
-    var kind = document.createElement("span");
-    kind.className = "marquee-item__kind";
-    kind.textContent = person.kind;
-    li.appendChild(kind);
-
-    var sep = document.createElement("img");
-    sep.src = "assets/images/icon/title-left.svg";
-    sep.alt = "";
-    sep.setAttribute("aria-hidden", "true");
-    li.appendChild(sep);
 
     return li;
   }
 
-  function renderPeopleMarquee(taxonomies) {
+  function renderProductMarquee(products) {
     if (!marqueeList) return;
-    var people = buildPeopleList(taxonomies);
-    if (!people.length) {
+    if (!products.length) {
       if (marqueeWrapper) marqueeWrapper.style.display = "none";
       return;
     }
     marqueeList.innerHTML = "";
     // Twice, back-to-back, so the -100% scroll loops seamlessly.
-    people.concat(people).forEach(function (p) { marqueeList.appendChild(marqueeItem(p)); });
+    products.concat(products).forEach(function (p) { marqueeList.appendChild(marqueeItem(p)); });
   }
 
   // ---- Deal cards: real products, admin-set price, no description. Whole
@@ -157,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function dealCard(p) {
     var a = document.createElement("a");
     a.className = "deal-card";
-    a.href = "shop-single.html?slug=" + encodeURIComponent(p.slug);
+    a.href = "/program/" + encodeURIComponent(p.slug);
 
     var offTag = document.createElement("span");
     offTag.className = "deal-card__off";
@@ -208,10 +197,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   Promise.all([
-    peopleTrack || marqueeList ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
-    dealTrack || heroPrice ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
+    peopleTrack ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
+    dealTrack || heroPrice || marqueeList ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
   ]).then(function (results) {
-    renderPeopleMarquee(results[0].taxonomies || []);
+    renderProductMarquee(results[1].products || []);
     renderPeopleStrip(results[0].taxonomies || []);
     renderDealCards(results[1].products || []);
     renderHeroPrice(results[1].products || []);

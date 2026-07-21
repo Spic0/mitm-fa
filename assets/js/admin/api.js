@@ -31,6 +31,9 @@ window.AdminAPI = (function () {
   function put(path, body) {
     return request(path, { method: "PUT", body: JSON.stringify(body || {}) });
   }
+  function patch(path, body) {
+    return request(path, { method: "PATCH", body: JSON.stringify(body || {}) });
+  }
   function del(path) {
     return request(path, { method: "DELETE" });
   }
@@ -97,6 +100,28 @@ window.AdminAPI = (function () {
     suspendCustomer: function (id) { return post("/api/admin/customers/" + id + "/suspend"); },
     resetCustomerLogin: function (id) { return post("/api/admin/customers/" + id + "/reset-login"); },
     sendCustomerEmail: function (id, subject, body) { return post("/api/admin/customers/" + id + "/send-email", { subject: subject, body: body }); },
+
+    listPromotions: function (params) { return get("/api/admin/promotions?" + new URLSearchParams(params || {})); },
+    getPromotion: function (id) { return get("/api/admin/promotions/" + id); },
+    createPromotion: function (body) { return post("/api/admin/promotions", body); },
+    updatePromotion: function (id, body) { return patch("/api/admin/promotions/" + id, body); },
+    deletePromotion: function (id) { return del("/api/admin/promotions/" + id); },
+    clonePromotion: function (id) { return post("/api/admin/promotions/" + id + "/clone"); },
+    pausePromotion: function (id) { return post("/api/admin/promotions/" + id + "/pause"); },
+    resumePromotion: function (id) { return post("/api/admin/promotions/" + id + "/resume"); },
+    expirePromotion: function (id) { return post("/api/admin/promotions/" + id + "/expire"); },
+    getPromotionAnalytics: function (id) { return get("/api/admin/promotions/" + id + "/analytics"); },
+    getPromotionAuditLog: function (id) { return get("/api/admin/promotions/" + id + "/audit-log"); },
+
+    listInfluencers: function (params) { return get("/api/admin/influencers?" + new URLSearchParams(params || {})); },
+    createInfluencer: function (body) { return post("/api/admin/influencers", body); },
+    updateInfluencer: function (id, body) { return patch("/api/admin/influencers/" + id, body); },
+    deleteInfluencer: function (id) { return del("/api/admin/influencers/" + id); },
+
+    listPromotionNotifications: function () { return get("/api/admin/promotion-notifications"); },
+    dismissPromotionNotification: function (id) { return post("/api/admin/promotion-notifications/" + id + "/dismiss"); },
+    snoozePromotionNotification: function (id, hours) { return post("/api/admin/promotion-notifications/" + id + "/snooze", { hours: hours }); },
+    markPromotionNotificationDone: function (id) { return post("/api/admin/promotion-notifications/" + id + "/mark-done"); },
 
     devLoginAsAdmin: function () { return post("/api/dev/login-as-admin"); },
     devCreateTestCustomer: function () { return post("/api/dev/create-test-customer"); },

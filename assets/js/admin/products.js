@@ -37,7 +37,7 @@ window.AdminPanels.products = {
         "<td>" + window.AdminUI.formatDate(p.createdAt) + "</td>" +
         '<td><div style="display:flex;gap:6px;flex-wrap:wrap;">' +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-edit>Edit</button>' +
-        '<a class="a-btn a-btn-secondary a-btn-sm" href="/program.html?product=' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener" title="Open the program page exactly as a customer sees it">Preview</a>' +
+        '<a class="a-btn a-btn-secondary a-btn-sm" href="/my-library/' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener" title="Open the program page exactly as a customer sees it">Preview</a>' +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-duplicate>Duplicate</button>' +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-archive ' + (p.status === "archived" ? "disabled" : "") + ">Archive</button>" +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-delete style="color:var(--a-danger);">Delete</button>' +

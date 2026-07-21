@@ -3,10 +3,15 @@ const { createSession } = require("./session");
 const { createMagicLinkToken, buildMagicLinkUrl } = require("./magicLink");
 const { sendPurchaseReceiptEmail } = require("./email");
 const { logEvent } = require("./adminLog");
+const { recordRedemption } = require("./promotions");
 
 // Idempotent: safe to call more than once for the same providerRef (e.g. webhook retries).
 // items: [{ productId, priceCents }]
-async function fulfillOrder({ email, provider, providerRef, items, totalCents }) {
+// appliedPromotions (optional): [{ promotionId, discountCents }], 0-2 entries
+// (one manual code + one stackable auto-apply promotion, see
+// checkoutItems.js) — discountCents here should already be baked into
+// totalCents by the caller; this just records the usage ledger rows.
+async function fulfillOrder({ email, provider, providerRef, items, totalCents, discountCents = 0, promotionId = null, appliedPromotions = [] }) {
   const existing = await prisma.order.findUnique({
     where: { providerRef },
     include: { user: true },
@@ -36,21 +41,39 @@ async function fulfillOrder({ email, provider, providerRef, items, totalCents })
 
   let order;
   try {
-    order = await prisma.order.create({
-      data: {
-        userId: user.id,
-        provider,
-        providerRef,
-        status: "paid",
-        totalCents,
-        items: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            priceCents: item.priceCents,
-          })),
+    // Order creation + redemption-ledger writes happen in one transaction so
+    // a promotion's usage count can never advance without the order it's
+    // attributed to actually existing (or vice versa) — same "never fails
+    // after a successful charge" requirement as the rest of this function,
+    // just extended to cover the ledger too.
+    order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          userId: user.id,
+          provider,
+          providerRef,
+          status: "paid",
+          totalCents,
+          discountCents,
+          promotionId,
+          items: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              priceCents: item.priceCents,
+            })),
+          },
         },
-      },
-      include: { items: { include: { product: true } } },
+        include: { items: { include: { product: true } } },
+      });
+      for (const applied of appliedPromotions) {
+        await recordRedemption(tx, {
+          promotionId: applied.promotionId,
+          orderId: created.id,
+          userId: user.id,
+          discountCents: applied.discountCents,
+        });
+      }
+      return created;
     });
   } catch (err) {
     // The findUnique check above and this create aren't atomic — a second

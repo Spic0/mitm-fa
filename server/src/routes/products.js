@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
+const { normalizeImageUrl } = require("../lib/media");
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ function serialize(product) {
     name: product.name,
     priceCents: product.priceCents,
     featured: product.featured,
-    imageUrl: product.imageUrl,
+    imageUrl: normalizeImageUrl(product.imageUrl),
     description: product.description,
     creator: product.creator,
     difficulty: product.difficulty,

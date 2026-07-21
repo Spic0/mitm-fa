@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (titleEl) titleEl.textContent = product.name;
     if (descEl) descEl.textContent = product.description || "";
     if (priceEl) priceEl.textContent = window.ProFitAPI.formatPrice(product.priceCents);
-    if (ctaEl) ctaEl.href = "shop-single.html?slug=" + encodeURIComponent(product.slug);
+    if (ctaEl) ctaEl.href = "/program/" + encodeURIComponent(product.slug);
     section.setAttribute("data-hero-id", product.id);
   }
 

@@ -25,13 +25,6 @@ document.addEventListener("DOMContentLoaded", function () {
   var hasNav = topPicksEl || featuredCreatorsEl || creatorListEl;
   if (!hasNav || !window.ProFitAPI) return;
 
-  function shopLink(params) {
-    var qs = Object.keys(params).map(function (k) {
-      return k + "=" + encodeURIComponent(params[k]);
-    }).join("&");
-    return "shop.html" + (qs ? "?" + qs : "");
-  }
-
   function initials(name) {
     return name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) {
       return w.charAt(0).toUpperCase();
@@ -42,7 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function productCard(p, metaText) {
     var a = document.createElement("a");
     a.className = "mega-menu-card";
-    a.href = "shop-single.html?slug=" + encodeURIComponent(p.slug);
+    a.href = "/program/" + encodeURIComponent(p.slug);
 
     var img = document.createElement("img");
     img.className = "mega-menu-card__thumb";
@@ -73,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function personItem(node) {
     var li = document.createElement("li");
     var a = document.createElement("a");
-    a.href = shopLink({ creator: node.slug });
+    a.href = "/creator/" + encodeURIComponent(node.slug);
 
     var avatar = document.createElement("span");
     avatar.className = "mega-menu__avatar";
@@ -178,7 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
           if (e.key !== "Enter") return;
           e.preventDefault();
           var term = creatorSearchEl.value.trim();
-          if (term) window.location.href = shopLink({ search: term });
+          if (term) window.location.href = "/shop?search=" + encodeURIComponent(term);
         });
       }
 

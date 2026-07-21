@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var titleEl = document.getElementById("productTitle");
   if (!titleEl || !window.ProFitAPI) return;
 
-  var slug = new URLSearchParams(window.location.search).get("slug");
+  var slug = decodeURIComponent(window.location.pathname.replace(/^\/program\//, "").split(/[/?#]/)[0] || "");
 
   function showNotFound() {
     titleEl.textContent = "Plan not found";
@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var addToCartBtn = document.getElementById("productAddToCart");
     if (addToCartBtn) {
       addToCartBtn.dataset.id = p.id;
+      addToCartBtn.dataset.slug = p.slug;
       addToCartBtn.dataset.name = p.name;
       addToCartBtn.dataset.price = (p.priceCents / 100).toFixed(2);
       addToCartBtn.dataset.img = p.imageUrl;

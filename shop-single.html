@@ -4,29 +4,44 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title data-brand-title="{brand} - Training &amp; Diet Plans">ProFit - Training &amp; Diet Plans</title>
+    <!-- Per-product description/canonical/OpenGraph/Twitter/JSON-LD, injected
+         server-side per request — see server/src/routes/pages.js -> applyProductSeo. -->
+    <!--PROGRAM_SEO-->
     <!-- Favicon img -->
-    <link rel="shortcut icon" href="assets/images/favicon.png" data-brand-favicon>
+    <link rel="shortcut icon" href="/assets/images/favicon.png" data-brand-favicon>
     <!-- Bootstarp min css -->
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <!-- All min css -->
-    <link rel="stylesheet" href="assets/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/all.min.css">
     <!-- Swiper bundle min css -->
-    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
+         select-widget styling only -- not needed for first paint -- loaded
+         as rel="preload" so they can't block rendering; assets/js/css-
+         preload-swap.js flips them to active stylesheets once the DOM is
+         parsed. animate.css stays render-blocking: the .wow scroll-reveal
+         system depends on its initial opacity:0 state site-wide, and
+         deferring it risks a visible flash/flicker. -->
+    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
     <!-- Magnigic popup css -->
-    <link rel="stylesheet" href="assets/css/magnific-popup.css">
+    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
     <!-- Animate css -->
-    <link rel="stylesheet" href="assets/css/animate.css">
+    <link rel="stylesheet" href="/assets/css/animate.css">
     <!-- Nice select css -->
-    <link rel="stylesheet" href="assets/css/nice-select.css">
+    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <noscript>
+      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
+      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
+      <link rel="stylesheet" href="/assets/css/nice-select.css">
+    </noscript>
     <!-- Style css -->
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
     <!-- Page-specific overrides: mobile-first product/purchase redesign.
          Scoped to this page only (no other page includes this block), so
          these rules can safely win over style.css without touching any
          shared class used elsewhere (shop-2.html, index cards, etc). -->
-    <link rel="stylesheet" href="assets/css/shop-single.css">
+    <link rel="stylesheet" href="/assets/css/shop-single.css">
 </head>
 
 <body class="product-page">
@@ -37,7 +52,7 @@
     <div id="targetElement" class="side_bar slideInRight side_bar_hidden">
         <div class="side_bar_overlay"></div>
         <div class="logo mb-30">
-            <img src="assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+            <img src="/assets/images/logo/logo.svg" alt="logo" data-brand-logo>
         </div>
         <p class="text-justify">The foundation of any road is the subgrade, which provides a stable base for the road
             layers above. Proper compaction of
@@ -78,7 +93,7 @@
                 <span>Subtotal:</span>
                 <strong id="cartTotal">$0.00</strong>
             </div>
-            <a href="checkout.html" class="cart-btn-checkout">Checkout</a>
+            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
             <div class="cart-drawer__payments">
                 <span class="card-brand visa">VISA</span>
                 <span class="card-brand mc">MC</span>
@@ -158,8 +173,8 @@
                         </div>
                         <div class="col-lg-7">
                             <div class="content">
-                                <a href="shop.html" class="product-eyebrow" id="productCategoryLink"></a>
-                                <h1 class="product-title" id="productTitle">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</h1>
+                                <a href="/shop" class="product-eyebrow" id="productCategoryLink"></a>
+                                <h1 class="product-title" id="productTitle">Loading…</h1>
                                 <div class="product-price" id="productPrice"></div>
                                 <p class="product-summary" id="productDescriptionShort"></p>
                             </div>
@@ -176,7 +191,7 @@
                                 <a href="#0" class="product__cart btn-add-to-bag" id="productAddToCart">
                                     <i class="fa-solid fa-bag-shopping"></i> Add to Bag
                                 </a>
-                                <p class="purchase-note">Delivered instantly inside your account ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no downloads, no waiting.</p>
+                                <p class="purchase-note">Delivered instantly inside your account — no downloads, no waiting.</p>
                             </div>
                         </div>
                     </div>
@@ -188,7 +203,7 @@
     </main>
 
     <!-- Footer area start here -->
-    <footer class="footer-area bg-image" data-background="assets/images/footer/footer-bg.jpg">
+    <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
         <div class="container">
             <div class="footer__wrp pt-65 pb-65 bor-top bor-bottom">
                 <div class="row g-4">
@@ -196,11 +211,11 @@
                         <div class="footer__item">
                             <h4 class="footer-title">Customer Service</h4>
                             <ul>
-                                <li><a href="contact.html"><span></span>Help Portal</a></li>
-                                <li><a href="contact.html"><span></span>Contact Us</a></li>
-                                <li><a href="error.html"><span></span>Plan Information</a></li>
-                                <li><a href="error.html"><span></span>FAQ</a></li>
-                                <li><a href="error.html"><span></span>Refund Policy</a></li>
+                                <li><a href="/contact"><span></span>Help Portal</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                                <li><a href="/coming-soon"><span></span>Plan Information</a></li>
+                                <li><a href="/coming-soon"><span></span>FAQ</a></li>
+                                <li><a href="/coming-soon"><span></span>Refund Policy</a></li>
                             </ul>
                         </div>
                     </div>
@@ -208,11 +223,11 @@
                         <div class="footer__item">
                             <h4 class="footer-title">Get to Know Us</h4>
                             <ul>
-                                <li><a href="about.html"><span></span>About Us</a></li>
-                                <li><a href="blog-grid.html"><span></span>News & Blog</a></li>
-                                <li><a href="error.html"><span></span>Careers</a></li>
-                                <li><a href="error.html"><span></span>Investors</a></li>
-                                <li><a href="contact.html"><span></span>Contact Us</a></li>
+                                <li><a href="/about"><span></span>About Us</a></li>
+                                <li><a href="/blog/grid"><span></span>News & Blog</a></li>
+                                <li><a href="/coming-soon"><span></span>Careers</a></li>
+                                <li><a href="/coming-soon"><span></span>Investors</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
                             </ul>
                         </div>
                     </div>
@@ -220,11 +235,11 @@
                         <div class="footer__item">
                             <h4 class="footer-title">Our Plans</h4>
                             <ul>
-                                <li><a href="shop.html"><span></span>Training Plans</a></li>
-                                <li><a href="shop.html"><span></span>Diet Plans</a></li>
-                                <li><a href="shop.html"><span></span>Strength Programs</a></li>
-                                <li><a href="shop.html"><span></span>Cardio Programs</a></li>
-                                <li><a href="shop.html"><span></span>Nutrition Guides</a></li>
+                                <li><a href="/shop"><span></span>Training Plans</a></li>
+                                <li><a href="/shop"><span></span>Diet Plans</a></li>
+                                <li><a href="/shop"><span></span>Strength Programs</a></li>
+                                <li><a href="/shop"><span></span>Cardio Programs</a></li>
+                                <li><a href="/shop"><span></span>Nutrition Guides</a></li>
                             </ul>
                         </div>
                     </div>
@@ -247,20 +262,20 @@
             </div>
             <div class="footer__copy-text pt-50 pb-50">
     <a href="/" class="logo d-block">
-                    <img src="assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+                    <img src="/assets/images/logo/logo.svg" alt="logo" data-brand-logo>
                 </a>
 </div>
 <div class="footer__bottombar">
     <p class="footer__bottombar-copy">&copy; Copyright 2024 <a href="#0" class="primary-hover" data-brand-name>ProFit</a> All Rights Reserved</p>
     <div class="footer__bottombar-right">
         <div class="footer__legal">
-            <a href="error.html">Terms and Conditions</a>
-            <a href="error.html">Terms of Use</a>
-            <a href="error.html">Privacy Notice</a>
-            <a href="error.html">Cookie Policy</a>
+            <a href="/coming-soon">Terms and Conditions</a>
+            <a href="/coming-soon">Terms of Use</a>
+            <a href="/coming-soon">Privacy Notice</a>
+            <a href="/coming-soon">Cookie Policy</a>
         </div>
         <a href="#0" class="payment d-block image">
-                    <img src="assets/images/icon/payment.png" alt="icon">
+                    <img src="/assets/images/icon/payment.png" alt="icon">
                 </a>
     </div>
 </div>
@@ -277,25 +292,26 @@
     <!-- Back to top area end here -->
 
     <!-- Jquery 3. 7. 1 Min Js -->
-    <script src="assets/js/jquery-3.7.1.min.js"></script>
+    <script src="/assets/js/css-preload-swap.js" defer></script>
+    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
     <!-- Bootstrap min Js -->
-    <script src="assets/js/bootstrap.min.js"></script>
+    <script src="/assets/js/bootstrap.min.js" defer></script>
     <!-- Swiper bundle min Js -->
-    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="/assets/js/swiper-bundle.min.js" defer></script>
     <!-- Wow min Js -->
-    <script src="assets/js/wow.min.js"></script>
+    <script src="/assets/js/wow.min.js" defer></script>
     <!-- Magnific popup min Js -->
-    <script src="assets/js/magnific-popup.min.js"></script>
+    <script src="/assets/js/magnific-popup.min.js" defer></script>
     <!-- Nice select min Js -->
-    <script src="assets/js/nice-select.min.js"></script>
+    <script src="/assets/js/nice-select.min.js" defer></script>
     <!-- Pace min Js -->
-    <script src="assets/js/pace.min.js"></script>
+    <script src="/assets/js/pace.min.js" defer></script>
     <!-- Script Js -->
-    <script src="assets/js/script.js"></script>
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/branding.js"></script>
-    <script src="assets/js/nav-featured.js"></script>
-    <script src="assets/js/shop-single.js"></script>
+    <script src="/assets/js/script.js" defer></script>
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/nav-featured.js" defer></script>
+    <script src="/assets/js/shop-single.js" defer></script>
 </body>
 
 </html>

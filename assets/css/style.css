@@ -4162,6 +4162,83 @@ input {
   .get-now__image {
     background-color: var(--black);
   }
+
+  /* Get-now / "20% off" promo — mobile-first rebuild. Nothing under
+     .get-now__content had a breakpoint before this (only the decorative
+     circular image did), so on a phone it rendered at full desktop sizing:
+     a 50px gap in the badge row, four fixed 70px countdown circles, and no
+     padding discipline, which overflowed/crowded a narrow viewport. */
+  .get-now-area .get-now__content ul {
+    gap: 14px 22px;
+    padding-left: 0;
+  }
+  .get-now__content ul li {
+    list-style: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .get-now__content ul li::before {
+    content: "\f00c";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-weight: 700;
+    color: var(--primary-color, #ff5722);
+    font-size: 12px;
+  }
+  .get-now__content .get-info {
+    font-size: 20px;
+  }
+  .get-now__content .time-up {
+    gap: 12px !important;
+    width: 100%;
+  }
+  .get-now__content .time-up .info h4 {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .get-now__content .time-up .info span {
+    font-size: 14px;
+    margin-top: 4px;
+    display: block;
+  }
+  .get-now__content .time-up .get-time {
+    width: 52px;
+    height: 52px;
+    padding-top: 6px;
+    flex-shrink: 0;
+  }
+  .get-now__content .time-up .get-time h3 {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .get-now__content .time-up .get-time span {
+    font-size: 11px;
+  }
+  .get-now-arry {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .get-now-arry i {
+    font-size: 18px;
+  }
+}
+@media screen and (max-width: 400px) {
+  .get-now__content .time-up .get-time {
+    width: 44px;
+    height: 44px;
+    padding-top: 4px;
+  }
+  .get-now__content .time-up .get-time h3 {
+    font-size: 14px;
+    line-height: 18px;
+  }
+  .get-now__content .time-up .get-time span {
+    font-size: 10px;
+  }
 }
 @media screen and (max-width: 575px) {
   .shop-page-wrp {
@@ -4279,11 +4356,12 @@ input {
 }
 
 /* Account and cart are a deliberate matched pair — same circle diameter,
-   same icon weight/size, same gap from the edge, at every breakpoint below.
-   (Previously the cart button alone grew to 36px on small phones while the
-   account icon stayed at 28px, an unintentional size mismatch between the
-   two header actions.) Both are icon-only with no text label, so neither
-   competes for attention with the shop-focused main nav or the hero CTA. */
+   same icon weight/size, same gap from the edge. Desktop-only now (see the
+   max-width:991px block below, which hides .header-actions entirely on
+   mobile — those actions move into the nav drawer's .mobile-account-links
+   instead, so they don't compete with the hamburger for thumb reach). Both
+   are icon-only with no text label, so neither competes for attention with
+   the shop-focused main nav or the hero CTA. */
 .header-account {
   text-decoration: none;
   gap: 8px;
@@ -4333,32 +4411,117 @@ input {
   line-height: 1;
 }
 
-/* Hamburger inside site-header */
+/* Hamburger inside site-header — the primary mobile nav entry point, so it
+   gets a real 44x44px touch target (WCAG/Apple HIG minimum) and a chip
+   background for visual weight, not just three bare lines. The bars
+   themselves live in a small fixed-size .header-bar__icon centered inside
+   that 44px box via flex, so the tap target can grow independently of the
+   icon's own geometry (and of the rotate/translate math on .active below,
+   which is tuned to this icon's exact 22x16 box).
+
+   Every dimension below is pinned three ways (width/height, min-width/
+   min-height/max-width/max-height, and flex:0 0 44px) and box-sizing is
+   forced explicitly rather than relying
+   on the sitewide `*` reset, because this element sits inside
+   .header-inner's `display:flex; align-items:stretch` row (deliberately,
+   so the row's other children fill its height — see .header-inner above) —
+   without an ironclad cross-size, a plain `<button>` here stretches to the
+   header's full row height instead of staying a fixed 44px square, which
+   is what "stretched background" bugs on this element have actually been.
+   overflow:hidden guarantees the chip can never show a non-square edge, and
+   -webkit-appearance/appearance:none strips iOS Safari's native button
+   chrome (rounded corners, inset shadow, extra intrinsic padding) that
+   `border:none` alone doesn't remove there. */
 .site-header .header-bar {
-  width: 36px;
-  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  box-sizing: border-box;
   position: relative;
   cursor: pointer;
-  flex-shrink: 0;
-  background: none;
-  border: none;
+  margin: 0;
   padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--sub-bg);
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s;
 }
-.site-header .header-bar span {
-  position: absolute;
-  width: 100%;
-  height: 2px;
-  background: var(--heading-color);
-  left: 0;
-  transition: all 0.3s;
+.site-header .header-bar:hover,
+.site-header .header-bar:active {
+  background: var(--border);
 }
-.site-header .header-bar span:first-child { top: 0; }
-.site-header .header-bar span:nth-child(2) { top: 44%; width: 28px; }
-.site-header .header-bar span:last-child  { bottom: 0; width: 22px; }
-.site-header .header-bar.active span:first-child { transform: rotate(45deg) translate(3px, 9px); }
-.site-header .header-bar.active span:nth-child(2) { opacity: 0; }
-.site-header .header-bar.active span:last-child  { transform: rotate(-45deg) translate(3px, -9px); width: 36px; }
+/* The glyph itself. Deliberately a single Font Awesome icon rather than three
+   hand-positioned <span> bars: the previous bar markup nested the bars inside
+   a wrapper <span class="header-bar__icon">, and the bar rule that styled them
+   (`.site-header .header-bar span`, specificity 0,2,1) also matched that
+   wrapper and outranked `.header-bar__icon` (0,1,0) — so the wrapper itself
+   was painted as a 44px-wide, 2.5px-tall filled bar with the three real bars
+   collapsed inside it. That is what rendered as a broken smear instead of a
+   hamburger. A single glyph has no wrapper to collide with, and there is no
+   descendant-span rule left here for anything to inherit by accident.
+   font-size (not width/height) sets the drawn size, so it stays crisp at any
+   DPR; the 44x44 tap target above is independent of it. */
+.site-header .header-bar__icon {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--heading-color);
+  pointer-events: none;
+}
+
+/* ===================================================
+   iOS SAFE AREAS
+   ===================================================
+   Every page now ships `viewport-fit=cover` (see the <meta name="viewport">
+   in each .html), which is what makes env(safe-area-inset-*) resolve to
+   anything other than 0 — but it also means the layout viewport extends
+   *under* the Dynamic Island / notch and the home indicator. So every piece
+   of fixed or sticky chrome has to pad itself back out of those regions
+   explicitly; anything that doesn't ends up with content physically under
+   the island or the home-indicator bar.
+
+   The fallback second argument (`, 0px`) keeps these valid on browsers with
+   no env() support, where the whole calc() would otherwise be dropped.
+   Horizontal insets matter in landscape, where the notch eats one side. */
+.site-header {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Cart drawer: pinned to the right edge, full height. */
+.cart-drawer {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.cart-drawer__head {
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+}
+.cart-drawer__foot {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 991px) {
+  /* Mobile nav drawer: slides in from the right, full height, so it needs
+     all four insets — top for the island, bottom so the last account row
+     isn't under the home indicator, right for landscape. */
+  .site-header .main-menu {
+    padding-top: calc(70px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-right: env(safe-area-inset-right, 0px) !important;
+  }
+}
 
 /* ===================================================
    CART DRAWER
@@ -4383,7 +4546,14 @@ input {
   right: 0;
   width: 380px;
   max-width: 100vw;
+  /* 100vh on iOS Safari is the toolbar-HIDDEN height, so a 100vh drawer
+     extends below the visible area whenever the toolbar is showing and its
+     footer (the subtotal + Checkout button) sits off-screen and unreachable.
+     100dvh tracks the toolbar as it collapses/expands. The 100vh line stays
+     first as the fallback for browsers without dvh, which simply ignore the
+     second declaration. */
   height: 100vh;
+  height: 100dvh;
   background: #ffffff;
   z-index: 9999;
   display: flex;
@@ -4674,6 +4844,17 @@ body.cart-open { overflow: hidden; }
     background: var(--color-bg);
   }
 
+  /* Account/cart/library/orders/settings now live inside the drawer (see
+     .mobile-account-links below) instead of the top header, so the header
+     itself is just logo + hamburger on mobile — no more account/cart icons
+     competing with the primary nav entry point for thumb attention. */
+  .header-actions {
+    display: none;
+  }
+  .header-inner {
+    padding: 10px 0;
+  }
+
   /* Off-canvas drawer, not the old full-width dropdown panel: the menu is
      always in the DOM (so `right` can transition) and just parked off the
      right edge of the viewport until opened. */
@@ -4692,7 +4873,10 @@ body.cart-open { overflow: hidden; }
     right: -100%;
     margin: 0;
     width: min(85vw, 340px);
+    /* See .cart-drawer — 100vh would push the drawer's bottom rows (the
+       account/library/orders/cart block) under iOS Safari's toolbar. */
     height: 100vh;
+    height: 100dvh;
     background: var(--color-bg);
     z-index: 9990;
     padding: 70px 0 24px;
@@ -4728,19 +4912,10 @@ body.cart-open { overflow: hidden; }
   .cart-drawer { width: 100vw; }
 }
 @media (max-width: 480px) {
-  .header-logo { width: 90px; }
-  /* Both icons grow together for an easier thumb target — see the matched-
-     pair rule above; this used to bump only the cart button, which is what
-     produced the size mismatch with the account icon next to it. */
-  .header-account .user-icon,
-  .header-cart-btn {
-    width: 34px;
-    height: 34px;
-  }
-  .header-account .user-icon i,
-  .header-cart-btn i {
-    font-size: 13.5px;
-  }
+  /* Mobile must never render the logo LARGER than desktop's 60px — it was
+     previously 90px here, backwards, and oversized enough relative to the
+     compact mobile header (logo + hamburger only) to clip/overflow. */
+  .header-logo { width: 48px; }
 }
 
 
@@ -4896,11 +5071,6 @@ body.cart-open { overflow: hidden; }
   .site-header .main-menu li .mega-menu--athletes { width: 760px; gap: 28px; }
   .site-header .main-menu li .mega-menu--creators { width: 580px; }
   .mega-menu--creators .mega-menu__col--featured { flex: 1.25; }
-  .mega-menu .mobile-nav-back,
-  .mega-menu .mobile-nav-panel-title,
-  .sub-menu .mobile-nav-back-wrap {
-    display: none;
-  }
   .mega-menu__col { flex: 1; min-width: 0; }
   .mega-menu__heading {
     display: block;
@@ -5103,51 +5273,159 @@ body.cart-open { overflow: hidden; }
   padding-left: 24px;
 }
 
-/* Mobile nav — off-canvas drawer, drill-down screens (overrides above at
+/* Mobile nav — off-canvas drawer, inline accordion (overrides above at
    <=991px). Each top-level item with a panel (.sub-menu / .mega-menu)
-   doesn't expand in place anymore — tapping it slides the drawer to a
-   dedicated full-width screen for that item (see .drilling rules below),
-   with a "< Back" row to return to the root list. Desktop's multi-column
+   expands in place directly below its trigger row (grid-template-rows
+   0fr/1fr, see .open rules below) rather than swapping to a full-screen
+   drill-down — opening one panel closes any other that was open (single-
+   open accordion, driven by assets/js/script.js). Desktop's multi-column
    mega-menu content is deliberately flattened to a single simple column
    here rather than replicated. */
 @media (max-width: 991px) {
-  .site-header .main-menu li {
+  /* ONE horizontal gutter for the entire drawer — every row (top-level
+     trigger, panel heading, panel link, view-all, search field, account
+     link) resolves its left/right inset from this single value, so the
+     text of a child item lines up exactly under the text of its parent
+     instead of each rule hard-coding its own 20px/24px/36px. Previously
+     trigger rows and account links used 24px while every panel child used
+     20px, so the whole expanded panel sat 4px off from the rows above it —
+     which is what read as "poorly centered / unfinished". */
+  .site-header .main-menu {
+    --nav-gutter: 24px;
+    --nav-row-min: 48px;
+  }
+  /* Dividers belong to the top-level nav rows only. They used to be applied
+     to every `li` in the drawer, including each athlete/goal/creator row
+     inside an expanded panel, which turned a panel into a dense ruled
+     table and broke the vertical rhythm. */
+  .site-header .main-menu > li {
     width: 100%;
     border-bottom: 1px solid var(--border);
+  }
+  .site-header .main-menu li {
+    width: 100%;
+    border-bottom: none;
   }
   .site-header .main-menu li:not(:last-child) {
     margin-right: 0;
   }
+  /* Top-level trigger rows sit slightly taller than their children (56 vs
+     48) so the hierarchy is legible at a glance without needing a heavier
+     font or a second divider weight. */
   .site-header .main-menu li > a.nav-top-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
-    font-size: 15px;
-  }
-
-  /* Root screen: quick links pinned above the goal/creator/nutrition rows */
-  .mobile-quicklinks {
-    display: flex;
-    gap: 8px;
-    padding: 0 20px 16px;
-    margin-bottom: 4px;
-  }
-  .mobile-quicklinks a {
-    flex: 1;
-    text-align: center;
-    padding: 10px 12px;
-    border-radius: var(--radius);
-    background: var(--color-surface-2);
-    font-size: 13px;
+    gap: 12px;
+    min-height: 56px;
+    padding: 16px var(--nav-gutter);
+    font-size: 16px;
     font-weight: 600;
-    color: var(--color-text);
+  }
+  /* Fixed box so the chevron's optical center is identical on every row
+     regardless of the glyph's own advance width, and so a long label can
+     never push it off the gutter. */
+  .nav-top-link__chevron {
+    flex: 0 0 16px;
+    width: 16px;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* Chevron rotates off the same aria-expanded state the accordion click
+     handler (assets/js/script.js) already keeps in sync — no separate JS-
+     driven class needed just for the icon. */
+  .site-header .main-menu li > a.nav-top-link[aria-expanded="true"] .nav-top-link__chevron {
+    transform: rotate(180deg);
   }
 
-  /* Panels are collapsed on the root screen; opened only via .drill-open */
+  /* Footer: Account/My Library/Orders/Cart/Settings, pinned to the very
+     bottom of the drawer (see partials/header.html — this is the last <li>
+     in .main-menu) rather than the top. This is a shopping drawer first —
+     someone arriving from an ad should see product categories (Shop by
+     Goal/Browse Athletes/Browse Creators above) before account management.
+     Also replaces .header-actions (hidden below 991px, see above), so
+     account/cart are still one tap away from the hamburger. Deliberately
+     quieter than the nav-mega rows above (smaller/lighter type, muted icon
+     color) so it reads as secondary/utility, not primary navigation. */
+  .mobile-account-links {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    padding: 16px 0 8px;
+    border-top: 1px solid var(--border);
+  }
+  .site-header .main-menu li:last-child {
+    border-bottom: none;
+  }
+  /* Scoped as .site-header .main-menu .mobile-account-links__item (three
+     classes), not just .mobile-account-links__item — the generic
+     `.site-header .main-menu li > a` rule above (two classes + two
+     elements) has higher specificity and was winning on every property
+     they both set (padding, gap, font-size, font-weight, color) for the
+     three <a> rows here, silently overriding this rule's 24px left padding
+     down to its own `padding: 6px 0` and collapsing the icon/text gap to
+     4px. It only ever matched <a>, not the Cart <button> — which is why
+     Cart alone rendered correctly and the other three didn't. */
+  .site-header .main-menu .mobile-account-links__item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    text-align: left;
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--paragraph);
+    cursor: pointer;
+  }
+  /* The rule above's four-class specificity (needed to beat the generic
+     .site-header .main-menu li > a rule, see comment above it) also
+     outranks the sitewide single-class .u-hidden — which is what the
+     Settings row (#drawerSettingsItem, u-hidden until auth confirms a
+     session in assets/js/api.js) relies on to start hidden. Re-assert
+     display:none at equal-or-higher specificity so it still wins here. */
+  .site-header .main-menu .mobile-account-links__item.u-hidden {
+    display: none;
+  }
+  .mobile-account-links__item i {
+    width: 18px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--paragraph-light);
+  }
+  .mobile-account-links__item .cart-badge {
+    position: static;
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    background: var(--primary-color);
+    color: #fff;
+  }
+
+  /* Inline accordion panels — a top-level item with a panel (.sub-menu /
+     .mega-menu) expands in place instead of swapping to a full-screen
+     drill-down. grid-template-rows: 0fr -> 1fr on the panel animates height
+     with no JS measurement (no scrollHeight guesswork, no jank from content
+     that hasn't finished loading/rendering yet) and only ever transitions a
+     single grid track, so it stays cheap even on iOS Safari. The
+     overflow:hidden/min-height:0 inner wrapper is required for the 0fr
+     track to actually collapse the content below it instead of clamping to
+     its min-content height. assets/js/script.js toggles .open and closes
+     any other panel that was open first (single-open accordion). */
   .site-header .main-menu li .sub-menu,
   .site-header .main-menu li .mega-menu {
-    display: none;
+    display: grid;
+    grid-template-rows: 0fr;
     position: static;
     opacity: 1;
     visibility: visible;
@@ -5160,41 +5438,28 @@ body.cart-open { overflow: hidden; }
     padding: 0;
     width: 100%;
     max-width: none;
+    transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .site-header .main-menu li .mega-menu {
-    flex-direction: column;
-    gap: 0;
+  .site-header .main-menu li .sub-menu.open,
+  .site-header .main-menu li .mega-menu.open {
+    grid-template-rows: 1fr;
   }
-
-  .mobile-nav-back {
+  .mega-menu__panel-inner {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    padding: 14px 20px;
-    background: none;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
-    cursor: pointer;
-  }
-  .mobile-nav-back-wrap { border-bottom: none; }
-  .mobile-nav-panel-title {
-    padding: 12px 20px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-faint);
-    margin: 0;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
   }
 
+  /* A panel is tinted one step back from the drawer surface so an expanded
+     section reads as nested under its trigger, which is what lets the
+     dividers be dropped from its rows without the list looking loose. */
+  .mega-menu__panel-inner { background: var(--color-surface-2); }
   .mega-menu__col { padding: 0; }
+  .mega-menu__col + .mega-menu__col { border-top: 1px solid var(--border); }
   .mega-menu__heading {
     display: block;
-    padding: 12px 20px 8px;
+    padding: 14px var(--nav-gutter) 6px;
     margin-bottom: 0;
     font-size: 11px;
     font-weight: 700;
@@ -5203,30 +5468,44 @@ body.cart-open { overflow: hidden; }
     color: var(--color-text-faint);
   }
   .mega-menu__heading--spaced { margin-top: 6px; }
-  .mega-menu__heading-row { padding: 12px 20px 8px; margin-bottom: 0; }
+  .mega-menu__heading-row { padding: 14px var(--nav-gutter) 6px; margin-bottom: 0; }
   .mega-menu__col ul { margin: 0; list-style: none; padding: 0; }
-  .mega-menu__col ul li a,
-  .mega-menu-card {
-    padding: 10px 20px;
-    margin: 0;
-    border-radius: 0;
-  }
-  .mega-menu__col ul li a {
+  /* Every tappable row in a panel shares one box: same gutter, same
+     minimum height, same vertical padding — so spacing between any two
+     consecutive rows is identical no matter which of the three menus
+     they came from or whether they carry an avatar/thumbnail. */
+  /* Scoped with `.site-header .main-menu` (3 classes) rather than left as
+     a bare `.mega-menu__col ul li a` (1 class, 3 elements). The generic
+     `.site-header .main-menu li > a` rule further up this file is (0,2,2)
+     and outranks (0,1,3), so it was winning `padding`, `display` and `gap`
+     on exactly the rows that matter most — every goal/athlete/creator
+     link — pinning them to its own `padding: 6px 0`. That left the real
+     link rows 24px to the left of the headings, cards and View-All rows
+     around them (which are not direct children of an <li>, so the generic
+     rule never matched them and they kept the gutter). That 24px split is
+     what made an expanded panel look ragged. Same failure mode, and same
+     fix, as the .mobile-account-links__item rule below. */
+  .site-header .main-menu .mega-menu__col ul li a,
+  .mega-menu-card,
+  .mega-menu__view-all {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 44px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--nav-row-min);
+    padding: 10px var(--nav-gutter);
+    margin: 0;
+    border-radius: 0;
+    text-align: left;
+  }
+  .site-header .main-menu .mega-menu__col ul li a {
+    gap: 12px;
     font-size: 14px;
     font-weight: 500;
     color: var(--color-text);
   }
   .mega-menu__view-all {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    text-align: left;
-    padding: 12px 20px;
+    gap: 8px;
     font-size: 13px;
     font-weight: 600;
     color: var(--color-primary);
@@ -5234,12 +5513,17 @@ body.cart-open { overflow: hidden; }
     border: none;
     cursor: pointer;
   }
-  .mega-menu__cards { gap: 0; display: flex; flex-direction: column; }
-  .mega-menu-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  /* Fixed icon box, matching .nav-top-link__chevron, so the trailing arrow
+     on every "View All" row lands on the same optical column. */
+  .mega-menu__view-all i {
+    flex: 0 0 14px;
+    width: 14px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1;
   }
+  .mega-menu__cards { gap: 0; display: flex; flex-direction: column; }
+  .mega-menu-card { gap: 12px; }
   .mega-menu-card__thumb {
     width: 44px;
     height: 44px;
@@ -5271,12 +5555,13 @@ body.cart-open { overflow: hidden; }
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 42px;
-    padding: 0 12px;
-    margin: 8px 20px 6px;
+    box-sizing: border-box;
+    height: var(--nav-row-min);
+    padding: 0 14px;
+    margin: 10px var(--nav-gutter);
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(--color-surface-2);
+    background: var(--color-bg);
   }
   .mega-menu__search i { font-size: 13px; color: var(--color-text-faint); flex-shrink: 0; }
   .mega-menu__search input {
@@ -5288,7 +5573,16 @@ body.cart-open { overflow: hidden; }
     font-size: 16px; /* >=16px prevents iOS focus auto-zoom inside the drawer */
     color: var(--color-text);
   }
-  .mega-menu__empty { padding: 10px 20px; font-size: 13px; color: var(--color-text-muted); }
+  .mega-menu__empty {
+    display: flex;
+    align-items: center;
+    min-height: var(--nav-row-min);
+    padding: 10px var(--nav-gutter);
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+  /* Matches .mega-menu-card__thumb's 44px column so an avatar row and a
+     thumbnail row put their text on the same left edge. */
   .mega-menu__avatar {
     width: 28px;
     height: 28px;
@@ -5317,24 +5611,28 @@ body.cart-open { overflow: hidden; }
     color: var(--color-text-faint);
   }
 
+  /* Second-level rows: one fixed indent step in from the shared gutter,
+     never an unrelated hard-coded 36px. */
   .site-header .main-menu li .sub-menu li a {
-    padding: 10px 20px 10px 36px;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: var(--nav-row-min);
+    padding: 10px var(--nav-gutter) 10px calc(var(--nav-gutter) + 16px);
     font-size: 13px;
   }
+  /* The desktop rule shifts padding-left on hover as a hover affordance;
+     on a touch drawer that just makes the row jump under the finger. */
+  .site-header .main-menu li .sub-menu li:hover a {
+    padding-left: calc(var(--nav-gutter) + 16px);
+  }
+}
 
-  /* Drill-down: show only the root list + the one open panel. The open
-     item's own trigger link hides — its Back button + panel title above
-     take over as the "where am I" context instead. */
-  .site-header .main-menu.drilling > li { display: none; }
-  .site-header .main-menu.drilling > li.drill-open {
-    display: block;
-    border-bottom: none;
-  }
-  .site-header .main-menu.drilling > li.drill-open > a.nav-top-link {
-    display: none;
-  }
-  .site-header .main-menu.drilling > li.drill-open > [data-menu-panel] {
-    display: block;
+@media (max-width: 991px) and (prefers-reduced-motion: reduce) {
+  .site-header .main-menu li .sub-menu,
+  .site-header .main-menu li .mega-menu,
+  .nav-top-link__chevron {
+    transition: none;
   }
 }
 
@@ -6078,6 +6376,24 @@ body.cart-open { overflow: hidden; }
 }
 .co-trust i { color: var(--heading-color); font-size: 12px; margin-top: 1px; flex-shrink: 0; }
 
+/* Promo code entry — sits between the item list and the totals block so the
+   discount it produces lands directly above where it's reflected (.co-total-row
+   #coDiscountRow, toggled by assets/js/script.js). */
+.co-promo { display: flex; gap: 8px; margin-bottom: 10px; }
+.co-promo input {
+  flex: 1; min-width: 0; padding: 9px 12px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--sub-bg); color: var(--heading-color);
+}
+.co-promo input:focus { outline: none; border-color: var(--heading-color); }
+.co-promo button {
+  flex-shrink: 0; padding: 9px 16px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--heading-color); border-radius: 8px; background: transparent; color: var(--heading-color); cursor: pointer;
+}
+.co-promo button:disabled { opacity: .5; cursor: default; }
+.co-promo-msg { font-size: 11px; margin: -4px 0 14px; }
+.co-promo-msg.is-error { color: var(--danger, #d33); }
+.co-promo-msg.is-success { color: var(--success); }
+
 /* Totals */
 .co-totals {
   border-top: 1px solid var(--border);
@@ -6460,3 +6776,114 @@ body.cart-open { overflow: hidden; }
 .u-empty-state-icon { font-size: 64px; color: var(--border-light); display: block; margin-bottom: 24px; }
 .u-logo-preview { max-width: 140px; max-height: 60px; display: none; }
 .co-pay-error { color: #ff5252; margin-top: 10px; font-size: 13px; }
+
+
+/* ===================================================
+   TOUCH TARGET MINIMUMS (mobile / tablet)
+   ===================================================
+   Apple HIG and WCAG 2.5.5 both put the minimum comfortable tap target at
+   44x44px. Below 992px these rules raise the controls that a real device
+   audit measured under that: footer link lists, breadcrumb links, blog
+   sidebar/tag/share links, the cart drawer's close button, and the search
+   field inside the nav drawer.
+
+   Deliberately expressed as min-height + inline-flex centering rather than
+   extra padding: padding would shift each link's text off the baseline it
+   shares with its neighbours, whereas growing the box and re-centering the
+   text inside it leaves the visual rhythm intact and only enlarges the
+   hit area. Scoped to <=991px so desktop's tighter, denser footer and
+   sidebar spacing is untouched. */
+@media (max-width: 991px) {
+  .footer__legal a,
+  .footer__copy-text .logo,
+  a.payment,
+  .page-banner .breadcrumb-list a,
+  .right-item .right_list li a,
+  .right-item .tags a,
+  .tag-share .share a,
+  .marquee-item > a,
+  .info span a,
+  .image-tag a,
+  .tag-share .tag a,
+  .arry a,
+  #productCategoryLink,
+  #discountToggle,
+  #discountApply,
+  #discountInput {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* Footer nav links are full-width rows in a stacked column, so they get
+     `flex` rather than `inline-flex` — otherwise a short label ("FAQ")
+     shrink-wraps to 43px wide and leaves most of its own row untappable. */
+  .footer__item ul li a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* Contact page tel:/mailto: rows — the two links most likely to be tapped
+     on a phone, and the ones where a mis-tap is most annoying (it dials or
+     opens a mail client). Measured 32-40px tall. */
+  .contact-info ul li a,
+  ul.info li a,
+  .contact .content ul li a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Carousel pagination dots are 20x20 by design and enlarging the dot
+     itself would change the visual. Instead the dot keeps its size and
+     gains an invisible centered 44x44 hit area via ::after.
+     The margin is widened to 12px first, on purpose: at the default
+     spacing the dots sit on a ~28px pitch, so 44px hit areas would
+     overlap each other by 16px and produce exactly the ambiguous,
+     accidental taps this is meant to prevent. 20px dot + 2x12px margin
+     puts them on a 44px pitch, so the hit areas tile edge to edge without
+     ever overlapping. */
+  .dot .swiper-pagination-bullet {
+    margin: 0 12px;
+  }
+  .dot .swiper-pagination-bullet::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* Icon-only round targets: grow the box itself, not just its height, so
+     the target is 44px in both axes rather than a wide short strip. */
+  .tag-share .share a,
+  .item > a.go_blog,
+  .get-now-arry,
+  .right-item .search button,
+  .blog-pegi,
+  .pt-4.bor-top > a,
+  .page-banner .breadcrumb-list a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* Cart drawer close button — measured 32x32 on every page. */
+  #cartClose {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* The nav drawer's creator-search <label> is already a 48px row; the
+     <input> inside it only occupied 26px of that, so a tap landing in the
+     row's upper or lower band missed the field. Filling the row's height
+     makes the whole visible field tappable. */
+  .mega-menu__search input {
+    align-self: stretch;
+    height: auto;
+    min-height: 44px;
+  }
+}

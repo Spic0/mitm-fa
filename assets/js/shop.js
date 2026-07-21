@@ -44,14 +44,34 @@ document.addEventListener("DOMContentLoaded", function () {
     return new URLSearchParams(window.location.search);
   }
 
+  // Context now lives in the path (/goal/:slug, /sport/:slug, /athlete/:slug,
+  // /creator/:slug) instead of a query param — search/sort/featured stay
+  // query params on whichever of those paths (or plain /shop) is current.
+  function getPathContext() {
+    var m = window.location.pathname.match(/^\/(goal|sport|athlete|creator)\/([^/]+)\/?$/);
+    return m ? { type: m[1], slug: decodeURIComponent(m[2]) } : null;
+  }
+
   // ---- Taxonomy tree helpers: resolve a URL slug to a node, anywhere in
   // the tree, and collect a node + all its descendant ids for "this
-  // category and everything under it" matching (e.g. ?sport=football must
+  // category and everything under it" matching (e.g. /sport/football must
   // also match products tagged directly to an athlete under Football). ----
   function findNode(nodes, slug) {
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].slug === slug) return nodes[i];
       var found = findNode(nodes[i].children || [], slug);
+      if (found) return found;
+    }
+    return null;
+  }
+  // Same walk as findNode, but also returns the node's direct parent — the
+  // flat /athlete/:slug route carries no sport segment in the URL, so the
+  // "All <Sport>" chip still needs a way to find which sport an athlete
+  // belongs to.
+  function findNodeWithParent(nodes, slug, parent) {
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].slug === slug) return { node: nodes[i], parent: parent };
+      var found = findNodeWithParent(nodes[i].children || [], slug, nodes[i]);
       if (found) return found;
     }
     return null;
@@ -63,52 +83,47 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   // ---- Context resolution: URL -> { type, key, label, matchIds, ... } ----
   function resolveContext(params) {
-    var goalSlug = params.get("goal");
-    var athleteSlug = params.get("athlete");
-    var sportSlug = params.get("sport");
-    var creatorSlug = params.get("creator");
+    var pathCtx = getPathContext();
 
-    if (goalSlug) {
-      var goalNode = findNode(taxonomies.goals.nodes, goalSlug);
+    if (pathCtx && pathCtx.type === "goal") {
+      var goalNode = findNode(taxonomies.goals.nodes, pathCtx.slug);
       if (goalNode) {
         return {
-          type: "goal", key: goalSlug, label: goalNode.name,
+          type: "goal", key: goalNode.slug, label: goalNode.name,
           heading: goalNode.name, sub: "Training and nutrition plans for " + goalNode.name.toLowerCase() + ".",
           crumb: "Shop by Goal · " + goalNode.name, title: goalNode.name + " Plans",
           matchIds: [goalNode.id],
         };
       }
     }
-    // A specific athlete is more specific than the sport it belongs to —
-    // resolve it first so a deep link like ?sport=football&athlete=x-y-z
-    // filters down to exactly that athlete.
-    if (athleteSlug) {
-      var athleteNode = findNode(taxonomies.athletes.nodes, athleteSlug);
-      if (athleteNode) {
+    if (pathCtx && pathCtx.type === "athlete") {
+      var athleteMatch = findNodeWithParent(taxonomies.athletes.nodes, pathCtx.slug, null);
+      if (athleteMatch) {
         return {
-          type: "athlete", key: athleteSlug, label: athleteNode.name, sportSlug: sportSlug,
-          heading: athleteNode.name, sub: "Programs built and used by " + athleteNode.name + ".",
-          crumb: "Browse Athletes · " + athleteNode.name, title: athleteNode.name + " Training Plans",
-          matchIds: [athleteNode.id],
+          type: "athlete", key: athleteMatch.node.slug, label: athleteMatch.node.name,
+          sportSlug: athleteMatch.parent ? athleteMatch.parent.slug : null,
+          heading: athleteMatch.node.name, sub: "Programs built and used by " + athleteMatch.node.name + ".",
+          crumb: "Browse Athletes · " + athleteMatch.node.name, title: athleteMatch.node.name + " Training Plans",
+          matchIds: [athleteMatch.node.id],
         };
       }
     }
-    if (sportSlug) {
-      var sportNode = findNode(taxonomies.athletes.nodes, sportSlug);
+    if (pathCtx && pathCtx.type === "sport") {
+      var sportNode = findNode(taxonomies.athletes.nodes, pathCtx.slug);
       if (sportNode) {
         return {
-          type: "sport", key: sportSlug, label: sportNode.name, node: sportNode,
+          type: "sport", key: sportNode.slug, label: sportNode.name, node: sportNode,
           heading: sportNode.name + " Training", sub: "Training plans built and used by " + sportNode.name.toLowerCase() + " athletes.",
           crumb: "Sports · " + sportNode.name, title: sportNode.name + " Training Programs",
           matchIds: collectIds(sportNode),
         };
       }
     }
-    if (creatorSlug) {
-      var creatorNode = findNode(taxonomies.creators.nodes, creatorSlug);
+    if (pathCtx && pathCtx.type === "creator") {
+      var creatorNode = findNode(taxonomies.creators.nodes, pathCtx.slug);
       if (creatorNode) {
         return {
-          type: "creator", key: creatorSlug, label: creatorNode.name,
+          type: "creator", key: creatorNode.slug, label: creatorNode.name,
           heading: creatorNode.name, sub: "Programs built and used by " + creatorNode.name + ".",
           crumb: "Creators · " + creatorNode.name, title: creatorNode.name + " Training Plans",
           matchIds: [creatorNode.id],
@@ -149,11 +164,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // here immediately, whether or not a product has been tagged to it yet
   // (an empty chip just leads to an empty grid, not a broken page). ----
   function chipItems(ctx) {
-    var all = { label: "All Plans", href: "shop.html", active: ctx.type === "all" && !ctx.key };
+    var all = { label: "All Plans", href: "/shop", active: ctx.type === "all" && !ctx.key };
 
     if (ctx.type === "goal" || ctx.type === "all") {
       var goalItems = taxonomies.goals.nodes.map(function (n) {
-        return { label: n.name, href: "shop.html?goal=" + encodeURIComponent(n.slug), active: ctx.type === "goal" && ctx.key === n.slug };
+        return { label: n.name, href: "/goal/" + encodeURIComponent(n.slug), active: ctx.type === "goal" && ctx.key === n.slug };
       });
       return { label: "Training goals", items: [all].concat(goalItems) };
     }
@@ -162,14 +177,14 @@ document.addEventListener("DOMContentLoaded", function () {
       var sportNode = ctx.type === "sport" ? ctx.node : findNode(taxonomies.athletes.nodes, ctx.sportSlug || "");
       var items = [{
         label: sportNode ? "All " + sportNode.name : "All Athletes",
-        href: sportNode ? "shop.html?sport=" + encodeURIComponent(sportNode.slug) : "shop.html",
+        href: sportNode ? "/sport/" + encodeURIComponent(sportNode.slug) : "/shop",
         active: ctx.type === "sport",
       }];
       if (sportNode) {
         sportNode.children.forEach(function (c) {
           items.push({
             label: c.name,
-            href: "shop.html?sport=" + encodeURIComponent(sportNode.slug) + "&athlete=" + encodeURIComponent(c.slug),
+            href: "/athlete/" + encodeURIComponent(c.slug),
             active: ctx.type === "athlete" && ctx.key === c.slug,
           });
         });
@@ -184,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       leaves.sort(function (a, b) { return a.name.localeCompare(b.name); });
       var creatorItems = leaves.map(function (n) {
-        return { label: n.name, href: "shop.html?creator=" + encodeURIComponent(n.slug), active: ctx.key === n.slug };
+        return { label: n.name, href: "/creator/" + encodeURIComponent(n.slug), active: ctx.key === n.slug };
       });
       return { label: "Creators", items: [all].concat(creatorItems) };
     }
@@ -272,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var params = getParams();
       var term = searchInput.value.trim();
       if (term) params.set("search", term); else params.delete("search");
-      history.replaceState(null, "", "shop.html" + (params.toString() ? "?" + params.toString() : ""));
+      history.replaceState(null, "", window.location.pathname + (params.toString() ? "?" + params.toString() : ""));
       renderAll();
     });
   }

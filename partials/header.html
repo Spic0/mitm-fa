@@ -2,90 +2,113 @@
     <div class="container">
         <div class="header-inner">
             <a href="/" class="header-logo">
-                <img src="assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+                <img src="/assets/images/logo/logo.svg" alt="logo" width="158" height="54" data-brand-logo>
             </a>
+            <!-- Font Awesome 6 Pro glyph (fully self-hosted in assets/webfonts —
+                 every weight, including fa-solid-900, ships with the project), not
+                 an <img>/inline SVG that can 404, and not hand-built CSS bars.
+                 assets/js/script.js swaps fa-bars <-> fa-xmark on open/close. -->
             <button type="button" class="header-bar d-lg-none" aria-label="Open menu" aria-expanded="false" aria-controls="mainMenu">
-                <span></span>
-                <span></span>
-                <span></span>
+                <i class="fa-solid fa-bars header-bar__icon" aria-hidden="true"></i>
             </button>
             <ul class="main-menu" id="mainMenu">
-                <li class="mobile-quicklinks d-lg-none">
-                    <a href="shop.html?featured=true">Bestsellers</a>
-                    <a href="shop.html?sort=new">New Plans</a>
-                </li>
+                <!-- Mobile: this is a shopping drawer, not an account menu — Shop by
+                     Goal/Browse Athletes/Browse Creators (the real, CMS-driven product
+                     taxonomy) come first, each an inline single-open accordion (see
+                     .mega-menu__panel-inner + assets/js/script.js). Account/My Library/
+                     Orders/Cart/Settings are demoted to a footer block at the very
+                     bottom of the list (see .mobile-account-links below) — someone
+                     arriving from an ad should see product categories before account
+                     management. -->
                 <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaGoal">
-                        Shop by Goal <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                    <a href="/shop" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaGoal">
+                        Shop by Goal <i class="fa-regular fa-angle-down nav-top-link__chevron" aria-hidden="true"></i>
                     </a>
                     <div class="mega-menu" id="megaGoal" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Shop by Goal</h3>
-                        <div class="mega-menu__col mega-menu__col--goals">
-                            <span class="mega-menu__heading">Training Goals</span>
-                            <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
-                                 from the Goals taxonomy in the database (Admin -> Navigation) — create,
-                                 rename, or delete a goal there and it shows up here automatically. -->
-                            <ul><!--NAV_GOALS_TRAINING--></ul>
-                            <a href="shop.html" class="mega-menu__view-all">View All Plans <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
-                        </div>
-                        <div class="mega-menu__col mega-menu__col--picks" data-role="top-picks">
-                            <span class="mega-menu__heading">Top Picks</span>
-                            <div class="mega-menu__cards" data-role="top-picks-cards"></div>
+                        <div class="mega-menu__panel-inner">
+                            <div class="mega-menu__col mega-menu__col--goals">
+                                <span class="mega-menu__heading">Training Goals</span>
+                                <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
+                                     from the Goals taxonomy in the database (Admin -> Navigation) — create,
+                                     rename, or delete a goal there and it shows up here automatically. -->
+                                <ul><!--NAV_GOALS_TRAINING--></ul>
+                                <a href="/shop" class="mega-menu__view-all">View All Plans <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                            </div>
+                            <div class="mega-menu__col mega-menu__col--picks" data-role="top-picks">
+                                <span class="mega-menu__heading">Top Picks</span>
+                                <div class="mega-menu__cards" data-role="top-picks-cards"></div>
+                            </div>
                         </div>
                     </div>
                 </li>
                 <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaAthletes">
-                        Browse Athletes <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                    <a href="/shop" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaAthletes">
+                        Browse Athletes <i class="fa-regular fa-angle-down nav-top-link__chevron" aria-hidden="true"></i>
                     </a>
                     <div class="mega-menu mega-menu--athletes" id="megaAthletes" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Browse Athletes</h3>
-                        <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
-                             from the Athletes taxonomy in the database (Admin -> Navigation, or inline
-                             from the product wizard) — each sport category and its athlete
-                             subcategories render straight from real ProductTaxonomy assignments. -->
-                        <!--NAV_SPORTS_COLUMNS-->
+                        <div class="mega-menu__panel-inner">
+                            <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
+                                 from the Athletes taxonomy in the database (Admin -> Navigation, or inline
+                                 from the product wizard) — each sport category and its athlete
+                                 subcategories render straight from real ProductTaxonomy assignments. -->
+                            <!--NAV_SPORTS_COLUMNS-->
+                        </div>
                     </div>
                 </li>
                 <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaCreators">
-                        Browse Creators <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                    <a href="/shop" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaCreators">
+                        Browse Creators <i class="fa-regular fa-angle-down nav-top-link__chevron" aria-hidden="true"></i>
                     </a>
                     <div class="mega-menu mega-menu--creators" id="megaCreators" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Browse Creators</h3>
-                        <div class="mega-menu__col mega-menu__col--featured" data-role="featured-creators">
-                            <span class="mega-menu__heading">Featured Creators</span>
-                            <div class="mega-menu__cards" data-role="featured-creator-cards"></div>
-                        </div>
-                        <div class="mega-menu__col mega-menu__col--directory">
-                            <label class="mega-menu__search">
-                                <i class="fa-regular fa-magnifying-glass" aria-hidden="true"></i>
-                                <input type="search" placeholder="Search creators" aria-label="Search creators" data-role="creator-search" autocomplete="off">
-                            </label>
-                            <span class="mega-menu__heading" data-role="creator-list-heading">Popular Creators</span>
-                            <ul data-role="creator-list"></ul>
-                            <button type="button" class="mega-menu__view-all" data-role="creator-az-toggle" aria-pressed="false">
-                                Browse All A&ndash;Z <i class="fa-regular fa-arrow-right" aria-hidden="true"></i>
-                            </button>
+                        <div class="mega-menu__panel-inner">
+                            <div class="mega-menu__col mega-menu__col--featured" data-role="featured-creators">
+                                <span class="mega-menu__heading">Featured Creators</span>
+                                <div class="mega-menu__cards" data-role="featured-creator-cards"></div>
+                            </div>
+                            <div class="mega-menu__col mega-menu__col--directory">
+                                <label class="mega-menu__search">
+                                    <i class="fa-regular fa-magnifying-glass" aria-hidden="true"></i>
+                                    <input type="search" placeholder="Search creators" aria-label="Search creators" data-role="creator-search" autocomplete="off">
+                                </label>
+                                <span class="mega-menu__heading" data-role="creator-list-heading">Popular Creators</span>
+                                <ul data-role="creator-list"></ul>
+                                <button type="button" class="mega-menu__view-all" data-role="creator-az-toggle" aria-pressed="false">
+                                    Browse All A&ndash;Z <i class="fa-regular fa-arrow-right" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </li>
+                <li class="mobile-account-links d-lg-none">
+                    <a href="/login" class="mobile-account-links__item js-account-link" id="drawerAccountLink">
+                        <i class="fa-regular fa-user" aria-hidden="true"></i>
+                        <span class="js-account-text" id="drawerAccountText">Sign In</span>
+                    </a>
+                    <a href="/my-library#library" class="mobile-account-links__item">
+                        <i class="fa-regular fa-book-open" aria-hidden="true"></i>
+                        <span>My Library</span>
+                    </a>
+                    <a href="/my-library#orders" class="mobile-account-links__item">
+                        <i class="fa-regular fa-receipt" aria-hidden="true"></i>
+                        <span>Orders</span>
+                    </a>
+                    <button type="button" class="mobile-account-links__item js-cart-toggle" id="drawerCartToggle">
+                        <i class="fa-regular fa-cart-shopping" aria-hidden="true"></i>
+                        <span>Cart</span>
+                        <span class="cart-badge" id="drawerCartCount">0</span>
+                    </button>
+                    <a href="/my-library#account-settings" class="mobile-account-links__item u-hidden js-settings-item" id="drawerSettingsItem">
+                        <i class="fa-regular fa-gear" aria-hidden="true"></i>
+                        <span>Settings</span>
+                    </a>
                 </li>
             </ul>
             <div class="header-actions">
-                <a href="login.html" id="headerAccountLink" class="header-account d-flex align-items-center">
+                <a href="/login" id="headerAccountLink" class="header-account d-flex align-items-center js-account-link">
                     <div class="user-icon">
                         <i class="fa-regular fa-user"></i>
                     </div>
-                    <span class="acc-text" id="headerAccountText">Sign In</span>
+                    <span class="acc-text js-account-text" id="headerAccountText">Sign In</span>
                 </a>
                 <button class="header-cart-btn" id="cartToggle" aria-label="Open cart">
                     <i class="fa-regular fa-cart-shopping"></i>

@@ -37,10 +37,10 @@ router.get("/verify", authLimiter, async (req, res) => {
   const token = String(req.query.token || "");
   const user = await consumeMagicLinkToken(token);
   if (!user) {
-    return res.redirect("/login.html?error=expired");
+    return res.redirect("/login?error=expired");
   }
   if (user.status === "suspended") {
-    return res.redirect("/login.html?error=suspended");
+    return res.redirect("/login?error=suspended");
   }
   const sessionToken = await createSession(user.id);
   setSessionCookie(res, sessionToken);
@@ -50,7 +50,7 @@ router.get("/verify", authLimiter, async (req, res) => {
     message: `${user.role === "admin" ? "Admin login" : "Login"}: ${user.email} (magic link)`,
     actorId: user.id,
   });
-  res.redirect(user.role === "admin" ? "/admin/manage/dashboard" : "/my-library.html");
+  res.redirect(user.role === "admin" ? "/admin/manage/dashboard" : "/my-library");
 });
 
 router.post("/logout", async (req, res) => {

@@ -164,127 +164,41 @@ window.AdminProductWizard = (function () {
   }
 
   function open(productId, onDone) {
-    var state = { product: null, stepIndex: 0, workingTraining: null, workingNutrition: null, visitedSteps: {} };
+    var state = { product: null, workingTraining: null, workingNutrition: null, visitedSteps: {} };
 
-    var backdrop = document.createElement("div");
-    backdrop.className = "a-modal-backdrop";
-    backdrop.innerHTML =
-      '<div class="a-modal a-wizard">' +
-      '<button type="button" class="a-wizard-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
-      '<div class="a-wizard-steps"></div>' +
-      '<div class="a-wizard-main">' +
-      '<div class="a-wizard-body"><div class="a-wizard-step-content a-wizard-loading">Setting up your program…</div></div>' +
-      '<div class="a-wizard-footer"></div>' +
-      "</div></div>";
-    window.AdminUI.openModal(backdrop);
-    var stepsEl = backdrop.querySelector(".a-wizard-steps");
-    var bodyEl = backdrop.querySelector(".a-wizard-body");
-    var footerEl = backdrop.querySelector(".a-wizard-footer");
+    var shell = window.AdminWizardShell.build({
+      steps: STEPS,
+      loadingText: "Setting up your program…",
+      getStatus: function (key) {
+        var progress = (state.product && state.product.wizardProgress) || {};
+        if (progress[key]) return "complete";
+        if (state.visitedSteps[key]) return "missing";
+        return "not-started";
+      },
+      renderBody: function (key, index) {
+        state.visitedSteps[key] = true;
+        var wrapper = document.createElement("div");
+        wrapper.className = "a-wizard-step-content";
+        var bannerHost = document.createElement("div");
+        var stepHost = document.createElement("div");
+        wrapper.appendChild(bannerHost);
+        wrapper.appendChild(stepHost);
+        shell.bodyEl.innerHTML = "";
+        shell.bodyEl.appendChild(wrapper);
+        shell.bodyEl.scrollTop = 0;
 
-    function close() {
-      window.AdminUI.closeModal(backdrop);
-      // Hand back the current product state so the caller (the Products
-      // list) can patch just that one row in place instead of refetching
-      // and re-rendering the whole table on every wizard close.
-      if (onDone) onDone(state.product);
-    }
-    function requestClose() {
-      if (state.stepDirty) {
-        window.AdminUI.confirmDialog({
-          title: "Discard changes?",
-          message: "This step has unsaved changes that haven't been saved as a draft yet. Closing now will lose them.",
-          confirmLabel: "Discard",
-          danger: true,
-        }).then(function (ok) { if (ok) close(); });
-      } else {
-        close();
-      }
-    }
-    backdrop.querySelector(".a-wizard-close").addEventListener("click", requestClose);
-
-    // Every sidebar step is always clickable once the draft exists (which is
-    // immediately — see the bottom of this function) — no progression lock.
-    function renderSteps() {
-      var progress = (state.product && state.product.wizardProgress) || {};
-      stepsEl.innerHTML = STEPS.map(function (s, i) {
-        var complete = !!progress[s.key];
-        var visited = !!state.visitedSteps[s.key];
-        var stateClass = complete ? "complete" : (visited ? "incomplete" : "untouched");
-        var icon = complete ? "fa-circle-check" : (visited ? "fa-circle-exclamation" : "fa-circle");
-        var cls = "a-wizard-step " + stateClass + (i === state.stepIndex ? " active" : "");
-        return '<div class="' + cls + '" data-step="' + i + '"><span class="a-wizard-step-icon"><i class="fa-solid ' + icon + '"></i></span>' + esc(s.label) + "</div>";
-      }).join("");
-      stepsEl.querySelectorAll("[data-step]").forEach(function (el) {
-        el.addEventListener("click", function () {
-          if (!state.product) return; // draft still being created — nothing to show yet
-          state.stepIndex = parseInt(el.dataset.step, 10);
-          renderSteps();
-          renderBody();
-        });
-      });
-    }
-
-    function goToStep(idx) {
-      state.stepIndex = idx;
-      renderSteps();
-      renderBody();
-    }
-
-    // Wraps a save handler with a loading state on the triggering button
-    // (and the rest of the footer disabled alongside it) so every click —
-    // Back, Save Draft, Next — gives immediate, visible feedback and never
-    // feels like a dead click, whether it succeeds or fails.
-    function runSave(btn, saveFn) {
-      var siblingBtns = footerEl.querySelectorAll(".a-btn");
-      btn.classList.add("is-loading");
-      siblingBtns.forEach(function (b) { b.disabled = true; });
-      return saveFn().then(function (result) {
-        siblingBtns.forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
-        state.stepDirty = false;
-        return result;
-      }).catch(function (err) {
-        siblingBtns.forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
-        window.AdminUI.toast(err.message || "Could not save", "error");
-        throw err;
-      });
-    }
-
-    // Footer for every step except Preview — Close / Back / Save Draft / Next.
-    // Next always advances once the save call itself succeeds; it never
-    // blocks on missing *required* fields (that's guidance, not a gate) —
-    // it just warns if this step still isn't complete.
-    function renderGenericFooter(handlers) {
-      var key = STEPS[state.stepIndex].key;
-      footerEl.innerHTML =
-        '<div class="a-wizard-actions">' +
-        '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-act="cancel">Close</button>' +
-        '<div style="display:flex;gap:10px;">' +
-        (state.stepIndex > 0 ? '<button type="button" class="a-btn a-btn-secondary" data-act="back">Back</button>' : "") +
-        '<button type="button" class="a-btn a-btn-secondary" data-act="save-draft">Save Draft</button>' +
-        '<button type="button" class="a-btn a-btn-primary" data-act="next">Next</button>' +
-        "</div></div>";
-
-      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", requestClose);
-      var backBtn = footerEl.querySelector('[data-act="back"]');
-      if (backBtn) backBtn.addEventListener("click", function () {
-        runSave(backBtn, handlers.save).then(function () { goToStep(state.stepIndex - 1); }).catch(function () {});
-      });
-      footerEl.querySelector('[data-act="save-draft"]').addEventListener("click", function (e) {
-        runSave(e.currentTarget, handlers.save).then(function () {
-          window.AdminUI.toast("Draft saved", "success");
-          renderSteps();
-        }).catch(function () {});
-      });
-      footerEl.querySelector('[data-act="next"]').addEventListener("click", function (e) {
-        runSave(e.currentTarget, handlers.save).then(function () {
-          var progress = state.product.wizardProgress || {};
-          if (!progress[key]) {
-            window.AdminUI.toast("This step still has missing fields — you can finish it anytime before publishing.", "warning");
-          }
-          goToStep(state.stepIndex + 1);
-        }).catch(function () {});
-      });
-    }
+        if (key === "basics") renderBasics(stepHost, bannerHost);
+        else if (key === "pricing") renderPricing(stepHost, bannerHost);
+        else if (key === "structure") renderStructure(stepHost, bannerHost);
+        else if (key === "seoTags") renderSeoTags(stepHost, bannerHost);
+        else if (key === "training") renderTraining(stepHost, bannerHost);
+        else if (key === "nutrition") renderNutrition(stepHost, bannerHost);
+        else if (key === "faqBonus") renderFaqBonus(stepHost, bannerHost);
+        else if (key === "preview") renderPreview(stepHost);
+      },
+      getResult: function () { return state.product; },
+      onClose: function (result) { if (onDone) onDone(result); },
+    });
 
     // Non-blocking reminder shown above a step's fields when it isn't
     // complete yet — validation as guidance, never a lockout.
@@ -394,7 +308,7 @@ window.AdminProductWizard = (function () {
 
       refreshPicker();
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           var form = container.querySelector("#wizForm");
           var fd = new FormData();
@@ -439,7 +353,7 @@ window.AdminProductWizard = (function () {
         "</div>" +
         "</form>";
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           var form = container.querySelector("#wizForm");
           var fd = new FormData();
@@ -470,7 +384,7 @@ window.AdminProductWizard = (function () {
         "</div>" +
         "</form>";
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           var form = container.querySelector("#wizForm");
           var fd = new FormData();
@@ -527,7 +441,7 @@ window.AdminProductWizard = (function () {
         }
       });
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           return window.AdminAPI.updateProductContent(state.product.id, { seoTags: tags }).then(function (data) { state.product = data.product; });
         },
@@ -681,7 +595,7 @@ window.AdminProductWizard = (function () {
         rerenderWeeks();
       });
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           return window.AdminAPI.updateProductContent(state.product.id, { trainingContent: tc }).then(function (data) { state.product = data.product; });
         },
@@ -737,7 +651,7 @@ window.AdminProductWizard = (function () {
         rerenderMeals();
       });
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           return window.AdminAPI.updateProductContent(state.product.id, { nutritionContent: nc }).then(function (data) { state.product = data.product; });
         },
@@ -798,7 +712,7 @@ window.AdminProductWizard = (function () {
           state.product = data.product;
           renderMissingBanner(bannerHost, "faqBonus");
           renderFaqBonus(container, bannerHost);
-          renderSteps();
+          shell.refreshSteps();
         });
       }
 
@@ -849,7 +763,7 @@ window.AdminProductWizard = (function () {
         window.AdminAPI.createProductResource(p.id, fd).then(refreshFromServer).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
       });
 
-      renderGenericFooter({
+      shell.standardFooter({
         save: function () {
           var bonusNotes = container.querySelector("#bonusNotes").value;
           return window.AdminAPI.updateProductContent(state.product.id, { bonusNotes: bonusNotes }).then(function (data) { state.product = data.product; });
@@ -887,18 +801,23 @@ window.AdminProductWizard = (function () {
 
       renderPublishSummary(container.querySelector("#publishValidation"), missingKeys, false);
 
-      footerEl.innerHTML =
+      // Nothing on this step is user-editable, so there's nothing to
+      // autosave — but every step must set a save handler so a sidebar
+      // click away from Preview has something (harmless) to call.
+      shell.setSaveHandler(function () { return Promise.resolve(); });
+
+      shell.footerEl.innerHTML =
         '<div class="a-wizard-actions">' +
         '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-act="cancel">Close</button>' +
-        '<div style="display:flex;gap:10px;">' +
+        '<div class="a-wizard-actions-right">' +
         '<button type="button" class="a-btn a-btn-secondary" data-act="back">Back</button>' +
         '<button type="button" class="a-btn a-btn-secondary" data-act="save-draft-status">Save as Draft</button>' +
         '<button type="button" class="a-btn a-btn-primary" data-act="publish">Publish</button>' +
         "</div></div>";
 
-      footerEl.querySelector('[data-act="cancel"]').addEventListener("click", requestClose);
-      footerEl.querySelector('[data-act="back"]').addEventListener("click", function () { goToStep(state.stepIndex - 1); });
-      footerEl.querySelector('[data-act="save-draft-status"]').addEventListener("click", function (e) {
+      shell.footerEl.querySelector('[data-act="cancel"]').addEventListener("click", shell.requestClose);
+      shell.footerEl.querySelector('[data-act="back"]').addEventListener("click", function () { shell.start(shell.getStepIndex() - 1); });
+      shell.footerEl.querySelector('[data-act="save-draft-status"]').addEventListener("click", function (e) {
         var btn = e.currentTarget;
         btn.classList.add("is-loading");
         btn.disabled = true;
@@ -906,8 +825,9 @@ window.AdminProductWizard = (function () {
         fd.append("status", "draft");
         window.AdminAPI.updateProduct(p.id, fd).then(function (data) {
           state.product = data.product;
+          shell.markSaved();
           window.AdminUI.toast("Saved as draft", "success");
-          renderSteps();
+          shell.refreshSteps();
         }).catch(function (err) {
           window.AdminUI.toast(err.message, "error");
         }).finally(function () {
@@ -915,7 +835,7 @@ window.AdminProductWizard = (function () {
           btn.disabled = false;
         });
       });
-      footerEl.querySelector('[data-act="publish"]').addEventListener("click", function (e) {
+      shell.footerEl.querySelector('[data-act="publish"]').addEventListener("click", function (e) {
         // Full validation runs here, at the one hard gate in the whole
         // wizard — everywhere else navigation stays free.
         var freshProgress = state.product.wizardProgress || {};
@@ -930,9 +850,10 @@ window.AdminProductWizard = (function () {
         btn.disabled = true;
         var fd = new FormData();
         fd.append("status", "published");
-        window.AdminAPI.updateProduct(p.id, fd).then(function () {
+        window.AdminAPI.updateProduct(p.id, fd).then(function (data) {
+          state.product = data.product;
           window.AdminUI.toast("Product published", "success");
-          close();
+          shell.close(state.product);
         }).catch(function (err) {
           window.AdminUI.toast(err.message, "error");
           btn.classList.remove("is-loading");
@@ -962,41 +883,10 @@ window.AdminProductWizard = (function () {
         host.querySelectorAll("[data-fix-step]").forEach(function (a) {
           a.addEventListener("click", function (e) {
             e.preventDefault();
-            goToStep(parseInt(a.dataset.fixStep, 10));
+            shell.start(parseInt(a.dataset.fixStep, 10));
           });
         });
       }
-    }
-
-    function renderBody() {
-      var wrapper = document.createElement("div");
-      wrapper.className = "a-wizard-step-content";
-      var bannerHost = document.createElement("div");
-      var stepHost = document.createElement("div");
-      wrapper.appendChild(bannerHost);
-      wrapper.appendChild(stepHost);
-      bodyEl.innerHTML = "";
-      bodyEl.appendChild(wrapper);
-      bodyEl.scrollTop = 0;
-
-      // Every step starts clean; any input/change inside it before its own
-      // save handler runs marks it dirty, so closing mid-edit can warn
-      // instead of silently discarding what was just typed.
-      state.stepDirty = false;
-      wrapper.addEventListener("input", function () { state.stepDirty = true; });
-      wrapper.addEventListener("change", function () { state.stepDirty = true; });
-
-      var key = STEPS[state.stepIndex].key;
-      state.visitedSteps[key] = true;
-
-      if (key === "basics") renderBasics(stepHost, bannerHost);
-      else if (key === "pricing") renderPricing(stepHost, bannerHost);
-      else if (key === "structure") renderStructure(stepHost, bannerHost);
-      else if (key === "seoTags") renderSeoTags(stepHost, bannerHost);
-      else if (key === "training") renderTraining(stepHost, bannerHost);
-      else if (key === "nutrition") renderNutrition(stepHost, bannerHost);
-      else if (key === "faqBonus") renderFaqBonus(stepHost, bannerHost);
-      else if (key === "preview") renderPreview(stepHost);
     }
 
     // A draft is created the instant the wizard opens (even before Basic
@@ -1008,11 +898,10 @@ window.AdminProductWizard = (function () {
       Promise.all([window.AdminAPI.getProduct(productId), taxonomyPromise]).then(function (results) {
         state.product = results[0].product;
         state.taxonomies = results[1];
-        renderSteps();
-        renderBody();
+        shell.start(0);
       }).catch(function (err) {
         window.AdminUI.toast(err.message, "error");
-        close();
+        shell.close(null);
       });
     } else {
       var fd = new FormData();
@@ -1021,11 +910,10 @@ window.AdminProductWizard = (function () {
       Promise.all([window.AdminAPI.createProduct(fd), taxonomyPromise]).then(function (results) {
         state.product = results[0].product;
         state.taxonomies = results[1];
-        renderSteps();
-        renderBody();
+        shell.start(0);
       }).catch(function (err) {
         window.AdminUI.toast(err.message, "error");
-        close();
+        shell.close(null);
       });
     }
   }

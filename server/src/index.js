@@ -1,6 +1,5 @@
 require("dotenv").config();
 const path = require("path");
-const fs = require("fs");
 const express = require("express");
 // Patches Express so a rejected promise inside any async route handler is
 // forwarded to next(err) instead of crashing the process as an uncaught
@@ -10,6 +9,7 @@ require("express-async-errors");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const helmet = require("helmet");
+const compression = require("compression");
 
 const { attachUser, requireAdminPage } = require("./middleware/auth");
 const { csrfProtection } = require("./middleware/csrf");
@@ -22,9 +22,9 @@ const configRoutes = require("./routes/config");
 const adminRoutes = require("./routes/admin");
 const taxonomyRoutes = require("./routes/taxonomy");
 const recommendationsRoutes = require("./routes/recommendations");
-const { getAllTaxonomyTrees } = require("./lib/taxonomy");
+const promotionsRoutes = require("./routes/promotions");
+const { router: pagesRouter, render404 } = require("./routes/pages");
 const { isDevRoutesEnabled } = require("./lib/devMode");
-const { prisma } = require("./db");
 
 if (!process.env.CSRF_SECRET) {
   // Fail at startup, not on the first authenticated mutating request in
@@ -111,6 +111,12 @@ app.use(
   })
 );
 
+// Gzip every compressible response (HTML, CSS, JS, JSON) — neither this app
+// nor the nginx reverse-proxy in front of it (a plain proxy_pass with no
+// gzip directive) were compressing anything, so every asset was going out
+// at full uncompressed size on every request.
+app.use(compression());
+
 // Stripe requires the raw, unparsed body to verify webhook signatures, so this
 // must be mounted before the global express.json() below.
 app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRoutes);
@@ -128,6 +134,7 @@ app.use("/api/config", configRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/taxonomy", taxonomyRoutes);
 app.use("/api/recommendations", recommendationsRoutes);
+app.use("/api/promotions", promotionsRoutes);
 
 // Dev-only tools (instant admin login, test data, simulated purchases) — never
 // mounted in production, regardless of what the frontend tries to call.
@@ -148,278 +155,41 @@ app.get(["/admin/manage", "/admin/manage/*"], requireAdminPage, (req, res) => {
 // handler below, so it's never served to a non-admin, not just its API data.
 app.use("/admin", requireAdminPage, express.static(path.join(SITE_ROOT, "admin")));
 
-// Single shared header component: every root-level page includes a
-// <!--SHARED_HEADER--> marker instead of its own copy of the header markup.
-// This inlines partials/header.html into the page HTML at request time, so
-// there's one source of truth and no client-side fetch/FOUC to worry about.
-const HEADER_PARTIAL_PATH = path.join(SITE_ROOT, "partials", "header.html");
-const HEADER_MARKER = "<!--SHARED_HEADER-->";
-const HIDDEN_HEADER_PAGES = new Set(["checkout.html"]);
-
 app.use("/partials", (req, res) => res.sendStatus(404));
 
-// shop-2.html was a byte-for-byte duplicate of shop.html (SEO duplicate
-// content + two shop pages to maintain). Permanent-redirect it into the one
-// real shop page, preserving any query string old links carry.
-app.get("/shop-2.html", (req, res) => {
-  const qs = req.originalUrl.split("?")[1];
-  res.redirect(301, "/shop.html" + (qs ? "?" + qs : ""));
+// Every customer-facing page route (clean paths like /shop, /program/:slug,
+// /creator/:slug, ... plus 301 redirects from the old .html/query-param
+// URLs) lives in routes/pages.js — see that file for the route table.
+app.use(pagesRouter);
+
+// Filenames here aren't content-hashed (no build step), so a long/immutable
+// cache would risk serving a stale asset after the next deploy — this is a
+// moderate, safe middle ground: real repeat-visit caching without betting on
+// a cache-busting scheme this app doesn't have. HTML is excluded entirely
+// (route handlers above already send their own responses for every page
+// that matters; anything falling through here is revalidated every time).
+app.use(
+  express.static(SITE_ROOT, {
+    setHeaders: (res, filePath) => {
+      if (/\.(?:js|css)$/.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      } else if (/\.(?:png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=86400");
+      } else if (/\.html?$/.test(filePath)) {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  })
+);
+
+// Catch-all 404: anything that fell through every route above and the
+// static mount. Previously there was no custom 404 at all — an unmatched
+// path fell through express.static to Express's bare-text default
+// ("Cannot GET /x"), never the site's actual error.html shell.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
+  render404(req, res).catch(next);
 });
-
-// The homepage's only canonical URL is "/" — /index.html must never be a
-// second, independently-indexable copy (duplicate-content SEO issue) or a
-// URL that shows up in the address bar. Every internal link already points
-// at "/" (partials/header.html and every page's footer/breadcrumb); this
-// redirect only exists to canonicalize old bookmarks/backlinks/crawled URLs.
-app.get("/index.html", (req, res) => {
-  const qs = req.originalUrl.split("?")[1];
-  res.redirect(301, "/" + (qs ? "?" + qs : ""));
-});
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-// Header mega-menu goal links and sport columns, generated live from the
-// Taxonomy tables (server/src/lib/taxonomy.js) — the exact same source of
-// truth the admin CMS reads and writes. A category/subcategory created,
-// renamed, or deleted in Admin -> Navigation (or inline from the product
-// wizard) is reflected here on the very next request; there is no
-// intermediate file or cache to fall out of sync.
-// Every node renders here regardless of product count — a category or
-// subcategory created in Admin -> Navigation must be visible immediately,
-// not only once something happens to be tagged to it. An empty item just
-// leads to an empty (but not broken) shop grid until a product is assigned.
-function navGoalLinksHtml(goalsTaxonomy) {
-  if (!goalsTaxonomy) return "";
-  return goalsTaxonomy.nodes
-    .map((n) => `<li><a href="shop.html?goal=${encodeURIComponent(n.slug)}">${escapeHtml(n.name)}</a></li>`)
-    .join("");
-}
-
-// One column per sport category, listing every one of its athlete
-// subcategories directly (real server-rendered links, not a client-side
-// scan of product fields) — a category or subcategory created, renamed, or
-// deleted in Admin -> Navigation must show up here immediately and
-// completely, whether or not a product has been tagged to it yet, so this
-// deliberately never truncates the list.
-function navSportColumnsHtml(athletesTaxonomy) {
-  if (!athletesTaxonomy) return "";
-  return athletesTaxonomy.nodes
-    .map((n) => {
-      const athleteLinks = n.children
-        .map((a) => `<li><a href="shop.html?sport=${encodeURIComponent(n.slug)}&amp;athlete=${encodeURIComponent(a.slug)}">${escapeHtml(a.name)}</a></li>`)
-        .join("");
-      return (
-        `<div class="mega-menu__col mega-menu__col--sport" data-sport="${escapeHtml(n.slug)}">` +
-        `<span class="mega-menu__heading">${escapeHtml(n.name)}</span>` +
-        `<ul data-role="sport-athletes">${athleteLinks}</ul>` +
-        `<a href="shop.html?sport=${encodeURIComponent(n.slug)}" class="mega-menu__view-all">View All <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>` +
-        "</div>"
-      );
-    })
-    .join("");
-}
-
-// The storefront shell (header nav, shop page title/crumb) must render even
-// when taxonomy data can't be loaded — a DB outage or misconfiguration
-// (e.g. missing DATABASE_URL) should degrade to empty nav sections, not take
-// down every page on the site. Every caller of getAllTaxonomyTrees() in the
-// page-rendering path goes through this wrapper instead of the raw import.
-async function safeGetAllTaxonomyTrees() {
-  try {
-    return await getAllTaxonomyTrees();
-  } catch (err) {
-    console.error("Failed to load taxonomy trees; rendering storefront with empty navigation.", err);
-    return [];
-  }
-}
-
-async function applyNavContexts(headerHtml) {
-  const trees = await safeGetAllTaxonomyTrees();
-  const goals = trees.find((t) => t.key === "goals");
-  const athletes = trees.find((t) => t.key === "athletes");
-  return headerHtml
-    .replace("<!--NAV_GOALS_TRAINING-->", navGoalLinksHtml(goals))
-    .replace("<!--NAV_SPORTS_COLUMNS-->", navSportColumnsHtml(athletes));
-}
-
-async function resolveShopContext(query) {
-  const trees = await safeGetAllTaxonomyTrees();
-  const goals = trees.find((t) => t.key === "goals");
-  const athletes = trees.find((t) => t.key === "athletes");
-
-  const goalNode = goals && goals.nodes.find((n) => n.slug === query.goal);
-  if (goalNode) {
-    return {
-      title: `${goalNode.name} Training & Nutrition Plans`,
-      description: `Training and nutrition plans built around ${goalNode.name.toLowerCase()}, from real coaches and athletes.`,
-      heading: goalNode.name,
-      crumb: `Shop by Goal · ${goalNode.name}`,
-      canonicalQs: `?goal=${encodeURIComponent(goalNode.slug)}`,
-    };
-  }
-  const sportNode = athletes && athletes.nodes.find((n) => n.slug === query.sport);
-  if (sportNode) {
-    return {
-      title: `${sportNode.name} Training Programs`,
-      description: `Training plans built and used by ${sportNode.name.toLowerCase()} athletes.`,
-      heading: `${sportNode.name} Training`,
-      crumb: `Sports · ${sportNode.name}`,
-      canonicalQs: `?sport=${encodeURIComponent(sportNode.slug)}`,
-    };
-  }
-  return null;
-}
-
-async function applyShopContext(html, query) {
-  const ctx = await resolveShopContext(query);
-  const canonicalQs = ctx ? ctx.canonicalQs : "";
-  if (process.env.APP_URL) {
-    html = html.replace(
-      "<!--SHOP_CANONICAL-->",
-      `<link rel="canonical" href="${process.env.APP_URL.replace(/\/$/, "")}/shop.html${canonicalQs}">`
-    );
-  }
-  if (!ctx) return html;
-
-  const title = escapeHtml(ctx.title);
-  return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | ProFit</title>`)
-    .replace(/(<meta name="description" data-shop-meta content=")[^"]*(")/, `$1${escapeHtml(ctx.description)}$2`)
-    .replace(/(<h2[^>]*data-shop-heading[^>]*>)[^<]*(<\/h2>)/, `$1${escapeHtml(ctx.heading)}$2`)
-    .replace(/(<p[^>]*data-shop-sub[^>]*>)[^<]*(<\/p>)/, `$1${escapeHtml(ctx.description)}$2`)
-    .replace(/(<span[^>]*data-shop-crumb[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(ctx.crumb)}$2`);
-}
-
-// Picks the same product the homepage hero slideshow will open on
-// (assets/js/hero-slideshow.js's selectHeroProducts): the earliest-created
-// featured product, or — if nothing is featured yet — the newest published
-// product, so the hero is never empty on a fresh catalog. Only this one
-// product needs a server round-trip; every other slide is client-rendered.
-async function resolveHeroProduct() {
-  const featured = await prisma.product.findFirst({
-    where: { status: "published", featured: true },
-    orderBy: { createdAt: "asc" },
-    include: { taxonomies: { include: { taxonomyNode: { include: { parent: true } } } } },
-  });
-  if (featured) return featured;
-  return prisma.product.findFirst({
-    where: { status: "published" },
-    orderBy: { createdAt: "desc" },
-    include: { taxonomies: { include: { taxonomyNode: { include: { parent: true } } } } },
-  });
-}
-
-// One representative "category" for the hero meta line — a product can carry
-// tags across all three taxonomy trees (goal/athlete/creator); prefer a
-// leaf's parent category name (e.g. "Boxing"), falling back to a bare node
-// name (e.g. a goal) if that's all it has. Mirrors the client-side
-// buildTaxonomyIndex/describeMeta in assets/js/hero-slideshow.js.
-function describeProductCategory(product) {
-  const nodes = (product.taxonomies || []).map((t) => t.taxonomyNode);
-  const leafWithParent = nodes.find((n) => n.parent);
-  if (leafWithParent) return leafWithParent.parent.name;
-  return nodes[0] ? nodes[0].name : null;
-}
-
-// Server-renders only the hero's first slide (title/description/price/CTA/
-// background image) directly into index.html, the same way applyShopContext
-// server-renders shop.html's heading — so a crawler or no-JS visitor sees a
-// real product immediately instead of an empty shell that only fills in
-// after assets/js/hero-slideshow.js runs. That script recognizes this slide
-// via data-hero-id and reuses it instead of re-rendering a duplicate.
-async function applyHeroContext(html) {
-  if (process.env.APP_URL) {
-    html = html.replace(
-      "<!--HOME_CANONICAL-->",
-      `<link rel="canonical" href="${process.env.APP_URL.replace(/\/$/, "")}/">`
-    );
-  }
-
-  let product;
-  try {
-    product = await resolveHeroProduct();
-  } catch (err) {
-    console.error("Failed to load hero product; rendering hero shell only.", err);
-    return html;
-  }
-  if (!product) return html;
-
-  const category = describeProductCategory(product);
-  const metaParts = [product.creator, category].filter(Boolean);
-  const meta = escapeHtml(metaParts.join(" · "));
-  const title = escapeHtml(product.name);
-  const description = escapeHtml(product.description || "");
-  const price = escapeHtml(`$${(product.priceCents / 100).toFixed(2)}`);
-  const ctaHref = `shop-single.html?slug=${encodeURIComponent(product.slug)}`;
-  const bgSrc = escapeHtml(product.imageUrl || "");
-
-  // Replaces one attribute's value within whichever single tag matches
-  // tagPattern, regardless of where that attribute falls in the tag's
-  // attribute order (a plain "...marker[^>]*?attr=" regex silently fails to
-  // match, and .replace() silently no-ops, whenever attr happens to appear
-  // *before* the marker in the source — as href does on the CTA anchor).
-  function replaceAttrInTag(str, tagPattern, attrName, value) {
-    return str.replace(tagPattern, (tag) =>
-      tag.replace(new RegExp(`${attrName}="[^"]*"`), `${attrName}="${value}"`)
-    );
-  }
-
-  let result = html
-    .replace(/(<section class="hero-slideshow" data-hero-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
-    .replace(/(<p[^>]*data-hero-meta[^>]*>)[^<]*(<\/p>)/, `$1${meta}$2`)
-    .replace(/(<h1[^>]*data-hero-title[^>]*>)[^<]*(<\/h1>)/, `$1${title}$2`)
-    .replace(/(<p[^>]*data-hero-desc[^>]*>)[^<]*(<\/p>)/, `$1${description}$2`)
-    .replace(/(<span[^>]*data-hero-price[^>]*>)[^<]*(<\/span>)/, `$1${price}$2`);
-
-  result = replaceAttrInTag(result, /<a\b[^>]*data-hero-cta[^>]*>/, "href", ctaHref);
-  result = replaceAttrInTag(result, /<img\b[^>]*data-hero-bg-img[^>]*>/, "src", bgSrc);
-
-  if (bgSrc) {
-    result = result.replace(
-      "<!--HERO_PRELOAD-->",
-      `<link rel="preload" as="image" href="${bgSrc}">`
-    );
-  }
-  return result;
-}
-
-app.get(/^\/([\w-]*\.html)?$/, async (req, res, next) => {
-  const pageName = req.path === "/" ? "index.html" : req.path.slice(1);
-  const filePath = path.join(SITE_ROOT, pageName);
-
-  let html;
-  try {
-    html = await fs.promises.readFile(filePath, "utf8");
-  } catch {
-    return next();
-  }
-  if (!html.includes(HEADER_MARKER)) return next();
-
-  let headerHtml;
-  try {
-    headerHtml = await fs.promises.readFile(HEADER_PARTIAL_PATH, "utf8");
-  } catch (headerErr) {
-    return next(headerErr);
-  }
-
-  if (HIDDEN_HEADER_PAGES.has(pageName)) {
-    // A class, not an inline style="" — CSP's style-src has no 'unsafe-inline'.
-    headerHtml = headerHtml.replace(
-      '<header class="site-header">',
-      '<header class="site-header u-hidden">'
-    );
-  }
-  headerHtml = await applyNavContexts(headerHtml);
-
-  let page = html.replace(HEADER_MARKER, headerHtml);
-  if (pageName === "shop.html") page = await applyShopContext(page, req.query);
-  if (pageName === "index.html") page = await applyHeroContext(page);
-  res.type("html").send(page);
-});
-
-app.use(express.static(SITE_ROOT));
 
 // Single place every route error lands (express-async-errors forwards async
 // rejections here too) — without this, an uncaught error is a raw HTML dev
@@ -455,6 +225,23 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`ProFit server running at ${process.env.APP_URL || `http://localhost:${PORT}`}`);
 });
+
+// Promotion notification thresholds (expiry countdowns, usage limits, unused/
+// high-sales flags) are evaluated on a timer rather than a real job
+// scheduler — this is a single-process pm2-managed app with no existing
+// cron/agenda infra, so a dependency-free setInterval is the simplest thing
+// that's actually correct here. Runs once at boot too, so a threshold
+// crossed while the process was down still surfaces promptly instead of
+// waiting up to 30 minutes for the first tick.
+const { evaluateAndCreateNotifications } = require("./lib/promotionNotifications");
+const NOTIFICATION_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+function runNotificationSweep() {
+  evaluateAndCreateNotifications().catch((err) => {
+    console.error("Failed to evaluate promotion notifications:", err);
+  });
+}
+runNotificationSweep();
+setInterval(runNotificationSweep, NOTIFICATION_CHECK_INTERVAL_MS);
 
 // Defense against slow-request/slowloris-style abuse: a client that never
 // finishes sending headers or a body ties up a connection indefinitely

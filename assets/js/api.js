@@ -25,8 +25,24 @@ window.ProFitAPI = (function () {
     return data;
   }
 
+  // GET responses are cached per exact path for the lifetime of the page.
+  // Before this, a single homepage load fired /api/products independently
+  // from 4 different scripts (hero-slideshow, home-dynamic, home-products,
+  // nav-featured) and /api/taxonomy from 3 — each parsing the full
+  // catalog/taxonomy JSON again. Caching the in-flight/resolved promise
+  // means every caller after the first shares one network request. Safe
+  // across this site's architecture (full page reloads between routes, not
+  // an SPA) since the cache can never go stale within a single page view,
+  // and a fresh page load always starts with an empty cache.
+  const _getCache = Object.create(null);
   function get(path) {
-    return request(path, { method: "GET" });
+    if (!(path in _getCache)) {
+      _getCache[path] = request(path, { method: "GET" }).catch(function (err) {
+        delete _getCache[path]; // don't cache a failure — let a retry go to the network
+        throw err;
+      });
+    }
+    return _getCache[path];
   }
   function post(path, body) {
     return request(path, { method: "POST", body: JSON.stringify(body || {}) });
@@ -56,27 +72,41 @@ window.ProFitAPI = (function () {
       return get("/recommendations?" + qs);
     },
     getProduct: function (idOrSlug) { return get("/products/" + encodeURIComponent(idOrSlug)); },
-    createStripeIntent: function (items, email) { return post("/checkout/stripe/create-intent", { items: items, email: email }); },
-    updateStripeIntent: function (paymentIntentId, items) { return post("/checkout/stripe/update-intent", { paymentIntentId: paymentIntentId, items: items }); },
+    createStripeIntent: function (items, email, promoCode) { return post("/checkout/stripe/create-intent", { items: items, email: email, promoCode: promoCode }); },
+    updateStripeIntent: function (paymentIntentId, items, promoCode) { return post("/checkout/stripe/update-intent", { paymentIntentId: paymentIntentId, items: items, promoCode: promoCode }); },
     finalizeStripe: function (paymentIntentId) { return post("/checkout/stripe/finalize", { paymentIntentId: paymentIntentId }); },
-    createPaypalOrder: function (items, email) { return post("/checkout/paypal/create-order", { items: items, email: email }); },
+    createPaypalOrder: function (items, email, promoCode) { return post("/checkout/paypal/create-order", { items: items, email: email, promoCode: promoCode }); },
     capturePaypalOrder: function (orderId) { return post("/checkout/paypal/capture-order", { orderId: orderId }); },
+    validatePromoCode: function (code, items, email) { return post("/promotions/validate", { code: code, items: items, email: email }); },
+    getAutoApplyPromotion: function (items, email) {
+      var qs = "items=" + encodeURIComponent(JSON.stringify(items));
+      if (email) qs += "&email=" + encodeURIComponent(email);
+      return get("/promotions/auto-apply?" + qs);
+    },
     getLibrary: function () { return get("/library"); },
     getOrders: function () { return get("/library/orders"); },
     getProgram: function (productIdOrSlug) { return get("/library/program/" + encodeURIComponent(productIdOrSlug)); },
   };
 })();
 
-// Header "My Account" -> "My Library" / "Sign In" state, run on every page.
+// Header + mobile nav drawer "My Account" -> "My Library" / "Sign In" state,
+// run on every page. .js-account-link/.js-account-text match both the
+// desktop header icon (#headerAccountLink) and the drawer's row
+// (#drawerAccountLink) so one auth check drives both. .js-settings-item
+// (the drawer's "Settings" row) only ever makes sense for a signed-in user,
+// so it stays hidden (u-hidden, set in partials/header.html) until this
+// confirms a session exists.
 document.addEventListener("DOMContentLoaded", function () {
-  var link = document.getElementById("headerAccountLink");
-  var text = document.getElementById("headerAccountText");
-  if (!link || !text) return;
+  var links = document.querySelectorAll(".js-account-link");
+  var texts = document.querySelectorAll(".js-account-text");
+  var settingsItems = document.querySelectorAll(".js-settings-item");
+  if (!links.length && !texts.length) return;
 
   window.ProFitAPI.me().then(function (data) {
     if (data.user) {
-      link.href = "my-library.html";
-      text.textContent = "My Library";
+      links.forEach(function (a) { a.href = "/my-library"; });
+      texts.forEach(function (t) { t.textContent = "My Library"; });
+      settingsItems.forEach(function (li) { li.classList.remove("u-hidden"); });
     }
   }).catch(function () {
     // Not logged in or API unreachable — leave the default "Sign In" state.

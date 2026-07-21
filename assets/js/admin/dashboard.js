@@ -3,6 +3,7 @@ window.AdminPanels.dashboard = {
   mount: function (root) {
     var metricGrid = root.querySelector("#metricGrid");
     var activityFeed = root.querySelector("#activityFeed");
+    var promotionsWidgetGrid = root.querySelector("#promotionsWidgetGrid");
 
     function metricCard(label, value, sub) {
       return (
@@ -17,6 +18,7 @@ window.AdminPanels.dashboard = {
     // Show placeholders immediately, before the first byte of real data arrives.
     metricGrid.innerHTML = window.AdminUI.skeletonCards(9);
     activityFeed.innerHTML = window.AdminUI.skeletonList(5);
+    if (promotionsWidgetGrid) promotionsWidgetGrid.innerHTML = window.AdminUI.skeletonCards(7);
 
     function revealChart(canvasId) {
       var skeleton = root.querySelector("#" + canvasId + "Skeleton");
@@ -40,6 +42,19 @@ window.AdminPanels.dashboard = {
         metricCard("Conversion Rate", (m.conversionRate * 100).toFixed(1) + "%", "paid ÷ (paid + pending + failed)") +
         metricCard("Average Order Value", window.AdminUI.formatCents(m.averageOrderValueCents));
       metricGrid.classList.add("a-fade-in");
+    }
+
+    function renderPromotionsWidget(p) {
+      if (!promotionsWidgetGrid || !p) return;
+      promotionsWidgetGrid.innerHTML =
+        metricCard("Active Promotions", p.activePromotions) +
+        metricCard("Revenue Generated", window.AdminUI.formatCents(p.revenueGeneratedCents)) +
+        metricCard("Top Promotion", p.topPromotion ? p.topPromotion.code : "—", p.topPromotion ? window.AdminUI.formatCents(p.topPromotion.revenueCents) : null) +
+        metricCard("Expiring Soon", p.expiringSoon, "next 7 days") +
+        metricCard("Unused Promotions", p.unusedPromotions) +
+        metricCard("Average Discount", window.AdminUI.formatCents(p.averageDiscountCents)) +
+        metricCard("Top Influencer", p.topInfluencer ? p.topInfluencer.name : "—", p.topInfluencer ? window.AdminUI.formatCents(p.topInfluencer.commissionCents) + " commission" : null);
+      promotionsWidgetGrid.classList.add("a-fade-in");
     }
 
     function renderActivity(items) {
@@ -149,6 +164,7 @@ window.AdminPanels.dashboard = {
       renderMetrics(data.metrics);
       renderCharts(data.charts);
       renderActivity(data.recentActivity);
+      renderPromotionsWidget(data.promotions);
     }).catch(function (err) {
       window.AdminUI.toast(err.message, "error");
     });

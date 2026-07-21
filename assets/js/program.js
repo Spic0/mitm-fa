@@ -138,9 +138,9 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    var productId = new URLSearchParams(window.location.search).get("product");
+    var productId = decodeURIComponent(window.location.pathname.replace(/^\/my-library\//, "").split(/[/?#]/)[0] || "");
     if (!productId) {
-      window.location.href = "my-library.html";
+      window.location.href = "/my-library";
       return;
     }
 

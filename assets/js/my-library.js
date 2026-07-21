@@ -12,9 +12,9 @@
     if (items.length === 0) return; // leave the default "nothing yet" message in place
 
     grid.innerHTML = items.map(function (entry) {
-      var img = entry.product.imageUrl || "assets/images/product/product-image1.png";
+      var img = entry.product.imageUrl || "/assets/images/product/product-image1.png";
       var purchasedDate = new Date(entry.purchasedAt).toLocaleDateString();
-      var link = "program.html?product=" + encodeURIComponent(entry.product.slug);
+      var link = "/my-library/" + encodeURIComponent(entry.product.slug);
       return (
         '<div class="col-lg-4 col-md-6">' +
         '<div class="product__item bor" style="padding:20px;">' +
@@ -56,7 +56,7 @@
       api.getOrders().then(function (res) { renderOrders(res.orders); });
 
       document.getElementById("logoutBtn").addEventListener("click", function () {
-        api.logout().then(function () { window.location.href = "index.html"; });
+        api.logout().then(function () { window.location.href = "/"; });
       });
 
       var currentPasswordInput = document.getElementById("currentPassword");

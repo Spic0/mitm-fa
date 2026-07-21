@@ -54,17 +54,28 @@ CSS TABLE OF CONTENTS
 
 	// Mobile off-canvas drawer: hamburger opens/closes it, an overlay click
 	// or Escape closes it, and tapping a top-level item that owns a panel
-	// (.sub-menu / .mega-menu) drills into a dedicated full-width screen
-	// for that panel instead of expanding in place — .drill-open/.drilling
-	// drive the CSS for that (see style.css's mobile nav rules). Leaf links
-	// with no panel (e.g. Nutrition Plans' own sub-items) just navigate
-	// normally; this handler only intercepts the ones that own a panel.
+	// (.sub-menu / .mega-menu) expands it in place as a single-open
+	// accordion — see the click handler below and style.css's mobile nav
+	// rules (grid-template-rows 0fr/1fr on .open). Leaf links with no panel
+	// just navigate normally; that handler only intercepts the ones that
+	// own a panel. Deliberately doesn't reset any open panel here: an
+	// accordion section stays open for as long as the drawer itself stays
+	// open, even across a close/reopen.
+	// Swaps the hamburger glyph between bars (closed) and X (open). Both are
+	// Font Awesome 6 Pro solid icons, self-hosted with the project.
+	function setBarIcon(open) {
+		$(".site-header .header-bar__icon")
+			.toggleClass("fa-bars", !open)
+			.toggleClass("fa-xmark", open);
+		$(".site-header .header-bar").attr("aria-label", open ? "Close menu" : "Open menu");
+	}
+
 	function closeDrawer() {
 		$(".site-header .header-bar").removeClass("active").attr("aria-expanded", "false");
-		$(".site-header .main-menu").removeClass("active drilling");
-		$(".site-header .main-menu > li").removeClass("drill-open");
+		$(".site-header .main-menu").removeClass("active");
 		$("#navOverlay").removeClass("active");
 		$("body").removeClass("nav-open");
+		setBarIcon(false);
 	}
 
 	$(".site-header .header-bar").on("click", function (e) {
@@ -75,6 +86,7 @@ CSS TABLE OF CONTENTS
 			$(".site-header .main-menu").addClass("active");
 			$("#navOverlay").addClass("active");
 			$("body").addClass("nav-open");
+			setBarIcon(true);
 		} else {
 			closeDrawer();
 		}
@@ -93,20 +105,28 @@ CSS TABLE OF CONTENTS
 		if (e.key === "Escape" && $(window).width() < 992) closeDrawer();
 	});
 
-	// Drill down into a top-level item's panel (mobile only)
+	// Inline accordion (mobile only): tapping a top-level item that owns a
+	// panel (.sub-menu / .mega-menu) toggles it open/closed in place. Single-
+	// open — opening one panel closes whichever other one was open first, so
+	// there's never more than one expanded at a time. aria-expanded on the
+	// trigger link is the only state this writes; style.css keys both the
+	// panel's grid-template-rows and the chevron's rotation off .open/
+	// [aria-expanded] directly, so there's nothing else to keep in sync.
 	$(".site-header .main-menu > li > .nav-top-link").on("click", function (e) {
 		if ($(window).width() >= 992) return;
-		var li = $(this).parent("li");
-		if (!li.children("[data-menu-panel]").length) return; // no panel: let it navigate
+		var $link = $(this);
+		var $panel = $link.siblings("[data-menu-panel]");
+		if (!$panel.length) return; // no panel: let it navigate
 		e.preventDefault();
-		li.addClass("drill-open");
-		$(".site-header .main-menu").addClass("drilling");
-	});
+		var opening = !$panel.hasClass("open");
 
-	// Back button returns to the drawer's root list
-	$(".site-header .main-menu").on("click", ".mobile-nav-back", function () {
-		$(".site-header .main-menu").removeClass("drilling");
-		$(".site-header .main-menu > li").removeClass("drill-open");
+		$(".site-header .main-menu > li > [data-menu-panel].open").not($panel)
+			.removeClass("open")
+			.siblings(".nav-top-link")
+			.attr("aria-expanded", "false");
+
+		$panel.toggleClass("open", opening);
+		$link.attr("aria-expanded", String(opening));
 	});
 
 	// Desktop hover/focus opens the dropdown visually via CSS alone; this
@@ -322,12 +342,38 @@ CSS TABLE OF CONTENTS
 	// Get swiper slider area end here ***
 
 	// Background image date area start here ***
-	$("[data-background").each(function () {
-		$(this).css(
-			"background-image",
-			"url( " + $(this).attr("data-background") + "  )"
+	// Lazy: only sets background-image once an element is near the
+	// viewport, instead of every [data-background] element on the page
+	// (header banner, mid-page sections, footer alike) eagerly fetching its
+	// image on load regardless of scroll position. An element already in
+	// view at load (e.g. a page's top banner) gets its callback almost
+	// immediately, so this doesn't delay anything above the fold — it only
+	// defers what's actually below it (e.g. the footer background, which is
+	// otherwise downloaded on every single page load whether or not the
+	// visitor ever scrolls that far).
+	if ("IntersectionObserver" in window) {
+		var bgObserver = new IntersectionObserver(
+			function (entries) {
+				entries.forEach(function (entry) {
+					if (!entry.isIntersecting) return;
+					var el = entry.target;
+					$(el).css("background-image", "url( " + $(el).attr("data-background") + "  )");
+					bgObserver.unobserve(el);
+				});
+			},
+			{ rootMargin: "200px 0px" }
 		);
-	});
+		$("[data-background").each(function () {
+			bgObserver.observe(this);
+		});
+	} else {
+		$("[data-background").each(function () {
+			$(this).css(
+				"background-image",
+				"url( " + $(this).attr("data-background") + "  )"
+			);
+		});
+	}
 	// Background image date area end here ***
 
 	// Video popup area start here ***
@@ -365,11 +411,29 @@ CSS TABLE OF CONTENTS
 	// Video popup area end here ***
 
 	// Countdown area start here ***
-	var targetDate = new Date("2023-12-01 00:00:00").getTime();
-	// fix you date here
+	// Rolling 48h "offer ends in" window instead of a fixed calendar date —
+	// a hardcoded date always eventually goes stale and freezes at a negative
+	// value once it passes (this one was pinned to 2023-12-01 and had been
+	// showing a broken negative countdown for years). Persisting the target
+	// in localStorage means a returning visitor sees a consistent countdown
+	// instead of it resetting on every reload, and it self-renews a fresh
+	// 48h window on expiry instead of ever going stale again.
+	var COUNTDOWN_KEY = "profit_offer_countdown_target";
+	var COUNTDOWN_WINDOW_MS = 48 * 60 * 60 * 1000;
+	var targetDate = parseInt(localStorage.getItem(COUNTDOWN_KEY), 10);
+	if (!targetDate || targetDate <= Date.now()) {
+		targetDate = Date.now() + COUNTDOWN_WINDOW_MS;
+		localStorage.setItem(COUNTDOWN_KEY, targetDate);
+	}
 	var countdownInterval = setInterval(function () {
 		var currentDate = new Date().getTime();
 		var remainingTime = targetDate - currentDate;
+
+		if (remainingTime <= 0) {
+			targetDate = Date.now() + COUNTDOWN_WINDOW_MS;
+			localStorage.setItem(COUNTDOWN_KEY, targetDate);
+			remainingTime = targetDate - currentDate;
+		}
 
 		var days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
 		var hours = Math.floor(
@@ -385,11 +449,6 @@ CSS TABLE OF CONTENTS
 		$("#hour").text(hours.toString().padStart(2, "0"));
 		$("#min").text(minutes.toString().padStart(2, "0"));
 		$("#sec").text(seconds.toString().padStart(2, "0"));
-
-		if (remainingTime <= 0) {
-			clearInterval(countdownInterval);
-			// You can add a message or perform any action when the countdown timer reaches zero
-		}
 	}, 1000);
 	// Countdown area end here ***
 
@@ -579,7 +638,7 @@ CSS TABLE OF CONTENTS
 	function updateCartBadge() {
 		var cart = getCart();
 		var count = cart.reduce(function (n, item) { return n + item.qty; }, 0);
-		$("#cartCount, #cartDrawerCount").text(count);
+		$("#cartCount, #cartDrawerCount, #drawerCartCount").text(count);
 	}
 
 	function renderCartDrawer() {
@@ -593,7 +652,7 @@ CSS TABLE OF CONTENTS
 			return;
 		}
 		$.each(cart, function (i, item) {
-			var img = item.img ? '<img src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.name) + '">' : '<img src="assets/images/placeholder.jpg" alt="">';
+			var img = item.img ? '<img src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.name) + '">' : '<img src="/assets/images/placeholder.jpg" alt="">';
 			var html = '<div class="cart-item" data-id="' + item.id + '">' +
 				img +
 				'<div class="cart-item-info">' +
@@ -631,9 +690,9 @@ CSS TABLE OF CONTENTS
 
 			var html = '<p class="cart-recommended__title">You might also like</p><div class="cart-recommended__row">';
 			picks.forEach(function (p) {
-				var img = p.imageUrl || "assets/images/placeholder.jpg";
+				var img = p.imageUrl || "/assets/images/placeholder.jpg";
 				var price = (p.priceCents / 100).toFixed(2);
-				var link = "shop-single.html?slug=" + encodeURIComponent(p.slug);
+				var link = "/program/" + encodeURIComponent(p.slug);
 				// The whole tile is one add-to-cart tap target: the "Add" anchor
 				// stretches over the item (same pattern as product cards), with
 				// the product page href only as an open-in-new-tab fallback.
@@ -641,7 +700,7 @@ CSS TABLE OF CONTENTS
 					'<img src="' + escapeHtml(img) + '" alt="">' +
 					'<span class="cart-recommended__name">' + escapeHtml(p.name) + '</span>' +
 					'<span class="cart-recommended__price">$' + price + '</span>' +
-					'<a href="' + link + '" class="cart-recommended__add stretched-link" data-add-to-cart data-id="' + p.id + '" data-name="' + escapeHtml(p.name) + '" data-price="' + price + '" data-img="' + escapeHtml(img) + '" aria-label="Add ' + escapeHtml(p.name) + ' to cart, $' + price + '">Add</a>' +
+					'<a href="' + link + '" class="cart-recommended__add stretched-link" data-add-to-cart data-id="' + p.id + '" data-slug="' + escapeHtml(p.slug) + '" data-name="' + escapeHtml(p.name) + '" data-price="' + price + '" data-img="' + escapeHtml(img) + '" aria-label="Add ' + escapeHtml(p.name) + ' to cart, $' + price + '">Add</a>' +
 					'</div>';
 			});
 			html += '</div>';
@@ -659,8 +718,9 @@ CSS TABLE OF CONTENTS
 		$("body").removeClass("cart-open");
 	}
 
-	$(document).on("click", "#cartToggle", function (e) {
+	$(document).on("click", "#cartToggle, .js-cart-toggle", function (e) {
 		e.preventDefault();
+		closeDrawer(); // no-op if the mobile nav drawer wasn't open, needed when Cart is tapped from inside it
 		openCartDrawer();
 	});
 	$(document).on("click", "#cartClose, #cartOverlay", function () {
@@ -710,13 +770,14 @@ CSS TABLE OF CONTENTS
 		var price = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || parseFloat($btn.data("price")) || 0;
 		var img = $card.find("img").first().attr("src") || $btn.data("img") || "";
 		var id = $btn.data("id") || (name + "_" + price).replace(/\s+/g, "_");
+		var slug = $btn.data("slug") || null;
 
 		var cart = getCart();
 		var existing = cart.find(function (i) { return i.id === id; });
 		if (existing) {
 			existing.qty += 1;
 		} else {
-			cart.push({ id: id, name: name, price: price, img: img, qty: 1 });
+			cart.push({ id: id, slug: slug, name: name, price: price, img: img, qty: 1 });
 		}
 		saveCart(cart);
 		updateCartBadge();
@@ -745,6 +806,7 @@ CSS TABLE OF CONTENTS
 		} else {
 			cart.push({
 				id: id,
+				slug: $el.data("slug") || null,
 				name: $el.data("name") || "Product",
 				price: parseFloat($el.data("price")) || 0,
 				img: $el.data("img") || "",
@@ -786,7 +848,7 @@ CSS TABLE OF CONTENTS
 		}
 
 		setBuyNow({ id: id, name: name, price: price, img: img, qty: 1 });
-		window.location.href = "checkout.html?buynow=1";
+		window.location.href = "/checkout?buynow=1";
 	});
 
 	// Init badge on page load
@@ -825,17 +887,21 @@ CSS TABLE OF CONTENTS
 			$.each(cart, function (i, item) {
 				var lineTotal = parseFloat(item.price) * item.qty;
 				subtotal += lineTotal;
-				var img = item.img || "assets/images/shop/01.jpg";
+				var img = item.img || "/assets/images/shop/01.jpg";
 				var borderClass = (i < cart.length - 1) ? "bor-bottom" : "";
-				// The product's own page lookup accepts an id or a slug
-				// interchangeably (server resolves by either), so the cart
-				// line — which only has the id — can still deep-link there
-				// without needing to carry the slug through localStorage too.
-				var productLink = "shop-single.html?slug=" + encodeURIComponent(item.id);
+				// The product's public URL is slug-based (/program/<slug>), never
+				// the internal id — a cart line added before this field existed
+				// (stale localStorage from an older visit) has no slug yet; render
+				// its name as plain unlinked text rather than ever falling back to
+				// the raw id in the address bar. It self-heals next time the item
+				// is re-added or the cart is cleared at checkout.
+				var titleHtml = item.slug
+					? '<a href="/program/' + encodeURIComponent(item.slug) + '" class="stretched-link" style="color:inherit;">' + escapeHtml(item.name) + '</a>'
+					: escapeHtml(item.name);
 				html += '<div class="product p-4 ' + borderClass + ' d-flex justify-content-between align-items-center" data-id="' + item.id + '" style="position:relative;">' +
 					'<div class="product-details d-flex align-items-center">' +
 					'<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.name) + '" style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0;">' +
-					'<h4 class="ps-4 text-capitalize mb-0"><a href="' + productLink + '" class="stretched-link" style="color:inherit;">' + escapeHtml(item.name) + '</a></h4>' +
+					'<h4 class="ps-4 text-capitalize mb-0">' + titleHtml + '</h4>' +
 					'</div>' +
 					'<div class="product-price text-white">' + formatDollars(parseFloat(item.price)) + '</div>' +
 					'<div class="product-quantity">' +
@@ -908,6 +974,45 @@ CSS TABLE OF CONTENTS
 	// =====================================================
 	if ($("#checkoutOrderList").length) {
 
+		// --- Promo code ---
+		// appliedPromo (manually entered, confirmed via /api/promotions/validate)
+		// takes visual precedence over autoPromo (a site-wide/category auto-apply
+		// promotion, discovered without any code) in this preview banner. The
+		// authoritative combined total — including a possible stacked
+		// auto-apply promotion alongside a manual one — is always computed
+		// server-side at create/update-intent time (server/src/lib/
+		// checkoutItems.js); this preview intentionally doesn't replicate that
+		// full combination logic, it just needs to be in the right ballpark and
+		// never overstate what the shopper will actually be charged.
+		var appliedPromo = null; // { code, name, discountCents }
+		var autoPromo = null;
+		window.ProFitCart.appliedPromoCode = null;
+
+		function checkoutItemsForPromo() {
+			return getCheckoutItems().map(function (item) { return { productId: item.id, qty: item.qty || 1 }; });
+		}
+		function currentEmailForPromo() {
+			var el = document.getElementById("email");
+			return el ? el.value.trim().toLowerCase() : "";
+		}
+		function showPromoMsg(message, isError) {
+			var $el = $("#promoMsg");
+			if (!$el.length) return;
+			if (!message) { $el.addClass("u-hidden").text(""); return; }
+			$el.text(message).removeClass("u-hidden").toggleClass("is-error", !!isError).toggleClass("is-success", !isError);
+		}
+		// Only called when no manual code is applied — a single, cart-driven
+		// (not polled) check for a site-wide/category promotion that needs no
+		// code at all.
+		function refreshAutoPromo() {
+			if (appliedPromo) { autoPromo = null; return Promise.resolve(); }
+			var items = checkoutItemsForPromo();
+			if (!items.length) { autoPromo = null; return Promise.resolve(); }
+			return window.ProFitAPI.getAutoApplyPromotion(items, currentEmailForPromo()).then(function (data) {
+				autoPromo = data.applied ? { code: data.promotion.code, name: data.promotion.name, discountCents: data.discountCents } : null;
+			}).catch(function () { autoPromo = null; });
+		}
+
 		// --- Order summary ---
 		function renderCheckoutSummary() {
 			var cart = getCheckoutItems();
@@ -931,12 +1036,71 @@ CSS TABLE OF CONTENTS
 				});
 			}
 			$("#coSubtotal").text(formatDollars(subtotal));
-			$("#coTotal").text(formatDollars(subtotal));
+
+			var subtotalCents = Math.round(subtotal * 100);
+			var discountCents = Math.min((appliedPromo || autoPromo || {}).discountCents || 0, subtotalCents);
+			if (discountCents > 0) {
+				$("#coDiscountRow").removeClass("u-hidden");
+				$("#coDiscount").text("−" + formatDollars(discountCents / 100));
+			} else {
+				$("#coDiscountRow").addClass("u-hidden");
+			}
+			$("#coTotal").text(formatDollars((subtotalCents - discountCents) / 100));
 		}
 		renderCheckoutSummary();
+		refreshAutoPromo().then(renderCheckoutSummary);
 		// Adding a checkout-page recommendation (or any other cart mutation)
-		// re-renders the summary instantly — no page reload, no polling.
-		document.addEventListener("profit:cart-changed", renderCheckoutSummary);
+		// re-renders the summary instantly — no page reload, no polling. If a
+		// promo code is already applied, it's silently re-validated once per
+		// change (a min-spend code can stop qualifying as the cart shrinks);
+		// with none applied, auto-apply eligibility is re-checked instead.
+		document.addEventListener("profit:cart-changed", function () {
+			if (appliedPromo) {
+				var items = checkoutItemsForPromo();
+				window.ProFitAPI.validatePromoCode(appliedPromo.code, items, currentEmailForPromo()).then(function (data) {
+					if (!data.ok) {
+						appliedPromo = null;
+						window.ProFitCart.appliedPromoCode = null;
+						showPromoMsg("\"" + $("#promoCodeInput").val().trim() + "\" no longer applies to your cart.", true);
+					} else {
+						appliedPromo.discountCents = data.discountCents;
+					}
+					renderCheckoutSummary();
+				}).catch(function () { renderCheckoutSummary(); });
+			} else {
+				refreshAutoPromo().then(renderCheckoutSummary);
+			}
+		});
+
+		$("#promoApplyBtn").on("click", function () {
+			var $btn = $(this);
+			var code = $("#promoCodeInput").val().trim();
+			if (!code) { showPromoMsg("Enter a promo code", true); return; }
+			var items = checkoutItemsForPromo();
+			if (!items.length) { showPromoMsg("Your cart is empty", true); return; }
+
+			$btn.prop("disabled", true);
+			window.ProFitAPI.validatePromoCode(code, items, currentEmailForPromo()).then(function (data) {
+				$btn.prop("disabled", false);
+				if (!data.ok) {
+					showPromoMsg(data.reason || "This code isn't valid", true);
+					return;
+				}
+				appliedPromo = { code: data.promotion.code, name: data.promotion.name, discountCents: data.discountCents };
+				autoPromo = null;
+				window.ProFitCart.appliedPromoCode = appliedPromo.code;
+				showPromoMsg("“" + data.promotion.code + "” applied — " + formatDollars(data.discountCents / 100) + " off", false);
+				renderCheckoutSummary();
+				// Keeps the live PaymentIntent's charged amount (and PayPal's
+				// next create-order call) in sync with the newly applied code —
+				// same event checkout-payments.js already listens for on any
+				// other cart mutation.
+				document.dispatchEvent(new CustomEvent("profit:cart-changed"));
+			}).catch(function (err) {
+				$btn.prop("disabled", false);
+				showPromoMsg(err.message || "Could not validate this code", true);
+			});
+		});
 
 		// --- Express pay buttons (scroll to tab) ---
 		$(document).on("click", ".co-express-btn", function () {

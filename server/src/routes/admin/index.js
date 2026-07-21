@@ -12,20 +12,33 @@ const paymentLogsRoutes = require("./paymentLogs");
 const systemLogsRoutes = require("./systemLogs");
 const settingsRoutes = require("./settings");
 const taxonomyRoutes = require("./taxonomy");
+const promotionsRoutes = require("./promotions");
+const influencersRoutes = require("./influencers");
+const promotionNotificationsRoutes = require("./promotionNotifications");
 
 const router = express.Router();
 
-router.use(requireAuth, requireAdmin, apiLimiter);
+// Every /api/admin/* route requires a logged-in user, at minimum. The
+// admin-only gate (requireAdmin) used to be blanket-applied here too, but
+// Promotions now has a real "manager" tier (view/pause/resume only) — so
+// requireAdmin is applied per-section below instead, and promotions.js/
+// influencers.js/promotionNotifications.js do their own finer-grained
+// requirePromotionView/requirePromotionManage gating per route. Every other
+// section's access is unchanged: still admin-only.
+router.use(requireAuth, apiLimiter);
 
-router.use("/dashboard", dashboardRoutes);
-router.use("/orders", ordersRoutes);
-router.use("/products", productsRoutes);
-router.use("/customers", customersRoutes);
-router.use("/analytics", analyticsRoutes);
-router.use("/email-logs", emailLogsRoutes);
-router.use("/payment-logs", paymentLogsRoutes);
-router.use("/system-logs", systemLogsRoutes);
-router.use("/settings", settingsRoutes);
-router.use("/taxonomy", taxonomyRoutes);
+router.use("/dashboard", requireAdmin, dashboardRoutes);
+router.use("/orders", requireAdmin, ordersRoutes);
+router.use("/products", requireAdmin, productsRoutes);
+router.use("/customers", requireAdmin, customersRoutes);
+router.use("/analytics", requireAdmin, analyticsRoutes);
+router.use("/email-logs", requireAdmin, emailLogsRoutes);
+router.use("/payment-logs", requireAdmin, paymentLogsRoutes);
+router.use("/system-logs", requireAdmin, systemLogsRoutes);
+router.use("/settings", requireAdmin, settingsRoutes);
+router.use("/taxonomy", requireAdmin, taxonomyRoutes);
+router.use("/promotions", promotionsRoutes);
+router.use("/influencers", influencersRoutes);
+router.use("/promotion-notifications", promotionNotificationsRoutes);
 
 module.exports = router;

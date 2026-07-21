@@ -1,5 +1,7 @@
 /* Homepage dynamic sections: a dynamic product hero slideshow (.hero-
-   slideshow), a scrolling people-marquee directly under it, an Athletes/
+   slideshow), a scrolling product-title marquee directly under it (class
+   names still say "people-marquee" — same reused marquee CSS/markup, just
+   fed product titles instead of Athlete/Creator names now), an Athletes/
    Creators people-strip, and a deal-cards product strip. Mobile-first: base
    rules below target phones, larger screens are added via min-width media
    queries further down. The strips are native horizontal-scroll +
@@ -17,7 +19,14 @@
   overflow: hidden;
   display: flex;
   align-items: center;
+  /* Mobile: the hero should fill nearly the first screen (logo + nav above
+     it, everything else below the fold) — svh/vh sized with a fixed-px
+     floor and fallback for browsers without max()/svh support. Larger
+     breakpoints below override with their own fixed min-heights, which win
+     on cascade order regardless of viewport height. */
   min-height: 520px;
+  min-height: max(520px, 88vh);
+  min-height: max(520px, 88svh);
   padding: 84px 0 32px;
   background: var(--color-text); /* dark fallback while the first image loads */
 }
@@ -101,7 +110,7 @@
   font-size: 12px;
   font-weight: 600;
   color: #ffffff;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
   backdrop-filter: blur(4px);
 }
 .hero-slideshow__badge img {
@@ -115,7 +124,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.75);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   min-height: 1.2em; /* reserves its line even before content loads/swaps, avoiding CLS */
 }
 .hero-slideshow h1 {
@@ -123,13 +132,13 @@
   line-height: 1.2;
   font-weight: 700;
   color: #ffffff;
-  margin: 0 0 10px;
+  margin: 0 0 14px;
 }
 .hero-slideshow__desc {
   font-size: 14px;
   line-height: 1.55;
   color: rgba(255, 255, 255, 0.82);
-  margin: 0 0 18px;
+  margin: 0 0 26px;
   max-width: 48ch;
   /* Fixed 2-line box regardless of a given product's description length —
      content swaps never reflow the hero's height (no CLS between slides). */
@@ -139,22 +148,36 @@
   overflow: hidden;
   min-height: 2.8em;
 }
+/* Price is the primary visual anchor, ranked above the CTA in both markup
+   order and weight — the user should register the value proposition
+   (headline -> description -> price) before reaching the "Shop Now" action,
+   per the conversion-path spec this hero was redesigned around. */
+.hero-slideshow__price {
+  display: block;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  margin: 0 0 22px;
+  min-height: 1.1em; /* reserves its line before content loads/swaps, avoiding CLS */
+}
 .hero-slideshow__cta-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
 }
 .hero-slideshow__cta.btn-one {
   /* Inverted from the sitewide dark .btn-one — a near-black button would
      nearly disappear against this section's own dark, blurred backdrop. A
-     light, high-contrast button is what actually needs to pop here. */
+     light, high-contrast button is what actually needs to pop here.
+     Deliberately not the visual anchor of the hero (the price above is) —
+     full-width for thumb reach, but no oversized padding/shadow to compete
+     with it. */
   width: 100%;
   text-align: center;
   background-color: #ffffff;
   color: var(--color-text);
-  padding-left: 32px;
-  padding-right: 32px;
+  padding-left: 28px;
+  padding-right: 28px;
 }
 .hero-slideshow__cta.btn-one:hover {
   background-color: #f0f0f0;
@@ -162,11 +185,6 @@
 }
 .hero-slideshow__cta.btn-one span {
   color: inherit;
-}
-.hero-slideshow__price {
-  font-size: 15px;
-  font-weight: 700;
-  color: #ffffff;
 }
 
 @media (min-width: 420px) {
@@ -184,9 +202,8 @@
   .hero-slideshow__desc {
     font-size: 15px;
   }
-  .hero-slideshow__cta-row {
-    flex-direction: row;
-    align-items: center;
+  .hero-slideshow__price {
+    font-size: 38px;
   }
 }
 @media (min-width: 768px) {
@@ -196,6 +213,9 @@
   }
   .hero-slideshow h1 {
     font-size: 44px;
+  }
+  .hero-slideshow__price {
+    font-size: 42px;
   }
 }
 @media (min-width: 992px) {
@@ -210,6 +230,9 @@
     font-size: 16px;
     -webkit-line-clamp: 3;
     min-height: 4.6em;
+  }
+  .hero-slideshow__price {
+    font-size: 46px;
   }
 }
 @media (min-width: 1300px) {
@@ -270,19 +293,6 @@
 .people-marquee .marquee-item a {
   color: inherit;
   text-decoration: none;
-}
-.people-marquee .marquee-item__kind {
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--primary-color);
-  opacity: 0.8;
-}
-.people-marquee .marquee-item img {
-  width: 12px;
-  height: 12px;
-  margin-top: 0;
-  opacity: 0.5;
 }
 @media (min-width: 576px) {
   .marquee-wrapper.people-marquee {

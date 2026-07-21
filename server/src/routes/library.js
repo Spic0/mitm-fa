@@ -6,6 +6,7 @@ const { hasEntitlement } = require("../lib/entitlements");
 const { mintDownloadToken, verifyDownloadToken } = require("../lib/signedDownload");
 const { apiLimiter } = require("../middleware/rateLimit");
 const { logEvent } = require("../lib/adminLog");
+const { normalizeImageUrl } = require("../lib/media");
 
 const router = express.Router();
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "storage", "resources");
@@ -32,7 +33,7 @@ router.get("/", async (req, res) => {
           id: item.product.id,
           slug: item.product.slug,
           name: item.product.name,
-          imageUrl: item.product.imageUrl,
+          imageUrl: normalizeImageUrl(item.product.imageUrl),
           description: item.product.description,
           creator: item.product.creator,
           difficulty: item.product.difficulty,
@@ -105,7 +106,7 @@ router.get("/program/:productId", async (req, res) => {
       id: product.id,
       slug: product.slug,
       name: product.name,
-      imageUrl: product.imageUrl,
+      imageUrl: normalizeImageUrl(product.imageUrl),
       creator: product.creator,
       difficulty: product.difficulty,
       durationWeeks: product.durationWeeks,

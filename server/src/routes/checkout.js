@@ -22,7 +22,11 @@ router.post("/stripe/create-intent", async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
     requireValidEmail(email);
-    const { totalCents } = await resolveCheckoutItems(req.body.items);
+    const promoCode = req.body.promoCode ? String(req.body.promoCode) : undefined;
+    const { totalCents, discountCents, promotionId, appliedPromotions } = await resolveCheckoutItems(req.body.items, {
+      promoCode,
+      email,
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalCents,
@@ -32,6 +36,9 @@ router.post("/stripe/create-intent", async (req, res) => {
       metadata: {
         email,
         items: JSON.stringify(req.body.items),
+        discountCents: String(discountCents),
+        promotionId: promotionId || "",
+        appliedPromotions: JSON.stringify(appliedPromotions),
       },
     });
 
@@ -40,6 +47,7 @@ router.post("/stripe/create-intent", async (req, res) => {
       clientSecret: paymentIntent.client_secret,
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
       totalCents,
+      discountCents,
     });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -57,14 +65,25 @@ router.post("/stripe/update-intent", async (req, res) => {
   try {
     const paymentIntentId = String(req.body.paymentIntentId || "");
     if (!paymentIntentId) throw new Error("paymentIntentId is required");
-    const { totalCents } = await resolveCheckoutItems(req.body.items);
+    const existing = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const email = existing.metadata?.email;
+    const promoCode = req.body.promoCode ? String(req.body.promoCode) : undefined;
+    const { totalCents, discountCents, promotionId, appliedPromotions } = await resolveCheckoutItems(req.body.items, {
+      promoCode,
+      email,
+    });
 
     const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
       amount: totalCents,
-      metadata: { items: JSON.stringify(req.body.items) },
+      metadata: {
+        items: JSON.stringify(req.body.items),
+        discountCents: String(discountCents),
+        promotionId: promotionId || "",
+        appliedPromotions: JSON.stringify(appliedPromotions),
+      },
     });
 
-    res.json({ totalCents: paymentIntent.amount });
+    res.json({ totalCents: paymentIntent.amount, discountCents });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -80,7 +99,7 @@ router.post("/stripe/finalize", async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const { sessionToken } = await fulfillFromPaymentIntent(paymentIntent);
     setSessionCookie(res, sessionToken);
-    res.json({ ok: true, redirect: "/my-library.html" });
+    res.json({ ok: true, redirect: "/my-library" });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -90,14 +109,25 @@ router.post("/paypal/create-order", async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
     requireValidEmail(email);
-    const { totalCents } = await resolveCheckoutItems(req.body.items);
+    const promoCode = req.body.promoCode ? String(req.body.promoCode) : undefined;
+    const { totalCents, discountCents, promotionId, appliedPromotions } = await resolveCheckoutItems(req.body.items, {
+      promoCode,
+      email,
+    });
 
     const pending = await prisma.pendingCheckout.create({
-      data: { email, itemsJson: JSON.stringify(req.body.items), totalCents },
+      data: {
+        email,
+        itemsJson: JSON.stringify(req.body.items),
+        totalCents,
+        discountCents,
+        promotionId,
+        appliedPromotionsJson: JSON.stringify(appliedPromotions),
+      },
     });
 
     const order = await paypal.createOrder(totalCents, pending.id);
-    res.json({ orderId: order.id });
+    res.json({ orderId: order.id, totalCents, discountCents });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -124,14 +154,22 @@ router.post("/paypal/capture-order", async (req, res) => {
     if (!pending) return res.status(400).json({ error: "Checkout session not found" });
 
     const rawItems = JSON.parse(pending.itemsJson);
-    const { resolvedItems, totalCents } = await resolveCheckoutItems(rawItems);
+    // Items re-resolved fresh (same pre-existing price-drift behavior as
+    // Stripe); the discount is read back verbatim from the pending row
+    // rather than recomputed — see the schema comment on PendingCheckout.
+    const { resolvedItems, totalCents: baseTotalCents } = await resolveCheckoutItems(rawItems);
+    const discountCents = pending.discountCents || 0;
+    const appliedPromotions = pending.appliedPromotionsJson ? JSON.parse(pending.appliedPromotionsJson) : [];
 
     const { order, sessionToken } = await fulfillOrder({
       email: pending.email,
       provider: "paypal",
       providerRef: orderId,
       items: resolvedItems,
-      totalCents,
+      totalCents: Math.max(0, baseTotalCents - discountCents),
+      discountCents,
+      promotionId: pending.promotionId,
+      appliedPromotions,
     });
 
     await logPaymentEvent({
@@ -145,7 +183,7 @@ router.post("/paypal/capture-order", async (req, res) => {
     });
 
     setSessionCookie(res, sessionToken);
-    res.json({ ok: true, redirect: "/my-library.html" });
+    res.json({ ok: true, redirect: "/my-library" });
   } catch (err) {
     await logPaymentEvent({
       provider: "paypal",

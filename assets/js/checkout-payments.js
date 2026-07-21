@@ -42,7 +42,7 @@
 
   function goToLibrary() {
     clearCartOrBuyNow();
-    window.location.href = "/my-library.html";
+    window.location.href = "/my-library";
   }
 
   function setPlaceOrderBusy(busy, label) {
@@ -77,7 +77,7 @@
         return;
       }
       stripe = Stripe(config.stripePublishableKey);
-      var intent = await api.createStripeIntent(items, email);
+      var intent = await api.createStripeIntent(items, email, cart.appliedPromoCode);
       currentPaymentIntentId = intent.id;
       elements = stripe.elements({ clientSecret: intent.clientSecret });
       var paymentElement = elements.create("payment");
@@ -100,7 +100,7 @@
   async function syncPaymentIntentIfNeeded() {
     if (!paymentElementMounted || !currentPaymentIntentId) return;
     try {
-      await api.updateStripeIntent(currentPaymentIntentId, checkoutItemsPayload());
+      await api.updateStripeIntent(currentPaymentIntentId, checkoutItemsPayload(), cart.appliedPromoCode);
       if (elements && typeof elements.fetchUpdates === "function") {
         await elements.fetchUpdates();
       }
@@ -128,7 +128,7 @@
 
       var html = '<p class="co-recommend__ttl">Add a little extra</p><div class="co-recommend__row">';
       products.forEach(function (p) {
-        var img = p.imageUrl || "assets/images/placeholder.jpg";
+        var img = p.imageUrl || "/assets/images/placeholder.jpg";
         var price = (p.priceCents / 100).toFixed(2);
         html +=
           '<div class="co-recommend__item">' +
@@ -184,7 +184,7 @@
     try {
       var result = await stripe.confirmPayment({
         elements: elements,
-        confirmParams: { return_url: window.location.origin + "/checkout.html" },
+        confirmParams: { return_url: window.location.origin + "/checkout" },
         redirect: "if_required",
       });
       if (result.error) {
@@ -216,7 +216,7 @@
             showError("Please enter a valid email above before paying with PayPal.");
             return Promise.reject(new Error("invalid email"));
           }
-          return api.createPaypalOrder(checkoutItemsPayload(), email).then(function (data) {
+          return api.createPaypalOrder(checkoutItemsPayload(), email, cart.appliedPromoCode).then(function (data) {
             return data.orderId;
           });
         },
@@ -263,7 +263,7 @@
     if (handledRedirect) return;
 
     if (cart.getCheckoutItems().length === 0) {
-      window.location.href = "shop.html";
+      window.location.href = "/shop";
       return;
     }
 

@@ -4993,7 +4993,13 @@ body.cart-open { overflow: hidden; }
     position: fixed;
     top: 0;
     left: auto;
-    right: -100%;
+    /* Was `right: -100%` animated via `transition: right`. `right` is a
+       layout property: every frame of the slide forced a reflow plus a full
+       repaint of the drawer, which is what made it feel like the UI was
+       redrawing rather than sliding. The drawer now sits at right:0
+       permanently and moves on `transform`, which the compositor can animate
+       on its own thread without touching layout. */
+    right: 0;
     margin: 0;
     width: min(85vw, 340px);
     /* See .cart-drawer — 100vh would push the drawer's bottom rows (the
@@ -5010,11 +5016,32 @@ body.cart-open { overflow: hidden; }
     /* !important because that same legacy rule also has
        `transition: all 2s !important`, which would otherwise win on
        importance alone and turn this into a sluggish 2s slide. */
-    transition: right 0.3s ease !important;
+    transform: translate3d(100%, 0, 0);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    /* translate3d + backface-visibility promote this to its own compositor
+       layer up front, so the first drag frame doesn't pay for layer creation.
+       will-change is scoped to the drawer only — applying it broadly costs
+       memory for no benefit. */
+    will-change: transform;
+    backface-visibility: hidden;
     display: block !important;
+    /* The drag handler manages horizontal panning itself; letting the browser
+       also claim horizontal gestures makes the drag fight the scroller. */
+    touch-action: pan-y;
   }
   .site-header .main-menu.active {
-    right: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  /* While a finger is down the drawer follows it exactly — any transition
+       here would lag the gesture behind the thumb. */
+  .site-header .main-menu.is-dragging {
+    transition: none !important;
+  }
+  /* Users who ask for reduced motion get the state change without the slide. */
+  @media (prefers-reduced-motion: reduce) {
+    .site-header .main-menu {
+      transition: none !important;
+    }
   }
   .nav-overlay {
     position: fixed;
@@ -5029,7 +5056,17 @@ body.cart-open { overflow: hidden; }
     opacity: 1;
     visibility: visible;
   }
-  body.nav-open { overflow: hidden; }
+  /* position:fixed rather than overflow:hidden — iOS Safari honours the
+     former for touch scrolling and ignores the latter. `top` is set inline by
+     lockBodyScroll() to preserve the scroll offset while pinned. */
+  body.nav-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  /* Keeps a scroll that reaches the end of the drawer's own list from
+     chaining through to the page behind it. */
+  .site-header .main-menu { overscroll-behavior: contain; }
 }
 @media (max-width: 767px) {
   .cart-drawer { width: 100vw; }
@@ -7009,4 +7046,96 @@ body.cart-open { overflow: hidden; }
     height: auto;
     min-height: 44px;
   }
+}
+
+/* =====================================================================
+   MOBILE FOOTER — collapsible accordion sections
+   =====================================================================
+   The footer's four link columns stack into one long scroll on a phone
+   (~5 links each plus a newsletter block). Below 768px each column
+   collapses behind its own heading, so the footer becomes four tappable
+   rows instead of a wall of ~20 links.
+
+   Deliberately driven off the markup that already exists on all 19 pages
+   (.footer__item > .footer-title + ul) rather than new per-page markup —
+   there is no footer partial, so anything requiring an HTML change would
+   have to be applied 19 times and would drift.
+
+   Desktop is untouched: everything here is inside the media query, and
+   the panels are only collapsed when .footer-title carries [aria-expanded],
+   which script.js only sets below 768px. */
+@media (max-width: 767px) {
+  .footer-area .footer__wrp { padding-top: 32px !important; padding-bottom: 8px !important; }
+  .footer-area .row.g-4 { --bs-gutter-y: 0; }
+
+  .footer__item { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .footer__item .footer-title[aria-expanded] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* 56px total height — comfortably above the 44px minimum touch target,
+       and the whole row is the target, not just the words. */
+    padding: 18px 2px;
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    user-select: none;
+  }
+  .footer__item .footer-title[aria-expanded]::after {
+    content: "\f078"; /* chevron-down */
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 11px;
+    opacity: 0.6;
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .footer__item .footer-title[aria-expanded="true"]::after { transform: rotate(180deg); }
+
+  /* max-height rather than the grid-template-rows 0fr/1fr trick the nav
+     accordion uses: that technique needs the collapsing element to be a grid
+     container with ONE child, and these panels are <ul>s with five <li>s —
+     only the first implicit row would collapse, leaving the rest visible.
+     The cap is deliberately well above the tallest real section (5 links
+     ~240px) so content is never clipped; easing over a slightly larger range
+     is imperceptible at this size. */
+  .footer__item > ul {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .footer__item.is-open > ul {
+    max-height: 420px;
+    padding-bottom: 8px;
+  }
+
+  /* Larger tap targets for the links themselves once revealed. */
+  .footer__item > ul li > a {
+    display: block;
+    padding: 11px 2px;
+    font-size: 14px;
+  }
+
+  /* The newsletter column has no list — its heading stays a plain label and
+     its controls are always visible, since collapsing a single input adds a
+     tap for no saving. */
+  .footer__item.newsletter { border-bottom: none; padding-top: 8px; }
+  .footer__item.newsletter .subscribe,
+  .footer__item.newsletter .social-icon { grid-template-rows: 1fr; }
+  .footer__item.newsletter .social-icon { margin-top: 20px !important; }
+  .footer__item.newsletter .social-icon a {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .footer__item.newsletter .subscribe input { padding: 14px 16px; font-size: 14px; }
+
+  /* Trim the dead space the desktop layout leaves behind. */
+  .footer__copy-text { padding-top: 24px !important; padding-bottom: 16px !important; }
+  .footer__bottombar { flex-direction: column; gap: 12px; text-align: center; padding-bottom: 24px; }
+  .footer__legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; }
+  .footer__legal a { padding: 8px 0; font-size: 13px; }
+  .footer__bottombar-copy { font-size: 13px; }
 }

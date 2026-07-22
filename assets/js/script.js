@@ -70,27 +70,139 @@ CSS TABLE OF CONTENTS
 		$(".site-header .header-bar").attr("aria-label", open ? "Close menu" : "Open menu");
 	}
 
+	// iOS Safari ignores `overflow:hidden` on <body> for touch scrolling, so
+	// the page behind the drawer still scrolled under your finger. Pinning the
+	// body with position:fixed does hold, but collapses the scroll position to
+	// 0 — so the offset is stashed and restored on unlock, which is what stops
+	// the page jumping to the top every time the menu closes.
+	var savedScrollY = 0;
+	function lockBodyScroll() {
+		savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+		document.body.style.top = -savedScrollY + "px";
+		$("body").addClass("nav-open");
+	}
+	function unlockBodyScroll() {
+		$("body").removeClass("nav-open");
+		document.body.style.top = "";
+		// 'instant' matters: a smooth restore animates the page back down and
+		// reads as exactly the scroll-jump this is meant to prevent.
+		window.scrollTo({ top: savedScrollY, behavior: "instant" });
+	}
+
 	function closeDrawer() {
 		$(".site-header .header-bar").removeClass("active").attr("aria-expanded", "false");
-		$(".site-header .main-menu").removeClass("active");
-		$("#navOverlay").removeClass("active");
-		$("body").removeClass("nav-open");
+		$(".site-header .main-menu").removeClass("active").css("transform", "");
+		$("#navOverlay").removeClass("active").css("opacity", "");
+		if ($("body").hasClass("nav-open")) unlockBodyScroll();
 		setBarIcon(false);
+	}
+
+	function openDrawer() {
+		$(".site-header .header-bar").addClass("active").attr("aria-expanded", "true");
+		$(".site-header .main-menu").addClass("active").css("transform", "");
+		$("#navOverlay").addClass("active").css("opacity", "");
+		lockBodyScroll();
+		setBarIcon(true);
 	}
 
 	$(".site-header .header-bar").on("click", function (e) {
 		e.stopPropagation();
-		var opening = !$(this).hasClass("active");
-		if (opening) {
-			$(this).addClass("active").attr("aria-expanded", "true");
-			$(".site-header .main-menu").addClass("active");
-			$("#navOverlay").addClass("active");
-			$("body").addClass("nav-open");
-			setBarIcon(true);
-		} else {
-			closeDrawer();
-		}
+		if (!$(this).hasClass("active")) openDrawer();
+		else closeDrawer();
 	});
+
+	// ---- Swipe-to-close ---------------------------------------------------
+	// Native-feeling drag: the drawer tracks the finger 1:1, then either
+	// completes or springs back based on how far AND how fast it was thrown.
+	// Distance alone makes a quick flick feel unresponsive; velocity alone
+	// makes a slow deliberate push fail.
+	(function enableDrawerSwipe() {
+		var drawer = document.querySelector(".site-header .main-menu");
+		var overlay = document.getElementById("navOverlay");
+		if (!drawer) return;
+
+		var startX = 0, startY = 0, lastX = 0, lastT = 0, velocity = 0;
+		var dragging = false, decided = false, width = 0;
+
+		function isOpen() { return drawer.classList.contains("active"); }
+
+		drawer.addEventListener("touchstart", function (e) {
+			if (!isOpen() || e.touches.length !== 1) return;
+			var t = e.touches[0];
+			startX = lastX = t.clientX;
+			startY = t.clientY;
+			lastT = Date.now();
+			velocity = 0;
+			width = drawer.offsetWidth || 320;
+			dragging = true;
+			decided = false;
+		}, { passive: true });
+
+		drawer.addEventListener("touchmove", function (e) {
+			if (!dragging) return;
+			var t = e.touches[0];
+			var dx = t.clientX - startX;
+			var dy = t.clientY - startY;
+
+			// The first meaningful movement decides the gesture's axis.
+			// Without this, scrolling the menu vertically drags it sideways.
+			if (!decided) {
+				if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+				if (Math.abs(dy) > Math.abs(dx)) { dragging = false; return; }
+				decided = true;
+				drawer.classList.add("is-dragging");
+			}
+
+			// Only closing (rightward) drags track 1:1. Pulling left past the
+			// open position is damped rather than blocked, so the edge still
+			// feels physical instead of dead.
+			var offset = dx > 0 ? dx : dx / 4;
+			var now = Date.now();
+			var dt = now - lastT;
+			if (dt > 0) velocity = (t.clientX - lastX) / dt; // px per ms
+			lastX = t.clientX;
+			lastT = now;
+
+			drawer.style.transform = "translate3d(" + offset + "px,0,0)";
+			// Overlay fades in step with the drawer so the two never desync.
+			if (overlay) overlay.style.opacity = String(Math.max(0, 1 - offset / width));
+		}, { passive: true });
+
+		function endDrag() {
+			if (!dragging) return;
+			dragging = false;
+			if (!decided) return;
+			drawer.classList.remove("is-dragging");
+
+			var offset = lastX - startX;
+			// Either thrown hard enough, or dragged more than a third of the
+			// way across. 0.45 px/ms is about a deliberate flick, not a drift.
+			var shouldClose = velocity > 0.45 || offset > width * 0.33;
+
+			if (shouldClose) {
+				// Carry the throw's speed into the closing animation rather
+				// than always using one duration — a hard flick finishes fast,
+				// a gentle push glides.
+				var remaining = Math.max(0, width - offset);
+				var ms = velocity > 0.45
+					? Math.min(320, Math.max(120, remaining / Math.abs(velocity)))
+					: 280;
+				drawer.style.transition = "transform " + Math.round(ms) + "ms cubic-bezier(0.32,0.72,0,1)";
+				drawer.style.transform = "translate3d(100%,0,0)";
+				setTimeout(function () {
+					drawer.style.transition = "";
+					closeDrawer();
+				}, Math.round(ms));
+			} else {
+				drawer.style.transition = "";
+				drawer.style.transform = "";
+				if (overlay) overlay.style.opacity = "";
+			}
+		}
+
+		drawer.addEventListener("touchend", endDrag, { passive: true });
+		drawer.addEventListener("touchcancel", endDrag, { passive: true });
+	})();
 
 	$(document).on("click", "#navOverlay", closeDrawer);
 
@@ -1195,4 +1307,71 @@ CSS TABLE OF CONTENTS
 	// END CART SYSTEM
 	// =====================================================
 
+})(jQuery);
+
+// =====================================================================
+// MOBILE FOOTER ACCORDION
+// =====================================================================
+// Collapses the footer's link columns behind their headings below 768px.
+// Progressive enhancement: the [aria-expanded] attribute this adds is what
+// the CSS keys the collapsed state off, so with JS unavailable the footer
+// stays fully expanded and every link remains reachable.
+(function footerAccordion($) {
+	var MOBILE = 767;
+	var wired = false;
+
+	function titles() {
+		// The newsletter column is excluded — it holds a single input rather
+		// than a link list, so collapsing it costs a tap and saves nothing.
+		return $(".footer-area .footer__item").not(".newsletter").find("> .footer-title");
+	}
+
+	function enable() {
+		if (wired) return;
+		wired = true;
+		titles().each(function (i) {
+			var $t = $(this);
+			$t.attr({ role: "button", tabindex: "0", "aria-expanded": "false" });
+			// First section open by default: an all-collapsed footer reads as
+			// empty, and Customer Service is the one people actually want.
+			//
+			// Indexed off the collection, NOT :first-of-type — every
+			// .footer__item sits in its own Bootstrap column, so each one is
+			// the first (and only) .footer__item within its own parent and
+			// :first-of-type matched all of them, opening every section.
+			if (i === 0) {
+				$t.attr("aria-expanded", "true").closest(".footer__item").addClass("is-open");
+			}
+		});
+	}
+
+	function disable() {
+		if (!wired) return;
+		wired = false;
+		titles().removeAttr("role tabindex aria-expanded")
+			.closest(".footer__item").removeClass("is-open");
+	}
+
+	function sync() {
+		if ($(window).width() <= MOBILE) enable();
+		else disable();
+	}
+
+	$(document).on("click keydown", ".footer-area .footer__item:not(.newsletter) > .footer-title[aria-expanded]", function (e) {
+		if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+		e.preventDefault();
+		var $t = $(this);
+		var $item = $t.closest(".footer__item");
+		var opening = !$item.hasClass("is-open");
+		// Multi-open rather than single-open: footer sections are short and
+		// unrelated, so closing one to read another would just add taps.
+		$item.toggleClass("is-open", opening);
+		$t.attr("aria-expanded", String(opening));
+	});
+
+	$(sync);
+	// Debounced so an orientation change or a desktop resize drag doesn't
+	// rebuild the attributes on every intermediate width.
+	var t;
+	$(window).on("resize", function () { clearTimeout(t); t = setTimeout(sync, 150); });
 })(jQuery);

@@ -7139,3 +7139,13 @@ body.cart-open { overflow: hidden; }
   .footer__legal a { padding: 8px 0; font-size: 13px; }
   .footer__bottombar-copy { font-size: 13px; }
 }
+
+/* CSP hardening follow-up: these four declarations used to ride as inline
+   style="" attributes in my-library.js and program.js. The storefront's
+   style-src-attr has no 'unsafe-inline' (only /admin does — see the CSP
+   block in server/src/index.js), so the browser dropped every one of them
+   and the cards rendered unpadded with full-bleed images. */
+.lib-card { padding: 20px; }
+.lib-card__img { width: 100%; border-radius: 6px; margin-bottom: 15px; }
+.lib-card__meta { color: var(--paragraph-light); font-size: 13px; }
+.pv-res__desc { font-size: 13px; color: var(--paragraph-light); }

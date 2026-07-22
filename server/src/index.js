@@ -76,13 +76,11 @@ const cspDirectives = {
   connectSrc: ["'self'", "https://api.stripe.com", "https://www.paypal.com"],
   // hooks.stripe.com: 3D Secure / bank-redirect authentication flows.
   // www.paypal.com: PayPal's own checkout/login iframes and popups.
-  // google.com: the Google Maps embed on contact.html.
   // youtube.com: the video lightbox on about.html/blog.html.
   frameSrc: [
     "https://js.stripe.com",
     "https://hooks.stripe.com",
     "https://www.paypal.com",
-    "https://www.google.com",
     "https://www.youtube.com",
   ],
   objectSrc: ["'none'"],
@@ -128,6 +126,7 @@ app.use("/api", csrfProtection);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productsRoutes);
+app.use("/api/contact", require("./routes/contact"));
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/config", configRoutes);

@@ -64,8 +64,14 @@ async function sendPurchaseReceiptEmail(email, { orderItems, totalCents, magicLi
 }
 
 // Ad hoc email composed by an admin from the Customers page.
+// Returns the provider result so callers that need to know whether delivery
+// actually succeeded can check `result.error`. Resend's SDK resolves with an
+// { error } object rather than rejecting, so awaiting alone is NOT enough to
+// detect a failed send — the contact route depends on this to avoid telling
+// someone their enquiry was received when it was not. Existing callers that
+// ignore the return value are unaffected.
 async function sendAdminEmail(email, { subject, body }) {
-  await sendAndLog({
+  return sendAndLog({
     to: email,
     subject,
     html: `<p>${body.replace(/\n/g, "<br>")}</p>`,

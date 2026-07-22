@@ -119,7 +119,7 @@
     listEl.innerHTML = resources.map(function (r) {
       return (
         '<div class="resource-item"><div><strong>' + escapeHtml(r.title) + "</strong>" +
-        (r.description ? '<div style="font-size:13px;color:var(--paragraph-light);">' + escapeHtml(r.description) + "</div>" : "") +
+        (r.description ? '<div class="pv-res__desc">' + escapeHtml(r.description) + "</div>" : "") +
         '</div><a class="btn-two" href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener"><span>' + (r.type === "link" ? "Open" : "Download") + "</span></a></div>"
       );
     }).join("");

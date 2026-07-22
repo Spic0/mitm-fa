@@ -17,10 +17,10 @@
       var link = "/my-library/" + encodeURIComponent(entry.product.slug);
       return (
         '<div class="col-lg-4 col-md-6">' +
-        '<div class="product__item bor" style="padding:20px;">' +
-        '<img src="' + escapeHtml(img) + '" alt="" style="width:100%;border-radius:6px;margin-bottom:15px;">' +
+        '<div class="product__item bor lib-card">' +
+        '<img src="' + escapeHtml(img) + '" alt="" class="lib-card__img">' +
         '<h5 class="mb-10">' + escapeHtml(entry.product.name) + "</h5>" +
-        '<p style="color:var(--paragraph-light);font-size:13px;">Purchased ' + purchasedDate + "</p>" +
+        '<p class="lib-card__meta">Purchased ' + purchasedDate + "</p>" +
         '<a href="' + link + '" class="btn-two d-block text-center mt-15 stretched-link"><span>Open Program</span></a>' +
         "</div></div>"
       );

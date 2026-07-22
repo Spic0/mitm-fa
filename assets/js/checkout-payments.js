@@ -246,8 +246,29 @@
     }
   }
 
+  // Any payment method that isn't actually configured is removed from the UI
+  // rather than left as a tab that silently does nothing. The Google Pay and
+  // Apple Pay tabs were deleted outright — Stripe's Payment Element surfaces
+  // both inside the card panel on supported devices, so a separate tab for
+  // them could only ever have been decorative.
+  function hideUnconfiguredMethods(config) {
+    if (!config.paypalClientId) {
+      var tab = document.querySelector('.pay-tab[data-method="paypal"]');
+      var panel = document.getElementById("panel-paypal");
+      if (tab) tab.remove();
+      if (panel) panel.remove();
+    }
+    // With a single method left there is nothing to switch between, so the
+    // tab strip is noise.
+    var tabs = document.querySelectorAll(".pay-tab");
+    var strip = document.querySelector(".co-pay-tabs");
+    if (strip && tabs.length < 2) strip.classList.add("u-hidden");
+    if (tabs.length === 1) tabs[0].classList.add("active");
+  }
+
   async function initPaypalButtons() {
     var config = await api.getConfig();
+    hideUnconfiguredMethods(config);
     if (!config.paypalClientId) return;
 
     var script = document.createElement("script");
@@ -333,4 +354,47 @@
       syncPaymentIntentIfNeeded();
     });
   });
+})();
+
+// ---------------------------------------------------------------------------
+// Mobile order-summary disclosure
+// ---------------------------------------------------------------------------
+// Progressive enhancement: without JS the body carries no .is-open class, so
+// the CSS leaves it collapsed on mobile — which would hide the order. The
+// toggle therefore opens it on first paint if the viewport is mobile and JS
+// is running, and the summary stays fully visible on desktop regardless.
+(function checkoutSummaryDisclosure() {
+  var toggle = document.getElementById("coSummaryToggle");
+  var body = document.getElementById("coSummaryBody");
+  if (!toggle || !body) return;
+
+  function setOpen(open) {
+    body.classList.toggle("is-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+  }
+
+  toggle.addEventListener("click", function () {
+    setOpen(!body.classList.contains("is-open"));
+  });
+
+  // Mirror the grand total into the collapsed header so the number is on the
+  // first screen whether or not the list is expanded. Driven off the same
+  // cart-changed event the order summary itself listens for, so the two can
+  // never disagree.
+  var mirror = document.getElementById("coToggleTotal");
+  var source = document.getElementById("coTotal");
+  function syncTotal() {
+    if (mirror && source) mirror.textContent = source.textContent;
+  }
+  document.addEventListener("profit:cart-changed", function () { setTimeout(syncTotal, 0); });
+  // The summary renders asynchronously after the product lookup resolves, so
+  // observe it rather than reading once at load.
+  if (source && window.MutationObserver) {
+    new MutationObserver(syncTotal).observe(source, { childList: true, characterData: true, subtree: true });
+  }
+  syncTotal();
+
+  // Start collapsed on mobile (total visible, list one tap away), open on
+  // desktop where there is room for both.
+  setOpen(window.matchMedia("(min-width: 901px)").matches);
 })();

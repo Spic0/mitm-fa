@@ -7350,7 +7350,10 @@ button span,
 }
 
 /* ---- Trust indicators ------------------------------------------------ */
-.co-trust {
+/* .co-trustlist, NOT .co-trust — that class was already taken by the
+   "your plan isn't unlocked yet" lock banner above the promo field, and
+   reusing it applied this two-column grid to that banner too. */
+.co-trustlist {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 14px;
@@ -7358,7 +7361,7 @@ button span,
   padding: 0;
   list-style: none;
 }
-.co-trust li {
+.co-trustlist li {
   display: flex;
   align-items: flex-start;
   gap: 7px;
@@ -7366,17 +7369,100 @@ button span,
   line-height: 1.45;
   color: var(--paragraph-light);
 }
-.co-trust li i {
+.co-trustlist li i {
   flex: 0 0 auto;
   margin-top: 2px;
   font-size: 10px;
   color: var(--success, #059669);
 }
 @media (max-width: 420px) {
-  .co-trust { grid-template-columns: 1fr; gap: 7px; }
+  .co-trustlist { grid-template-columns: 1fr; gap: 7px; }
 }
 /* On mobile the CTA is a fixed bar, so the trust list must clear it or it
    sits underneath and is never seen. */
 @media (max-width: 900px) {
-  .co-trust { margin-bottom: 84px; }
+  .co-trustlist { margin-bottom: 84px; }
+}
+
+/* =====================================================================
+   CHECKOUT — mobile ordering + collapsible order summary
+   =====================================================================
+   Mobile put the whole billing form above the order summary, so the first
+   screen answered none of "what am I buying, what does it cost, how do I
+   pay". The summary panel is promoted to the top on mobile and its item
+   list collapses behind a header showing the total — the Shopify/Stripe
+   Checkout pattern — so the total is immediate without the item list
+   pushing the payment fields off screen.
+
+   Desktop is untouched: the toggle is display:none above 900px and the
+   body is always open, so the two-column layout is exactly as before. */
+.co-summary__toggle { display: none; }
+.co-summary__body { display: block; }
+
+@media (max-width: 900px) {
+  /* .co-layout is flex; order moves the panel without touching the DOM,
+     so desktop source order and its column layout stay intact. */
+  .co-summary-panel { order: -1; }
+  .co-form-panel { order: 0; }
+
+  .co-summary__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 14px 4px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    text-align: left;
+  }
+  .co-summary__toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--heading-color);
+  }
+  .co-summary__toggle-label > i:first-child { font-size: 13px; opacity: 0.7; }
+  .co-summary__chev {
+    font-size: 10px;
+    opacity: 0.6;
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  .co-summary__toggle[aria-expanded="true"] .co-summary__chev { transform: rotate(180deg); }
+  .co-summary__toggle-total {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--heading-color);
+  }
+
+  /* max-height rather than grid-template-rows: this body holds a <ul> plus
+     several sibling blocks, and the 0fr/1fr trick only collapses a single
+     grid track — the same trap already hit in the footer accordion. The cap
+     is well clear of the tallest realistic summary. */
+  .co-summary__body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1)),
+                opacity var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+    /* Confines the reflow of an auto-height reveal to this subtree. */
+    contain: layout paint;
+  }
+  .co-summary__body.is-open {
+    max-height: 1400px;
+    opacity: 1;
+  }
+  /* The summary's own heading is redundant once the toggle above it says
+     "Order summary". */
+  .co-summary__body .co-summary__ttl { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .co-summary__body { transition: none; }
+    .co-summary__chev { transition: none; }
+  }
 }

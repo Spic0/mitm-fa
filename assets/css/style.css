@@ -6253,16 +6253,19 @@ body.cart-open { overflow: hidden; }
   padding: 5px 0 !important;
   font-size: 12px !important;
 }
+/* These are ID selectors, so they outrank every .co-cta-btn rule regardless
+   of !important — which is why the button stayed 12px and 39px tall while a
+   class rule tried to make it 15px/56px. Updated here at source rather than
+   escalating the fight with a longer selector. */
 #placeOrderBtn {
-  margin-top: 10px !important;
-  padding: 10px 20px !important;
-  font-size: 12px !important;
-  display: block;
+  margin-top: 12px !important;
+  padding: 18px 24px !important;
+  font-size: 15px !important;
   text-align: center;
 }
 #placeOrderBtn span {
-  font-size: 12px !important;
-  letter-spacing: 0.5px !important;
+  font-size: 15px !important;
+  letter-spacing: 0.3px !important;
 }
 
 /* ---- Mobile: single column, same compact sizing ---- */
@@ -7274,4 +7277,106 @@ body.cart-open { overflow: hidden; }
   background-image: linear-gradient(135deg, #1f2430 0%, #2b3242 55%, #171b24 100%);
   background-size: cover;
   background-position: center;
+}
+
+/* =====================================================================
+   CHECKOUT CTA — visible label, thumb-sized, with a real pending state
+   =====================================================================
+   The label was rendering the whole time; it was black on a black button.
+   style.css:206 declares a bare `span { color: var(--span) }`, and an
+   element selector beats inheritance, so every <span> is forced to the
+   body text colour no matter what its parent sets. The button's icon is an
+   <i>, which that rule doesn't match — hence "only an icon appears".
+
+   Fixed by making button labels inherit their button's colour rather than
+   by bumping the CTA alone, since the same trap applies to every span
+   sitting inside a coloured control. */
+button span,
+.co-cta-btn span,
+.btn-one span,
+.cart-btn-checkout span,
+.ct-btn span,
+.btn-add-to-bag span {
+  color: inherit;
+}
+
+/* Thumb-sized primary action. 56px is the floor here — it is the last tap
+   in the funnel and the one that must never be missed. */
+.co-cta-btn {
+  min-height: 56px !important;
+  border-radius: 16px !important;
+  font-size: 15px !important;
+  gap: 10px !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.22) !important;
+}
+.co-cta-btn span { font-size: 15px !important; font-weight: 700 !important; }
+.co-cta-btn i { font-size: 16px !important; }
+
+/* Pending state. `pointer-events: none` is the actual double-submit guard —
+   opacity alone would still let a second tap through while the first
+   PaymentIntent is in flight. */
+.co-cta-btn.is-busy {
+  pointer-events: none !important;
+  opacity: 0.85 !important;
+  cursor: progress !important;
+}
+.co-cta-btn.is-busy i { display: none !important; }
+.co-cta-btn .co-cta-spinner { display: none; }
+.co-cta-btn.is-busy .co-cta-spinner {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  /* Compositor-only: rotation is a transform, so the spinner costs nothing
+     while a payment is being confirmed. */
+  animation: coSpin 0.7s linear infinite;
+}
+@keyframes coSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .co-cta-btn.is-busy .co-cta-spinner { animation-duration: 2s; }
+}
+
+@media (max-width: 900px) {
+  .co-cta-btn {
+    /* Fixed bottom bar keeps the square corners, but the taller target and
+       the safe-area inset both still apply. */
+    min-height: 60px !important;
+    border-radius: 0 !important;
+    padding: 18px 24px !important;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ---- Trust indicators ------------------------------------------------ */
+.co-trust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  margin-top: 14px;
+  padding: 0;
+  list-style: none;
+}
+.co-trust li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--paragraph-light);
+}
+.co-trust li i {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--success, #059669);
+}
+@media (max-width: 420px) {
+  .co-trust { grid-template-columns: 1fr; gap: 7px; }
+}
+/* On mobile the CTA is a fixed bar, so the trust list must clear it or it
+   sits underneath and is never seen. */
+@media (max-width: 900px) {
+  .co-trust { margin-bottom: 84px; }
 }

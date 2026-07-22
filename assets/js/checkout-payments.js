@@ -22,11 +22,50 @@
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
 
+  // Maps whatever came back — a Stripe decline code, a fetch rejection, a
+  // timeout — onto something a buyer can act on. Stripe's own card messages
+  // are already customer-facing and are passed through unchanged; everything
+  // else (network stacks, 5xx bodies, "Failed to fetch") is replaced, because
+  // a raw technical string at the payment step reads as "this shop is
+  // broken" and loses the sale.
+  var FRIENDLY = [
+    [/card_declined|declined/i, "Your card was declined. Try another card or payment method."],
+    [/expired_card|expired/i, "That card has expired. Please use a different card."],
+    [/incorrect_cvc|cvc/i, "The security code didn't match. Please check it and try again."],
+    [/insufficient_funds/i, "That card was declined for insufficient funds."],
+    [/incorrect_number|invalid_number/i, "That card number doesn't look right. Please check it."],
+    [/processing_error/i, "Your bank couldn't process that just now. Please try again in a moment."],
+    [/timeout|timed out|ETIMEDOUT/i, "That took longer than expected. Check your connection and try again — you have not been charged twice."],
+    [/failed to fetch|networkerror|network request failed|net::/i, "We couldn't reach the payment service. Check your connection and try again."],
+    [/rate|too many/i, "Too many attempts. Please wait a moment and try again."],
+  ];
+
+  function friendlyMessage(raw) {
+    var msg = String(raw == null ? "" : raw);
+    if (!msg) return "Something went wrong. Please try again.";
+    for (var i = 0; i < FRIENDLY.length; i++) {
+      if (FRIENDLY[i][0].test(msg)) return FRIENDLY[i][1];
+    }
+    // Anything that looks like a stack trace, JSON, a status code or an
+    // internal identifier never reaches the buyer.
+    if (/[{}<>]|\bat \w+\.|https?:\/\/|^\d{3}\b|Error:/i.test(msg)) {
+      return "We couldn't complete that payment. Please try again, or use a different payment method.";
+    }
+    return msg;
+  }
+
   function showError(message) {
     var el = document.getElementById("stripe-payment-message");
     if (!el) return;
-    el.textContent = message;
-    el.style.display = message ? "block" : "none";
+    var friendly = message ? friendlyMessage(message) : "";
+    el.textContent = friendly;
+    el.style.display = friendly ? "block" : "none";
+    if (friendly) {
+      el.setAttribute("role", "alert");
+      // The message sits above a fixed bottom CTA on mobile; without this it
+      // can be announced but never seen.
+      if (el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
   }
 
   function checkoutItemsPayload() {
@@ -49,8 +88,14 @@
     var btn = document.getElementById("placeOrderBtn");
     var text = document.getElementById("placeOrderBtnText");
     if (!btn || !text) return;
+    // `disabled` keeps the existing dimming; `is-busy` additionally swaps the
+    // lock icon for a spinner and sets pointer-events:none, which is the real
+    // double-submit guard — a second tap while a PaymentIntent is in flight
+    // would otherwise create a second one.
     btn.classList.toggle("disabled", busy);
-    text.textContent = label || "Checkout Securely";
+    btn.classList.toggle("is-busy", busy);
+    btn.setAttribute("aria-busy", String(!!busy));
+    text.textContent = label || "Secure Checkout";
   }
 
   async function finalizeStripePayment(paymentIntentId) {

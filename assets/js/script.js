@@ -654,7 +654,6 @@ CSS TABLE OF CONTENTS
 		if (cart.length === 0) {
 			$body.html('<p class="cart-empty-msg">Your cart is empty.</p>');
 			$("#cartTotal").text("$0.00");
-			renderRecommendedProducts();
 			return;
 		}
 		$.each(cart, function (i, item) {
@@ -675,17 +674,31 @@ CSS TABLE OF CONTENTS
 			$body.append(html);
 		});
 		$("#cartTotal").text(formatDollars(cartTotal(cart)));
-		renderRecommendedProducts();
 	}
 
 	// Compact "You might also like" row inside the cart drawer — only runs
 	// where the drawer markup actually includes #cartRecommended (currently
 	// shop-single.html), so pages without it are completely unaffected.
+	//
+	// Deliberately rebuilt only when the drawer OPENS, never on each cart
+	// mutation. It used to run from renderCartDrawer(), which caused the
+	// "removed item comes back" bug: this list excludes whatever is in the
+	// cart, so removing an item made that item eligible again, and the async
+	// listProducts() resolve then injected it as a new tile *after* the
+	// removal had already reflowed the drawer. Each tile is a full-tile
+	// add-to-cart target, so the shopper's next tap — aimed at the next
+	// remove button — landed on the tile of the item they had just removed
+	// and silently re-added it. Nothing was corrupting localStorage; the
+	// item was genuinely being added back by a mis-aimed tap.
 	function renderRecommendedProducts() {
 		var $section = $("#cartRecommended");
 		if (!$section.length || !window.ProFitAPI) return;
 
 		var cartIds = getCart().map(function (item) { return item.id; });
+
+		// Hold the row's height across the async fetch so its arrival doesn't
+		// shove the cart rows above it (the other half of the mis-tap).
+		if (!$section.children().length) $section.css("min-height", "0px");
 
 		window.ProFitAPI.listProducts().then(function (data) {
 			var picks = (data.products || [])
@@ -711,11 +724,32 @@ CSS TABLE OF CONTENTS
 			});
 			html += '</div>';
 			$section.html(html);
+			// Freeze the height it settled at, so later removals reflow only
+			// the item list above and never move these tap targets.
+			$section.css("min-height", $section.outerHeight() + "px");
 		}).catch(function () { $section.empty(); });
 	}
 
+	// Anything that mutates the cart from inside the drawer reflows the item
+	// list. A tap that lands within a few hundred ms of that reflow is almost
+	// certainly aimed at where the content *was*, so the recommendation tiles
+	// (the only add-to-cart targets in the drawer) ignore it. Belt-and-braces
+	// alongside not re-rendering them at all — a fast double-tap on a slow
+	// phone can still outrun a reflow.
+	var recsGuardedUntil = 0;
+	function guardRecommendationsBriefly() {
+		recsGuardedUntil = Date.now() + 350;
+	}
+	$(document).on("click", "#cartRecommended [data-add-to-cart]", function (e) {
+		if (Date.now() < recsGuardedUntil) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+		}
+	});
+
 	function openCartDrawer() {
 		renderCartDrawer();
+		renderRecommendedProducts();
 		$("#cartDrawer, #cartOverlay").addClass("open");
 		$("body").addClass("cart-open");
 	}
@@ -737,27 +771,40 @@ CSS TABLE OF CONTENTS
 	$(document).on("click", ".cart-qty-minus", function () {
 		var id = $(this).data("id");
 		var cart = getCart();
-		var idx = cart.findIndex(function (i) { return i.id === id; });
+		var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 		if (idx > -1) {
 			cart[idx].qty -= 1;
 			if (cart[idx].qty <= 0) cart.splice(idx, 1);
 			saveCart(cart);
 			renderCartDrawer();
 			updateCartBadge();
+			guardRecommendationsBriefly();
 		}
 	});
 	$(document).on("click", ".cart-qty-plus", function () {
 		var id = $(this).data("id");
 		var cart = getCart();
-		var idx = cart.findIndex(function (i) { return i.id === id; });
-		if (idx > -1) { cart[idx].qty += 1; saveCart(cart); renderCartDrawer(); updateCartBadge(); }
+		var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
+		if (idx > -1) {
+			cart[idx].qty += 1;
+			saveCart(cart);
+			renderCartDrawer();
+			updateCartBadge();
+			guardRecommendationsBriefly();
+		}
 	});
 	$(document).on("click", ".cart-item-remove", function () {
 		var id = $(this).data("id");
-		var cart = getCart().filter(function (i) { return i.id !== id; });
+		// Compare loosely on the string form: ids are cuids today, but the
+		// shop-grid fallback path can synthesise a numeric-looking id, and
+		// jQuery's .data() would hand that back as a Number while the stored
+		// copy round-tripped through JSON as a String. A strict !== would
+		// then quietly match nothing and the row would refuse to delete.
+		var cart = getCart().filter(function (i) { return String(i.id) !== String(id); });
 		saveCart(cart);
 		renderCartDrawer();
 		updateCartBadge();
+		guardRecommendationsBriefly();
 	});
 
 	// Add to cart — works on any .product__cart button across shop pages
@@ -779,7 +826,7 @@ CSS TABLE OF CONTENTS
 		var slug = $btn.data("slug") || null;
 
 		var cart = getCart();
-		var existing = cart.find(function (i) { return i.id === id; });
+		var existing = cart.find(function (i) { return String(i.id) === String(id); });
 		if (existing) {
 			existing.qty += 1;
 		} else {
@@ -806,7 +853,7 @@ CSS TABLE OF CONTENTS
 		if (!id) return;
 
 		var cart = getCart();
-		var existing = cart.find(function (i) { return i.id === id; });
+		var existing = cart.find(function (i) { return String(i.id) === String(id); });
 		if (existing) {
 			existing.qty += 1;
 		} else {
@@ -940,7 +987,8 @@ CSS TABLE OF CONTENTS
 
 		$(document).on("click", ".cp-remove", function () {
 			var id = $(this).data("id");
-			var cart = getCart().filter(function (i) { return i.id !== id; });
+			// Same String() coercion guard as the drawer handlers above.
+			var cart = getCart().filter(function (i) { return String(i.id) !== String(id); });
 			saveCart(cart);
 			renderCartPage();
 			updateCartBadge();
@@ -949,7 +997,7 @@ CSS TABLE OF CONTENTS
 		$(document).on("click", ".cp-qty-minus", function () {
 			var id = $(this).data("id");
 			var cart = getCart();
-			var idx = cart.findIndex(function (i) { return i.id === id; });
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 			if (idx > -1) {
 				cart[idx].qty -= 1;
 				if (cart[idx].qty <= 0) cart.splice(idx, 1);
@@ -962,7 +1010,7 @@ CSS TABLE OF CONTENTS
 		$(document).on("click", ".cp-qty-plus", function () {
 			var id = $(this).data("id");
 			var cart = getCart();
-			var idx = cart.findIndex(function (i) { return i.id === id; });
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 			if (idx > -1) {
 				cart[idx].qty += 1;
 				saveCart(cart);

@@ -134,6 +134,48 @@ const uploadMedia = multer({
   },
 });
 
+// Public product-page gallery (the sales-page carousel) — deliberately NOT
+// the MEDIA_DIR pipeline above. That one is paid program content: it lives
+// outside the public root and /api/library/media gates every read behind
+// requireAuth + an ownership check. The carousel is shown to shoppers who by
+// definition have not bought the product yet, so its files must be publicly
+// served, exactly like the existing cover image in IMAGE_DIR.
+const GALLERY_DIR = path.join(SITE_ROOT, "assets", "images", "product", "gallery");
+const GALLERY_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"]);
+
+function galleryDirFor(productId) {
+  return path.join(GALLERY_DIR, productId);
+}
+function galleryUrlFor(productId, filename) {
+  return `/assets/images/product/gallery/${productId}/${filename}`;
+}
+
+const galleryStorage = multer.diskStorage({
+  destination(req, file, cb) {
+    // req.params.id is a cuid matched by the route, never raw user input in a
+    // path segment sense — but it is still only ever used via path.join with
+    // a fixed base, so a crafted id cannot escape GALLERY_DIR.
+    const dir = galleryDirFor(req.params.id);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename(req, file, cb) {
+    cb(null, provisionalName(file.mimetype));
+  },
+});
+const uploadGallery = multer({
+  storage: galleryStorage,
+  limits: { fileSize: 30 * 1024 * 1024 },
+  fileFilter(req, file, cb) {
+    if (!GALLERY_MIME.has(file.mimetype)) {
+      const err = new Error("Gallery media must be PNG, JPG, WebP, GIF, MP4, or WebM");
+      err.status = 400;
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
+
 function hasTrainingContent(product) {
   return !!(product.trainingContent && Array.isArray(product.trainingContent.weeks) && product.trainingContent.weeks.length > 0);
 }
@@ -383,6 +425,114 @@ router.post("/:id/media", (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Public product-page gallery (carousel) — ordered ProductMedia rows.
+// ---------------------------------------------------------------------------
+
+// List, so the wizard can render the current gallery without pulling the
+// whole product payload just to read its media.
+router.get("/:id/gallery", async (req, res) => {
+  const media = await prisma.productMedia.findMany({
+    where: { productId: req.params.id },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+  });
+  res.json({ media });
+});
+
+// Upload one gallery item. New items append to the end of the existing
+// order rather than assuming a count — rows can be deleted, so `count` would
+// collide with a surviving row's position.
+router.post("/:id/gallery", (req, res) => {
+  uploadGallery.single("media")(req, res, async (err) => {
+    if (err) return res.status(err.status || 400).json({ error: err.message || "Upload failed" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const verified = await verifyAndRename(req.file, GALLERY_MIME);
+    if (!verified.ok) return res.status(400).json({ error: verified.reason });
+
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!product) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const last = await prisma.productMedia.findFirst({
+      where: { productId: product.id },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+
+    const created = await prisma.productMedia.create({
+      data: {
+        productId: product.id,
+        url: galleryUrlFor(product.id, req.file.filename),
+        // Trust the sniffed type, not the declared one — verifyAndRename has
+        // already renamed the file to match its real content.
+        type: verified.mime.startsWith("video/") ? "video" : "image",
+        alt: (req.body.alt || "").trim() || null,
+        order: last ? last.order + 1 : 0,
+      },
+    });
+
+    await logEvent({
+      category: "product",
+      message: `Added gallery media to "${product.name}"`,
+      actorId: req.user.id,
+    });
+    res.json({ media: created });
+  });
+});
+
+router.delete("/:id/gallery/:mediaId", async (req, res) => {
+  const media = await prisma.productMedia.findUnique({ where: { id: req.params.mediaId } });
+  if (!media || media.productId !== req.params.id) {
+    return res.status(404).json({ error: "Media not found" });
+  }
+
+  await prisma.productMedia.delete({ where: { id: media.id } });
+
+  // Remove the file too, but only after the row is gone: an orphaned file is
+  // harmless, whereas a row pointing at a deleted file renders a broken slide.
+  // Resolved and bounds-checked rather than trusting the stored URL.
+  const fileName = path.basename(media.url);
+  const target = path.join(galleryDirFor(req.params.id), fileName);
+  if (target.startsWith(GALLERY_DIR + path.sep)) {
+    fs.unlink(target, () => {});
+  }
+
+  await logEvent({
+    category: "product",
+    message: `Removed gallery media from product ${req.params.id}`,
+    actorId: req.user.id,
+  });
+  res.json({ ok: true });
+});
+
+// Reorder — takes the full ordered list of media ids. Applied in one
+// transaction so a partial failure can't leave the carousel half-reordered.
+router.put("/:id/gallery/order", async (req, res) => {
+  const ids = Array.isArray(req.body.ids) ? req.body.ids : null;
+  if (!ids) return res.status(400).json({ error: "Expected an array of media ids" });
+
+  const owned = await prisma.productMedia.findMany({
+    where: { productId: req.params.id },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((m) => m.id));
+  // Reject the whole request if any id belongs to another product (or does
+  // not exist) rather than silently reordering the subset that matched.
+  if (ids.length !== owned.length || !ids.every((id) => ownedIds.has(id))) {
+    return res.status(400).json({ error: "Media list doesn't match this product's gallery" });
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.productMedia.update({ where: { id }, data: { order: index } })
+    )
+  );
+  res.json({ ok: true });
+});
+
 router.delete("/:id", async (req, res) => {
   const product = await prisma.product.findUnique({
     where: { id: req.params.id },
@@ -396,6 +546,9 @@ router.delete("/:id", async (req, res) => {
   await prisma.productFaq.deleteMany({ where: { productId: product.id } });
   await prisma.productResource.deleteMany({ where: { productId: product.id } });
   await prisma.productTaxonomy.deleteMany({ where: { productId: product.id } });
+  // ProductMedia rows go with the product via onDelete: Cascade, but the
+  // files they point at are on disk and would be left behind.
+  fs.rm(galleryDirFor(product.id), { recursive: true, force: true }, () => {});
   await prisma.product.delete({ where: { id: product.id } });
   await logEvent({ category: "product", message: `Deleted product "${product.name}"`, actorId: req.user.id });
   res.json({ ok: true });

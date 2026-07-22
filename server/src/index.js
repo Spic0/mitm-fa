@@ -173,7 +173,12 @@ app.use(
     setHeaders: (res, filePath) => {
       if (/\.(?:js|css)$/.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=3600");
-      } else if (/\.(?:png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/.test(filePath)) {
+      } else if (/\.(?:png|jpe?g|svg|webp|gif|ico|woff2?|ttf|mp4|webm)$/.test(filePath)) {
+        // Gallery video shares the image bucket: uploaded media is stored
+        // under a fresh UUID filename and never rewritten in place, so a
+        // repeat visitor re-downloading an autoplaying loop on every page
+        // view is pure waste. (express.static answers Range requests here
+        // on its own, which is what lets the video scrub and loop.)
         res.setHeader("Cache-Control", "public, max-age=86400");
       } else if (/\.html?$/.test(filePath)) {
         res.setHeader("Cache-Control", "no-cache");

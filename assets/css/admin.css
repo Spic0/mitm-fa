@@ -1031,3 +1031,59 @@ body.a-modal-body-lock { overflow: hidden; }
     letter-spacing: 0.06em;
     color: var(--a-text-muted);
 }
+
+/* ---------------------------------------------------------------------
+   Dashboard alert banner (outbound email health)
+   --------------------------------------------------------------------- */
+/* Must out-specify .a-alert's own display:flex below. Both are single-class
+   selectors, and admin.css loads after style.css where .u-hidden is defined,
+   so on equal specificity source order wins and the alert would refuse to
+   hide — it stayed on screen even when email health came back OK. */
+.a-alert.u-hidden { display: none; }
+
+.a-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: var(--a-radius, 10px);
+    font-size: 14px;
+    line-height: 1.55;
+}
+.a-alert__icon { flex: 0 0 auto; font-size: 18px; line-height: 1.4; }
+.a-alert__body { flex: 1; min-width: 0; }
+.a-alert__title { font-weight: 700; margin: 0 0 4px; font-size: 14px; }
+.a-alert__text { margin: 0; }
+/* The provider's raw error string — monospace so an operator can tell at a
+   glance it is a quoted machine message, not our own copy. */
+.a-alert__reason {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.06);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+}
+.a-alert__meta { margin: 8px 0 0; font-size: 12.5px; opacity: 0.8; }
+.a-alert__actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.a-alert--danger {
+    border-color: var(--a-danger);
+    background: rgba(220, 38, 38, 0.07);
+    color: var(--a-danger);
+}
+.a-alert--warning {
+    border-color: var(--a-warning);
+    background: rgba(217, 119, 6, 0.08);
+    color: var(--a-warning);
+}
+/* Body copy stays readable rather than inheriting the full alert tint. */
+.a-alert .a-alert__text,
+.a-alert .a-alert__meta { color: var(--a-text); }
+
+@media (max-width: 640px) {
+    .a-alert { flex-direction: column; gap: 10px; padding: 14px; }
+}

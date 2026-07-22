@@ -6,6 +6,55 @@ const router = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHART_WINDOW_DAYS = 30;
+// How many of the most recent send attempts the email health check looks at.
+const EMAIL_HEALTH_SAMPLE = 20;
+
+// Turns the recent EmailLog rows into a single verdict for the dashboard.
+//
+// This exists because outbound email fails silently by design: Resend's SDK
+// resolves with an { error } object instead of throwing, and fulfillOrder.js
+// deliberately never lets an email failure block fulfillment. Both are
+// reasonable on their own, and together they meant an invalid API key went
+// unnoticed for nine days while every sign-in link and purchase receipt was
+// rejected.
+//
+// Severity keys off the MOST RECENT attempt rather than a failure ratio: a
+// run of old failures followed by a success means someone fixed it, and an
+// old ratio would keep crying wolf. Conversely one failure at the top of the
+// list is what a just-expired API key looks like.
+function buildEmailHealth(rows) {
+  if (!rows.length) return { status: "unknown", checked: 0 };
+
+  const failures = rows.filter((r) => r.status === "failed");
+  if (!failures.length) return { status: "ok", checked: rows.length, failed: 0 };
+
+  const latest = rows[0];
+  const latestFailed = latest.status === "failed";
+
+  // Surface the provider's own words ("API key is invalid", "domain is not
+  // verified", ...) — that string is what tells an operator which of the two
+  // Resend failure modes they're looking at, and it's already stored.
+  let reason = null;
+  const firstFailure = failures[0];
+  try {
+    const parsed = JSON.parse(firstFailure.providerResponse || "{}");
+    reason = parsed.message || parsed.name || null;
+  } catch (err) {
+    reason = null;
+  }
+
+  return {
+    // "critical" = email is broken right now; "degraded" = it recovered but
+    // recent attempts were lost, which still means missing receipts.
+    status: latestFailed ? "critical" : "degraded",
+    checked: rows.length,
+    failed: failures.length,
+    allFailed: failures.length === rows.length,
+    reason,
+    lastFailureAt: firstFailure.sentAt,
+    lastFailureSubject: firstFailure.subject,
+  };
+}
 
 function dayKey(date) {
   return date.toISOString().slice(0, 10);
@@ -26,7 +75,7 @@ router.get("/overview", async (req, res) => {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const windowStart = new Date(now.getTime() - CHART_WINDOW_DAYS * DAY_MS);
 
-  const [paidOrders, pendingCount, failedCount, registeredUsers, recentUsers, recentLogs] = await Promise.all([
+  const [paidOrders, pendingCount, failedCount, registeredUsers, recentUsers, recentLogs, recentEmails] = await Promise.all([
     prisma.order.findMany({
       where: { status: "paid" },
       include: { items: { include: { product: true } }, user: true },
@@ -42,6 +91,17 @@ router.get("/overview", async (req, res) => {
       select: { id: true, email: true, name: true, createdAt: true },
     }),
     prisma.systemLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+    // Deliberately the most recent N attempts rather than a time window.
+    // Outbound volume here is low (sign-in links, receipts, enquiries), so a
+    // "last 7 days" window is empty on a quiet week and would report healthy
+    // while the provider has been rejecting everything for a month. What
+    // actually answers "is email working right now" is whether the most
+    // recent attempts succeeded.
+    prisma.emailLog.findMany({
+      orderBy: { sentAt: "desc" },
+      take: EMAIL_HEALTH_SAMPLE,
+      select: { subject: true, status: true, providerResponse: true, sentAt: true },
+    }),
   ]);
 
   const totalOrders = paidOrders.length;
@@ -150,6 +210,7 @@ router.get("/overview", async (req, res) => {
     },
     recentActivity,
     promotions,
+    emailHealth: buildEmailHealth(recentEmails),
   });
 });
 

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260721">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260722">
 </head>
 
 <body class="admin-body">
@@ -42,6 +42,12 @@
                 <button class="a-btn a-btn-secondary" id="devSeedBtn"><i class="fa-solid fa-database"></i> Seed Demo Data</button>
             </div>
         </div>
+
+        <!-- Outbound email health. Sits above the metrics because a silent
+             mail outage means customers cannot sign in and buyers get no
+             receipt — it outranks any revenue figure below it. Hidden until
+             the overview reports a problem. -->
+        <div class="a-alert a-alert--danger u-hidden" id="emailHealthAlert" role="alert"></div>
 
         <div class="metric-grid" id="metricGrid"></div>
 

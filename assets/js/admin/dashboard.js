@@ -160,7 +160,59 @@ window.AdminPanels.dashboard = {
       revealChart("paymentMethodChart");
     }
 
+    // Outbound email fails silently by design — Resend resolves with an
+    // { error } object rather than throwing, and fulfillOrder.js deliberately
+    // never lets a mail failure block fulfillment. Nothing surfaced that, so
+    // an invalid API key went unnoticed for nine days while every sign-in
+    // link and purchase receipt was rejected. This is the thing that would
+    // have caught it on day one.
+    function renderEmailHealth(h) {
+      var alert = root.querySelector("#emailHealthAlert");
+      if (!alert || !h) return;
+      if (h.status === "ok" || h.status === "unknown") {
+        alert.classList.add("u-hidden");
+        return;
+      }
+
+      var critical = h.status === "critical";
+      alert.classList.toggle("a-alert--danger", critical);
+      alert.classList.toggle("a-alert--warning", !critical);
+
+      var title = critical
+        ? (h.allFailed ? "Outbound email is not being delivered" : "Outbound email is failing")
+        : "Some emails failed to send recently";
+      var text = critical
+        ? "Customers cannot receive sign-in links and buyers are not getting purchase receipts. Orders still complete normally — only the email is affected."
+        : h.failed + " of the last " + h.checked + " emails failed. They were not retried.";
+
+      var when = "";
+      try {
+        when = new Date(h.lastFailureAt).toLocaleString();
+      } catch (err) {
+        when = "";
+      }
+
+      alert.innerHTML =
+        '<span class="a-alert__icon"><i class="fa-solid fa-triangle-exclamation"></i></span>' +
+        '<div class="a-alert__body">' +
+          '<p class="a-alert__title">' + window.AdminUI.escapeHtml(title) + "</p>" +
+          '<p class="a-alert__text">' + window.AdminUI.escapeHtml(text) +
+            (h.reason ? ' <span class="a-alert__reason">' + window.AdminUI.escapeHtml(h.reason) + "</span>" : "") +
+          "</p>" +
+          '<p class="a-alert__meta">' +
+            window.AdminUI.escapeHtml(h.failed + " of the last " + h.checked + " attempts failed") +
+            (when ? " · last failure " + window.AdminUI.escapeHtml(when) : "") +
+            (h.lastFailureSubject ? " · “" + window.AdminUI.escapeHtml(h.lastFailureSubject) + "”" : "") +
+          "</p>" +
+          '<div class="a-alert__actions">' +
+            '<a class="a-btn a-btn-secondary a-btn-sm" href="/admin/manage/email-logs">View email logs</a>' +
+          "</div>" +
+        "</div>";
+      alert.classList.remove("u-hidden");
+    }
+
     window.AdminAPI.getDashboardOverview().then(function (data) {
+      renderEmailHealth(data.emailHealth);
       renderMetrics(data.metrics);
       renderCharts(data.charts);
       renderActivity(data.recentActivity);

@@ -475,11 +475,11 @@ CSS TABLE OF CONTENTS
 			},
 			{ rootMargin: "200px 0px" }
 		);
-		$("[data-background").each(function () {
+		$("[data-background]").each(function () {
 			bgObserver.observe(this);
 		});
 	} else {
-		$("[data-background").each(function () {
+		$("[data-background]").each(function () {
 			$(this).css(
 				"background-image",
 				"url( " + $(this).attr("data-background") + "  )"
@@ -593,14 +593,12 @@ CSS TABLE OF CONTENTS
 	window.ProFitShopSwiper = { main: swiper2, thumbs: swiper };
 	// Shop single swiper slider area end here ***
 
-	// Hide & show by clicks js area start here ***
-	$(document).on("click", "#openButton", function () {
-		$("#targetElement").removeClass("side_bar_hidden");
-	});
-	$(document).on("click", "#closeButton", function () {
-		$("#targetElement").addClass("side_bar_hidden");
-	});
-	// Hide & show by clicks js area end here ***
+	// The #targetElement off-canvas sidebar these handlers drove has been
+	// removed from every page: #openButton, its only trigger, existed in no
+	// markup anywhere (not in the 19 pages, not in partials/header.html), so
+	// the panel could never be opened. It was shipping placeholder template
+	// content — a fake email, a fake phone number and lorem copy about road
+	// subgrade — inside 13 pages for nothing.
 
 	// Radio btn area start here ***
 	$(document).on("click", ".radio-btn span", function () {

@@ -7156,3 +7156,16 @@ body.cart-open { overflow: hidden; }
 .lib-card__img { width: 100%; border-radius: 6px; margin-bottom: 15px; }
 .lib-card__meta { color: var(--paragraph-light); font-size: 13px; }
 .pv-res__desc { font-size: 13px; color: var(--paragraph-light); }
+
+/* The inner-page banner's image was assets/images/banner/inner-banner.jpg —
+   a 1920x341 grey placeholder from the template that literally reads
+   "1920X341", shipped on 12 pages. Replaced with a gradient in the brand's
+   own dark tone rather than swapping in another photo: it looks deliberate,
+   needs no art direction, and removes an image request from every inner
+   page. .page-banner::before already lays a scrim over this for text
+   legibility, so the two compose exactly as before. */
+.page-banner.bg-image {
+  background-image: linear-gradient(135deg, #1f2430 0%, #2b3242 55%, #171b24 100%);
+  background-size: cover;
+  background-position: center;
+}

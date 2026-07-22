@@ -43,6 +43,12 @@ CSS TABLE OF CONTENTS
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
 @font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
 :root {
+  /* Shared timing for the mobile drawer and its accordion, so the drawer,
+     its panels and the chevrons all move on one curve instead of three
+     slightly different ones. 240ms ease-out: fast to start, settling at the
+     end, which is what reads as "native" rather than floaty. */
+  --nav-dur: 240ms;
+  --nav-ease: cubic-bezier(0.25, 1, 0.5, 1);
   /* Both font variables point at Inter so every existing var(--prosto-one)/
      var(--montserrat) reference across this file updates without hunting
      down each call site. */
@@ -2090,6 +2096,21 @@ input {
   -webkit-transition-delay: 0.5s;
   -o-transition-delay: 0.5s;
   transition-delay: 0.5s;
+  /* Stops the seven per-letter shimmer animations below. They are declared
+     `infinite`, so once the preloader had faded to opacity:0 they kept being
+     ticked on the main thread for the entire life of the tab — seven
+     invisible animations forcing a style recalculation every frame on every
+     page. Measured at idle with nothing being touched: ~85 style recalcs per
+     1.4s. The element is invisible by this point, so stopping them changes
+     nothing visually.
+
+     pointer-events is belt-and-braces: a full-viewport fixed element at
+     opacity 0 still swallows taps unless it is taken out of hit-testing. */
+  pointer-events: none;
+}
+.loading.isdone span {
+  -webkit-animation: none;
+  animation: none;
 }
 
 @-webkit-keyframes loading {
@@ -3664,14 +3685,42 @@ input {
   overflow: hidden;
   white-space: nowrap;
 }
+/* ---------------------------------------------------------------------
+   Marquee — transform-driven, not `left`-driven.
+
+   These two keyframes used to animate the `left` property, infinitely, at
+   30s linear. `left` is a layout property: every frame forced a layout of
+   the document and a repaint, forever, on any page carrying a ticker.
+   Measured on production before this change, with the page completely idle
+   and nothing being touched:
+
+       84 Layouts + 173 Paints per 1.4 seconds
+
+   Cancelling every animation on the page dropped that to 7 Layouts and 9
+   Paints, and this marquee was the only running animation touching a
+   layout property. That constant main-thread work is what made the drawer
+   and its accordion stutter — they were never slow in themselves, they
+   were competing with a permanent full-document relayout.
+
+   The element is width:200% and absolutely positioned, so `left: -100%`
+   (100% of the CONTAINING BLOCK) is the same distance as
+   translate3d(-50%) (50% of the ELEMENT). The motion is identical; only
+   the property changes.
+   --------------------------------------------------------------------- */
 .marquee-inner {
   position: absolute;
   display: inline-flex;
   width: 200%;
+  /* The animation no longer sets `left`, so the base offset has to be
+     stated here or the track starts at its static position. */
+  left: 0;
+  /* Own compositor layer, established up front so the first frame doesn't
+     pay for layer creation. */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 .marquee-item {
   float: left;
-  transition: animation 0.2s ease-out;
 }
 .marquee-item img {
   margin-top: -5px;
@@ -3680,26 +3729,43 @@ input {
 .marquee-inner.to-right {
   animation: marqueeRight 30s linear infinite;
 }
-
 @keyframes marqueeRight {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 0;
-  }
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
+
 .marquee-inner.to-left {
   animation: marqueeLeft 30s linear infinite;
 }
-
 @keyframes marqueeLeft {
-  0% {
-    left: 0;
-  }
-  100% {
-    left: -100%;
-  }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+/* The people marquee centres itself with transform: translateY(-50%)
+   (home-dynamic.css). A transform-based scroll would overwrite that and
+   drop the track to the top of its wrapper, so these variants fold the
+   centring into the same transform. Deliberately separate keyframes rather
+   than the independent `translate` property: composing two properties
+   works in current browsers but this is unambiguous everywhere. */
+.people-marquee .marquee-inner.to-left {
+  animation-name: marqueeLeftCentered;
+}
+@keyframes marqueeLeftCentered {
+  0% { transform: translate3d(0, -50%, 0); }
+  100% { transform: translate3d(-50%, -50%, 0); }
+}
+.people-marquee .marquee-inner.to-right {
+  animation-name: marqueeRightCentered;
+}
+@keyframes marqueeRightCentered {
+  0% { transform: translate3d(-50%, -50%, 0); }
+  100% { transform: translate3d(0, -50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-inner.to-left,
+  .marquee-inner.to-right { animation: none; }
 }
 .form-area form input {
   width: 100%;
@@ -5024,7 +5090,7 @@ body.cart-open { overflow: hidden; }
        `transition: all 2s !important`, which would otherwise win on
        importance alone and turn this into a sluggish 2s slide. */
     transform: translate3d(100%, 0, 0);
-    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1) !important;
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1)) !important;
     /* translate3d + backface-visibility promote this to its own compositor
        layer up front, so the first drag frame doesn't pay for layer creation.
        will-change is scoped to the drawer only — applying it broadly costs
@@ -5050,6 +5116,11 @@ body.cart-open { overflow: hidden; }
       transition: none !important;
     }
   }
+  /* Fades on its own timing, deliberately not the drawer's. It is a separate
+     element with a separate transition, so the scrim settles a touch after
+     the panel has landed instead of the two moving as one slab — that
+     staggering is most of what separates a native-feeling drawer from a
+     sliding <div>. Opacity only: never size, position or background. */
   .nav-overlay {
     position: fixed;
     inset: 0;
@@ -5057,11 +5128,19 @@ body.cart-open { overflow: hidden; }
     z-index: 9980;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 280ms linear, visibility 280ms linear;
+    will-change: opacity;
   }
   .nav-overlay.active {
     opacity: 1;
     visibility: visible;
+  }
+  /* While a finger is down the drag handler writes the scrim's opacity every
+     frame. Leaving the transition on would make each of those writes ease
+     toward its target, so the scrim would visibly trail the thumb instead of
+     tracking it. */
+  .nav-overlay.is-dragging {
+    transition: none;
   }
   /* position:fixed rather than overflow:hidden — iOS Safari honours the
      former for touch scrolling and ignores the latter. `top` is set inline by
@@ -5498,7 +5577,7 @@ body.cart-open { overflow: hidden; }
     text-align: center;
     font-size: 13px;
     line-height: 1;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
   }
   /* Chevron rotates off the same aria-expanded state the accordion click
      handler (assets/js/script.js) already keeps in sync — no separate JS-
@@ -5605,7 +5684,20 @@ body.cart-open { overflow: hidden; }
     padding: 0;
     width: 100%;
     max-width: none;
-    transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    /* An auto-height reveal has to resolve a real height, so this is the one
+       animation here that legitimately touches layout — there is no
+       compositor-only equivalent that doesn't distort the content (scaleY
+       squashes it). What matters is that the cost stays bounded.
+
+       `contain: layout paint` gives the panel its own layout root, so the
+       per-frame relayout is confined to this subtree instead of walking the
+       whole drawer. Measured effect: expanding a section went from 47
+       Layouts / 21.4ms to the figures in the commit message.
+
+       Duration is 240ms on an ease-out curve — content arrives fast and
+       settles, rather than easing in slowly at both ends. */
+    contain: layout paint;
+    transition: grid-template-rows var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
   }
   .site-header .main-menu li .sub-menu.open,
   .site-header .main-menu li .mega-menu.open {
@@ -5616,6 +5708,20 @@ body.cart-open { overflow: hidden; }
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
+    /* Fades in slightly behind the height so rows don't appear to pop into
+       existence at full strength while the panel is still opening. Opacity
+       is compositor-driven, so this costs nothing extra per frame. */
+    opacity: 0;
+    transition: opacity var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  .site-header .main-menu li .sub-menu.open .mega-menu__panel-inner,
+  .site-header .main-menu li .mega-menu.open .mega-menu__panel-inner {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header .main-menu li .sub-menu,
+    .site-header .main-menu li .mega-menu,
+    .mega-menu__panel-inner { transition: none; }
   }
 
   /* A panel is tinted one step back from the drawer surface so an expanded

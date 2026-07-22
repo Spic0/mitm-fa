@@ -151,6 +151,8 @@ CSS TABLE OF CONTENTS
 				if (Math.abs(dy) > Math.abs(dx)) { dragging = false; return; }
 				decided = true;
 				drawer.classList.add("is-dragging");
+				// Scrim tracks the finger too — see .nav-overlay.is-dragging.
+				if (overlay) overlay.classList.add("is-dragging");
 			}
 
 			// Only closing (rightward) drags track 1:1. Pulling left past the
@@ -173,6 +175,7 @@ CSS TABLE OF CONTENTS
 			dragging = false;
 			if (!decided) return;
 			drawer.classList.remove("is-dragging");
+			if (overlay) overlay.classList.remove("is-dragging");
 
 			var offset = lastX - startX;
 			// Either thrown hard enough, or dragged more than a third of the

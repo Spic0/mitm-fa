@@ -744,6 +744,16 @@ CSS TABLE OF CONTENTS
 		return getCart();
 	}
 
+	// True when checkout is showing a Buy Now item rather than the cart. The
+	// checkout summary's quantity and remove controls are suppressed in that
+	// case: they mutate the cart, which is not what is being purchased.
+	function buyNowActive() {
+		try {
+			var b = JSON.parse(sessionStorage.getItem(BUYNOW_KEY));
+			return !!(b && b.id);
+		} catch (e) { return false; }
+	}
+
 	window.ProFitCart = {
 		getCart: getCart,
 		saveCart: saveCart,
@@ -1200,12 +1210,35 @@ CSS TABLE OF CONTENTS
 				$.each(cart, function (i, item) {
 					var line = parseFloat(item.price) * item.qty;
 					subtotal += line;
-					var imgHtml = item.img ? '<img src="' + escapeHtml(item.img) + '" class="co-item-img" alt="">' : '';
+					var imgHtml = item.img
+						? '<img src="' + escapeHtml(item.img) + '" class="co-item-img" alt="">'
+						: '<span class="co-item-img co-item-img--empty"></span>';
+					// Buy Now bypasses the cart, so its single item has no cart entry to
+					// increment or remove -- the controls would be writing to a cart the
+					// shopper is not actually buying from.
+					var editable = !buyNowActive();
+					var controls = editable
+						? '<div class="co-item-qty">' +
+						  '<button type="button" class="co-qty-btn co-qty-minus" data-id="' + escapeHtml(item.id) + '" aria-label="Decrease quantity">&#8722;</button>' +
+						  '<span class="co-qty-val">' + item.qty + '</span>' +
+						  '<button type="button" class="co-qty-btn co-qty-plus" data-id="' + escapeHtml(item.id) + '" aria-label="Increase quantity">&#43;</button>' +
+						  '</div>'
+						: '<span class="co-item-qty-static">Qty ' + item.qty + '</span>';
+					var removeBtn = editable
+						? '<button type="button" class="co-item-remove" data-id="' + escapeHtml(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + '"><i class="fa-solid fa-xmark"></i></button>'
+						: '';
 					$list.append(
-						'<li class="co-order-item">' +
+						'<li class="co-order-item" data-id="' + escapeHtml(item.id) + '">' +
 						imgHtml +
-						'<span class="co-item-name">' + escapeHtml(item.name) + ' <em>&times;' + item.qty + '</em></span>' +
+						'<div class="co-item-main">' +
+						'<span class="co-item-name">' + escapeHtml(item.name) + '</span>' +
+						(item.creator ? '<span class="co-item-creator">' + escapeHtml(item.creator) + '</span>' : '') +
+						controls +
+						'</div>' +
+						'<div class="co-item-side">' +
 						'<span class="co-item-price">' + formatDollars(line) + '</span>' +
+						removeBtn +
+						'</div>' +
 						'</li>'
 					);
 				});
@@ -1222,6 +1255,38 @@ CSS TABLE OF CONTENTS
 			}
 			$("#coTotal").text(formatDollars((subtotalCents - discountCents) / 100));
 		}
+		// Quantity and remove, inline in the order summary. These write through
+		// saveCart(), which dispatches profit:cart-changed -- the same event the
+		// summary, the sticky bar and checkout-payments.js's PaymentIntent resync
+		// all listen for, so one mutation updates every one of them and the
+		// charged amount can never drift from what is displayed.
+		function adjustQty(id, delta) {
+			if (buyNowActive()) return;
+			var cart = getCart();
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
+			if (idx < 0) return;
+			cart[idx].qty += delta;
+			if (cart[idx].qty <= 0) cart.splice(idx, 1);
+			saveCart(cart);
+			updateCartBadge();
+			renderCheckoutSummary();
+		}
+		$(document).on("click", "#checkoutOrderList .co-qty-plus", function () { adjustQty($(this).data("id"), 1); });
+		$(document).on("click", "#checkoutOrderList .co-qty-minus", function () { adjustQty($(this).data("id"), -1); });
+		$(document).on("click", "#checkoutOrderList .co-item-remove", function () {
+			if (buyNowActive()) return;
+			var id = $(this).data("id");
+			var $row = $(this).closest(".co-order-item");
+			// Let the row collapse before re-rendering, so an item does not just
+			// vanish and snap the rows below it upward.
+			$row.addClass("is-removing");
+			setTimeout(function () {
+				saveCart(getCart().filter(function (i) { return String(i.id) !== String(id); }));
+				updateCartBadge();
+				renderCheckoutSummary();
+			}, 200);
+		});
+
 		renderCheckoutSummary();
 		refreshAutoPromo().then(renderCheckoutSummary);
 		// Adding a checkout-page recommendation (or any other cart mutation)

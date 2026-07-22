@@ -171,7 +171,18 @@ app.use(
   express.static(SITE_ROOT, {
     setHeaders: (res, filePath) => {
       if (/\.(?:js|css)$/.test(filePath)) {
-        res.setHeader("Cache-Control", "public, max-age=3600");
+        // `no-cache` means "revalidate before reuse", NOT "don't store": the
+        // browser still keeps the file and still gets a 304 with no body when
+        // it hasn't changed, so repeat visits cost one conditional request
+        // rather than a full download.
+        //
+        // The previous `max-age=3600` meant a returning visitor kept running
+        // the OLD css/js for up to an hour after a deploy, without even
+        // asking whether it had changed — so a shipped fix could look like it
+        // had never shipped. With no content hashing and no build step, that
+        // is not a trade worth making for CSS and JS specifically; media
+        // below is UUID-named and immutable, so it keeps its long cache.
+        res.setHeader("Cache-Control", "no-cache");
       } else if (/\.(?:png|jpe?g|svg|webp|gif|ico|woff2?|ttf|mp4|webm)$/.test(filePath)) {
         // Gallery video shares the image bucket: uploaded media is stored
         // under a fresh UUID filename and never rewritten in place, so a

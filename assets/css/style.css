@@ -7466,3 +7466,239 @@ button span,
     .co-summary__chev { transition: none; }
   }
 }
+
+/* =====================================================================
+   CHECKOUT v2 — mobile-first purchase experience
+   ===================================================================== */
+
+/* ---- Sticky purchase bar (mobile) ------------------------------------
+   The in-page CTA was itself position:fixed on mobile, which meant the
+   total was never beside it and the button was duplicated conceptually.
+   That fixed positioning is released here and the sticky bar takes over:
+   it carries TOTAL + CTA and nothing else. */
+@media (max-width: 900px) {
+  .co-cta-btn {
+    position: static !important;
+    border-radius: 16px !important;
+    margin: 0 0 4px !important;
+    padding: 18px 24px !important;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18) !important;
+  }
+  /* The page must be able to scroll clear of the fixed bar, or the legal
+     text and trust badges sit permanently underneath it. */
+  .checkout-area { padding-bottom: 104px; }
+  .co-trustlist { margin-bottom: 20px; }
+}
+
+.co-stickybar {
+  display: none;
+}
+@media (max-width: 900px) {
+  .co-stickybar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    background: var(--color-bg, #fff);
+    border-top: 1px solid var(--border);
+    /* Sits above the iOS home indicator rather than under it. */
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.12);
+    /* Own compositor layer: this element is fixed over a scrolling page, and
+       promoting it avoids repainting the bar on every scroll frame. */
+    will-change: transform;
+    transform: translateZ(0);
+    animation: coBarIn 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  @keyframes coBarIn {
+    from { transform: translate3d(0, 100%, 0); }
+    to   { transform: translate3d(0, 0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .co-stickybar { animation: none; }
+  }
+}
+.co-stickybar__inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.co-stickybar__total {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  flex: 0 0 auto;
+}
+.co-stickybar__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paragraph-light);
+}
+/* The total is the strongest element in the bar by design — it is the one
+   number the shopper is deciding on. */
+.co-stickybar__value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--heading-color);
+}
+.co-stickybar__cta {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22);
+  transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 180ms ease, opacity 180ms ease;
+}
+.co-stickybar__cta span { color: inherit; }
+.co-stickybar__cta:active { transform: scale(0.985); }
+.co-stickybar__cta.is-busy {
+  pointer-events: none;
+  opacity: 0.85;
+  cursor: progress;
+}
+.co-stickybar__cta.is-busy > i { display: none; }
+
+/* ---- Order summary rows --------------------------------------------- */
+.co-order-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 14px !important;
+  padding: 16px 0 !important;
+  font-size: 15px !important;
+  border-bottom: 1px solid var(--border) !important;
+  /* Collapse animation on remove, so a deleted row doesn't just vanish and
+     snap everything below it upward. */
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.co-order-item.is-removing {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+.co-item-img {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: cover !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--border) !important;
+  flex-shrink: 0 !important;
+}
+.co-item-img--empty { background: var(--sub-bg); display: block; }
+.co-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.co-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--heading-color);
+}
+.co-item-creator {
+  font-size: 13px;
+  color: var(--paragraph-light);
+}
+.co-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.co-item-price {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--heading-color) !important;
+  white-space: nowrap;
+}
+
+/* Quantity stepper — 44px targets, which is the accessibility floor and
+   also just the size a thumb actually hits on a moving train. */
+.co-item-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  width: max-content;
+}
+.co-qty-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--heading-color);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.co-qty-btn:hover { background: var(--sub-bg); }
+.co-qty-btn:active { background: var(--border); }
+.co-qty-val {
+  min-width: 30px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+.co-item-qty-static {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--paragraph-light);
+}
+.co-item-remove {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--paragraph-light);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: color 140ms ease, background 140ms ease;
+}
+.co-item-remove:hover { color: var(--danger, #dc2626); background: rgba(220, 38, 38, 0.07); }
+
+/* ---- Typography hierarchy -------------------------------------------- */
+/* The grand total should dominate the summary; supporting rows step down. */
+.co-grand { padding-top: 14px !important; margin-top: 6px !important; }
+.co-grand span { font-size: 15px !important; font-weight: 700 !important; }
+.co-grand span:last-child {
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+.co-total-row { font-size: 14px !important; padding: 7px 0 !important; }
+
+@media (max-width: 900px) {
+  .co-summary__toggle-total { font-size: 18px !important; }
+  /* Inputs at 16px so iOS Safari doesn't zoom the viewport on focus. */
+  .co-input { font-size: 16px !important; min-height: 52px !important; }
+  .co-promo input { font-size: 16px !important; min-height: 48px !important; }
+  .co-promo button { min-height: 48px !important; min-width: 84px !important; }
+}

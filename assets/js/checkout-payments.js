@@ -398,3 +398,56 @@
   // desktop where there is room for both.
   setOpen(window.matchMedia("(min-width: 901px)").matches);
 })();
+
+// ---------------------------------------------------------------------------
+// Sticky purchase bar (mobile)
+// ---------------------------------------------------------------------------
+// Mirrors the grand total and forwards taps to the real place-order handler,
+// so there is exactly ONE payment code path — the bar is a second trigger for
+// it, never a second implementation. Its busy state is driven from the same
+// setPlaceOrderBusy() call as the in-page button, which is what stops a
+// shopper tapping the bar while the in-page button is already mid-payment.
+(function stickyPurchaseBar() {
+  var bar = document.getElementById("coStickyBar");
+  var cta = document.getElementById("coStickyCta");
+  var totalEl = document.getElementById("coStickyTotal");
+  var source = document.getElementById("coTotal");
+  var mainBtn = document.getElementById("placeOrderBtn");
+  if (!bar || !cta || !totalEl || !source || !mainBtn) return;
+
+  function itemCount() {
+    try {
+      var c = window.ProFitCart ? window.ProFitCart.getCheckoutItems() : [];
+      return c.reduce(function (n, i) { return n + (i.qty || 1); }, 0);
+    } catch (e) { return 0; }
+  }
+
+  function sync() {
+    totalEl.textContent = source.textContent;
+    // An empty cart has nothing to buy; showing a £0.00 purchase bar over an
+    // empty-cart message would be nonsense.
+    bar.classList.toggle("u-hidden", itemCount() === 0);
+  }
+
+  cta.addEventListener("click", function () {
+    if (cta.classList.contains("is-busy")) return;
+    mainBtn.click();
+  });
+
+  // Keep the bar's pending state in lockstep with the in-page button rather
+  // than tracking payment state twice.
+  if (window.MutationObserver) {
+    new MutationObserver(function () {
+      var busy = mainBtn.classList.contains("is-busy");
+      cta.classList.toggle("is-busy", busy);
+      cta.setAttribute("aria-busy", String(busy));
+      var label = document.getElementById("placeOrderBtnText");
+      var mirror = document.getElementById("coStickyCtaText");
+      if (label && mirror) mirror.textContent = label.textContent;
+    }).observe(mainBtn, { attributes: true, attributeFilter: ["class"], subtree: true, childList: true, characterData: true });
+
+    new MutationObserver(sync).observe(source, { childList: true, characterData: true, subtree: true });
+  }
+  document.addEventListener("profit:cart-changed", function () { setTimeout(sync, 0); });
+  sync();
+})();

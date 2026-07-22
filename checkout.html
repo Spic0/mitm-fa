@@ -284,6 +284,28 @@
 
     </main>
 
+    <!-- Sticky purchase bar (mobile only).
+         Total + CTA and nothing else, so the purchase is always one tap away
+         however far down the summary the shopper has scrolled. Deliberately a
+         SEPARATE control from the in-page CTA rather than the same button
+         repositioned: the in-page one stays in the document flow for desktop
+         and for anyone who reaches the bottom, and both route through the same
+         click handler. Hidden until the cart is known to be non-empty, so it
+         never flashes on an empty checkout. -->
+    <div class="co-stickybar u-hidden" id="coStickyBar">
+        <div class="co-stickybar__inner">
+            <div class="co-stickybar__total">
+                <span class="co-stickybar__label">Total</span>
+                <span class="co-stickybar__value" id="coStickyTotal">$0.00</span>
+            </div>
+            <button type="button" class="co-stickybar__cta" id="coStickyCta">
+                <i class="fa-solid fa-lock"></i>
+                <span class="co-cta-spinner" aria-hidden="true"></span>
+                <span id="coStickyCtaText">Secure Checkout</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Footer area start here -->
     <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
         <div class="container">

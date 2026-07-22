@@ -465,6 +465,10 @@ CSS TABLE OF CONTENTS
 		spaceBetween: 20,
 		speed: 300,
 		grabCursor: true,
+		pagination: {
+			el: ".shop-single-pagination",
+			clickable: true,
+		},
 		thumbs: {
 			swiper: swiper,
 		},

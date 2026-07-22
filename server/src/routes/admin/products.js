@@ -199,6 +199,9 @@ function wizardProgress(product) {
     // SEO tags are optional metadata, never a publish blocker — always
     // reported complete so the wizard step never shows a false "missing" warning.
     seoTags: true,
+    // Likewise optional: a product with no gallery media falls back to its
+    // cover image on the product page, which is exactly the old behaviour.
+    gallery: true,
     preview: !!(product.name && product.slug && product.priceCents != null && product.overview),
   };
 }

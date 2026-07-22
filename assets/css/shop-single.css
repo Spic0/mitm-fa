@@ -15,6 +15,50 @@
     object-fit: cover;
     border-radius: 12px;
 }
+#productGallery .shop-single-slide { position: relative; }
+
+/* Dots only exist for a real carousel. .has-multiple-media is set by
+   shop-single.js once the CMS media list is known, so a single-image
+   product never renders a lone meaningless dot. */
+#productGallery .shop-single-pagination { display: none; }
+#productGallery.has-multiple-media .shop-single-pagination {
+    display: block;
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    text-align: center;
+    pointer-events: auto;
+}
+#productGallery .shop-single-pagination .swiper-pagination-bullet {
+    width: 7px;
+    height: 7px;
+    margin: 0 4px !important;
+    background: #ffffff;
+    opacity: 0.5;
+    /* Sits over uploaded artwork of unknown brightness — the shadow keeps the
+       inactive dots legible on a white or washed-out frame. */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    transition: opacity 0.2s ease, width 0.2s ease;
+}
+#productGallery .shop-single-pagination .swiper-pagination-bullet-active {
+    opacity: 1;
+    width: 18px;
+    border-radius: 4px;
+}
+
+/* Videos share the slide sizing of images so a mixed gallery doesn't
+   change height as it advances (a CLS source right above the CTA). */
+#productGallery .shop-single-slide video.product-gallery-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+}
+
 #productGallery .shop-slider-thumb { margin-top: 12px !important; }
 #productGallery .slide-smoll .product-gallery-img {
     width: 100%;
@@ -40,7 +84,12 @@
 }
 .product-eyebrow:hover { color: var(--primary-color); }
 
-.product-title { font-size: 26px; margin-bottom: 8px; line-height: 1.25; }
+.product-title { font-size: 26px; margin-bottom: 6px; line-height: 1.25; }
+.product-creator {
+    font-size: 14px;
+    color: var(--paragraph-light);
+    margin-bottom: 10px;
+}
 .product-price { font-size: 22px; color: var(--primary-color); font-weight: 700; margin-bottom: 14px; }
 .product-summary { color: var(--paragraph); font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
 
@@ -132,16 +181,21 @@
        past the fold. Everything here is inside the mobile breakpoint —
        the desktop rules above are untouched.
 
-       Budget on the shortest supported device (iPhone SE, ~520px usable):
-       clearance 72 + gallery 40vh (267) + title 28 + price 24 +
-       summary 44 + CTA 56 = ~491px. Fits without scrolling. */
+       Measured, not estimated: on a 390x844 viewport this puts Add to Bag's
+       bottom edge at ~640px, which clears the fold even after iOS Safari's
+       own toolbars come off the 844. */
     .product-details-single { margin-top: 56px; padding-top: 16px; }
 
     /* Cap by viewport height rather than swapping the aspect-ratio, so the
        image stays correctly proportioned (never squashed) and simply gets
        letterboxed by its own container on short screens. */
-    #productGallery .shop-single-slide .product-gallery-img {
-        max-height: 40vh;
+    /* video.product-gallery-img is listed explicitly: the video rule above
+       carries an extra element selector, so it outranks a bare
+       .product-gallery-img here regardless of source order and would
+       otherwise restore the full-height 4/5 box on phones. */
+    #productGallery .shop-single-slide .product-gallery-img,
+    #productGallery .shop-single-slide video.product-gallery-img {
+        max-height: 38vh;
         width: auto;
         max-width: 100%;
         margin-inline: auto;
@@ -169,13 +223,13 @@
     .discount-toggle { order: 3; align-self: center; padding-bottom: 0; }
     .discount-row { order: 4; margin-top: 10px; margin-bottom: 0; max-width: none; }
 
-    /* Two lines of summary is enough to orient above the fold; the full
-       description lives in the tabs below. */
-    .product-summary {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        margin-bottom: 14px;
-    }
+    /* Hidden above the fold, not clamped. Measured on a 390x844 viewport the
+       two-line summary cost ~66px and pushed Add to Bag's bottom edge to
+       705px — under the fold once iOS Safari's own chrome is taken off the
+       844. The first screen only has to answer what this is, who made it,
+       what it costs, and how to buy; the same copy is still shown in full in
+       the description section below. */
+    .product-summary { display: none; }
+
+    .product-creator { font-size: 13px; margin-bottom: 8px; }
 }

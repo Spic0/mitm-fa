@@ -119,8 +119,71 @@ document.addEventListener("DOMContentLoaded", function () {
         if (instances.main.params.loop) instances.main.loopDestroy();
         if (media.length > 1 && instances.main.params.loop) instances.main.loopCreate();
         instances.main.slideTo(0, 0);
+        if (instances.main.pagination) instances.main.pagination.render();
+        if (instances.main.pagination) instances.main.pagination.update();
       }
     }
+
+    // A single item is not a carousel — no dots, no advancing.
+    var gallery = document.getElementById("productGallery");
+    if (gallery) gallery.classList.toggle("has-multiple-media", media.length > 1);
+    if (media.length > 1) startAutoAdvance(media);
+  }
+
+  // Advance through the gallery on its own, but pace each slide by what is
+  // actually on it: a fixed interval either cuts a video off partway or
+  // leaves a still image sitting there long after the viewer has read it.
+  //
+  // Videos keep looping (the brief asks for muted/loop/autoplay) — this only
+  // decides when to move on, after roughly one full pass of the clip.
+  var advanceTimer = null;
+  var IMAGE_MS = 4000;
+  var VIDEO_MAX_MS = 8000;
+
+  function startAutoAdvance(media) {
+    var instances = window.ProFitShopSwiper;
+    if (!instances || !instances.main) return;
+    var sw = instances.main;
+
+    function currentSlideEl() {
+      return sw.slides && sw.slides[sw.activeIndex];
+    }
+
+    function scheduleNext() {
+      clearTimeout(advanceTimer);
+      var el = currentSlideEl();
+      var video = el && el.querySelector("video");
+      var wait = IMAGE_MS;
+
+      if (video) {
+        // Only start fetching a video once its slide is actually shown —
+        // this is what keeps `preload="none"` meaningful and stops a
+        // multi-video gallery from pulling megabytes at page load.
+        if (video.preload === "none") video.preload = "auto";
+        var play = video.play();
+        if (play && play.catch) play.catch(function () {});
+        var dur = video.duration;
+        wait = dur && isFinite(dur) ? Math.min(dur * 1000, VIDEO_MAX_MS) : VIDEO_MAX_MS;
+      }
+
+      advanceTimer = setTimeout(function () {
+        sw.slideNext();
+      }, wait);
+    }
+
+    // Pausing off-screen matters more here than usual: this sits above the
+    // fold, so without it every product page burns a timer (and a decoding
+    // video) for as long as the tab is open in the background.
+    function stop() { clearTimeout(advanceTimer); }
+
+    sw.on("slideChange", scheduleNext);
+    sw.on("touchStart", stop);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) stop();
+      else scheduleNext();
+    });
+
+    scheduleNext();
   }
 
   window.ProFitAPI.getProduct(slug).then(function (data) {
@@ -132,6 +195,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var categoryLink = document.getElementById("productCategoryLink");
     if (categoryLink) categoryLink.textContent = p.category || "Training Plans";
+
+    // Creator is part of what the first screen has to answer ("what is this,
+    // who made it, how much"). Hidden rather than left as an empty line when
+    // the product has no creator set, so it never adds blank space.
+    var creatorEl = document.getElementById("productCreator");
+    if (creatorEl) {
+      if (p.creator) {
+        creatorEl.textContent = "by " + p.creator;
+        creatorEl.style.display = "";
+      } else {
+        creatorEl.style.display = "none";
+      }
+    }
 
     renderGallery(p);
 

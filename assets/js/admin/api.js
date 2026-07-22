@@ -80,6 +80,14 @@ window.AdminAPI = (function () {
     duplicateProduct: function (id) { return post("/api/admin/products/" + id + "/duplicate"); },
 
     uploadProductMedia: function (id, formData) { return postForm("/api/admin/products/" + id + "/media", formData); },
+
+    // Public product-page gallery (the sales-page carousel). Distinct from
+    // uploadProductMedia above, which is paid program content served through
+    // the entitlement-gated /api/library/media.
+    listProductGallery: function (id) { return get("/api/admin/products/" + id + "/gallery"); },
+    uploadProductGallery: function (id, formData) { return postForm("/api/admin/products/" + id + "/gallery", formData); },
+    reorderProductGallery: function (id, ids) { return put("/api/admin/products/" + id + "/gallery/order", { ids: ids }); },
+    deleteProductGallery: function (id, mediaId) { return del("/api/admin/products/" + id + "/gallery/" + mediaId); },
     updateProductTaxonomy: function (id, nodeIds) { return put("/api/admin/products/" + id + "/taxonomy", { nodeIds: nodeIds }); },
 
     getTaxonomy: function () { return get("/api/admin/taxonomy"); },

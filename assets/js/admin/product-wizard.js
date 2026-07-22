@@ -20,6 +20,7 @@ window.AdminProductWizard = (function () {
     { key: "basics", label: "Basic Info" },
     { key: "pricing", label: "Pricing & Access" },
     { key: "structure", label: "Program Structure" },
+    { key: "gallery", label: "Product Gallery" },
     { key: "seoTags", label: "SEO & Tags" },
     { key: "training", label: "Training Content" },
     { key: "nutrition", label: "Nutrition Content" },
@@ -190,6 +191,7 @@ window.AdminProductWizard = (function () {
         if (key === "basics") renderBasics(stepHost, bannerHost);
         else if (key === "pricing") renderPricing(stepHost, bannerHost);
         else if (key === "structure") renderStructure(stepHost, bannerHost);
+        else if (key === "gallery") renderGallery(stepHost, bannerHost);
         else if (key === "seoTags") renderSeoTags(stepHost, bannerHost);
         else if (key === "training") renderTraining(stepHost, bannerHost);
         else if (key === "nutrition") renderNutrition(stepHost, bannerHost);
@@ -398,6 +400,148 @@ window.AdminProductWizard = (function () {
     }
 
     // ---- SEO & Tags: freeform keywords, independent of taxonomy/navigation ----
+    // Public sales-page carousel. Unlike every other step, this one writes
+    // immediately rather than collecting into `state` for the wizard's Save:
+    // each item is a real uploaded file that needs a product id to belong to,
+    // and gallery rows live in their own table, so there is nothing for the
+    // product PUT to carry. That means an unsaved *new* product has nowhere
+    // to put media yet — hence the guard below.
+    function renderGallery(container, bannerHost) {
+      renderMissingBanner(bannerHost, "gallery");
+      var p = state.product || {};
+
+      if (!p.id) {
+        container.innerHTML =
+          "<h5>Product Gallery</h5>" +
+          '<p class="a-modal-desc">Images, GIFs and short videos for the product page carousel — shown to shoppers before they buy.</p>' +
+          '<div class="a-wizard-empty" style="padding:24px;text-align:center;color:var(--a-text-muted);font-size:13px;">' +
+          "Save this product first, then come back to add gallery media." +
+          "</div>";
+        return;
+      }
+
+      container.innerHTML =
+        "<h5>Product Gallery</h5>" +
+        '<p class="a-modal-desc">Shown as a swipeable carousel at the top of the product page. The cover image from Basic Info is used for cards and sharing; this gallery is the product page itself. Drag to reorder — the first item is what shoppers see first.</p>' +
+        '<div class="a-form-row"><label>Add media</label>' +
+        '<input type="file" id="galleryFile" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" multiple>' +
+        '<p style="font-size:12px;color:var(--a-text-muted);margin-top:6px;">PNG, JPG, WebP, GIF, MP4 or WebM. Up to 30MB each. Videos play muted and looped.</p>' +
+        "</div>" +
+        '<div id="galleryStatus" style="font-size:13px;margin-bottom:10px;"></div>' +
+        '<div id="galleryList" class="a-wizard-gallery-list"></div>';
+
+      var listHost = container.querySelector("#galleryList");
+      var statusHost = container.querySelector("#galleryStatus");
+      var items = [];
+
+      function setStatus(msg, isError) {
+        statusHost.textContent = msg || "";
+        statusHost.style.color = isError ? "var(--a-danger, #dc2626)" : "var(--a-text-muted)";
+      }
+
+      function itemHtml(m, i) {
+        var preview = m.type === "video"
+          ? '<video src="' + esc(m.url) + '" muted playsinline preload="metadata"></video>'
+          : '<img src="' + esc(m.url) + '" alt="">';
+        return '<li class="a-wizard-gallery-item" draggable="true" data-index="' + i + '" data-id="' + esc(m.id) + '">' +
+          '<span class="a-wizard-gallery-handle" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>' +
+          '<span class="a-wizard-gallery-thumb">' + preview + "</span>" +
+          '<span class="a-wizard-gallery-meta">' +
+          '<strong>' + (i === 0 ? "First slide" : "Slide " + (i + 1)) + "</strong>" +
+          '<span class="a-wizard-gallery-type">' + esc(m.type) + "</span>" +
+          "</span>" +
+          '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-remove-media="' + esc(m.id) + '" aria-label="Remove media"><i class="fa-solid fa-trash"></i></button>' +
+          "</li>";
+      }
+
+      function rerender() {
+        if (!items.length) {
+          listHost.innerHTML = '<p style="color:var(--a-text-muted);font-size:13px;">No gallery media yet. The product page will fall back to the cover image.</p>';
+          return;
+        }
+        listHost.innerHTML = '<ul class="a-wizard-gallery-ul">' + items.map(itemHtml).join("") + "</ul>";
+        bindRows();
+      }
+
+      function bindRows() {
+        listHost.querySelectorAll("[data-remove-media]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.dataset.removeMedia;
+            btn.disabled = true;
+            setStatus("Removing…");
+            AdminAPI.deleteProductGallery(p.id, id).then(function () {
+              items = items.filter(function (m) { return m.id !== id; });
+              setStatus("");
+              rerender();
+            }).catch(function (err) {
+              btn.disabled = false;
+              setStatus(err.message || "Could not remove that item", true);
+            });
+          });
+        });
+
+        var dragFrom = null;
+        listHost.querySelectorAll(".a-wizard-gallery-item").forEach(function (row) {
+          row.addEventListener("dragstart", function () {
+            dragFrom = parseInt(row.dataset.index, 10);
+            row.classList.add("is-dragging");
+          });
+          row.addEventListener("dragend", function () { row.classList.remove("is-dragging"); });
+          row.addEventListener("dragover", function (e) { e.preventDefault(); });
+          row.addEventListener("drop", function (e) {
+            e.preventDefault();
+            var to = parseInt(row.dataset.index, 10);
+            if (dragFrom === null || dragFrom === to) return;
+            var moved = items.splice(dragFrom, 1)[0];
+            items.splice(to, 0, moved);
+            dragFrom = null;
+            rerender();
+            setStatus("Saving order…");
+            AdminAPI.reorderProductGallery(p.id, items.map(function (m) { return m.id; }))
+              .then(function () { setStatus(""); })
+              .catch(function (err) { setStatus(err.message || "Could not save the new order", true); });
+          });
+        });
+      }
+
+      AdminAPI.listProductGallery(p.id).then(function (data) {
+        items = data.media || [];
+        rerender();
+      }).catch(function () {
+        listHost.innerHTML = '<p style="color:var(--a-text-muted);font-size:13px;">Could not load the gallery.</p>';
+      });
+
+      container.querySelector("#galleryFile").addEventListener("change", function (e) {
+        var files = Array.prototype.slice.call(e.target.files || []);
+        if (!files.length) return;
+        e.target.value = "";
+
+        // Uploaded one at a time on purpose: each response carries the row the
+        // server actually created (including the order it was given), and a
+        // failure part-way leaves the successful ones already saved rather
+        // than rolling the whole batch back.
+        var done = 0;
+        (function next() {
+          if (!files.length) {
+            setStatus(done ? done + " item" + (done === 1 ? "" : "s") + " added" : "");
+            return;
+          }
+          var file = files.shift();
+          setStatus("Uploading " + file.name + "…");
+          var fd = new FormData();
+          fd.append("media", file);
+          AdminAPI.uploadProductGallery(p.id, fd).then(function (data) {
+            items.push(data.media);
+            done += 1;
+            rerender();
+            next();
+          }).catch(function (err) {
+            setStatus(err.message || ("Could not upload " + file.name), true);
+          });
+        })();
+      });
+    }
+
     function renderSeoTags(container, bannerHost) {
       renderMissingBanner(bannerHost, "seoTags");
       var p = state.product || {};

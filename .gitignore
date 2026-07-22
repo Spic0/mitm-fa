@@ -10,3 +10,5 @@ server/generated/
 # server's disk, not version-controlled; mixes real product deliverables
 # with orphaned/test uploads that shouldn't ride along in source history.
 server/storage/
+server/_proxy.js
+server/_apitest.js

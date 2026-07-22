@@ -25,7 +25,6 @@
   var fill = root.querySelector("[data-progress-fill]");
   var curLabel = root.querySelector("[data-step-current]");
   var totalLabel = root.querySelector("[data-step-total]");
-  var nameLabel = root.querySelector("[data-step-name]");
   var formError = root.querySelector("[data-form-error]");
 
   var TOTAL = numbered.length;
@@ -44,7 +43,6 @@
 
     if (fill) fill.style.width = Math.round(((i + 1) / TOTAL) * 100) + "%";
     if (curLabel) curLabel.textContent = String(i + 1);
-    if (nameLabel) nameLabel.textContent = el.dataset.stepTitle || "";
 
     backBtn.hidden = i === 0;
     var last = i === TOTAL - 1;

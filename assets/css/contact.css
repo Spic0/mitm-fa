@@ -147,6 +147,12 @@
     line-height: 1.25;
     margin-bottom: 18px;
 }
+/* The heading is given tabindex="-1" and focused on each step change so a
+   screen reader announces the new question. That focus is programmatic, not
+   the result of tabbing, so the visible ring would just look like a stray
+   box drawn around the title — :focus-visible still shows it for anyone who
+   actually reaches it via the keyboard. */
+.ct-step__title:focus:not(:focus-visible) { outline: none; }
 
 /* Option grid — single column on a phone so each row is a wide, easy
    target; two columns once there's room. */

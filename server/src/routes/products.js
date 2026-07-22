@@ -10,7 +10,7 @@ const router = express.Router();
 // which were removed from the schema). The storefront's shop.js has nothing
 // to filter on unless the product's taxonomy node ids ride along here.
 function serialize(product) {
-  return {
+  const out = {
     id: product.id,
     slug: product.slug,
     name: product.name,
@@ -25,9 +25,32 @@ function serialize(product) {
     createdAt: product.createdAt,
     taxonomyNodeIds: (product.taxonomies || []).map((t) => t.taxonomyNodeId),
   };
+
+  // Only present when the caller asked for it (the detail endpoint). The
+  // grid endpoint returns every published product and needs nothing but the
+  // cover — attaching each product's full gallery there would grow that
+  // payload with rows no shop-grid card can display.
+  if (product.media) {
+    out.media = product.media.map((m) => ({
+      url: normalizeImageUrl(m.url),
+      type: m.type,
+      alt: m.alt || product.name,
+    }));
+  }
+  return out;
 }
 
 const withTaxonomy = { taxonomies: { select: { taxonomyNodeId: true } } };
+
+// Gallery ordering is admin-defined; `id` only breaks ties so that two items
+// sharing an order value don't shuffle between requests.
+const withMedia = {
+  ...withTaxonomy,
+  media: {
+    select: { url: true, type: true, alt: true },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+  },
+};
 
 router.get("/", async (req, res) => {
   const where = { status: "published" };
@@ -45,7 +68,7 @@ router.get("/:idOrSlug", async (req, res) => {
   const { idOrSlug } = req.params;
   const product = await prisma.product.findFirst({
     where: { status: "published", OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-    include: withTaxonomy,
+    include: withMedia,
   });
   if (!product) return res.status(404).json({ error: "Product not found" });
   res.json({ product: serialize(product) });

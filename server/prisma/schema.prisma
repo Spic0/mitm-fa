@@ -66,6 +66,7 @@ model Product {
   seoTags String[] @default([])
 
   orderItems OrderItem[]
+  media      ProductMedia[]
   faqs       ProductFaq[]
   resources  ProductResource[]
   taxonomies ProductTaxonomy[]
@@ -124,6 +125,26 @@ model ProductTaxonomy {
   taxonomyNode   TaxonomyNode @relation(fields: [taxonomyNodeId], references: [id], onDelete: Cascade)
 
   @@unique([productId, taxonomyNodeId])
+}
+
+// Ordered gallery for the product page carousel. Product.imageUrl stays the
+// single "cover" used by cards, OG tags and the cart line — this is purely
+// additive, so every existing product keeps working with zero rows here.
+//
+// GIFs need no special case: they are image/gif and render in an <img> like
+// any other image. Only real video (mp4/webm) gets type "video".
+model ProductMedia {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  type      String  @default("image") // "image" | "video"
+  alt       String?
+  // Explicit admin-defined sort position, matching ProductFaq/ProductResource.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, order])
 }
 
 model ProductFaq {

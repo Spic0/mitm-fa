@@ -123,4 +123,59 @@
 @media (max-width: 991px) {
     .product-title { font-size: 22px; }
     .product-price { font-size: 19px; }
+
+    /* ---- Above-the-fold hero (mobile only) ----------------------------
+       The desktop layout puts the gallery in a 5-col beside the content,
+       so its 4/5 aspect-ratio never costs vertical room. Stacked on a
+       phone that same ratio renders ~448px tall on a 390px viewport, and
+       with the thumb strip below it the title/price/CTA were all pushed
+       past the fold. Everything here is inside the mobile breakpoint —
+       the desktop rules above are untouched.
+
+       Budget on the shortest supported device (iPhone SE, ~520px usable):
+       clearance 72 + gallery 40vh (267) + title 28 + price 24 +
+       summary 44 + CTA 56 = ~491px. Fits without scrolling. */
+    .product-details-single { margin-top: 56px; padding-top: 16px; }
+
+    /* Cap by viewport height rather than swapping the aspect-ratio, so the
+       image stays correctly proportioned (never squashed) and simply gets
+       letterboxed by its own container on short screens. */
+    #productGallery .shop-single-slide .product-gallery-img {
+        max-height: 40vh;
+        width: auto;
+        max-width: 100%;
+        margin-inline: auto;
+    }
+    #productGallery .shop-single-slide .swiper-slide {
+        display: flex;
+        justify-content: center;
+    }
+
+    /* The thumb strip costs ~92px of fold for no value on a phone — it is
+       a duplicate of the main image today, and swiping the main gallery
+       already does what tapping a thumb would. Desktop keeps it. */
+    #productGallery .shop-slider-thumb { display: none; }
+
+    /* Put the CTA directly under the price. The discount toggle is a
+       secondary action and was sitting between them, pushing the primary
+       conversion target down the page. */
+    .purchase-area {
+        display: flex;
+        flex-direction: column;
+        padding-top: 12px;
+    }
+    .btn-add-to-bag { order: 1; margin-top: 0; }
+    .purchase-note { order: 2; margin-top: 10px; }
+    .discount-toggle { order: 3; align-self: center; padding-bottom: 0; }
+    .discount-row { order: 4; margin-top: 10px; margin-bottom: 0; max-width: none; }
+
+    /* Two lines of summary is enough to orient above the fold; the full
+       description lives in the tabs below. */
+    .product-summary {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 14px;
+    }
 }

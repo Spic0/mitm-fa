@@ -469,6 +469,12 @@ CSS TABLE OF CONTENTS
 			swiper: swiper,
 		},
 	});
+	// The product page builds its real slide list from the CMS *after* this
+	// runs (assets/js/shop-single.js, which has to wait on the product API),
+	// so it needs these instances to re-sync once the slides change. Exposed
+	// rather than re-initialized: re-running `new Swiper` on a live element
+	// leaks the old instance's listeners.
+	window.ProFitShopSwiper = { main: swiper2, thumbs: swiper };
 	// Shop single swiper slider area end here ***
 
 	// Hide & show by clicks js area start here ***

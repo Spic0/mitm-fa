@@ -2716,9 +2716,69 @@ input {
 .product__cart,
 .product__buy-now,
 .cp-qty-btn,
-.remove-product {
+.remove-product,
+/* The cart DRAWER's controls were missing from this list while the cart
+   PAGE's equivalents (.cp-qty-btn, .remove-product) were here from the
+   start. Combined with the containment bug fixed just below, that is what
+   let a recommendation tile's ::after swallow every tap in the drawer:
+   remove and qty were static/auto and sat underneath it. */
+.cart-item-remove,
+.cart-qty-minus,
+.cart-qty-plus,
+.cart-drawer__close {
   position: relative;
   z-index: 2;
+}
+
+/* MUST stay in the stylesheet, not an inline style attribute.
+   The site sends `style-src-attr 'self'` (server/src/index.js), and 'self'
+   is not a valid source for inline style attributes — only 'unsafe-inline'
+   or a hash/nonce is — so the browser blocks every style="..." attribute on
+   the site. This element used to carry an inline position:relative from
+   script.js's renderRecommendedProducts(); it was silently dropped, the tile
+   stayed position:static, and .stretched-link::after therefore resolved
+   against the nearest positioned ancestor it could find -- #cartDrawer
+   itself (position:fixed). That turned a 96x172 tile link into an invisible
+   390x664 overlay across the entire drawer, so any tap on remove or qty
+   added the recommended product instead. Measured before the fix: the
+   anchor was the hit-test result at every point from y=120 to y=480.
+
+   Keeping this here means containment no longer depends on an inline style
+   the CSP will not apply. */
+.cart-recommended__item {
+  position: relative;
+}
+
+/* Same CSP problem, same fix, on the cart PAGE. renderCartPage() emits these
+   four declarations as style="..." attributes, every one of which the browser
+   drops. Restated here so they actually apply:
+     - .product row: position:relative — each row's title is a .stretched-link,
+       and without a positioned row every row's ::after resolved to the same
+       far-off ancestor, so the rows' link areas overlapped each other.
+       (.remove-product and .cp-qty-btn already carry z-index:2 above, which is
+       why the cart page's buttons kept working where the drawer's did not.)
+     - the thumbnail's fixed 70x70 box
+     - the subtotal's emphasis styling
+   The now-inert attributes are left in the JS markup deliberately: removing
+   them is a separate, wider cleanup (see the audit note in the commit), and
+   they do no harm while these rules are present. */
+#cartPageTable .product {
+  position: relative;
+}
+#cartPageTable .product-details img {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+#cartPageTable .product-details h4 a {
+  color: inherit;
+}
+#cartPageTable .cp-subtotal-val {
+  color: var(--primary-color);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 /* Tappable product card: the CTA strip at the bottom is the card's single

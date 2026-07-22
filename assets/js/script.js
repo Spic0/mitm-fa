@@ -719,7 +719,11 @@ CSS TABLE OF CONTENTS
 				// The whole tile is one add-to-cart tap target: the "Add" anchor
 				// stretches over the item (same pattern as product cards), with
 				// the product page href only as an open-in-new-tab fallback.
-				html += '<div class="cart-recommended__item" style="position:relative;">' +
+				// No inline style="position:relative" here — the CSP's
+				// style-src-attr blocks style attributes outright, so it never
+				// applied. The rule lives in style.css (.cart-recommended__item)
+				// where it actually takes effect.
+				html += '<div class="cart-recommended__item">' +
 					'<img src="' + escapeHtml(img) + '" alt="">' +
 					'<span class="cart-recommended__name">' + escapeHtml(p.name) + '</span>' +
 					'<span class="cart-recommended__price">$' + price + '</span>' +

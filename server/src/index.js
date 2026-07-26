@@ -238,7 +238,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
-  console.log(`ProFit server running at ${process.env.APP_URL || `http://localhost:${PORT}`}`);
+  console.log(`Fitness Agency server running at ${process.env.APP_URL || `http://localhost:${PORT}`}`);
 });
 
 // Promotion notification thresholds (expiry countdowns, usage limits, unused/

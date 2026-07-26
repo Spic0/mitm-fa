@@ -6,10 +6,10 @@ const { prisma } = require("../db");
 // must never appear here in any form, not even masked/read-only. Those stay
 // exclusively in the server's environment configuration.
 const DEFAULTS = {
-  storeName: "ProFit",
+  storeName: "Fitness Agency",
   currency: "USD",
   taxRate: "0",
-  emailFromName: "ProFit",
+  emailFromName: "Fitness Agency",
   logoUrl: "",
 };
 

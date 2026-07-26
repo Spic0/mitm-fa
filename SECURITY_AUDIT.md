@@ -1,4 +1,4 @@
-# Security Audit Report — ProFit E-Commerce Platform
+# Security Audit Report — Fitness Agency E-Commerce Platform
 
 **Date:** 2026-07-10
 **Scope:** Full application — Express/Prisma/PostgreSQL backend, vanilla JS storefront, admin dashboard, Stripe + PayPal payments, file uploads.

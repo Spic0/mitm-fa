@@ -120,16 +120,16 @@ function applyStaticSeo(html, meta, canonicalPath) {
     (canonicalPath ? `    <link rel="canonical" href="${appUrl(canonicalPath)}">\n` : "") +
     (meta.noindex ? `    <meta name="robots" content="noindex, nofollow">\n` : "") +
     `    <meta property="og:type" content="website">\n` +
-    `    <meta property="og:title" content="${title} | ProFit">\n` +
+    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
     `    <meta property="og:description" content="${description}">\n` +
     (canonicalPath ? `    <meta property="og:url" content="${appUrl(canonicalPath)}">\n` : "") +
     `    <meta property="og:image" content="${image}">\n` +
     `    <meta name="twitter:card" content="summary">\n` +
-    `    <meta name="twitter:title" content="${title} | ProFit">\n` +
+    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
     `    <meta name="twitter:description" content="${description}">`;
 
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | ProFit</title>`)
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
     .replace("<!--PAGE_SEO-->", block);
 }
 
@@ -246,7 +246,7 @@ async function applyShopContext(html, ctx) {
     );
   }
 
-  const ogTitle = escapeHtml(ctx && !ctx.notFound ? `${ctx.title} | ProFit` : "ProFit - Training & Diet Plans");
+  const ogTitle = escapeHtml(ctx && !ctx.notFound ? `${ctx.title} | Fitness Agency` : "Fitness Agency - Training & Diet Plans");
   const ogDesc = escapeHtml(ctx && !ctx.notFound ? ctx.description : "Training and nutrition plans from elite athletes and coaches. Browse by goal, sport, or creator and download instantly.");
   html = html.replace(
     "<!--SHOP_OG-->",
@@ -276,7 +276,7 @@ async function applyShopContext(html, ctx) {
 
   const title = escapeHtml(ctx.title);
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | ProFit</title>`)
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
     .replace(/(<meta name="description" data-shop-meta content=")[^"]*(")/, `$1${escapeHtml(ctx.description)}$2`)
     .replace(/(<h2[^>]*data-shop-heading[^>]*>)[^<]*(<\/h2>)/, `$1${escapeHtml(ctx.heading)}$2`)
     .replace(/(<p[^>]*data-shop-sub[^>]*>)[^<]*(<\/p>)/, `$1${escapeHtml(ctx.description)}$2`)
@@ -307,7 +307,7 @@ router.get("/creator/:slug", (req, res) => renderShopPage(req, res, { type: "cre
 // ---------------------------------------------------------------------
 function applyProductSeo(html, product) {
   const title = escapeHtml(product.name);
-  const rawDescription = product.description || `${product.name} — a training & nutrition plan on ProFit.`;
+  const rawDescription = product.description || `${product.name} — a training & nutrition plan on Fitness Agency.`;
   const description = escapeHtml(rawDescription.length > 300 ? rawDescription.slice(0, 297) + "..." : rawDescription);
   const url = appUrl(`/program/${encodeURIComponent(product.slug)}`);
   const normalizedImage = product.imageUrl ? normalizeImageUrl(product.imageUrl) : "";
@@ -336,18 +336,18 @@ function applyProductSeo(html, product) {
     (product.seoTags && product.seoTags.length ? `    <meta name="keywords" content="${escapeHtml(product.seoTags.join(", "))}">\n` : "") +
     `    <link rel="canonical" href="${url}">\n` +
     `    <meta property="og:type" content="product">\n` +
-    `    <meta property="og:title" content="${title} | ProFit">\n` +
+    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
     `    <meta property="og:description" content="${description}">\n` +
     `    <meta property="og:url" content="${url}">\n` +
     (image ? `    <meta property="og:image" content="${image}">\n` : "") +
     `    <meta name="twitter:card" content="summary_large_image">\n` +
-    `    <meta name="twitter:title" content="${title} | ProFit">\n` +
+    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
     `    <meta name="twitter:description" content="${description}">\n` +
     (image ? `    <meta name="twitter:image" content="${image}">\n` : "") +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | ProFit</title>`)
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
     .replace("<!--PROGRAM_SEO-->", seoBlock);
 }
 
@@ -383,17 +383,17 @@ router.get("/program/:slug", async (req, res, next) => {
 // auth gate is introduced here.
 // ---------------------------------------------------------------------
 const PAGE_META = {
-  "/about": { file: "about.html", title: "About Us", description: "Learn about ProFit's coaches and our approach to training and nutrition plans built for real results." },
-  "/contact": { file: "contact.html", title: "Contact Us", description: "Get in touch with the ProFit team for support, partnership inquiries, or questions about your plan." },
+  "/about": { file: "about.html", title: "About Us", description: "Learn about Fitness Agency's coaches and our approach to training and nutrition plans built for real results." },
+  "/contact": { file: "contact.html", title: "Contact Us", description: "Get in touch with the Fitness Agency team for support, partnership inquiries, or questions about your plan." },
   "/cart": { file: "cart.html", title: "Your Cart", description: "Review the plans in your cart before checkout.", noindex: true },
   "/checkout": { file: "checkout.html", title: "Checkout", description: "Complete your purchase securely.", noindex: true },
-  "/login": { file: "login.html", title: "Sign In", description: "Sign in to your ProFit account to access your training plans.", noindex: true },
-  "/register": { file: "register.html", title: "Create Account", description: "Create a ProFit account to start training.", noindex: true },
+  "/login": { file: "login.html", title: "Sign In", description: "Sign in to your Fitness Agency account to access your training plans.", noindex: true },
+  "/register": { file: "register.html", title: "Create Account", description: "Create a Fitness Agency account to start training.", noindex: true },
   "/my-library": { file: "my-library.html", title: "My Library", description: "Your purchased training and nutrition plans, orders, and account settings.", noindex: true },
-  "/blog": { file: "blog.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the ProFit coaching team." },
-  "/blog/grid": { file: "blog-grid.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the ProFit coaching team." },
-  "/blog/list": { file: "blog-list.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the ProFit coaching team." },
-  "/blog/article": { file: "blog-single.html", title: "Article", description: "Read the latest training and nutrition insights from the ProFit coaching team." },
+  "/blog": { file: "blog.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
+  "/blog/grid": { file: "blog-grid.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
+  "/blog/list": { file: "blog-list.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
+  "/blog/article": { file: "blog-single.html", title: "Article", description: "Read the latest training and nutrition insights from the Fitness Agency coaching team." },
   // error.html is deliberately used site-wide as a placeholder destination
   // for pages that don't exist yet (FAQ, Refund Policy, Careers, Investors,
   // Terms, Privacy — footer links across every page). /coming-soon gives

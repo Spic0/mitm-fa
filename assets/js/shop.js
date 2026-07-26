@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (subEl) subEl.textContent = ctx.sub;
     if (crumbEl) crumbEl.textContent = ctx.crumb;
 
-    var brand = (document.querySelector("[data-brand-name]") || {}).textContent || "ProFit";
+    var brand = (document.querySelector("[data-brand-name]") || {}).textContent || "Fitness Agency";
     if (ctx.title) document.title = ctx.title + " | " + brand;
     var meta = document.querySelector("meta[data-shop-meta]");
     if (meta && ctx.sub) meta.setAttribute("content", ctx.sub);

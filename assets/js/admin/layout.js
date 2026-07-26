@@ -41,7 +41,7 @@
     }).join("");
 
     return (
-      '<div class="admin-sidebar__brand"><img src="/assets/images/logo/logo.svg" alt="ProFit" data-brand-logo></div>' +
+      '<div class="admin-sidebar__brand"><img src="/assets/images/logo/logo.svg" alt="Fitness Agency" data-brand-logo></div>' +
       '<ul class="admin-nav">' + nav + "</ul>" +
       '<div class="admin-nav-section">Coming soon</div>' +
       '<ul class="admin-nav">' + soon + "</ul>"

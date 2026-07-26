@@ -30,6 +30,14 @@ async function fulfillFromPaymentIntent(paymentIntent) {
 
   return fulfillOrder({
     email,
+    // Captured at create-intent time (checkout.js). Absent on PaymentIntents
+    // created before these fields existed, which fulfillOrder treats as
+    // "nothing to update" rather than blanking what's already on the User.
+    customer: {
+      name: paymentIntent.metadata.name,
+      phone: paymentIntent.metadata.phone,
+      country: paymentIntent.metadata.country,
+    },
     provider: "stripe",
     providerRef: paymentIntent.id,
     items: resolvedItems,

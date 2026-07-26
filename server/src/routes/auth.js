@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { createMagicLinkToken, buildMagicLinkUrl, consumeMagicLinkToken } = require("../lib/magicLink");
-const { sendMagicLinkEmail } = require("../lib/email");
+const { sendMagicLinkEmail, sendWelcomeEmail } = require("../lib/email");
 const { createSession, setSessionCookie, clearSessionCookie, SESSION_COOKIE, revokeSession } = require("../lib/session");
 const { logEvent } = require("../lib/adminLog");
 const { authLimiter, magicLinkLimiter } = require("../middleware/rateLimit");
@@ -22,13 +22,27 @@ router.post("/magic-link", magicLinkLimiter, async (req, res) => {
   }
 
   let user = await prisma.user.findUnique({ where: { email } });
+  let isNewUser = false;
   if (!user) {
     user = await prisma.user.create({ data: { email } });
+    isNewUser = true;
     await logEvent({ category: "user", message: `New user registered: ${email}`, actorId: user.id });
   }
 
+  // "verify" for a brand-new address (this link is what proves the mailbox),
+  // "reset" when the caller is coming from a forgotten-password prompt, plain
+  // "signin" otherwise. Same single-use token in every case — only the wording
+  // differs, so there's one token path to get right rather than three.
+  const intent = isNewUser ? "verify" : req.body.intent === "reset" ? "reset" : "signin";
   const rawToken = await createMagicLinkToken(user.id);
-  await sendMagicLinkEmail(email, buildMagicLinkUrl(rawToken));
+  await sendMagicLinkEmail(email, buildMagicLinkUrl(rawToken), intent);
+
+  // Welcome goes out alongside the very first verification link, so a new
+  // account gets both "confirm this address" and "here's how the account
+  // works" without waiting for a purchase.
+  if (isNewUser) {
+    sendWelcomeEmail(email).catch((err) => console.error("Failed to send welcome email:", err));
+  }
 
   res.json({ ok: true, message: "Check your email for a sign-in link." });
 });

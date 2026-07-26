@@ -10,7 +10,7 @@
 // text into the notification email.
 const express = require("express");
 const { apiLimiter } = require("../middleware/rateLimit");
-const { sendAdminEmail } = require("../lib/email");
+const { sendContactNotificationEmail, sendContactAcknowledgementEmail } = require("../lib/email");
 const { logEvent } = require("../lib/adminLog");
 
 const router = express.Router();
@@ -71,12 +71,13 @@ router.post("/", apiLimiter, async (req, res) => {
     instagram ? `Instagram: ${instagram}` : null,
     "",
     message || "(no message)",
-  ].filter((line) => line !== null).join("\n");
+  ].filter((line) => line !== null);
 
   try {
-    const result = await sendAdminEmail(CONTACT_INBOX, {
-      subject: `New enquiry — ${role} · ${goal}`,
-      body: summary,
+    const result = await sendContactNotificationEmail(CONTACT_INBOX, {
+      name,
+      email,
+      lines: summary,
     });
     // Resend resolves with an { error } object instead of rejecting, so
     // awaiting is not enough — without this check a misconfigured or expired
@@ -95,6 +96,17 @@ router.post("/", apiLimiter, async (req, res) => {
     }).catch(() => {});
     return res.status(502).json({ error: "We couldn't send that just now — please email us directly." });
   }
+
+  // Acknowledgement to the enquirer. Deliberately after the 502 branch above
+  // and deliberately non-fatal: the notification reaching the office is what
+  // makes the enquiry "received", so a failed courtesy copy must not turn a
+  // successfully delivered lead into an error for the sender.
+  sendContactAcknowledgementEmail(email, { name }).catch((err) => {
+    logEvent({
+      category: "contact",
+      message: `Contact acknowledgement to ${email} failed: ${err.message}`,
+    }).catch(() => {});
+  });
 
   await logEvent({
     category: "contact",

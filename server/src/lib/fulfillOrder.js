@@ -1,7 +1,7 @@
 const { prisma } = require("../db");
 const { createSession } = require("./session");
 const { createMagicLinkToken, buildMagicLinkUrl } = require("./magicLink");
-const { sendPurchaseReceiptEmail } = require("./email");
+const { sendPurchaseReceiptEmail, sendWelcomeEmail } = require("./email");
 const { logEvent } = require("./adminLog");
 const { recordRedemption } = require("./promotions");
 
@@ -11,7 +11,22 @@ const { recordRedemption } = require("./promotions");
 // (one manual code + one stackable auto-apply promotion, see
 // checkoutItems.js) — discountCents here should already be baked into
 // totalCents by the caller; this just records the usage ledger rows.
-async function fulfillOrder({ email, provider, providerRef, items, totalCents, discountCents = 0, promotionId = null, appliedPromotions = [] }) {
+// customer (optional): { name, phone, country } from the checkout form.
+// Only ever fills in blanks on an existing User — a returning buyer who
+// mistypes their name at checkout shouldn't overwrite the name already on
+// their account, and an older payment that carries no details shouldn't blank
+// out details captured by a newer one.
+function customerFieldsToFill(customer, user) {
+  const data = {};
+  if (!customer) return data;
+  for (const field of ["name", "phone", "country"]) {
+    const value = customer[field] ? String(customer[field]).trim() : "";
+    if (value && !user[field]) data[field] = value;
+  }
+  return data;
+}
+
+async function fulfillOrder({ email, customer = null, provider, providerRef, items, totalCents, discountCents = 0, promotionId = null, appliedPromotions = [] }) {
   const existing = await prisma.order.findUnique({
     where: { providerRef },
     include: { user: true },
@@ -23,9 +38,21 @@ async function fulfillOrder({ email, provider, providerRef, items, totalCents, d
 
   const normalizedEmail = email.trim().toLowerCase();
   let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  // Drives the one-off welcome email below. Set only on the branch that
+  // actually creates the row — the P2002 recovery path means "someone else
+  // created it first", so that request must not also claim the welcome.
+  let isNewUser = false;
   if (!user) {
     try {
-      user = await prisma.user.create({ data: { email: normalizedEmail } });
+      user = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          ...(customer && customer.name ? { name: String(customer.name).trim() } : {}),
+          ...(customer && customer.phone ? { phone: String(customer.phone).trim() } : {}),
+          ...(customer && customer.country ? { country: String(customer.country).trim() } : {}),
+        },
+      });
+      isNewUser = true;
       await logEvent({ category: "user", message: `New user registered: ${normalizedEmail}`, actorId: user.id });
     } catch (err) {
       // Same check-then-create race as the order below, one step earlier: two
@@ -36,6 +63,19 @@ async function fulfillOrder({ email, provider, providerRef, items, totalCents, d
         user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
       }
       if (!user) throw err;
+    }
+  } else {
+    // Returning buyer, or one whose account was created by an earlier magic
+    // link with nothing but an email on it — backfill only the fields still
+    // empty. Never blocks fulfillment: a payment has already succeeded by
+    // this point, so a failure to enrich the profile must not throw.
+    const fill = customerFieldsToFill(customer, user);
+    if (Object.keys(fill).length) {
+      try {
+        user = await prisma.user.update({ where: { id: user.id }, data: fill });
+      } catch (err) {
+        console.error("Failed to backfill customer details:", err);
+      }
     }
   }
 
@@ -109,8 +149,16 @@ async function fulfillOrder({ email, provider, providerRef, items, totalCents, d
     await sendPurchaseReceiptEmail(user.email, {
       orderItems: order.items,
       totalCents: order.totalCents,
+      discountCents: order.discountCents,
+      orderId: order.id,
+      provider,
+      customerName: user.name,
       magicLink: buildMagicLinkUrl(magicToken),
     });
+    // First purchase from a brand-new account: the receipt covers the order,
+    // the welcome covers how the account itself works (magic-link sign-in,
+    // lifetime access). Sent only on account creation, never on repeat orders.
+    if (isNewUser) await sendWelcomeEmail(user.email, { name: user.name });
   } catch (err) {
     // Email delivery failure must never block order fulfillment.
     console.error("Failed to send purchase receipt email:", err);

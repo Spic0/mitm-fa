@@ -1392,9 +1392,76 @@ CSS TABLE OF CONTENTS
 		return $(".footer-area .footer__item").not(".newsletter").find("> .footer-title");
 	}
 
+	// Legal and Social live outside the link columns in the markup (the
+	// bottom bar and the newsletter block respectively), so on mobile they
+	// are mirrored into two extra accordion sections. Built here rather than
+	// added to all 18 pages' HTML for the same reason the rest of this
+	// feature is JS-driven: there is no footer partial, so per-page markup
+	// would have to be applied 18 times and would drift. Removed again on
+	// desktop, which keeps the desktop footer byte-for-byte as it was.
+	var SYNTHETIC = "js-footer-synthetic";
+
+	// Legal links carry their own text; social links are icon-only, so their
+	// label is recovered from the Font Awesome brand class. Those classes
+	// carry glyph-variant suffixes ("fa-facebook-f", "fa-linkedin-in") that
+	// are not part of the brand name, hence the explicit map rather than
+	// prettifying the class string and shipping "Linkedin in".
+	var BRAND_LABELS = {
+		"facebook-f": "Facebook", facebook: "Facebook",
+		twitter: "Twitter", "x-twitter": "X",
+		"linkedin-in": "LinkedIn", linkedin: "LinkedIn",
+		youtube: "YouTube", instagram: "Instagram",
+		tiktok: "TikTok", whatsapp: "WhatsApp",
+	};
+
+	function labelFor($a) {
+		var text = $.trim($a.text());
+		if (text) return text;
+		if ($a.attr("aria-label")) return $a.attr("aria-label");
+		var cls = ($a.find("i").attr("class") || "").match(/fa-([a-z0-9-]+)/g) || [];
+		for (var i = 0; i < cls.length; i++) {
+			var key = cls[i].replace(/^fa-/, "");
+			if (BRAND_LABELS[key]) return BRAND_LABELS[key];
+		}
+		return "Link";
+	}
+
+	function buildSyntheticSections() {
+		var $row = $(".footer-area .footer__wrp .row").first();
+		if (!$row.length || $row.find("." + SYNTHETIC).length) return;
+
+		function section(title, $links) {
+			if (!$links.length) return null;
+			var $col = $('<div class="col-12 ' + SYNTHETIC + '"><div class="footer__item"><h4 class="footer-title"></h4><ul></ul></div></div>');
+			$col.find(".footer-title").text(title);
+			var $ul = $col.find("ul");
+			$links.each(function () {
+				var $a = $(this);
+				$ul.append(
+					$("<li>").append(
+						$("<a>").attr("href", $a.attr("href") || "#0")
+							.append($("<span>"))
+							.append(document.createTextNode(labelFor($a)))
+					)
+				);
+			});
+			return $col;
+		}
+
+		var $legal = section("Legal", $(".footer-area .footer__legal a"));
+		var $social = section("Social", $(".footer-area .social-icon a"));
+		if ($legal) $row.append($legal);
+		if ($social) $row.append($social);
+	}
+
+	function removeSyntheticSections() {
+		$(".footer-area ." + SYNTHETIC).remove();
+	}
+
 	function enable() {
 		if (wired) return;
 		wired = true;
+		buildSyntheticSections();
 		titles().each(function (i) {
 			var $t = $(this);
 			$t.attr({ role: "button", tabindex: "0", "aria-expanded": "false" });
@@ -1416,6 +1483,7 @@ CSS TABLE OF CONTENTS
 		wired = false;
 		titles().removeAttr("role tabindex aria-expanded")
 			.closest(".footer__item").removeClass("is-open");
+		removeSyntheticSections();
 	}
 
 	function sync() {

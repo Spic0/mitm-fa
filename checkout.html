@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title data-brand-title="{brand} - Training &amp; Diet Plans">ProFit - Training &amp; Diet Plans</title>
+    <title data-brand-title="{brand} - Training &amp; Diet Plans">Fitness Agency - Training &amp; Diet Plans</title>
     <!-- description/canonical/OpenGraph/Twitter/robots, injected server-side per route — see server/src/routes/pages.js -> applyStaticSeo. -->
     <!--PAGE_SEO-->
     <!-- Favicon img -->
@@ -118,37 +118,112 @@
         <section class="checkout-area">
             <div class="container co-layout">
 
-                <!-- LEFT: form panel -->
+                <!-- Source order IS the mobile order: contact & billing,
+                     payment, order summary, extras. Deliberately not achieved
+                     with flex `order` — that reorders paint only, leaving a
+                     keyboard user tabbing through the page in a different
+                     sequence to the one they can see, and leaving the DOM
+                     itself still wrong. Desktop places all three panels
+                     explicitly by grid area (see the checkout redesign block in
+                     style.css), so the two-column layout is unaffected by this
+                     order.
+
+                     1) Contact & Billing, then 2) Payment. These four fields
+                     are what the post-purchase magic-login token is issued
+                     against, so nothing — not the summary, not an upsell, not a
+                     trust badge — is allowed above them on mobile: the shopper
+                     lands on the logo and the first field, and every screen
+                     between those two is measurable drop-off. -->
                 <div class="co-form-panel">
 
-                    <!-- Contact & Billing -->
+                    <!-- Contact & Billing.
+                         Wrapped in a real <form> with real name= attributes: iOS and
+                         Android only offer their saved-contact autofill for fields
+                         they can recognise inside a form, which the previous
+                         form-less markup (and its stray name="subject" on the
+                         country field) actively prevented. novalidate because
+                         checkout-customer-form.js owns validation and messaging —
+                         the native bubbles are unstyleable and fire at the wrong
+                         moment on mobile. -->
+                    <form id="coCustomerForm" novalidate autocomplete="on">
                     <div class="co-section">
                         <p class="co-section__ttl"><i class="fa-regular fa-user"></i>Contact &amp; Billing</p>
+                        <!-- Says why four fields are being asked for at the moment
+                             they're being asked. All four are required because the
+                             purchase creates the account and issues the magic-login
+                             link, so "why do you need my phone" has an answer on
+                             screen rather than being a reason to abandon. -->
+                        <p class="co-section__hint">Your account is created automatically — we'll email a one-tap login link the moment your payment clears.</p>
+
+                        <!-- One grouped surface with hairline dividers rather than four
+                             separately bordered and shadowed boxes: fewer edges, less
+                             visual weight, and ~40px shorter, which is 40px less
+                             distance between arriving and paying. Same pattern as
+                             Apple Pay and Stripe Checkout. The individual .co-field
+                             chrome is suppressed by .co-fieldgroup in style.css. -->
+                        <div class="co-fieldgroup">
                         <div class="co-row">
                             <div class="co-field">
-                                <input id="name" type="text" placeholder=" " class="co-input" autocomplete="name">
-                                <label for="name" class="co-label">Full Name *</label>
+                                <input id="name" name="name" type="text" placeholder=" " class="co-input"
+                                       autocomplete="name" autocapitalize="words" spellcheck="false"
+                                       enterkeyhint="next" aria-required="true" required>
+                                <label for="name" class="co-label">Full Name <span class="co-req" aria-hidden="true">*</span></label>
+                                <p class="co-err" id="err-name" role="alert"></p>
                             </div>
                             <div class="co-field">
-                                <input id="phone" type="tel" placeholder=" " class="co-input" autocomplete="tel">
-                                <label for="phone" class="co-label">Phone *</label>
+                                <input id="email" name="email" type="email" placeholder=" " class="co-input"
+                                       autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false"
+                                       enterkeyhint="next" aria-required="true" required>
+                                <label for="email" class="co-label">Email <span class="co-req" aria-hidden="true">*</span></label>
+                                <p class="co-err" id="err-email" role="alert"></p>
                             </div>
                         </div>
-                        <div class="co-field">
-                            <input id="email" type="email" placeholder=" " class="co-input" autocomplete="email">
-                            <label for="email" class="co-label">Email *</label>
+
+                        <!-- International phone: a dial-code picker paired with the
+                             national number, combined into one E.164 value on submit.
+                             autocomplete="tel" (not tel-national) because that is what
+                             iOS/Android actually fill; if the platform fills a full
+                             +NN number the JS splits the dial code back out into the
+                             picker rather than leaving a doubled prefix. -->
+                        <div class="co-field co-field--phone">
+                            <button type="button" class="co-dial" id="phoneDialBtn"
+                                    aria-label="Phone country code" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="co-dial__flag" id="phoneDialFlag" aria-hidden="true"></span>
+                                <span class="co-dial__code" id="phoneDialCode">+1</span>
+                                <svg class="co-dial__chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <!-- input + label share their own positioning context so the
+                                 floating label anchors to the number field, not to the
+                                 row — otherwise its offset would have to be hardcoded to
+                                 the dial button's width, which changes with the code
+                                 ("+1" vs "+1268"). -->
+                            <span class="co-phone__field">
+                                <input id="phone" name="tel" type="tel" placeholder=" " class="co-input co-input--phone"
+                                       autocomplete="tel" inputmode="tel" enterkeyhint="done"
+                                       aria-required="true" required>
+                                <label for="phone" class="co-label">Phone <span class="co-req" aria-hidden="true">*</span></label>
+                            </span>
+                            <p class="co-err" id="err-phone" role="alert"></p>
                         </div>
-                        <div class="co-field co-field--select">
-                            <select id="countryRegion" name="subject" class="co-input co-sel" autocomplete="country">
-                                <option value="0">United States</option>
-                                <option value="1">United Kingdom</option>
-                                <option value="2">Australia</option>
-                                <option value="3">Germany</option>
-                                <option value="4">France</option>
+
+                        <!-- Country: a real <select> carrying every ISO 3166-1 country,
+                             so platform autofill and the native mobile picker (the
+                             wheel on iOS, the full-screen list on Android — already the
+                             best touch experience there is) both work unchanged. The
+                             searchable panel in checkout-customer-form.js layers on top
+                             for fine-pointer devices only, where native selects are the
+                             weakest. Options are injected from assets/js/countries.js. -->
+                        <div class="co-field co-field--select co-field--country">
+                            <select id="country" name="country" class="co-input co-sel"
+                                    autocomplete="country" aria-required="true" required>
+                                <option value="" selected disabled>Select your country</option>
                             </select>
-                            <label for="countryRegion" class="co-label co-label--top">Country / Region *</label>
+                            <label for="country" class="co-label co-label--top">Country <span class="co-req" aria-hidden="true">*</span></label>
+                            <p class="co-err" id="err-country" role="alert"></p>
                         </div>
+                        </div><!-- /.co-fieldgroup -->
                     </div>
+                    </form>
 
                     <!-- Payment -->
                     <div class="co-section co-section--divider">
@@ -165,11 +240,32 @@
                             </button>
                         </div>
 
-                        <!-- Card panel -->
+                        <!-- Card panel.
+                             The Payment Element can only mount once a PaymentIntent
+                             exists, which needs a publishable key AND all four contact
+                             fields. Both are routinely not-yet-true, so the panel owns
+                             an explicit state block instead of being empty in the
+                             meantime — an empty payment section at the moment of
+                             purchase reads as "this shop is broken". States are driven
+                             by setPaymentState() in checkout-payments.js; the
+                             data-state attribute is what the CSS keys off.
+                             The markup ships as "checking" so there is never a frame
+                             with nothing in it, even before scripts run. -->
                         <div class="pay-panel co-card-form" id="panel-card">
                             <!-- Stripe Payment Element mounts here: real PCI-compliant card fields, plus
                                  Apple Pay / Google Pay wallet buttons auto-detected when available. -->
                             <div id="stripe-payment-element"></div>
+
+                            <div class="co-paystate" id="coPayState" data-state="checking" aria-live="polite">
+                                <span class="co-paystate__icon" aria-hidden="true">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                </span>
+                                <span class="co-paystate__copy">
+                                    <strong class="co-paystate__title" id="coPayStateTitle">Card payment</strong>
+                                    <span class="co-paystate__desc" id="coPayStateDesc">Checking available payment methods&hellip;</span>
+                                </span>
+                            </div>
+
                             <p id="stripe-payment-message" class="co-pay-error u-hidden"></p>
                             <div class="co-brands">
                                 <span class="card-brand visa">VISA</span>
@@ -190,19 +286,32 @@
                             </div>
                         </div>
 
+                        <!-- Moved here from the order summary along with the deleted
+                             in-page CTA: this line is about the card details entered
+                             directly above it, so it belongs at the end of the payment
+                             section rather than three sections earlier. -->
+                        <p class="co-privacy">
+                            <i class="fa-solid fa-shield-halved me-1"></i>
+                            Payments are encrypted &amp; secure. We never store your card details.
+                        </p>
+
                     </div>
 
                 </div><!-- /.co-form-panel -->
 
-                <!-- RIGHT: Order summary -->
+                <!-- 3) Order summary — collapsed to a total + toggle on mobile,
+                     and now BELOW the form rather than above it. Review is a
+                     confirmation step, not an entry step: the shopper who has
+                     just typed their details and card wants to check the total
+                     before tapping pay, and the shopper who has just arrived
+                     wants the first field. The collapsed header keeps the total
+                     one tap away from either. -->
                 <div class="co-summary-panel">
                     <div class="co-summary">
                         <!-- Mobile: a tappable header showing the total, with the
                              item list collapsed behind it (the Shopify/Stripe
-                             Checkout pattern). Puts "what am I buying and what
-                             does it cost" on the first screen without the item
-                             list pushing the payment fields off it. Desktop
-                             ignores this entirely and shows the list open. -->
+                             Checkout pattern). Desktop ignores this entirely and
+                             shows the list open in the right-hand column. -->
                         <button type="button" class="co-summary__toggle" id="coSummaryToggle"
                                 aria-expanded="false" aria-controls="coSummaryBody">
                             <span class="co-summary__toggle-label">
@@ -243,41 +352,43 @@
                         </div>
                         </div><!-- /.co-summary__body -->
 
-                        <!-- "Add a little extra" — rule-based recommendations, see
-                             server/src/lib/recommendations.js. Populated by
-                             assets/js/checkout-payments.js; empty (no heading shown)
-                             until there's a cart to base picks on. -->
-                        <div id="checkoutRecommended" class="co-recommend"></div>
-
-                        <a href="#0" id="placeOrderBtn" class="co-cta-btn">
-                            <i class="fa-solid fa-lock"></i><span class="co-cta-spinner" aria-hidden="true"></span><span id="placeOrderBtnText">Secure Checkout</span>
-                        </a>
-                        <p class="co-privacy">
-                            <i class="fa-solid fa-shield-halved me-1"></i>
-                            Payments are encrypted &amp; secure. We never store your card details.
-                        </p>
-
-                        <!-- Trust indicators. Deliberately small and muted: they
-                             should reassure at a glance without competing with
-                             the CTA directly above them. -->
-                        <ul class="co-trustlist">
-                            <li><i class="fa-solid fa-check"></i><span>Secure payment powered by Stripe</span></li>
-                            <li><i class="fa-solid fa-check"></i><span>SSL encrypted checkout</span></li>
-                            <li><i class="fa-solid fa-check"></i><span>Instant digital delivery</span></li>
-                            <li><i class="fa-solid fa-check"></i><span>Lifetime access after purchase</span></li>
-                        </ul>
-
-                        <div class="co-summary-payments">
-                            <span class="card-brand visa">VISA</span>
-                            <span class="card-brand mc">MC</span>
-                            <span class="card-brand amex">AMEX</span>
-                            <span class="card-brand paypal">PayPal</span>
-                            <span class="card-brand applepay">Pay</span>
-                            <span class="card-brand gpay">GPay</span>
-                        </div>
-                        <p class="co-ssl co-ssl--summary"><i class="fa-solid fa-lock"></i> Secured with 256-bit SSL encryption</p>
                     </div>
                 </div><!-- /.co-summary-panel -->
+
+                <!-- 5) Everything that reassures or upsells, deliberately LAST in
+                     source order, so nothing promotional sits between the shopper
+                     and the fields. On desktop the grid places it back under the
+                     summary in the right-hand column. -->
+                <aside class="co-extras-panel">
+
+                    <!-- "Add a little extra" — rule-based recommendations, see
+                         server/src/lib/recommendations.js. Populated by
+                         assets/js/checkout-payments.js as a looping swipe carousel
+                         (Swiper, already bundled sitewide); empty (no heading shown)
+                         until there's a cart to base picks on. -->
+                    <div id="checkoutRecommended" class="co-recommend"></div>
+
+                    <!-- Trust indicators. Desktop-only: on mobile the flow ends at
+                         the recommendations and the sticky bar, and these are hidden
+                         (see the mobile flow block in style.css) rather than adding
+                         two more screens of scroll after the point of purchase. -->
+                    <ul class="co-trustlist">
+                        <li><i class="fa-solid fa-check"></i><span>Secure payment powered by Stripe</span></li>
+                        <li><i class="fa-solid fa-check"></i><span>SSL encrypted checkout</span></li>
+                        <li><i class="fa-solid fa-check"></i><span>Instant digital delivery</span></li>
+                        <li><i class="fa-solid fa-check"></i><span>Lifetime access after purchase</span></li>
+                    </ul>
+
+                    <div class="co-summary-payments" role="list" aria-label="Accepted payment methods">
+                        <span class="card-brand visa" role="listitem">VISA</span>
+                        <span class="card-brand mc" role="listitem">MC</span>
+                        <span class="card-brand amex" role="listitem">AMEX</span>
+                        <span class="card-brand paypal" role="listitem">PayPal</span>
+                        <span class="card-brand applepay" role="listitem">Pay</span>
+                        <span class="card-brand gpay" role="listitem">GPay</span>
+                    </div>
+                    <p class="co-ssl co-ssl--summary"><i class="fa-solid fa-lock"></i> Secured with 256-bit SSL encryption</p>
+                </aside><!-- /.co-extras-panel -->
 
             </div><!-- /.co-layout -->
         </section>
@@ -313,7 +424,7 @@
                 <div class="row g-4">
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.1s" data-wow-delay=".1s">
                         <div class="footer__item">
-                            <h4 class="footer-title">Customer Service</h4>
+                            <h4 class="footer-title">Support</h4>
                             <ul>
                                 <li><a href="/contact"><span></span>Help Portal</a></li>
                                 <li><a href="/contact"><span></span>Contact Us</a></li>
@@ -325,7 +436,7 @@
                     </div>
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.2s" data-wow-delay=".2s">
                         <div class="footer__item">
-                            <h4 class="footer-title">Get to Know Us</h4>
+                            <h4 class="footer-title">Company</h4>
                             <ul>
                                 <li><a href="/about"><span></span>About Us</a></li>
                                 <li><a href="/blog/grid"><span></span>News & Blog</a></li>
@@ -370,7 +481,7 @@
                 </a>
 </div>
 <div class="footer__bottombar">
-    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="#0" class="primary-hover" data-brand-name>ProFit</a> All Rights Reserved</p>
+    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="#0" class="primary-hover" data-brand-name>Fitness Agency</a> All Rights Reserved</p>
     <div class="footer__bottombar-right">
         <div class="footer__legal">
             <a href="/coming-soon">Terms and Conditions</a>
@@ -415,6 +526,13 @@
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/nav-featured.js" defer></script>
+    <!-- countries.js must precede checkout-customer-form.js (which builds the
+         country select and dial picker from it), and the form module must
+         precede checkout-payments.js, which reads the validated details from
+         it at payment time. All deferred, so this source order is the
+         execution order. -->
+    <script src="/assets/js/countries.js" defer></script>
+    <script src="/assets/js/checkout-customer-form.js" defer></script>
     <script src="/assets/js/checkout-payments.js" defer></script>
     <script src="/assets/js/checkout-floating-labels.js" defer></script>
 </body>

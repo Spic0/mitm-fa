@@ -10,12 +10,28 @@
   var stripe = null;
   var elements = null;
   var paymentElementMounted = false;
-  var emailLocked = false;
   var currentPaymentIntentId = null;
 
-  function currentEmail() {
+  // Contact & Billing is owned by checkout-customer-form.js, which validates
+  // all four fields and composes the E.164 phone number. Falling back to a
+  // bare email read keeps this file working if that module ever fails to load
+  // rather than breaking checkout outright.
+  var customerForm = window.ProFitCheckoutCustomer;
+
+  function currentCustomer() {
+    if (customerForm) return customerForm.getDetails();
     var el = document.getElementById("email");
-    return el ? el.value.trim().toLowerCase() : "";
+    return { name: "", email: el ? el.value.trim().toLowerCase() : "", phone: "", country: "" };
+  }
+
+  function currentEmail() {
+    return currentCustomer().email;
+  }
+
+  // True only when every required field passes; used to decide whether it's
+  // worth asking the server for a PaymentIntent yet.
+  function customerReady() {
+    return customerForm ? customerForm.isComplete() : EMAIL_RE.test(currentEmail());
   }
 
   function escapeAttr(s) {
@@ -59,6 +75,12 @@
     if (!el) return;
     var friendly = message ? friendlyMessage(message) : "";
     el.textContent = friendly;
+    // The element ships with the `u-hidden` class. An inline display:block does
+    // currently beat it (`.u-hidden` carries no !important), but that's a
+    // coincidence of the stylesheet, not a contract — one `!important` added to
+    // that utility class would silently make every payment error invisible.
+    // Toggle the class as well so visibility doesn't depend on that.
+    el.classList.toggle("u-hidden", !friendly);
     el.style.display = friendly ? "block" : "none";
     if (friendly) {
       el.setAttribute("role", "alert");
@@ -84,9 +106,13 @@
     window.location.href = "/my-library";
   }
 
+  // The sticky bottom bar is the ONE checkout CTA at every viewport width —
+  // the in-page button that used to sit in the order summary was deleted, not
+  // hidden, so there is a single element and a single code path rather than
+  // one button mirroring another's state.
   function setPlaceOrderBusy(busy, label) {
-    var btn = document.getElementById("placeOrderBtn");
-    var text = document.getElementById("placeOrderBtnText");
+    var btn = document.getElementById("coStickyCta");
+    var text = document.getElementById("coStickyCtaText");
     if (!btn || !text) return;
     // `disabled` keeps the existing dimming; `is-busy` additionally swaps the
     // lock icon for a spinner and sets pointer-events:none, which is the real
@@ -94,6 +120,7 @@
     // would otherwise create a second one.
     btn.classList.toggle("disabled", busy);
     btn.classList.toggle("is-busy", busy);
+    btn.disabled = !!busy;
     btn.setAttribute("aria-busy", String(!!busy));
     text.textContent = label || "Secure Checkout";
   }
@@ -110,28 +137,60 @@
     }
   }
 
+  // Resolved once on load, BEFORE any form validity is known. The old code
+  // only reached the publishable-key check after all four contact fields
+  // validated, so a store with no key showed an empty payment panel and no
+  // explanation — the shopper had to fill in the whole form to discover that
+  // card payment was never available.
+  var stripeConfigured = null; // null = not yet known
+
+  async function resolvePaymentAvailability() {
+    var config;
+    try {
+      config = await api.getConfig();
+    } catch (err) {
+      setPaymentState("failed");
+      return {};
+    }
+    stripeConfigured = !!config.stripePublishableKey;
+    markUnconfiguredMethods(config);
+    setPaymentState(stripeConfigured ? (customerReady() ? "pending" : "pending") : "unavailable");
+    return config;
+  }
+
+  // Re-evaluates the placeholder after the shopper edits their details, so the
+  // "fill in your details" prompt clears the moment it stops being true.
+  function refreshPaymentState() {
+    if (paymentElementMounted) return setPaymentState("ready");
+    if (stripeConfigured === false) return setPaymentState("unavailable");
+    if (stripeConfigured === null) return setPaymentState("checking");
+    setPaymentState("pending");
+  }
+
   async function initStripeElement() {
     var items = checkoutItemsPayload();
-    var email = currentEmail();
-    if (paymentElementMounted || items.length === 0 || !EMAIL_RE.test(email)) return;
+    if (paymentElementMounted || items.length === 0) return;
+    if (stripeConfigured === false) { setPaymentState("unavailable"); return; }
+    if (!customerReady()) { refreshPaymentState(); return; }
 
     try {
       var config = await api.getConfig();
       if (!config.stripePublishableKey) {
-        showError("Payments are not configured yet.");
+        stripeConfigured = false;
+        setPaymentState("unavailable");
         return;
       }
       stripe = Stripe(config.stripePublishableKey);
-      var intent = await api.createStripeIntent(items, email, cart.appliedPromoCode);
+      var intent = await api.createStripeIntent(items, currentCustomer(), cart.appliedPromoCode);
       currentPaymentIntentId = intent.id;
       elements = stripe.elements({ clientSecret: intent.clientSecret });
       var paymentElement = elements.create("payment");
       paymentElement.mount("#stripe-payment-element");
       paymentElementMounted = true;
-      emailLocked = true;
-      var emailInput = document.getElementById("email");
-      if (emailInput) emailInput.readOnly = true;
+      // Real card fields are now on screen — the placeholder stands down.
+      setPaymentState("ready");
     } catch (err) {
+      setPaymentState("failed");
       showError(err.message || "Could not start checkout. Please try again.");
     }
   }
@@ -145,7 +204,7 @@
   async function syncPaymentIntentIfNeeded() {
     if (!paymentElementMounted || !currentPaymentIntentId) return;
     try {
-      await api.updateStripeIntent(currentPaymentIntentId, checkoutItemsPayload(), cart.appliedPromoCode);
+      await api.updateStripeIntent(currentPaymentIntentId, checkoutItemsPayload(), cart.appliedPromoCode, currentCustomer());
       if (elements && typeof elements.fetchUpdates === "function") {
         await elements.fetchUpdates();
       }
@@ -160,35 +219,144 @@
   // used sitewide (script.js), so adding one goes through the exact same
   // cart-mutation path as everywhere else — no bespoke logic here beyond
   // rendering the cards and re-fetching after the cart changes.
+  // The live carousel instance, kept so a re-render (the cart changed, so the
+  // picks changed) tears the old one down instead of leaking a Swiper bound to
+  // detached nodes — this function re-runs on every profit:cart-changed.
+  var recosSwiper = null;
+
+  function destroyRecosSwiper() {
+    if (recosSwiper && typeof recosSwiper.destroy === "function") {
+      try { recosSwiper.destroy(true, true); } catch (e) { /* already gone */ }
+    }
+    recosSwiper = null;
+  }
+
+  function recoCardHtml(p, cls) {
+    var img = p.imageUrl || "/assets/images/placeholder.jpg";
+    var price = (p.priceCents / 100).toFixed(2);
+    return (
+      '<article class="' + cls + '" role="listitem">' +
+      '<div class="co-reco__media"><img src="' + escapeAttr(img) + '" alt="" loading="lazy" decoding="async"></div>' +
+      '<div class="co-reco__body">' +
+      '<span class="co-reco__name">' + escapeAttr(p.name) + "</span>" +
+      '<span class="co-reco__price">$' + price + "</span>" +
+      "</div>" +
+      '<button type="button" class="co-reco__add" data-add-to-cart' +
+      ' aria-label="Add ' + escapeAttr(p.name) + ' to your order"' +
+      ' data-id="' + escapeAttr(p.id) + '" data-name="' + escapeAttr(p.name) + '"' +
+      ' data-price="' + price + '" data-img="' + escapeAttr(img) + '">' +
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i><span>Add</span></button>' +
+      "</article>"
+    );
+  }
+
+  // Swiper 8 is already bundled and loaded sitewide on this page, so the
+  // looping carousel costs no new dependency. Loop mode is what makes the
+  // swipe continuous: Swiper keeps cloned slides either side of the real ones
+  // and silently repositions at the seam, so a thumb can keep flicking in one
+  // direction forever instead of hitting a dead end after six cards.
+  //
+  // The clones are why the "Add" buttons must stay delegated: script.js binds
+  // [data-add-to-cart] at the document, so a tap on a cloned card adds through
+  // exactly the same path as a tap on an original.
+  // "Swipe →" is a promise the section has to keep. When every pick already
+  // fits on screen Swiper locks itself and there is nothing to swipe to, so
+  // the hint stands down rather than inviting a gesture that does nothing.
+  function syncSwipeHint(root, locked) {
+    var wrap = root.querySelector(".co-recos");
+    if (wrap) wrap.classList.toggle("co-recos--static", !!locked);
+  }
+
+  function initRecosCarousel(root, count) {
+    var el = root.querySelector(".co-recos__swiper");
+    if (!el || typeof window.Swiper !== "function") return false;
+    try {
+      recosSwiper = new window.Swiper(el, {
+        slidesPerView: "auto",
+        spaceBetween: 12,
+        // Below three cards there is nothing to loop through — Swiper would be
+        // cloning one card next to itself, which reads as a bug rather than a
+        // carousel.
+        loop: count >= 3,
+        loopedSlides: count,
+        loopAdditionalSlides: count,
+        grabCursor: true,
+        watchSlidesProgress: true,
+        // Free-mode momentum is what keeps it feeling native rather than
+        // stepped: a flick coasts across several cards and can be caught
+        // mid-flight, the same as the platform's own scrolling.
+        freeMode: { enabled: true, momentum: true, momentumRatio: 0.85, momentumVelocityRatio: 0.85 },
+        // An infinite track has no ends, so the rubber-band resistance that
+        // exists to signal one is just drag.
+        resistanceRatio: 0,
+        speed: 420,
+        a11y: { enabled: false },
+        on: {
+          // Fires on init and on any resize that changes whether the track
+          // overflows — e.g. a phone turned landscape.
+          lock: function () { syncSwipeHint(root, true); },
+          unlock: function () { syncSwipeHint(root, false); },
+        },
+      });
+      syncSwipeHint(root, recosSwiper.isLocked);
+      // Loop clones are the same six products over again. Left as-is a screen
+      // reader walks the list three times, and tabbing through the section
+      // hits eighteen "Add" buttons for six products. The clones are decorative
+      // — the originals carry the semantics.
+      el.querySelectorAll(".swiper-slide-duplicate").forEach(function (clone) {
+        clone.setAttribute("aria-hidden", "true");
+        // aria-hidden over a focusable control is itself a violation, so the
+        // clone's button leaves the tab order with it.
+        clone.querySelectorAll("button").forEach(function (btn) { btn.tabIndex = -1; });
+      });
+      return true;
+    } catch (e) {
+      // A failed init must not cost the shopper the section; the caller falls
+      // back to the native scroll track.
+      recosSwiper = null;
+      return false;
+    }
+  }
+
   async function renderRecommendations() {
     var container = document.getElementById("checkoutRecommended");
     if (!container || !api) return;
+    destroyRecosSwiper();
     var items = cart.getCheckoutItems();
     if (!items.length) { container.innerHTML = ""; return; }
 
     try {
-      var data = await api.getRecommendations(items.map(function (i) { return i.id; }), 3);
+      // 6 rather than 3: the carousel scrolls, so more picks cost no vertical
+      // space and give the swipe somewhere to go.
+      var data = await api.getRecommendations(items.map(function (i) { return i.id; }), 6);
       var products = data.products || [];
       if (!products.length) { container.innerHTML = ""; return; }
 
-      var html = '<p class="co-recommend__ttl">Add a little extra</p><div class="co-recommend__row">';
-      products.forEach(function (p) {
-        var img = p.imageUrl || "/assets/images/placeholder.jpg";
-        var price = (p.priceCents / 100).toFixed(2);
-        html +=
-          '<div class="co-recommend__item">' +
-          '<img src="' + escapeAttr(img) + '" alt="">' +
-          '<span class="co-recommend__name">' + escapeAttr(p.name) + '</span>' +
-          '<span class="co-recommend__price">$' + price + '</span>' +
-          '<button type="button" class="co-recommend__add" data-add-to-cart' +
-          ' data-id="' + escapeAttr(p.id) + '" data-name="' + escapeAttr(p.name) + '"' +
-          ' data-price="' + price + '" data-img="' + escapeAttr(img) + '">' +
-          '<i class="fa-solid fa-plus"></i> Add</button>' +
-          '</div>';
-      });
-      html += "</div>";
-      container.innerHTML = html;
+      var head =
+        '<div class="co-recos">' +
+        '<div class="co-recos__head">' +
+        '<p class="co-recos__ttl">Add a little extra</p>' +
+        '<span class="co-recos__hint" aria-hidden="true">Swipe <i class="fa-solid fa-arrow-right-long"></i></span>' +
+        "</div>";
+
+      var swiperHtml = head + '<div class="swiper co-recos__swiper"><div class="swiper-wrapper" role="list">';
+      products.forEach(function (p) { swiperHtml += recoCardHtml(p, "swiper-slide co-reco"); });
+      swiperHtml += "</div></div></div>";
+
+      container.innerHTML = swiperHtml;
+      if (initRecosCarousel(container, products.length)) return;
+
+      // Fallback for the case where the bundle didn't load: a native
+      // scroll-snap track. Not looping, but still a real horizontal swipe with
+      // the platform's own momentum — never a static grid of cards.
+      var trackHtml = head + '<div class="co-recos__track" role="list">';
+      products.forEach(function (p) { trackHtml += recoCardHtml(p, "co-reco"); });
+      trackHtml += "</div></div>";
+      container.innerHTML = trackHtml;
+      var track = container.querySelector(".co-recos__track");
+      if (track) syncSwipeHint(container, track.scrollWidth <= track.clientWidth + 4);
     } catch (err) {
+      destroyRecosSwiper();
       container.innerHTML = "";
     }
   }
@@ -210,17 +378,33 @@
     activeMethod = activeMethod ? activeMethod.dataset.method : "card";
     if (activeMethod !== "card") return; // PayPal has its own button; gpay/applepay just point back to Card
 
-    var name = (document.getElementById("name") || {}).value || "";
-    var phone = (document.getElementById("phone") || {}).value || "";
-    var email = currentEmail();
-    if (!name.trim() || !phone.trim() || !EMAIL_RE.test(email)) {
+    // Delegates to the form module, which marks every field, shows the inline
+    // errors and focuses the first bad one — far more actionable on mobile
+    // than one generic message below the fold.
+    if (customerForm && !customerForm.validate()) return;
+    if (!customerForm && !EMAIL_RE.test(currentEmail())) {
       showError("Please fill in your name, phone, and a valid email above.");
+      return;
+    }
+    // Card payment simply isn't available on this store — say so, rather than
+    // returning silently and leaving a tapped button with no explanation.
+    if (stripeConfigured === false) {
+      showError("Card payment isn't available right now. Please try another method or contact support.");
       return;
     }
     if (!paymentElementMounted) {
       await initStripeElement();
-      if (!paymentElementMounted) return;
-      showError("Enter your card details, then click Place Order again.");
+      if (!paymentElementMounted) {
+        // initStripeElement already set the panel's state; surface a matching
+        // line next to the button the shopper actually pressed.
+        showError(
+          stripeConfigured === false
+            ? "Card payment isn't available right now. Please try another method or contact support."
+            : "We couldn't load the card form. Please refresh and try again."
+        );
+        return;
+      }
+      showError("Enter your card details, then tap Secure Checkout again.");
       return;
     }
 
@@ -246,29 +430,92 @@
     }
   }
 
-  // Any payment method that isn't actually configured is removed from the UI
-  // rather than left as a tab that silently does nothing. The Google Pay and
-  // Apple Pay tabs were deleted outright — Stripe's Payment Element surfaces
-  // both inside the card panel on supported devices, so a separate tab for
-  // them could only ever have been decorative.
-  function hideUnconfiguredMethods(config) {
-    if (!config.paypalClientId) {
-      var tab = document.querySelector('.pay-tab[data-method="paypal"]');
-      var panel = document.getElementById("panel-paypal");
-      if (tab) tab.remove();
-      if (panel) panel.remove();
+  // A payment method that isn't configured is DISABLED, not deleted. Removing
+  // it left the card panel showing nothing but a row of brand logos whenever
+  // STRIPE_PUBLISHABLE_KEY was absent, which is indistinguishable from a
+  // broken shop. A visibly unavailable method at least tells the shopper the
+  // method exists and that the problem isn't them.
+  //
+  // The Google Pay and Apple Pay tabs stay deleted: Stripe's Payment Element
+  // surfaces both inside the card panel on supported devices, so a separate
+  // tab for them could only ever have been decorative.
+  function markUnconfiguredMethods(config) {
+    setMethodEnabled("paypal", !!config.paypalClientId);
+    setMethodEnabled("card", !!config.stripePublishableKey);
+
+    // If the active tab is the unavailable one but another method works,
+    // switch to the working one rather than stranding the shopper on a dead
+    // panel they have to figure out for themselves.
+    var active = document.querySelector(".pay-tab.active");
+    if (active && active.classList.contains("is-unavailable")) {
+      var usable = document.querySelector(".pay-tab:not(.is-unavailable)");
+      if (usable) usable.click();
     }
-    // With a single method left there is nothing to switch between, so the
-    // tab strip is noise.
-    var tabs = document.querySelectorAll(".pay-tab");
-    var strip = document.querySelector(".co-pay-tabs");
-    if (strip && tabs.length < 2) strip.classList.add("u-hidden");
-    if (tabs.length === 1) tabs[0].classList.add("active");
   }
 
+  function setMethodEnabled(method, enabled) {
+    var tab = document.querySelector('.pay-tab[data-method="' + method + '"]');
+    if (!tab) return;
+    tab.classList.toggle("is-unavailable", !enabled);
+    tab.setAttribute("aria-disabled", String(!enabled));
+    if (!enabled && !tab.querySelector(".pay-tab__badge")) {
+      var badge = document.createElement("span");
+      badge.className = "pay-tab__badge";
+      badge.textContent = "Unavailable";
+      tab.appendChild(badge);
+    }
+  }
+
+  // The card panel's single source of truth for "what should the shopper see
+  // here right now". Called on load, after config resolves, whenever the
+  // contact details change, and on mount success/failure — so the panel is
+  // never empty and never stale.
+  var PAY_STATES = {
+    checking: {
+      icon: "fa-credit-card",
+      title: "Card payment",
+      desc: "Checking available payment methods…",
+    },
+    pending: {
+      icon: "fa-lock",
+      title: "Card payment",
+      desc: "Fill in your details above and the secure card fields will appear here.",
+    },
+    unavailable: {
+      icon: "fa-circle-exclamation",
+      title: "Card payment temporarily unavailable",
+      desc: "Card payments aren't set up on this store yet. Nothing has been charged — please try another method or contact support.",
+    },
+    failed: {
+      icon: "fa-circle-exclamation",
+      title: "Couldn't load card payment",
+      desc: "Please refresh the page and try again. You have not been charged.",
+    },
+  };
+
+  function setPaymentState(state) {
+    var box = document.getElementById("coPayState");
+    if (!box) return;
+    // "ready" means the Payment Element itself is mounted and visible, so the
+    // placeholder stands down entirely rather than sitting above real fields.
+    if (state === "ready") {
+      box.setAttribute("data-state", "ready");
+      return;
+    }
+    var copy = PAY_STATES[state] || PAY_STATES.checking;
+    box.setAttribute("data-state", state);
+    var icon = box.querySelector(".co-paystate__icon i");
+    if (icon) icon.className = "fa-solid " + copy.icon;
+    var title = document.getElementById("coPayStateTitle");
+    var desc = document.getElementById("coPayStateDesc");
+    if (title) title.textContent = copy.title;
+    if (desc) desc.textContent = copy.desc;
+  }
+
+  // Availability (both methods) is resolved by resolvePaymentAvailability()
+  // during init; this only loads the PayPal SDK when there's a client id.
   async function initPaypalButtons() {
-    var config = await api.getConfig();
-    hideUnconfiguredMethods(config);
+    var config = await resolvePaymentAvailability();
     if (!config.paypalClientId) return;
 
     var script = document.createElement("script");
@@ -277,12 +524,16 @@
       if (!window.paypal) return;
       window.paypal.Buttons({
         createOrder: function () {
-          var email = currentEmail();
-          if (!EMAIL_RE.test(email)) {
+          // Same four required fields as the card path — PayPal supplies its
+          // own email, but the order still needs a name, phone and country.
+          if (customerForm && !customerForm.validate()) {
+            return Promise.reject(new Error("incomplete details"));
+          }
+          if (!customerForm && !EMAIL_RE.test(currentEmail())) {
             showError("Please enter a valid email above before paying with PayPal.");
             return Promise.reject(new Error("invalid email"));
           }
-          return api.createPaypalOrder(checkoutItemsPayload(), email, cart.appliedPromoCode).then(function (data) {
+          return api.createPaypalOrder(checkoutItemsPayload(), currentCustomer(), cart.appliedPromoCode).then(function (data) {
             return data.orderId;
           });
         },
@@ -300,10 +551,14 @@
   }
 
   function wireTabVisibility() {
-    var placeOrderBtn = document.getElementById("placeOrderBtn");
+    var stickyBar = document.getElementById("coStickyBar");
     document.querySelectorAll(".pay-tab").forEach(function (tab) {
       tab.addEventListener("click", function () {
-        if (placeOrderBtn) placeOrderBtn.style.display = tab.dataset.method === "card" ? "" : "none";
+        // PayPal renders its own branded button inside its panel, so the
+        // sticky bar stands down for that method rather than giving it two
+        // competing calls to action.
+        var isCard = tab.dataset.method === "card";
+        if (stickyBar) stickyBar.classList.toggle("co-stickybar--suppressed", !isCard);
       });
     });
     document.querySelectorAll(".co-switch-to-card").forEach(function (btn) {
@@ -337,14 +592,26 @@
     initPaypalButtons();
     renderRecommendations();
 
-    var emailInput = document.getElementById("email");
-    if (emailInput) {
-      emailInput.addEventListener("blur", function () {
-        if (!emailLocked) initStripeElement();
+    // Mount the Payment Element as soon as all four details are valid, rather
+    // than off the email field alone — the intent now carries name, phone and
+    // country, so creating it earlier than that would post an incomplete
+    // record. Re-checked on blur of any field and on country change, since
+    // those are the last events before a shopper reaches for the CTA.
+    var detailsForm = document.getElementById("coCustomerForm");
+    if (detailsForm) {
+      // Keeps the card panel's placeholder honest while the shopper types:
+      // "fill in your details" has to stop being shown the moment it stops
+      // being the reason the fields aren't there.
+      detailsForm.addEventListener("input", refreshPaymentState);
+      detailsForm.addEventListener("blur", function () {
+        if (!paymentElementMounted && customerReady()) initStripeElement();
+      }, true);
+      detailsForm.addEventListener("change", function () {
+        if (!paymentElementMounted && customerReady()) initStripeElement();
       });
     }
 
-    document.getElementById("placeOrderBtn").addEventListener("click", handlePlaceOrder);
+    document.getElementById("coStickyCta").addEventListener("click", handlePlaceOrder);
 
     // Adding a recommendation (or any other cart change) refreshes both the
     // "you might also like" picks (so an added item stops recommending
@@ -400,20 +667,20 @@
 })();
 
 // ---------------------------------------------------------------------------
-// Sticky purchase bar (mobile)
+// Sticky purchase bar — the single checkout CTA
 // ---------------------------------------------------------------------------
-// Mirrors the grand total and forwards taps to the real place-order handler,
-// so there is exactly ONE payment code path — the bar is a second trigger for
-// it, never a second implementation. Its busy state is driven from the same
-// setPlaceOrderBusy() call as the in-page button, which is what stops a
-// shopper tapping the bar while the in-page button is already mid-payment.
+// #coStickyCta IS the place-order button; the click handler is bound to it
+// directly in the DOMContentLoaded block above. It used to be a second
+// trigger that forwarded taps to an in-page button and mirrored that button's
+// busy state through a MutationObserver — that button has been deleted, so
+// both the forwarding and the mirroring are gone with it. This block now only
+// keeps the displayed total in sync and hides the bar when there's nothing to
+// buy.
 (function stickyPurchaseBar() {
   var bar = document.getElementById("coStickyBar");
-  var cta = document.getElementById("coStickyCta");
   var totalEl = document.getElementById("coStickyTotal");
   var source = document.getElementById("coTotal");
-  var mainBtn = document.getElementById("placeOrderBtn");
-  if (!bar || !cta || !totalEl || !source || !mainBtn) return;
+  if (!bar || !totalEl || !source) return;
 
   function itemCount() {
     try {
@@ -424,28 +691,14 @@
 
   function sync() {
     totalEl.textContent = source.textContent;
-    // An empty cart has nothing to buy; showing a £0.00 purchase bar over an
+    // An empty cart has nothing to buy; showing a $0.00 purchase bar over an
     // empty-cart message would be nonsense.
     bar.classList.toggle("u-hidden", itemCount() === 0);
   }
 
-  cta.addEventListener("click", function () {
-    if (cta.classList.contains("is-busy")) return;
-    mainBtn.click();
-  });
-
-  // Keep the bar's pending state in lockstep with the in-page button rather
-  // than tracking payment state twice.
+  // The summary total is rendered asynchronously after the product lookup
+  // resolves, so observe it rather than reading once at load.
   if (window.MutationObserver) {
-    new MutationObserver(function () {
-      var busy = mainBtn.classList.contains("is-busy");
-      cta.classList.toggle("is-busy", busy);
-      cta.setAttribute("aria-busy", String(busy));
-      var label = document.getElementById("placeOrderBtnText");
-      var mirror = document.getElementById("coStickyCtaText");
-      if (label && mirror) mirror.textContent = label.textContent;
-    }).observe(mainBtn, { attributes: true, attributeFilter: ["class"], subtree: true, childList: true, characterData: true });
-
     new MutationObserver(sync).observe(source, { childList: true, characterData: true, subtree: true });
   }
   document.addEventListener("profit:cart-changed", function () { setTimeout(sync, 0); });

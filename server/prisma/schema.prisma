@@ -24,6 +24,12 @@ model User {
   passwordHash    String?
   role            String           @default("customer") // "customer" | "admin" | "manager"
   status          String           @default("active") // "active" | "suspended"
+  // Collected at checkout (Contact & Billing) and backfilled onto the User on
+  // every fulfillment — see fulfillOrder.js. Nullable because accounts also
+  // arrive via magic link and admin creation, neither of which has a phone.
+  phone           String?
+  // ISO 3166-1 alpha-2 ("US", "GB"). Was previously never written: the
+  // checkout form posted nothing, so this stayed null for every customer.
   country         String?
   notes           String? // admin-only free-text notes, set when manually creating/editing a customer
   lastLoginAt     DateTime?
@@ -271,6 +277,12 @@ model OrderItem {
 model PendingCheckout {
   id         String   @id @default(cuid())
   email      String
+  // Carried from create-order to capture-order so the PayPal path persists
+  // the same Contact & Billing details the Stripe path keeps in PaymentIntent
+  // metadata. Nullable: older pending rows predate these columns.
+  customerName    String?
+  customerPhone   String?
+  customerCountry String?
   itemsJson  String
   totalCents Int
   // Discount decision locked in at create-order time (mirrors how Stripe's

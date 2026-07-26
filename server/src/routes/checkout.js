@@ -3,6 +3,7 @@ const { prisma } = require("../db");
 const { stripe } = require("../lib/stripe");
 const paypal = require("../lib/paypal");
 const { resolveCheckoutItems } = require("../lib/checkoutItems");
+const { parseCustomerDetails } = require("../lib/customerDetails");
 const { fulfillOrder } = require("../lib/fulfillOrder");
 const { fulfillFromPaymentIntent } = require("../lib/stripeFulfillment");
 const { setSessionCookie } = require("../lib/session");
@@ -12,16 +13,12 @@ const { apiLimiter } = require("../middleware/rateLimit");
 const router = express.Router();
 router.use(apiLimiter);
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function requireValidEmail(email) {
-  if (!EMAIL_RE.test(email)) throw new Error("A valid email is required");
-}
-
 router.post("/stripe/create-intent", async (req, res) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    requireValidEmail(email);
+    // Full Name / Phone / Email / Country are collected by the checkout form
+    // and validated here before any PaymentIntent exists, so an invalid one
+    // costs the shopper an inline error rather than a failed payment.
+    const { name, email, phone, country } = parseCustomerDetails(req.body);
     const promoCode = req.body.promoCode ? String(req.body.promoCode) : undefined;
     const { totalCents, discountCents, promotionId, appliedPromotions } = await resolveCheckoutItems(req.body.items, {
       promoCode,
@@ -33,8 +30,15 @@ router.post("/stripe/create-intent", async (req, res) => {
       currency: "usd",
       receipt_email: email,
       automatic_payment_methods: { enabled: true },
+      // Surfaces the buyer on the payment itself rather than only in our own
+      // database, so a Stripe dashboard search for a name or phone number
+      // finds the charge during a support or chargeback enquiry.
+      description: `Order for ${name} (${email})`,
       metadata: {
         email,
+        name,
+        phone,
+        country,
         items: JSON.stringify(req.body.items),
         discountCents: String(discountCents),
         promotionId: promotionId || "",
@@ -73,9 +77,26 @@ router.post("/stripe/update-intent", async (req, res) => {
       email,
     });
 
+    // Contact & Billing stays editable after the Payment Element mounts, so
+    // the details are re-sent here too. Only applied when all four validate —
+    // a half-edited form must never overwrite good metadata with a partial
+    // record, and Stripe merges the keys it's given rather than replacing the
+    // whole object, so omitting them leaves the originals intact.
+    let customerMeta = {};
+    try {
+      const { name, email: newEmail, phone, country } = parseCustomerDetails(req.body);
+      customerMeta = { name, email: newEmail, phone, country };
+    } catch (err) {
+      customerMeta = {};
+    }
+
     const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
       amount: totalCents,
+      // Keep Stripe's own receipt going to the corrected address, not the one
+      // typed before the shopper fixed a typo.
+      ...(customerMeta.email ? { receipt_email: customerMeta.email } : {}),
       metadata: {
+        ...customerMeta,
         items: JSON.stringify(req.body.items),
         discountCents: String(discountCents),
         promotionId: promotionId || "",
@@ -107,8 +128,7 @@ router.post("/stripe/finalize", async (req, res) => {
 
 router.post("/paypal/create-order", async (req, res) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    requireValidEmail(email);
+    const { name, email, phone, country } = parseCustomerDetails(req.body);
     const promoCode = req.body.promoCode ? String(req.body.promoCode) : undefined;
     const { totalCents, discountCents, promotionId, appliedPromotions } = await resolveCheckoutItems(req.body.items, {
       promoCode,
@@ -118,6 +138,9 @@ router.post("/paypal/create-order", async (req, res) => {
     const pending = await prisma.pendingCheckout.create({
       data: {
         email,
+        customerName: name,
+        customerPhone: phone,
+        customerCountry: country,
         itemsJson: JSON.stringify(req.body.items),
         totalCents,
         discountCents,
@@ -163,6 +186,11 @@ router.post("/paypal/capture-order", async (req, res) => {
 
     const { order, sessionToken } = await fulfillOrder({
       email: pending.email,
+      customer: {
+        name: pending.customerName,
+        phone: pending.customerPhone,
+        country: pending.customerCountry,
+      },
       provider: "paypal",
       providerRef: orderId,
       items: resolvedItems,

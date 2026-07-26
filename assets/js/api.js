@@ -1,4 +1,4 @@
-// Thin fetch wrapper for the ProFit API, plus header auth-state wiring shared
+// Thin fetch wrapper for the Fitness Agency API, plus header auth-state wiring shared
 // by every page. Cookies (the session) ride along automatically same-origin.
 window.ProFitAPI = (function () {
   // Read back the CSRF cookie the server sets alongside the session cookie
@@ -72,10 +72,39 @@ window.ProFitAPI = (function () {
       return get("/recommendations?" + qs);
     },
     getProduct: function (idOrSlug) { return get("/products/" + encodeURIComponent(idOrSlug)); },
-    createStripeIntent: function (items, email, promoCode) { return post("/checkout/stripe/create-intent", { items: items, email: email, promoCode: promoCode }); },
-    updateStripeIntent: function (paymentIntentId, items, promoCode) { return post("/checkout/stripe/update-intent", { paymentIntentId: paymentIntentId, items: items, promoCode: promoCode }); },
+    // `customer` is { name, email, phone, country } from the checkout form —
+    // the server validates all four and persists them onto the User record,
+    // so the email alone is no longer enough.
+    createStripeIntent: function (items, customer, promoCode) {
+      return post("/checkout/stripe/create-intent", {
+        items: items,
+        name: customer.name, email: customer.email,
+        phone: customer.phone, country: customer.country,
+        promoCode: promoCode,
+      });
+    },
+    // `customer` is optional here: the server only re-applies the details when
+    // all four validate, and leaves the existing PaymentIntent metadata alone
+    // otherwise (Stripe merges metadata keys rather than replacing them).
+    updateStripeIntent: function (paymentIntentId, items, promoCode, customer) {
+      customer = customer || {};
+      return post("/checkout/stripe/update-intent", {
+        paymentIntentId: paymentIntentId,
+        items: items,
+        name: customer.name, email: customer.email,
+        phone: customer.phone, country: customer.country,
+        promoCode: promoCode,
+      });
+    },
     finalizeStripe: function (paymentIntentId) { return post("/checkout/stripe/finalize", { paymentIntentId: paymentIntentId }); },
-    createPaypalOrder: function (items, email, promoCode) { return post("/checkout/paypal/create-order", { items: items, email: email, promoCode: promoCode }); },
+    createPaypalOrder: function (items, customer, promoCode) {
+      return post("/checkout/paypal/create-order", {
+        items: items,
+        name: customer.name, email: customer.email,
+        phone: customer.phone, country: customer.country,
+        promoCode: promoCode,
+      });
+    },
     capturePaypalOrder: function (orderId) { return post("/checkout/paypal/capture-order", { orderId: orderId }); },
     validatePromoCode: function (code, items, email) { return post("/promotions/validate", { code: code, items: items, email: email }); },
     getAutoApplyPromotion: function (items, email) {

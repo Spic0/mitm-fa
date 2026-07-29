@@ -136,6 +136,8 @@ const SECTION_KEYS = [
   "process",
   "why",
   "showcase",
+  "catalogue",
+  "journey",
   "technology",
   "philosophy",
   "cta",

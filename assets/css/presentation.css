@@ -199,21 +199,29 @@ textarea:focus-visible,
 
 /* -----------------------------------------------------------------------
    3. SCROLL REVEAL
-   Only opacity and transform animate — both composited, neither triggers
-   layout or paint, which is what keeps the deck at 60fps while scrolling on
-   a phone. The hidden state is scoped to html.pres-js (set by
-   presentation-boot.js) so the page is fully readable without scripting.
+   Only opacity and a translation animate. Both are composited, neither
+   triggers layout or paint, and that is what keeps the deck at 60fps
+   while scrolling on a phone. The hidden state is scoped to html.pres-js
+   (set by presentation-boot.js) so the page is fully readable without
+   scripting.
+
+   The offset is carried on `translate`, the independent transform
+   property, rather than inside `transform` itself. That is what lets a
+   card be revealed and magnetically hovered at the same time: the two
+   effects become separate properties that compose natively, instead of
+   two rules overwriting one `transform` and the more specific one
+   silently winning.
    -------------------------------------------------------------------- */
 .pres-js [data-reveal] {
   opacity: 0;
-  transform: translate3d(0, 26px, 0);
+  translate: 0 26px;
   transition:
     opacity var(--p-dur-slow) var(--p-ease-soft),
-    transform var(--p-dur-slow) var(--p-ease-soft);
+    translate var(--p-dur-slow) var(--p-ease-soft);
 }
 .pres-js [data-reveal].is-revealed {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
+  translate: 0 0;
 }
 
 /* Stagger inside a group. Expressed as nth-child delays rather than a
@@ -927,121 +935,297 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   11. WHY — comparison
-   Mobile stacks the two columns with the "vs" mark as a horizontal divider
-   between them; desktop opposes them with a vertical rule. The "before"
-   column is deliberately quieter (muted ink, no surface) and the "after"
-   column is the one on paper with a shadow — the visual hierarchy carries
-   the argument before the copy does.
+   11. DEPTH LAYERS
+   The paper stays paper. What changes is that three sections now sit on a
+   soft field instead of a flat fill: two oversized radial washes and, on
+   the showcase, a faint rule grid fading out under the headline.
+
+   Two rules keep this from becoming a different design system. First, the
+   only colour used is the existing ink at 4-9% — there is no new hue
+   anywhere in the file. Second, none of it uses filter: blur(), which is
+   the usual way this effect is built and the reason it usually costs a
+   phone its frame budget. A radial-gradient falls off on its own, for
+   free, on the GPU.
    -------------------------------------------------------------------- */
-.pres-compare {
-  display: grid;
-  gap: var(--p-gap);
-  align-items: stretch;
+.pres-section--deep {
+  position: relative;
+  /* Orbs overhang the section by design; nothing may reach the viewport
+     edge and produce a horizontal scrollbar. */
+  overflow: hidden;
+  isolation: isolate;
+}
+/* Content above the field. Stated on children rather than by giving the
+   aura a negative index, which would push it behind the section's own
+   background and make it invisible. */
+.pres-section--deep > .pres-container,
+.pres-section--deep > .pres-belt { position: relative; z-index: 1; }
+
+.pres-aura {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
-.pres-compare__col {
-  padding: clamp(26px, 2.8vw, 40px);
-  border-radius: var(--p-radius-lg);
+.pres-aura__orb {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(26, 26, 26, 0.085), rgba(26, 26, 26, 0) 78%);
+  will-change: transform;
 }
-.pres-compare__col--before {
-  background: transparent;
-  border: 1px dashed var(--p-border);
+.pres-aura__orb--a {
+  width: clamp(320px, 52vw, 700px);
+  aspect-ratio: 1;
+  top: -14%;
+  left: -16%;
+  animation: pres-drift-a 26s var(--p-ease) infinite alternate;
 }
-.pres-compare__col--after {
+.pres-aura__orb--b {
+  width: clamp(260px, 42vw, 560px);
+  aspect-ratio: 1;
+  bottom: -18%;
+  right: -14%;
+  animation: pres-drift-b 31s var(--p-ease) infinite alternate;
+}
+.pres-aura__orb--c {
+  width: clamp(340px, 58vw, 760px);
+  aspect-ratio: 1;
+  top: 4%;
+  right: -22%;
+  animation: pres-drift-b 29s var(--p-ease) infinite alternate;
+}
+.pres-aura__orb--d {
+  width: clamp(300px, 46vw, 620px);
+  aspect-ratio: 1;
+  top: 18%;
+  left: -18%;
+  animation: pres-drift-a 34s var(--p-ease) infinite alternate;
+}
+
+@keyframes pres-drift-a {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(5%, 7%, 0); }
+}
+@keyframes pres-drift-b {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-6%, -5%, 0); }
+}
+
+/* Rule grid, masked to a soft ellipse so it never shows an edge. */
+.pres-aura__grid {
+  position: absolute;
+  top: -6%;
+  left: -6%;
+  right: -6%;
+  height: 62%;
+  background-image:
+    linear-gradient(to right, rgba(26, 26, 26, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26, 26, 26, 0.05) 1px, transparent 1px);
+  background-size: 58px 58px;
+  -webkit-mask-image: radial-gradient(ellipse 66% 58% at 50% 4%, #000 0%, transparent 74%);
+  mask-image: radial-gradient(ellipse 66% 58% at 50% 4%, #000 0%, transparent 74%);
+}
+
+/* Magnetic hover. The pointer offset arrives from presentation.js as two
+   custom properties and composes with a CSS-owned lift, so hover and
+   magnetism never fight over the same transform. The 260ms transition is
+   what turns a raw pointer delta into something that trails the cursor
+   and settles instead of tracking it exactly.
+
+   Scoped to .pres-body only to out-specify `.pres-js [data-reveal]`,
+   which every magnetic element on this page also carries: `transition` is
+   a shorthand, so the reveal's would otherwise replace this one whole and
+   the magnetism would snap rather than trail. */
+.pres-body [data-magnetic] {
+  transform: translate3d(var(--mx, 0px), calc(var(--my, 0px) + var(--lift, 0px)), 0);
+  transition:
+    transform 260ms var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease);
+}
+
+/* -----------------------------------------------------------------------
+   12. BENEFIT BELT — the infinite carousel
+   A single transform on one track, advanced by rAF. Everything else is
+   arithmetic in JS: the cards are cloned until the strip is at least twice
+   the viewport, and the offset wraps against the width of one full set, so
+   there is no seam and no snap-back at either end.
+
+   Full-bleed on purpose. The band has to run off both edges for the loop
+   to read as endless rather than as a slider with a beginning.
+   -------------------------------------------------------------------- */
+.pres-belt {
+  position: relative;
+  margin-top: var(--p-gap-lg);
+}
+
+.pres-belt__viewport {
+  overflow: hidden;
+  /* Room above and below for the hover lift and its shadow, which would
+     otherwise be clipped by the same overflow that hides the strip. */
+  padding: 10px 0 18px;
+  cursor: grab;
+  /* pan-y, not none: a vertical swipe that starts on a card still scrolls
+     the deck. Only the horizontal axis is claimed. */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Soft edges so cards dissolve rather than being cut off. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+}
+.pres-belt__viewport:focus-visible {
+  outline: 2px solid var(--p-ink);
+  outline-offset: -4px;
+  border-radius: var(--p-radius);
+}
+.pres-belt.is-dragging .pres-belt__viewport { cursor: grabbing; }
+
+.pres-belt__track {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(12px, 1.2vw, 18px);
+  width: max-content;
+  will-change: transform;
+}
+
+.pres-benefit {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(228px, 72vw, 304px);
+  padding: clamp(20px, 2vw, 26px);
   background: var(--p-surface);
   border: 1px solid var(--p-border);
-  box-shadow: var(--p-shadow-md);
+  border-radius: var(--p-radius-lg);
+  box-shadow: var(--p-shadow-sm);
+  overflow: hidden;
+  transition:
+    transform var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease);
 }
-
-.pres-compare__label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: var(--p-gap);
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--p-border);
+/* The glow. Held on a pseudo-element so the card's own transform stays
+   free for the lift, and faded rather than moved so it costs one
+   composited opacity change. */
+.pres-benefit::before {
+  content: "";
+  position: absolute;
+  inset: -50% -30% auto -30%;
+  height: 130%;
+  background: radial-gradient(58% 58% at 32% 0%, rgba(26, 26, 26, 0.09), rgba(26, 26, 26, 0) 72%);
+  opacity: 0;
+  transition: opacity var(--p-dur) var(--p-ease);
+  pointer-events: none;
 }
-.pres-compare__col--before .pres-compare__label { color: var(--p-faint); }
-.pres-compare__col--after .pres-compare__label { color: var(--p-ink); }
+.pres-benefit:hover { transform: translateY(-6px); }
+.pres-benefit:hover::before { opacity: 1; }
 
-.pres-compare__list li {
+.pres-benefit__icon {
   position: relative;
-  padding-left: 30px;
-  padding-block: 11px;
-  font-size: var(--p-body);
-  line-height: 1.55;
-}
-.pres-compare__list li + li { border-top: 1px solid var(--p-border-soft); }
-
-.pres-compare__col--before .pres-compare__list li { color: var(--p-faint); }
-.pres-compare__col--after .pres-compare__list li { color: var(--p-ink); }
-
-/* A drawn cross for "before", a drawn check for "after" — the same shapes
-   as the service-card mark, at list weight. */
-.pres-compare__col--before .pres-compare__list li::before,
-.pres-compare__col--before .pres-compare__list li::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 20px;
-  width: 11px;
-  height: 1.5px;
-  background: var(--p-faint);
-}
-.pres-compare__col--before .pres-compare__list li::before { transform: rotate(45deg); }
-.pres-compare__col--before .pres-compare__list li::after { transform: rotate(-45deg); }
-
-.pres-compare__col--after .pres-compare__list li::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 16px;
-  width: 5px;
-  height: 10px;
-  border: solid var(--p-ink);
-  border-width: 0 1.7px 1.7px 0;
-  transform: rotate(45deg);
-}
-
-.pres-compare__divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  border-radius: var(--p-radius);
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  color: var(--p-ink);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    color var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
 }
-.pres-compare__divider-line {
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--p-border);
+.pres-benefit__icon svg,
+.pres-switch__icon svg,
+.pres-cat__icon svg,
+.pres-journey__node svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.pres-compare__divider-mark {
-  flex: none;
+.pres-benefit__icon svg { width: 24px; height: 24px; }
+.pres-benefit:hover .pres-benefit__icon {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+  color: #ffffff;
+  transform: translateY(-2px) scale(1.05);
+}
+
+.pres-benefit__title {
+  position: relative;
+  font-size: clamp(16px, 1.15vw, 18px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 7px;
+}
+.pres-benefit__desc {
+  position: relative;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--p-muted);
+}
+
+.pres-belt__hint {
+  margin-top: 4px;
+  text-align: center;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--p-faint);
+  transition: opacity var(--p-dur-slow) var(--p-ease);
 }
+/* The hint has done its job the moment someone drags. Leaving it up after
+   that is the interface still explaining itself to a visitor who has
+   already understood. */
+.pres-belt.is-engaged .pres-belt__hint { opacity: 0; }
 
-@media (min-width: 920px) {
-  .pres-compare {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: clamp(20px, 2.4vw, 36px);
-  }
-  .pres-compare__divider { flex-direction: column; }
-  .pres-compare__divider-line { width: 1px; height: auto; flex: 1 1 auto; }
-}
-
-/* Three supporting pillars under the comparison. */
+/* -----------------------------------------------------------------------
+   13. PILLARS
+   -------------------------------------------------------------------- */
 .pres-pillars {
   display: grid;
   gap: var(--p-gap);
   grid-template-columns: 1fr;
   margin-top: var(--p-gap-lg);
-  padding-top: var(--p-gap-lg);
-  border-top: 1px solid var(--p-border);
+}
+.pres-pillar {
+  position: relative;
+  padding: clamp(24px, 2.4vw, 32px);
+  border-radius: var(--p-radius-lg);
+  border: 1px solid var(--p-border);
+  /* Glass, and the only place on the deck that uses it: the pillars are
+     the one block sitting directly over an aura, so there is something
+     behind them worth blurring. Three elements is a cost a phone can pay;
+     the twelve catalogue tiles below deliberately do not. */
+  background: linear-gradient(180deg, rgba(253, 253, 252, 0.94), rgba(253, 253, 252, 0.62));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--p-shadow-sm);
+}
+.pres-pillar:hover {
+  --lift: -5px;
+  box-shadow: var(--p-shadow-md);
+  border-color: rgba(26, 26, 26, 0.2);
+}
+.pres-pillar__index {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--p-faint);
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .pres-pillar__title {
   font-size: var(--p-h3);
@@ -1060,224 +1244,1151 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   12. PLATFORM SHOWCASE — CSS device frames
-   Everything inside a frame is an abstract shape on a loop. There are no
-   screenshots and nothing that could be mistaken for one.
+   14. PRODUCT SHOWCASE — switcher, stage, device shells, mockups
 
-   The animations are gated on .is-revealed (added when the section scrolls
-   into view) so three infinite loops are not running against the compositor
-   for the whole time the deck sits on an earlier section.
+   The mockups are drawn at two fixed design sizes (1120x730 for the
+   desktop app, 340x736 for the phone) and scaled into their frame with a
+   single transform. That is what keeps the internal proportions, the
+   optical weight of the type and the spacing rhythm identical on a 390px
+   phone and a 27" monitor: there is exactly one layout, sized once.
+
+   The stage's own height is derived in CSS from the width the container
+   can actually offer, so neither frame ever overflows and the height it
+   settles on is known before paint. Switching devices animates that
+   height once, on a click, which is the only layout-affecting transition
+   on the page and is excluded from CLS for exactly that reason.
    -------------------------------------------------------------------- */
-.pres-devices {
+.pres-switch {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: clamp(36px, 4vw, 56px);
+  gap: 4px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto var(--p-gap-lg);
+  padding: 5px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  box-shadow: var(--p-shadow-sm);
+}
+/* The selected pill is one element that slides, not a background swapped
+   between two buttons — the movement is the thing that makes the change
+   of device read as a change rather than a repaint. */
+.pres-switch__thumb {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 0;
+  height: calc(100% - 10px);
+  border-radius: var(--p-radius-pill);
+  background: var(--p-ink);
+  transform: translate3d(var(--thumb-x, 0px), 0, 0);
+  transition:
+    transform 460ms var(--p-ease-soft),
+    width 460ms var(--p-ease-soft);
+  pointer-events: none;
+}
+.pres-switch__btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px clamp(16px, 2vw, 26px);
+  border-radius: var(--p-radius-pill);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--p-muted);
+  transition: color var(--p-dur) var(--p-ease);
+}
+.pres-switch__btn:hover { color: var(--p-ink); }
+.pres-switch__btn.is-active,
+.pres-switch__btn.is-active:hover { color: #ffffff; }
+.pres-switch__icon { display: flex; }
+.pres-switch__icon svg { width: 18px; height: 18px; }
+
+.pres-stage {
+  /* The width the container can give a frame at this viewport. Mirrors
+     .pres-container's own max-width and padding so the two cannot drift. */
+  --stage-avail: calc(min(100vw, var(--p-max)) - 2 * var(--p-shell-x));
+  --stage-cap-desktop: clamp(300px, 34vw + 120px, 620px);
+  /* The phone's floor is deliberately high. Derived from the narrowest
+     viewport the deck supports: at 320px the container can offer 280px,
+     and 600 x 0.4788 is 287, so the frame is width-limited rather than
+     height-limited from 320px up and always fills the space it is given
+     instead of sitting as a thumbnail in the middle of it. */
+  --stage-cap-phone: clamp(600px, 24vw + 360px, 700px);
+  position: relative;
+  /* Height is whichever is smaller: the ceiling for this device, or the
+     height at which the frame's aspect ratio still fits the width. */
+  height: min(var(--stage-cap-desktop), calc(var(--stage-avail) / 1.5328));
+  transition: height 520ms var(--p-ease-soft);
+}
+.pres-stage[data-device="phone"] {
+  height: min(var(--stage-cap-phone), calc(var(--stage-avail) / 0.4788));
+}
+.pres-stage__glow {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 116%;
+  height: 116%;
+  transform: translate3d(-50%, -50%, 0);
+  background: radial-gradient(closest-side, rgba(26, 26, 26, 0.13), rgba(26, 26, 26, 0) 76%);
+  pointer-events: none;
 }
 
-.pres-device { width: 100%; max-width: 100%; }
-.pres-device__frame {
+.pres-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  /* visibility, not display: an inactive pane must be out of the tab order
+     and out of the accessibility tree, but must keep its layout so the
+     switch has something already laid out to fade to. */
+  visibility: hidden;
+  transform: translate3d(0, 20px, 0) scale(0.94);
+  transition:
+    opacity 400ms var(--p-ease-soft),
+    transform 520ms var(--p-ease-soft),
+    visibility 0s linear 520ms;
+  will-change: transform, opacity;
+}
+.pres-pane.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, 0, 0) scale(1);
+  /* The incoming pane waits 80ms so the two are never both at full
+     opacity, which is what makes a cross-fade look muddy. */
+  transition-delay: 80ms, 80ms, 0s;
+}
+
+.pres-shell {
   position: relative;
+  height: 100%;
   background: var(--p-surface);
   border: 1px solid var(--p-border);
   box-shadow: var(--p-shadow-lg);
   overflow: hidden;
 }
-.pres-device__label {
-  margin-top: 14px;
+.pres-shell--desktop {
+  aspect-ratio: 1122 / 732;
+  border-radius: 14px;
+}
+.pres-shell--phone {
+  aspect-ratio: 362 / 758;
+  border-radius: 36px;
+  padding: 10px;
+  background: var(--p-ink);
+  border-color: rgba(26, 26, 26, 0.9);
+}
+/* The island, sized in percentages of the shell rather than pixels so it
+   keeps its place in the status bar as the frame scales. */
+.pres-shell__notch {
+  position: absolute;
+  top: 2.3%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 21%;
+  height: 2.4%;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-ink);
+  z-index: 2;
+}
+.pres-shell__screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--p-bg);
+}
+.pres-shell--phone .pres-shell__screen { border-radius: 27px; }
+
+/* The scaler. transform-origin at the top-left corner so the design's
+   own 0,0 lands on the screen's 0,0 at every scale. */
+.pres-fit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--fit-scale, 0.5));
+}
+/* presentation.js sets --fit-scale exactly, from the measured screen. The
+   values below are the same arithmetic evaluated at five widths, so the
+   frame is already close to correct on the first frame and stays usable
+   if the script never runs. */
+.pres-pane--desktop .pres-fit { --fit-scale: 0.31; }
+.pres-pane--phone .pres-fit { --fit-scale: 0.6; }
+@media (min-width: 600px) {
+  .pres-pane--desktop .pres-fit { --fit-scale: 0.44; }
+  .pres-pane--phone .pres-fit { --fit-scale: 0.65; }
+}
+@media (min-width: 900px) {
+  .pres-pane--desktop .pres-fit { --fit-scale: 0.58; }
+  .pres-pane--phone .pres-fit { --fit-scale: 0.75; }
+}
+@media (min-width: 1200px) {
+  .pres-pane--desktop .pres-fit { --fit-scale: 0.72; }
+  .pres-pane--phone .pres-fit { --fit-scale: 0.85; }
+}
+@media (min-width: 1400px) {
+  .pres-pane--desktop .pres-fit { --fit-scale: 0.83; }
+  .pres-pane--phone .pres-fit { --fit-scale: 0.92; }
+}
+
+/* Flanking callouts. Hidden until there is real room beside the phone,
+   which is the whole point of them: a wide screen showing a 335px frame
+   has 400px of empty paper on either side, and this is what goes in it. */
+.pres-stage__notes { display: none; }
+
+@media (min-width: 1120px) {
+  .pres-stage__notes {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .pres-stage__note {
+    position: absolute;
+    width: 250px;
+    padding: 16px 18px;
+    border-radius: var(--p-radius-lg);
+    border: 1px solid var(--p-border);
+    background: linear-gradient(180deg, rgba(253, 253, 252, 0.95), rgba(253, 253, 252, 0.66));
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--p-shadow-sm);
+    opacity: 0;
+    /* They arrive from the outside edge, away from the phone, so the eye
+       is pulled outward to read them rather than off the device. */
+    transform: translate3d(var(--note-from, -14px), 0, 0);
+    transition:
+      opacity 460ms var(--p-ease-soft),
+      transform 560ms var(--p-ease-soft);
+  }
+  /* A hairline reaching toward the frame, so each note reads as pointing
+     at the phone rather than floating near it. */
+  .pres-stage__note::after {
+    content: "";
+    position: absolute;
+    top: 26px;
+    width: 34px;
+    height: 1px;
+    background: var(--p-border);
+  }
+  .pres-stage__note--1,
+  .pres-stage__note--2 { left: 2%; }
+  .pres-stage__note--3,
+  .pres-stage__note--4 { right: 2%; --note-from: 14px; }
+  .pres-stage__note--1 { top: 9%; }
+  .pres-stage__note--2 { top: 57%; }
+  .pres-stage__note--3 { top: 15%; }
+  .pres-stage__note--4 { top: 62%; }
+  .pres-stage__note--1::after,
+  .pres-stage__note--2::after { left: 100%; }
+  .pres-stage__note--3::after,
+  .pres-stage__note--4::after { right: 100%; }
+
+  /* Staggered, and only once the phone is the thing being looked at. */
+  .pres-stage[data-device="phone"] .pres-stage__note {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  .pres-stage[data-device="phone"] .pres-stage__note--1 { transition-delay: 200ms; }
+  .pres-stage[data-device="phone"] .pres-stage__note--3 { transition-delay: 280ms; }
+  .pres-stage[data-device="phone"] .pres-stage__note--2 { transition-delay: 360ms; }
+  .pres-stage[data-device="phone"] .pres-stage__note--4 { transition-delay: 440ms; }
+}
+
+.pres-stage__note-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 5px;
+}
+.pres-stage__note-body { font-size: 12.5px; line-height: 1.5; color: var(--p-muted); }
+
+.pres-stage__caption {
+  margin: var(--p-gap) auto 0;
+  max-width: 54ch;
   text-align: center;
-  font-size: 11.5px;
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+  transition: opacity 220ms var(--p-ease);
+}
+.pres-stage__caption.is-swapping { opacity: 0; }
+
+/* ---- Shared mockup base ---- */
+.mock {
+  font-family: var(--p-font);
+  color: var(--p-ink);
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-align: left;
+}
+.mock--desktop {
+  width: 1120px;
+  height: 730px;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-bg);
+}
+
+/* ---- Desktop: browser chrome ---- */
+.mock__chrome {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  background: var(--p-surface-2);
+  border-bottom: 1px solid var(--p-border);
+}
+.mock__dots { display: flex; gap: 6px; flex: 0 0 auto; }
+.mock__dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--p-border); }
+.mock__url {
+  flex: 0 1 300px;
+  margin: 0 auto;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-soft);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--p-faint);
+}
+.mock__chrome-pad { flex: 0 0 38px; }
+
+/* ---- Desktop: shell ---- */
+.mock__app { flex: 1 1 auto; display: flex; min-height: 0; }
+
+.mock__side {
+  flex: 0 0 236px;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 18px;
+  background: var(--p-surface);
+  border-right: 1px solid var(--p-border);
+}
+.mock__brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
+.mock__brand-mark {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--p-ink);
+}
+.mock__brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 2px;
+  background: #ffffff;
+}
+.mock__brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.025em; }
+.mock__side-label {
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--p-faint);
+  margin-bottom: 9px;
 }
-
-.pres-device--desktop .pres-device__frame { border-radius: 12px; }
-.pres-device--tablet .pres-device__frame { border-radius: 16px; }
-.pres-device--mobile .pres-device__frame { border-radius: 26px; }
-
-.pres-device--tablet { max-width: 420px; }
-.pres-device--mobile { max-width: 230px; }
-
-/* Browser chrome dots on the desktop frame only. */
-.pres-device__bar {
+.mock__nav { margin-bottom: 22px; }
+.mock__nav li {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--p-border);
-  background: var(--p-surface-2);
+  gap: 10px;
+  height: 33px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--p-muted);
 }
-.pres-device__bar span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--p-border);
-}
-
-.pres-device__notch {
-  position: absolute;
-  top: 9px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 62px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--p-border);
-  z-index: 2;
-}
-
-.pres-device__screen {
-  background: var(--p-bg);
-  overflow: hidden;
-}
-.pres-device--desktop .pres-device__screen { aspect-ratio: 16 / 10; }
-.pres-device--tablet .pres-device__screen { aspect-ratio: 4 / 3; }
-.pres-device--mobile .pres-device__screen { aspect-ratio: 9 / 19; }
-
-.pres-ui {
-  height: 100%;
-  padding: 8%;
-  display: flex;
-  flex-direction: column;
-  gap: 7%;
-}
-.pres-device--mobile .pres-ui { padding: 9% 8%; gap: 5%; }
-
-.pres-ui__nav {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.pres-ui__nav i {
-  display: block;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--p-border);
-}
-.pres-ui__nav i:nth-child(1) { width: 26px; background: var(--p-ink); }
-.pres-ui__nav i:nth-child(2) { width: 34px; }
-.pres-ui__nav i:nth-child(3) { width: 28px; }
-.pres-ui__nav i:nth-child(4) { width: 40px; }
-
-.pres-ui__hero {
-  height: 22%;
-  min-height: 26px;
-  border-radius: 6px;
-  background: linear-gradient(100deg, var(--p-surface-2) 0%, #e7e5e1 50%, var(--p-surface-2) 100%);
-  background-size: 220% 100%;
-}
-
-.pres-ui__row {
-  display: flex;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.pres-ui__card {
-  flex: 1 1 0;
-  border-radius: 6px;
+.mock__nav li.is-active { background: var(--p-ink); color: #ffffff; font-weight: 600; }
+.mock__nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.45; }
+.mock__nav li.is-active .mock__nav-dot { opacity: 1; }
+.mock__side-card {
+  margin-top: auto;
+  padding: 15px;
+  border-radius: 12px;
   background: var(--p-surface-2);
   border: 1px solid var(--p-border-soft);
-  transform-origin: 50% 100%;
 }
-.pres-device--mobile .pres-ui__card { flex: 0 0 34%; }
-
-.pres-ui__lines {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.pres-ui__lines span {
-  height: 5px;
-  border-radius: 3px;
-  background: var(--p-border);
-  transform-origin: 0 50%;
-}
-.pres-ui__lines span:nth-child(1) { width: 86%; }
-.pres-ui__lines span:nth-child(2) { width: 62%; }
-.pres-ui__lines span:nth-child(3) { width: 74%; }
-
-.pres-ui__cta {
-  height: 26px;
+.mock__side-card-title { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
+.mock__side-card-body { font-size: 11px; line-height: 1.45; color: var(--p-muted); margin-bottom: 12px; }
+.mock__side-card-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 14px;
   border-radius: var(--p-radius-pill);
   background: var(--p-ink);
-  margin-top: auto;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.pres-ui__chart { height: 26%; min-height: 40px; }
-.pres-ui__chart svg { width: 100%; height: 100%; overflow: visible; }
-.pres-ui__spark {
+.mock__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  padding: 24px 26px;
+}
+.mock__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.mock__hello { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+.mock__hello-sub { font-size: 12px; color: var(--p-muted); margin-top: 4px; }
+.mock__top-right { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; }
+.mock__search {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  font-size: 11.5px;
+  color: var(--p-faint);
+}
+.mock__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--p-ink);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.mock__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
+.mock__stat {
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+}
+.mock__stat-value { display: block; font-size: 24px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+.mock__stat-label { display: block; margin-top: 6px; font-size: 10.5px; font-weight: 500; color: var(--p-faint); }
+
+.mock__cols {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 262px;
+  gap: 15px;
+}
+.mock__panel {
+  display: flex;
+  flex-direction: column;
+  padding: 17px;
+  border-radius: 14px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+}
+.mock__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.mock__panel-head--sub { margin-top: 16px; }
+.mock__panel-title { font-size: 13px; font-weight: 700; letter-spacing: -0.015em; }
+.mock__panel-link { font-size: 11px; font-weight: 600; color: var(--p-faint); }
+
+.mock__products, .mock__files { display: flex; flex-direction: column; gap: 8px; }
+.mock__product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--p-bg);
+  border: 1px solid var(--p-border-soft);
+}
+.mock__cover { flex: 0 0 46px; height: 46px; border-radius: 8px; }
+.mock__cover--a { background: linear-gradient(140deg, #2b2b29, #5f5c56); }
+.mock__cover--b { background: linear-gradient(140deg, #6d6a63, #c6c3bc); }
+.mock__cover--c { background: linear-gradient(140deg, #3e3c39, #8c8982); }
+.mock__product-body { flex: 1 1 auto; min-width: 0; }
+.mock__product-title { display: block; font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
+.mock__product-meta { display: block; font-size: 10.5px; color: var(--p-faint); margin: 3px 0 8px; }
+.mock__product-pct { flex: 0 0 auto; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Progress fills animate on scaleX rather than width — same picture, no
+   layout inside a subtree that is already being scaled. */
+.mock__bar, .mockp__bar, .mockp__video-scrub {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--p-surface-2);
+  overflow: hidden;
+}
+.mock__bar i, .mockp__bar i, .mockp__video-scrub i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--p-ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 900ms var(--p-ease-soft);
+}
+.mock__bar--light { background: rgba(255, 255, 255, 0.22); }
+.mock__bar--light i { background: #ffffff; }
+
+.mock__file {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--p-bg);
+  border: 1px solid var(--p-border-soft);
+}
+.mock__file-icon {
+  position: relative;
+  flex: 0 0 26px;
+  height: 32px;
+  border-radius: 5px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border);
+}
+.mock__file-icon::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 5px;
+  right: 5px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--p-border);
+  box-shadow: 0 5px 0 var(--p-border), 0 10px 0 var(--p-border);
+}
+.mock__file-name { flex: 1 1 auto; min-width: 0; font-size: 11.5px; font-weight: 600; }
+.mock__file-meta { font-size: 10.5px; color: var(--p-faint); }
+.mock__file-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--p-radius-pill);
+  border: 1px solid var(--p-border);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.mock__rail { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.mock__player { padding: 14px; border-radius: 14px; background: var(--p-ink); color: #ffffff; }
+.mock__player-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: linear-gradient(140deg, #3a3835, #726f68);
+}
+.mock__play, .mockp__hero-play {
+  position: relative;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+}
+.mock__play { width: 34px; height: 34px; }
+.mock__play::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 10px;
+  border-style: solid;
+  border-width: 7px 0 7px 11px;
+  border-color: transparent transparent transparent #1a1a1a;
+}
+.mock__player-title { font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
+.mock__player-meta { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); margin: 4px 0 9px; }
+
+.mock__progress {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+}
+.mock__rail-title { font-size: 11.5px; font-weight: 700; margin-bottom: 9px; }
+.mock__chart { flex: 1 1 auto; min-height: 50px; }
+.mock__chart svg { width: 100%; height: 100%; }
+.mock__spark {
   fill: none;
   stroke: var(--p-ink);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  stroke-dasharray: 260;
-  stroke-dashoffset: 260;
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+}
+.mock__spark-area { fill: rgba(26, 26, 26, 0.06); stroke: none; opacity: 0; transition: opacity 700ms var(--p-ease) 600ms; }
+.mock__rail-meta { font-size: 10.5px; color: var(--p-faint); margin-top: 8px; }
+
+.mock__cert {
+  /* Grid, not flex: the seal spans both rows so the title and the product
+     name stack beside it instead of sitting side by side. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 11px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+}
+.mock__cert-seal {
+  position: relative;
+  grid-row: 1 / span 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--p-ink);
+}
+.mock__cert-seal::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  width: 7px;
+  height: 12px;
+  border: solid var(--p-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.mock__cert-title { font-size: 12px; font-weight: 700; }
+.mock__cert-meta { font-size: 10.5px; color: var(--p-faint); margin-top: 2px; }
+
+/* Gated on .is-live, added when the stage first scrolls into view, so the
+   chart is not redrawing itself against the compositor while the visitor
+   is four sections above it. */
+.pres-stage.is-live .mock__spark { animation: mock-draw 1500ms var(--p-ease-soft) 260ms forwards; }
+.pres-stage.is-live .mock__spark-area { opacity: 1; }
+@keyframes mock-draw { to { stroke-dashoffset: 0; } }
+
+/* ---- Phone mockup ---- */
+.mock--phone {
+  width: 340px;
+  height: 736px;
+  display: flex;
+  flex-direction: column;
+  background: var(--p-bg);
+}
+.mockp__status {
+  flex: 0 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.mockp__status-icons { display: flex; align-items: center; gap: 4px; }
+.mockp__status-icons i { width: 11px; height: 8px; border-radius: 2px; background: var(--p-ink); opacity: 0.7; }
+.mockp__status-icons i:nth-child(2) { width: 9px; }
+.mockp__status-icons i:nth-child(3) { width: 17px; border-radius: 3px; }
+
+.mockp__bar {
+  flex: 0 0 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--p-border-soft);
+}
+.mockp__back {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border: solid var(--p-ink);
+  border-width: 0 0 1.8px 1.8px;
+  transform: rotate(45deg);
+}
+.mockp__bar-text { flex: 1 1 auto; min-width: 0; }
+.mockp__bar-title { display: block; font-size: 14px; font-weight: 700; letter-spacing: -0.025em; }
+.mockp__bar-sub { display: block; font-size: 10.5px; color: var(--p-faint); margin-top: 2px; }
+.mockp__avatar {
+  flex: 0 0 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--p-ink);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
-/* ---- Motion, only once the section is on screen ---- */
-.pres-devices.is-revealed .pres-ui__hero {
-  animation: pres-shimmer 3.2s var(--p-ease) infinite;
+.mockp__deck { flex: 1 1 auto; min-height: 0; overflow: hidden; touch-action: pan-y; }
+.mockp__slides {
+  display: flex;
+  height: 100%;
+  width: max-content;
+  transform: translate3d(0, 0, 0);
+  transition: transform 520ms var(--p-ease-soft);
+  will-change: transform;
 }
-.pres-devices.is-revealed .pres-ui__card {
-  animation: pres-card-in 2.8s var(--p-ease) infinite;
-}
-.pres-devices.is-revealed .pres-ui__card:nth-child(2) { animation-delay: 180ms; }
-.pres-devices.is-revealed .pres-ui__card:nth-child(3) { animation-delay: 360ms; }
-.pres-devices.is-revealed .pres-ui__lines span {
-  animation: pres-line-in 2.8s var(--p-ease) infinite;
-}
-.pres-devices.is-revealed .pres-ui__lines span:nth-child(2) { animation-delay: 140ms; }
-.pres-devices.is-revealed .pres-ui__lines span:nth-child(3) { animation-delay: 280ms; }
-.pres-devices.is-revealed .pres-ui__spark {
-  animation: pres-draw 3.4s var(--p-ease-soft) infinite;
-}
-.pres-devices.is-revealed .pres-ui__cta {
-  animation: pres-pulse 2.8s var(--p-ease) infinite;
-}
-
-@keyframes pres-shimmer {
-  0%, 100% { background-position: 140% 0; }
-  55% { background-position: -40% 0; }
-}
-@keyframes pres-card-in {
-  0%, 12% { opacity: 0; transform: translate3d(0, 10%, 0); }
-  32%, 88% { opacity: 1; transform: translate3d(0, 0, 0); }
-  100% { opacity: 0; transform: translate3d(0, 10%, 0); }
-}
-@keyframes pres-line-in {
-  0%, 14% { opacity: 0; transform: scaleX(0.2); }
-  36%, 88% { opacity: 1; transform: scaleX(1); }
-  100% { opacity: 0; transform: scaleX(0.2); }
-}
-@keyframes pres-draw {
-  0%, 8% { stroke-dashoffset: 260; }
-  62%, 88% { stroke-dashoffset: 0; }
-  100% { stroke-dashoffset: 260; }
-}
-@keyframes pres-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
+.mockp__slides.is-dragging { transition: none; }
+.mockp__slide {
+  flex: 0 0 340px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 15px 16px;
+  overflow: hidden;
 }
 
-@media (min-width: 900px) {
-  .pres-devices {
-    flex-direction: row;
-    align-items: flex-end;
-    justify-content: center;
-    gap: clamp(20px, 2.6vw, 40px);
+.mockp__hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 130px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #2f2d2b, #6e6b64);
+}
+.mockp__hero-play { width: 44px; height: 44px; }
+.mockp__hero-play::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 13px;
+  border-style: solid;
+  border-width: 9px 0 9px 14px;
+  border-color: transparent transparent transparent #1a1a1a;
+}
+.mockp__hero-tag {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  border-radius: var(--p-radius-pill);
+  background: rgba(255, 255, 255, 0.93);
+  font-size: 10px;
+  font-weight: 700;
+}
+.mockp__section { font-size: 12.5px; font-weight: 700; letter-spacing: -0.015em; }
+.mockp__list { display: flex; flex-direction: column; gap: 8px; }
+.mockp__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-soft);
+}
+.mockp__list li.is-live { border-color: var(--p-ink); box-shadow: 0 0 0 1px var(--p-ink); }
+.mockp__tick {
+  position: relative;
+  flex: 0 0 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.6px solid var(--p-border);
+}
+.mockp__list li.is-done .mockp__tick { background: var(--p-ink); border-color: var(--p-ink); }
+.mockp__list li.is-done .mockp__tick::after {
+  content: "";
+  position: absolute;
+  left: 5.5px;
+  top: 3.5px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
+}
+.mockp__row-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
+.mockp__row-meta { flex: 0 0 auto; font-size: 11px; color: var(--p-faint); font-variant-numeric: tabular-nums; }
+.mockp__meal { flex: 0 0 18px; height: 18px; border-radius: 6px; background: var(--p-surface-2); border: 1px solid var(--p-border); }
+.mockp__chapter { flex: 0 0 20px; font-size: 10.5px; font-weight: 700; color: var(--p-faint); font-variant-numeric: tabular-nums; }
+.mockp__attach {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+}
+.mockp__attach-icon {
+  position: relative;
+  flex: 0 0 26px;
+  height: 32px;
+  border-radius: 5px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+}
+.mockp__attach-icon::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 5px;
+  right: 5px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--p-border);
+  box-shadow: 0 5px 0 var(--p-border), 0 10px 0 var(--p-border);
+}
+.mockp__attach-text { flex: 1 1 auto; min-width: 0; }
+.mockp__attach-name { display: block; font-size: 12px; font-weight: 600; letter-spacing: -0.015em; }
+.mockp__attach-meta { display: block; font-size: 10.5px; color: var(--p-faint); margin-top: 2px; }
+.mockp__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin-top: auto;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-ink);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mockp__macro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-soft);
+}
+.mockp__ring { position: relative; flex: 0 0 84px; height: 84px; }
+.mockp__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.mockp__ring-track { fill: none; stroke: var(--p-surface-2); stroke-width: 9; }
+.mockp__ring-fill {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 264;
+  stroke-dashoffset: 264;
+}
+.pres-stage.is-live .mockp__ring-fill { animation: mockp-ring 1400ms var(--p-ease-soft) 320ms forwards; }
+@keyframes mockp-ring { to { stroke-dashoffset: 66; } }
+.mockp__ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+.mockp__ring-value i { font-style: normal; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: var(--p-faint); }
+.mockp__macros { flex: 1 1 auto; display: flex; flex-direction: column; gap: 9px; }
+.mockp__macros li { display: grid; grid-template-columns: 44px minmax(0, 1fr) 38px; align-items: center; gap: 8px; }
+.mockp__macro-name { font-size: 10.5px; font-weight: 600; color: var(--p-muted); }
+.mockp__macro-val { font-size: 10.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.mockp__bar { height: 5px; border-radius: 3px; }
+
+.mockp__video {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 168px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #26241f, #625f58);
+}
+.mockp__video-scrub {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 30px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.mockp__video-scrub i { background: #ffffff; }
+.mockp__video-time {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  font-variant-numeric: tabular-nums;
+}
+
+.mockp__dots { flex: 0 0 auto; display: flex; justify-content: center; gap: 6px; padding: 8px 0 4px; }
+.mockp__dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--p-border);
+  transition: width 300ms var(--p-ease), background-color 300ms var(--p-ease);
+}
+.mockp__dots i.is-on { width: 18px; background: var(--p-ink); }
+.mockp__tabs {
+  flex: 0 0 64px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-top: 9px;
+  border-top: 1px solid var(--p-border-soft);
+}
+.mockp__tabs span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--p-faint);
+}
+.mockp__tabs span.is-active { color: var(--p-ink); }
+/* Four drawn glyphs rather than four identical squares: a tab bar where
+   every icon is the same shape reads as a placeholder, which is exactly
+   what this is not meant to look like. */
+.mockp__tab-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.7px solid currentColor;
+}
+.mockp__tabs span:nth-child(1) .mockp__tab-icon { border-radius: 4px 4px 5px 5px; border-top-width: 5px; }
+.mockp__tabs span:nth-child(2) .mockp__tab-icon::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px auto 2.5px 3px;
+  width: 1.7px;
+  background: currentColor;
+}
+.mockp__tabs span:nth-child(3) .mockp__tab-icon {
+  border: 0;
+  border-radius: 0;
+  /* Three bars of different heights, drawn as three one-colour gradients
+     so the glyph costs nothing but background-position. */
+  background:
+    linear-gradient(currentColor 0 0) 0 100% / 3px 55% no-repeat,
+    linear-gradient(currentColor 0 0) 50% 100% / 3px 100% no-repeat,
+    linear-gradient(currentColor 0 0) 100% 100% / 3px 75% no-repeat;
+}
+.mockp__tabs span:nth-child(4) .mockp__tab-icon { border-radius: 50%; }
+
+/* -----------------------------------------------------------------------
+   15. CATALOGUE — what a customer actually receives
+   -------------------------------------------------------------------- */
+.pres-catalogue {
+  display: grid;
+  gap: clamp(10px, 1.2vw, 16px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 680px) {
+  .pres-catalogue { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--p-gap); }
+}
+@media (min-width: 1040px) {
+  .pres-catalogue { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.pres-cat {
+  position: relative;
+  padding: clamp(16px, 1.9vw, 26px);
+  border-radius: var(--p-radius-lg);
+  border: 1px solid var(--p-border);
+  /* Translucent rather than blurred: twelve backdrop-filters is the kind
+     of thing that reads as premium in a screenshot and as 40fps on a
+     phone. The aura shows through the alpha instead. */
+  background: linear-gradient(180deg, rgba(253, 253, 252, 0.95), rgba(253, 253, 252, 0.6));
+}
+.pres-cat:hover {
+  --lift: -5px;
+  box-shadow: var(--p-shadow-md);
+  border-color: rgba(26, 26, 26, 0.2);
+}
+.pres-cat__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 14px;
+  border-radius: var(--p-radius);
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  color: var(--p-ink);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    color var(--p-dur) var(--p-ease);
+}
+.pres-cat__icon svg { width: 21px; height: 21px; }
+.pres-cat:hover .pres-cat__icon { background: var(--p-ink); border-color: var(--p-ink); color: #ffffff; }
+.pres-cat__name {
+  font-size: clamp(14px, 1.15vw, 16px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+}
+.pres-cat__meta { margin-top: 5px; font-size: 12.5px; line-height: 1.45; color: var(--p-faint); }
+
+/* -----------------------------------------------------------------------
+   16. CUSTOMER JOURNEY
+   One ordered list, two authored layouts. Below 960px it is a vertical
+   spine with the nodes down the left; above it, the same spine rotates and
+   the steps become seven columns. The fill and the lit nodes are driven by
+   how far the section has travelled through the viewport rather than by a
+   timer, so the sequence plays at the speed the visitor is reading it.
+   -------------------------------------------------------------------- */
+.pres-journey { position: relative; }
+
+.pres-journey__line {
+  position: absolute;
+  left: 22px;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--p-border);
+  overflow: hidden;
+}
+.pres-journey__line-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--p-ink);
+  transform: scaleY(var(--journey, 0));
+  transform-origin: 50% 0;
+  /* Short and linear: this tracks a scroll position, and an easing curve
+     on top of a value that is already being sampled every frame reads as
+     lag rather than as smoothing. */
+  transition: transform 120ms linear;
+}
+
+.pres-journey__steps { display: flex; flex-direction: column; gap: clamp(18px, 2.2vw, 28px); }
+.pres-journey__step { position: relative; padding-left: 64px; }
+
+.pres-journey__node {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  color: var(--p-faint);
+  box-shadow: var(--p-shadow-sm);
+  transition:
+    background-color 420ms var(--p-ease),
+    border-color 420ms var(--p-ease),
+    color 420ms var(--p-ease),
+    transform 420ms var(--p-ease-soft);
+}
+.pres-journey__node svg { width: 21px; height: 21px; }
+.pres-journey__step.is-lit .pres-journey__node {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+  color: #ffffff;
+  transform: scale(1.07);
+}
+
+.pres-journey__label {
+  padding-top: 9px;
+  font-size: clamp(16px, 1.4vw, 19px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  color: var(--p-ink);
+}
+.pres-journey__note { margin-top: 4px; font-size: 13.5px; line-height: 1.5; color: var(--p-muted); }
+
+/* The closing beat. The timeline shows the mechanism; this says what the
+   mechanism is worth, which is the sentence a reader should leave the
+   section holding. */
+.pres-journey__outcome {
+  display: grid;
+  gap: 1px;
+  margin-top: clamp(36px, 4.5vw, 64px);
+  border-radius: var(--p-radius-lg);
+  border: 1px solid var(--p-border);
+  background: var(--p-border);
+  overflow: hidden;
+}
+.pres-journey__outcome-item {
+  padding: clamp(18px, 2vw, 26px) clamp(18px, 2.2vw, 30px);
+  background: var(--p-surface);
+}
+.pres-journey__outcome dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+  margin-bottom: 8px;
+}
+.pres-journey__outcome dd {
+  margin: 0;
+  font-size: clamp(18px, 1.7vw, 23px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  color: var(--p-ink);
+}
+
+@media (min-width: 760px) {
+  .pres-journey__outcome { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 960px) {
+  /* The spine ends at the first and last node's centre, not at the
+     container edge, so the rule never runs out past the sequence. */
+  .pres-journey__line {
+    left: 7%;
+    right: 7%;
+    top: 23px;
+    bottom: auto;
+    width: auto;
+    height: 2px;
   }
-  .pres-device--desktop { flex: 1 1 auto; max-width: 620px; }
-  .pres-device--tablet { flex: 0 0 clamp(200px, 22vw, 280px); }
-  .pres-device--mobile { flex: 0 0 clamp(120px, 13vw, 170px); }
+  .pres-journey__line-fill {
+    transform: scaleX(var(--journey, 0));
+    transform-origin: 0 50%;
+  }
+  .pres-journey__steps { flex-direction: row; gap: clamp(8px, 1vw, 18px); }
+  .pres-journey__step {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 64px 0 0;
+    text-align: center;
+  }
+  .pres-journey__node { left: 50%; top: 0; transform: translate3d(-50%, 0, 0); }
+  .pres-journey__step.is-lit .pres-journey__node { transform: translate3d(-50%, 0, 0) scale(1.07); }
+  /* Two lines' worth, reserved. One label out of seven wraps, and without
+     this its note starts a line lower than the other six. */
+  .pres-journey__label { padding-top: 0; min-height: 2.6em; }
 }
 
 /* -----------------------------------------------------------------------
-   13. TECHNOLOGY
+   17. TECHNOLOGY
    -------------------------------------------------------------------- */
 .pres-tech {
   display: grid;
@@ -1333,7 +2444,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   14. PHILOSOPHY — statement
+   18. PHILOSOPHY — statement
    -------------------------------------------------------------------- */
 .pres-section--statement { text-align: center; }
 .pres-section--statement .pres-eyebrow { margin-bottom: var(--p-gap); }
@@ -1355,7 +2466,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   15. CTA + FORM
+   19. CTA + FORM
    -------------------------------------------------------------------- */
 .pres-section--cta {
   background: var(--p-surface-2);
@@ -1539,7 +2650,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   16. FOOTER
+   20. FOOTER
    -------------------------------------------------------------------- */
 .pres-footer {
   padding: clamp(40px, 5vw, 64px) 0;
@@ -1561,7 +2672,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   17. GATE SCREENS — password + expired
+   21. GATE SCREENS — password + expired
    Server-rendered (see renderGateScreen in routes/presentation.js) and
    sharing this stylesheet, so the first thing a visitor sees is already the
    deck's typography rather than a browser default.
@@ -1681,7 +2792,7 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   18. NARROW-VIEWPORT CORRECTIONS
+   22. NARROW-VIEWPORT CORRECTIONS
    The layout is fluid from 320px up, so these are corrections to specific
    things that stop being comfortable at the bottom of the range — not a
    separate mobile stylesheet.
@@ -1699,17 +2810,31 @@ textarea:focus-visible,
   /* Reclaim the indent under the step number: at this width the body copy
      needs the full measure more than it needs the alignment. */
   .pres-step__body-inner { padding-left: 0; }
-  .pres-compare__col { padding: 22px 18px; }
   .pres-form { padding: 22px 18px; }
+  /* The belt's edge fade is a fixed 44px, which at 320px eats a quarter of
+     the strip. Halved here so a card is still legible at the edges. */
+  .pres-belt__viewport {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
+  }
+  .pres-journey__step { padding-left: 56px; }
+  .pres-journey__node { width: 42px; height: 42px; }
+  .pres-journey__line { left: 20px; }
 }
 
 /* -----------------------------------------------------------------------
-   19. REDUCED MOTION
+   23. REDUCED MOTION
    Everything above is decoration over content that is already complete and
    readable, so the honest response to the preference is to remove the
-   motion entirely rather than shorten it — including the three infinite
-   loops in the device showcase, which are the most likely thing on the page
-   to cause discomfort.
+   motion entirely rather than shorten it. That includes the drifting
+   auras and the benefit belt, which are the two things on this page most
+   likely to cause discomfort.
+
+   The belt is the one case where removing motion is not enough on its
+   own: a strip that is wider than the viewport and no longer moving is
+   unreachable content. It becomes an ordinary scroll container here, so
+   the same twelve cards stay available by whatever means the visitor
+   already uses to scroll.
    -------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1722,13 +2847,30 @@ textarea:focus-visible,
   }
   .pres-js [data-reveal] {
     opacity: 1;
-    transform: none;
+    translate: none;
   }
+  .pres-body [data-magnetic] { transform: none; }
   .pres-hero__cue-line { animation: none; transform: scaleX(1); }
+
+  .pres-belt__viewport {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    cursor: auto;
+    touch-action: auto;
+    padding-inline: var(--p-shell-x);
+  }
+  .pres-belt__track { transform: none !important; }
+  .pres-benefit { scroll-snap-align: center; }
+  .pres-belt__hint { display: none; }
+
+  /* The stage's height still has to change with the device, or the phone
+     is cropped. Removing the animation, not the resize. */
+  .pres-stage { transition: none; }
+  .pres-journey__line-fill { transition: none; }
 }
 
 /* -----------------------------------------------------------------------
-   20. PRINT
+   24. PRINT
    Decks get printed to PDF and emailed after the meeting — often by the
    person who was pitched, to circulate internally. Worth getting right.
    -------------------------------------------------------------------- */
@@ -1747,11 +2889,51 @@ textarea:focus-visible,
     break-inside: avoid;
   }
   .pres-section--tint { background: none; }
+  .pres-aura,
+  .pres-stage__glow,
+  .pres-belt__hint,
+  .pres-switch { display: none !important; }
+
+  /* On paper the belt is a list, not a strip: the twelve cards wrap into
+     a grid so none of them fall off the right edge of the page. */
+  .pres-belt__viewport {
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+    padding: 0;
+  }
+  .pres-belt__track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: auto;
+    transform: none !important;
+  }
+  .pres-benefit { width: auto; box-shadow: none; break-inside: avoid; }
+  /* Clones exist only to make the loop seamless; printing them would
+     repeat every benefit twice. */
+  .pres-benefit[data-clone] { display: none !important; }
+
+  /* Both devices print, side by side, rather than whichever one happened
+     to be selected when the reader hit Print. */
+  .pres-stage { height: auto !important; display: flex; gap: 24px; align-items: flex-start; }
+  .pres-pane {
+    position: static;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    flex: 1 1 0;
+  }
+  .pres-shell { box-shadow: none; }
+
+  .pres-journey__step.is-lit .pres-journey__node,
+  .pres-journey__node { transform: none !important; }
+  .pres-journey__line-fill { transform: scaleY(1) !important; }
+
   /* Every wizard panel prints, not just the open one. */
   .pres-step__body {
     max-height: none !important;
     opacity: 1 !important;
     visibility: visible !important;
   }
-  .pres-js [data-reveal] { opacity: 1 !important; transform: none !important; }
+  .pres-js [data-reveal] { opacity: 1 !important; translate: none !important; }
 }

@@ -445,7 +445,7 @@ apiRouter.post("/:slug/contact", apiLimiter, async (req, res) => {
       category: "presentation",
       message: `Presentation enquiry from ${email} on "${presentation.title}" FAILED to send: ${err.message}`,
     }).catch(() => {});
-    return res.status(502).json({ error: "We couldn't send that just now — please email us directly." });
+    return res.status(502).json({ error: "We couldn't send that just now. Please email us directly." });
   }
 
   await logEvent({

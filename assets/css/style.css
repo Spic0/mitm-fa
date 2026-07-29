@@ -3742,26 +3742,16 @@ input {
   100% { transform: translate3d(-50%, 0, 0); }
 }
 
-/* The people marquee centres itself with transform: translateY(-50%)
-   (home-dynamic.css). A transform-based scroll would overwrite that and
-   drop the track to the top of its wrapper, so these variants fold the
-   centring into the same transform. Deliberately separate keyframes rather
-   than the independent `translate` property: composing two properties
-   works in current browsers but this is unambiguous everywhere. */
-.people-marquee .marquee-inner.to-left {
-  animation-name: marqueeLeftCentered;
-}
-@keyframes marqueeLeftCentered {
-  0% { transform: translate3d(0, -50%, 0); }
-  100% { transform: translate3d(-50%, -50%, 0); }
-}
-.people-marquee .marquee-inner.to-right {
-  animation-name: marqueeRightCentered;
-}
-@keyframes marqueeRightCentered {
-  0% { transform: translate3d(-50%, -50%, 0); }
-  100% { transform: translate3d(0, -50%, 0); }
-}
+/* The people marquee used to centre itself with top:50% +
+   transform: translateY(-50%), because its track was absolutely positioned;
+   a transform-based scroll would have overwritten that centring, so two
+   extra keyframe sets existed here purely to fold the -50% back into the
+   scroll transform.
+
+   That whole arrangement is gone. The track is in normal flow now and its
+   wrapper is a flex container that centres it (home-dynamic.css), so there
+   is no translateY to preserve and the plain marqueeLeft/marqueeRight
+   keyframes above apply to it unchanged. */
 
 @media (prefers-reduced-motion: reduce) {
   .marquee-inner.to-left,

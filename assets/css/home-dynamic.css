@@ -16,22 +16,40 @@
    nothing here is itself hardcoded to a specific product. ---- */
 .hero-slideshow {
   position: relative;
-  overflow: hidden;
   display: flex;
   align-items: center;
-  /* Mobile: the hero should fill nearly the first screen (logo + nav above
-     it, everything else below the fold) — svh/vh sized with a fixed-px
-     floor and fallback for browsers without max()/svh support. Larger
-     breakpoints below override with their own fixed min-heights, which win
-     on cascade order regardless of viewport height. */
-  min-height: 520px;
-  min-height: max(520px, 88vh);
-  min-height: max(520px, 88svh);
+  /* Mobile: NO viewport-based height and no px floor — the hero is exactly
+     as tall as its own content plus the padding below, and nothing more.
+
+     It previously carried `min-height: max(520px, 88vh)` (with an 88svh
+     line after it). `max()` means the hero can only ever get TALLER than
+     its content, never shorter, and measured on the real page its content
+     needs 421.5px — so the floor was injecting dead space:
+
+         320x568  hero 520.0px  content 421.5px  ->  98.5px empty
+         375x667  hero 587.0px  content 421.5px  -> 165.4px empty
+         390x844  hero 742.7px  content 421.5px  -> 321.2px empty
+         430x932  hero 820.2px  content 421.5px  -> 398.6px empty  (49%)
+
+     That empty space is what pushed the product ticker directly beneath
+     the hero down across the fold — at 320px wide with the browser
+     toolbars showing (460px of real estate) 0% of the ticker was on
+     screen, at 375x553 only 83% of it was, so it read as a strip whose
+     bottom had been cut off. Nothing was clipping it; the hero was simply
+     reserving up to half a screen of nothing above it.
+
+     Deliberately no `overflow: hidden` here either. The only thing that
+     needs clipping is the scaled/blurred background image, and
+     .hero-slideshow__bg-layer below already clips it inside its own
+     `inset: 0` box — so this section cannot crop anything, its own
+     children or the section after it, under any viewport. */
   padding: 84px 0 32px;
   background: var(--color-text); /* dark fallback while the first image loads */
 }
 
-/* Background layer: fills the section, sits behind everything else. */
+/* Background layer: fills the section, sits behind everything else, and is
+   the single place the oversized (scale(1.18) + slow pan) background image
+   is clipped — see the note about `overflow` on .hero-slideshow above. */
 .hero-slideshow__bg-layer {
   position: absolute;
   inset: 0;
@@ -192,9 +210,29 @@
     width: auto;
   }
 }
+/* ---- Hero floors above mobile.
+   Every one of these is `min(<px>, 88svh)`, never a bare px value and never
+   `max()`. The floor is therefore mathematically incapable of exceeding 88%
+   of the viewport the visitor can actually see, so the hero can never grow
+   tall enough to push the ticker below it off the first screen — which is
+   the exact failure the base rule above documents.
+
+   This also covers a phone held in landscape, which is what a bare px floor
+   got wrong: an iPhone 15 Pro Max is 932x430, so it is WIDER than 768px and
+   picks up the desktop rules here while being only 430px tall. `min()`
+   resolves that to 378px on its own, no viewport-height media query needed.
+
+   `min-height` only ever sets a floor, so where the hero's content is
+   taller than the result (421.5px of content vs 378px on that landscape
+   phone) the content still wins and the section sizes to it.
+
+   The bare px line before each `min()` is the fallback for browsers with no
+   svh support (< Chrome 108 / Safari 15.4); those breakpoints start at
+   576px, and the value is the same one that shipped before. ---- */
 @media (min-width: 576px) {
   .hero-slideshow {
     min-height: 560px;
+    min-height: min(560px, 88svh);
   }
   .hero-slideshow h1 {
     font-size: 34px;
@@ -210,6 +248,7 @@
   .hero-slideshow {
     padding: 116px 0 60px;
     min-height: 600px;
+    min-height: min(600px, 88svh);
   }
   .hero-slideshow h1 {
     font-size: 44px;
@@ -222,6 +261,7 @@
   .hero-slideshow {
     padding: 136px 0 70px;
     min-height: 640px;
+    min-height: min(640px, 88svh);
   }
   .hero-slideshow h1 {
     font-size: 54px;
@@ -254,23 +294,54 @@
    uses the full-size ticker is affected. Reuses the existing
    .marquee-inner.to-left / @keyframes marqueeLeft animation as-is.
 
-   height MUST be an explicit px value here, never `auto`: .marquee-inner
-   (style.css) is `position: absolute` with no `top` set, so it does not
-   contribute to a `height: auto` parent's size at all — that previously
-   collapsed this wrapper down to just its padding while the real scrolling
-   text still rendered at full height and got clipped mid-line by the
-   inherited `overflow: hidden`, which is what showed up as a corrupted/
-   leaking text row jammed above "Shop by Athlete & Creator". Centering the
-   absolutely-positioned track with top:50%/translateY keeps it correct
-   regardless of exact font metrics. ---- */
+   The band's height is derived from its own content, and this is the one
+   thing that has to stay true. `.marquee-wrapper` (style.css) carries
+   `overflow: hidden`, which the ticker genuinely needs — the track is
+   `width: 200%` and slides horizontally, and clipping that overhang IS the
+   marquee effect. But `overflow` cannot be limited to one axis (a computed
+   `overflow-x: hidden` forces `overflow-y` to `auto`, never `visible`), so
+   whatever that wrapper's height happens to be also crops the track
+   vertically. The only safe height for it is therefore the track's own.
+
+   Two things previously stopped that from happening, and both are undone
+   right here:
+
+     1. `.marquee-inner` (style.css) is `position: absolute`, so it
+        contributes nothing to a `height: auto` parent — the wrapper
+        collapsed to zero and the visible text was whatever leaked out.
+        `position: relative` below puts the track back in normal flow, so
+        the wrapper measures it.
+     2. Because of (1) the wrapper was given a hardcoded px height, which
+        then had to be manually kept >= the track. It never was: the
+        touch-target pass in style.css gives `.marquee-item > a` a
+        `min-height: 44px` below 992px, so on every single phone a 44px
+        track sat in a 40px box and lost 2px off the top and 2px off the
+        bottom. `height: auto` cannot drift out of sync that way.
+
+   With the track in flow there is nothing to centre, so the
+   top:50%/translateY(-50%) pair is gone too — and with it the
+   marqueeLeftCentered/marqueeRightCentered keyframes in style.css that
+   existed only to fold that -50% into the scroll transform. The plain
+   marqueeLeft/marqueeRight keyframes now apply unmodified. ---- */
 .marquee-wrapper.people-marquee {
-  height: 40px;
+  /* Content-derived. See above — never a px value. */
+  height: auto;
   padding: 0;
+  /* Centres the track for the one case where the box is deliberately taller
+     than it: the `min-height` floor at >=768px. At every width below that
+     the box is exactly the track's height and this does nothing. */
+  display: flex;
+  align-items: center;
   background: var(--sub-bg, #f7f7f7);
 }
 .people-marquee .marquee-inner {
-  top: 50%;
-  transform: translateY(-50%);
+  /* In flow, so it gives the wrapper above its height. Still positioned,
+     so the horizontal slide is unchanged. */
+  position: relative;
+  /* The track is deliberately 200% wide (two copies of the list, so the
+     -50% slide loops seamlessly). As a flex item it would otherwise be
+     shrunk back to 100% and the loop would visibly jump. */
+  flex: 0 0 auto;
 }
 .text-slider.people-marquee {
   font-size: 13px;
@@ -295,16 +366,19 @@
   text-decoration: none;
 }
 @media (min-width: 576px) {
-  .marquee-wrapper.people-marquee {
-    height: 44px;
-  }
   .text-slider.people-marquee {
     font-size: 15px;
   }
 }
 @media (min-width: 768px) {
   .marquee-wrapper.people-marquee {
-    height: 52px;
+    /* `min-height`, not `height`. The band wants more visual presence at
+       this size than its 18px text alone gives it, and a floor is the one
+       way to say that which cannot crop: if the track is ever taller than
+       52px the box grows to fit it instead of shaving it. `height: 52px`
+       here was the desktop half of the same mistake the base rule above
+       documents. */
+    min-height: 52px;
   }
   .text-slider.people-marquee {
     font-size: 18px;

@@ -42,6 +42,7 @@ model User {
   promotionsCreated   Promotion[]           @relation("PromotionCreatedBy")
   promotionRedemptions PromotionRedemption[]
   promotionEligibility PromotionUser[]
+  presentationsCreated PrivatePresentation[] @relation("PresentationCreatedBy")
 }
 
 model Product {
@@ -466,4 +467,104 @@ model PromotionNotification {
   updatedAt    DateTime  @updatedAt
 
   @@unique([promotionId, type])
+}
+
+// =====================================================================
+// PRIVATE PRESENTATIONS
+// =====================================================================
+//
+// Unlisted, link-only pitch decks served at /presentation/:slug for
+// investor / enterprise / athlete meetings. Deliberately NOT a Product,
+// Promotion or CMS page: nothing here ever appears in navigation, search,
+// the sitemap or robots.txt, and the only way in is a link an admin hands
+// out. See server/src/routes/presentation.js for the access gate and
+// server/src/lib/presentations.js for slug/password/unlock handling.
+
+model PrivatePresentation {
+  id        String @id @default(cuid())
+  // The random, unguessable half of the URL — this IS the access secret
+  // when no password is set, so it's 24 chars of crypto randomness rather
+  // than a readable slug derived from the title (see lib/presentations.js).
+  slug      String @unique
+  // Internal label shown in the admin list, never rendered on the page.
+  title     String
+  // Who the link was cut for ("Northwind Capital", "Sarah Chen") — this one
+  // IS rendered, in the hero, so the deck opens addressed to the viewer.
+  recipient String?
+  status    String @default("enabled") // "enabled" | "disabled"
+
+  // Both optional gates, independent of each other. A null expiresAt never
+  // expires; a null passwordHash opens straight from the link.
+  expiresAt    DateTime?
+  passwordHash String? // bcrypt, same cost as User.passwordHash
+
+  // Per-presentation copy overrides + section visibility. Kept as one JSON
+  // blob rather than a column per field: the deck's structure is fixed
+  // brand content in private/presentation.html, and this only carries the
+  // handful of things that change per meeting (hero copy, the CTA links,
+  // which sections to show). Adding a new override must never need a
+  // migration. Shape:
+  //   { heroEyebrow, heroTitle, heroSubtitle, welcomeNote,
+  //     ctaMeetingUrl, ctaDemoUrl, ctaPartnershipUrl,
+  //     sections: { who: true, services: true, ... } }
+  content Json?
+
+  createdById String?
+  createdBy   User?   @relation("PresentationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visits PresentationVisit[]
+  events PresentationEvent[]
+
+  @@index([status, createdAt])
+}
+
+// One row per browser session on a presentation. `visitorKey` is a random
+// id stored in a first-party cookie scoped to the presentation, which is
+// what makes "unique visitors" meaningful without any third-party
+// analytics, fingerprinting or cross-site identifier.
+model PresentationVisit {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   PrivatePresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+
+  visitorKey String
+  ip         String?
+  userAgent  String?
+  referrer   String?
+
+  startedAt DateTime @default(now())
+  // Heartbeated by the page while it's actually visible (see
+  // assets/js/presentation.js) — a backgrounded tab stops accruing time, so
+  // "time spent" means engaged time, not wall-clock time with the tab open.
+  lastSeenAt DateTime @default(now())
+  dwellMs    Int      @default(0)
+
+  // Furthest section reached (0-based index into the deck) and whether the
+  // How It Works wizard was taken all the way to step 6 — the two signals
+  // that answer "did they actually get through it?".
+  maxSectionIndex Int     @default(0)
+  wizardCompleted Boolean @default(false)
+
+  events PresentationEvent[]
+
+  @@index([presentationId, startedAt])
+  @@index([presentationId, visitorKey])
+}
+
+model PresentationEvent {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   PrivatePresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  visitId        String?
+  visit          PresentationVisit?  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  type  String // "cta_click" | "contact_submit" | "wizard_complete" | "unlock_failed"
+  label String? // which CTA, which wizard step — free-form, always server-clamped
+
+  createdAt DateTime @default(now())
+
+  @@index([presentationId, type, createdAt])
 }

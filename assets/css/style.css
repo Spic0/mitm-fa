@@ -6985,6 +6985,8 @@ body.cart-open { overflow: hidden; }
 .u-max-640 { max-width: 640px; margin-bottom: 24px; }
 .u-mb-16 { margin: 0 0 16px; }
 .u-mb-12 { margin: 0 0 12px; }
+.u-mb-20 { margin: 0 0 20px; }
+.u-mb-0 { margin: 0; }
 .u-mb-40 { margin-bottom: 40px; }
 .u-text-center { text-align: center; }
 .u-mt-14 { margin-top: 14px; }

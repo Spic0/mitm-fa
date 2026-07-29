@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260722">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260729">
 </head>
 
 <body class="admin-body">
@@ -192,6 +192,52 @@
         <p class="admin-page-subtitle">Manage the Shop by Goal, Browse Athletes, and Browse Creators trees — changes here update storefront navigation and filters everywhere automatically, no code changes needed.</p>
 
         <div id="taxonomyList"></div>
+    </template>
+
+    <template id="tpl-presentations">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="admin-page-title">Private Presentations</h1>
+                <p class="admin-page-subtitle">Unlisted, link-only decks for investor, partner and athlete meetings. These never appear anywhere on the public site.</p>
+            </div>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createPresentationBtn"><i class="fa-solid fa-plus"></i> New Presentation</button>
+        </div>
+
+        <div class="a-card">
+            <div class="a-card-pad u-pb-0">
+                <div class="a-toolbar">
+                    <input type="text" id="presentationSearch" placeholder="Search title or recipient…" class="u-minw-260">
+                    <select id="presentationStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                    <select id="presentationSortFilter">
+                        <option value="createdAt-desc">Newest first</option>
+                        <option value="createdAt-asc">Oldest first</option>
+                        <option value="updatedAt-desc">Recently updated</option>
+                        <option value="title-asc">Title A–Z</option>
+                    </select>
+                </div>
+            </div>
+            <div class="a-table-wrap">
+                <table class="a-table">
+                    <thead>
+                        <tr>
+                            <th>Presentation</th>
+                            <th>Status</th>
+                            <th>Access</th>
+                            <th>Expires</th>
+                            <th>Visits</th>
+                            <th>Enquiries</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="presentationsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
     </template>
 
     <template id="tpl-promotions">
@@ -477,6 +523,7 @@
     <script src="/assets/js/admin/promotion-wizard.js"></script>
     <script src="/assets/js/admin/promotions.js"></script>
     <script src="/assets/js/admin/promotion-drawer.js"></script>
+    <script src="/assets/js/admin/presentations.js"></script>
     <script src="/assets/js/admin/notifications.js"></script>
     <script src="/assets/js/admin/analytics.js"></script>
     <script src="/assets/js/admin/email-logs.js"></script>

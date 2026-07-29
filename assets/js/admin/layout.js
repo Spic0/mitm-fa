@@ -17,6 +17,7 @@
     { key: "navigation", label: "Navigation", href: "/admin/manage/navigation", icon: "fa-sitemap", roles: ["admin"] },
     { key: "promotions", label: "Promotions", href: "/admin/manage/promotions", icon: "fa-tag", roles: ["admin", "manager"] },
     { key: "customers", label: "Customers", href: "/admin/manage/customers", icon: "fa-users", roles: ["admin"] },
+    { key: "presentations", label: "Private Presentations", href: "/admin/manage/presentations", icon: "fa-lock", roles: ["admin"] },
     { key: "analytics", label: "Analytics", href: "/admin/manage/analytics", icon: "fa-chart-line", roles: ["admin"] },
     { key: "email-logs", label: "Email Logs", href: "/admin/manage/email-logs", icon: "fa-envelope", roles: ["admin"] },
     { key: "payment-logs", label: "Payment Logs", href: "/admin/manage/payment-logs", icon: "fa-credit-card", roles: ["admin"] },

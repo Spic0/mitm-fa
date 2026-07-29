@@ -121,6 +121,14 @@ window.AdminAPI = (function () {
     getPromotionAnalytics: function (id) { return get("/api/admin/promotions/" + id + "/analytics"); },
     getPromotionAuditLog: function (id) { return get("/api/admin/promotions/" + id + "/audit-log"); },
 
+    listPresentations: function (params) { return get("/api/admin/presentations?" + new URLSearchParams(params || {})); },
+    getPresentation: function (id) { return get("/api/admin/presentations/" + id); },
+    createPresentation: function (body) { return post("/api/admin/presentations", body); },
+    updatePresentation: function (id, body) { return patch("/api/admin/presentations/" + id, body); },
+    deletePresentation: function (id) { return del("/api/admin/presentations/" + id); },
+    duplicatePresentation: function (id) { return post("/api/admin/presentations/" + id + "/duplicate"); },
+    regeneratePresentationLink: function (id) { return post("/api/admin/presentations/" + id + "/regenerate-link"); },
+
     listInfluencers: function (params) { return get("/api/admin/influencers?" + new URLSearchParams(params || {})); },
     createInfluencer: function (body) { return post("/api/admin/influencers", body); },
     updateInfluencer: function (id, body) { return patch("/api/admin/influencers/" + id, body); },

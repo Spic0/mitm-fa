@@ -1087,3 +1087,172 @@ body.a-modal-body-lock { overflow: hidden; }
 @media (max-width: 640px) {
     .a-alert { flex-direction: column; gap: 10px; padding: 14px; }
 }
+
+/* =======================================================================
+   PRIVATE PRESENTATIONS
+   -----------------------------------------------------------------------
+   Adds nothing to the admin's visual language: the list is a plain .a-table,
+   the editor is the existing .a-drawer with .a-drawer-tabs, the stats are
+   .metric-card tiles, and every control is an .a-btn / .a-badge. The rules
+   below are the handful of layout pieces those components don't already
+   cover — a link row, a labelled form row inside a drawer, and a checkbox
+   list — all expressed in the --a-* tokens declared at the top of this file.
+   ======================================================================= */
+
+.pres-admin-title { font-weight: 600; color: var(--a-text); }
+.pres-admin-sub { font-size: 12.5px; color: var(--a-text-muted); margin-top: 2px; }
+.pres-admin-muted { color: var(--a-text-muted); }
+
+/* ---- The private link row ----
+   The one genuinely new component here, because nothing else in the admin
+   hands out a URL. Monospaced and selectable: an admin who can't use the
+   clipboard button (insecure origin, locked-down browser) must still be able
+   to select the text and copy it by hand. */
+.pres-link {
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+.pres-link__label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--a-text-muted);
+    margin-bottom: 8px;
+}
+.pres-link__url {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text);
+    /* anywhere, not break-word: these slugs are one unbroken 24-character
+       token and must wrap inside the drawer rather than widen it. */
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+.pres-link__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ---- Drawer form rows ---- */
+.pres-form-row { margin-bottom: 18px; }
+.pres-form-row label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--a-text);
+    margin-bottom: 7px;
+}
+.pres-form-row input[type="text"],
+.pres-form-row input[type="password"],
+.pres-form-row input[type="date"],
+.pres-form-row input[type="url"],
+.pres-form-row select,
+.pres-form-row textarea {
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+    color: var(--a-text);
+    /* 16px stops iOS Safari zooming the viewport on focus — the admin is
+       used from a phone often enough for this to matter. */
+    font-size: 16px;
+    line-height: 1.5;
+    transition: border-color var(--a-dur-fast) var(--a-ease), box-shadow var(--a-dur-fast) var(--a-ease);
+}
+.pres-form-row textarea { resize: vertical; min-height: 84px; }
+.pres-form-row input:focus,
+.pres-form-row select:focus,
+.pres-form-row textarea:focus {
+    outline: none;
+    border-color: var(--a-primary);
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+}
+.pres-form-hint {
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text-muted);
+}
+.pres-form-heading {
+    margin: 26px 0 6px;
+    padding-top: 20px;
+    border-top: 1px solid var(--a-border);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--a-text);
+}
+
+/* ---- Checkbox rows (section toggles, remove-password) ----
+   44px minimum height and a full-width hit area: these are ticked from a
+   phone, and a bare 13px checkbox is not a usable target. */
+.pres-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 4px 0;
+    font-size: 14px;
+    color: var(--a-text);
+    cursor: pointer;
+}
+.pres-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    accent-color: var(--a-primary);
+    cursor: pointer;
+}
+.pres-sections {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+}
+@media (min-width: 560px) {
+    .pres-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+}
+
+/* ---- Drawer footer ----
+   Sticky to the drawer's own bottom edge so Save stays reachable on a long
+   form without scrolling back down, and clear of the iOS home indicator. */
+.a-drawer-footer {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 16px 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--a-border);
+    background: var(--a-surface);
+}
+@media (max-width: 560px) {
+    /* Full-width stacked buttons, primary on top — the same order and
+       proportions the drawer's other actions use at this width. */
+    .a-drawer-footer { flex-direction: column-reverse; }
+    .a-drawer-footer .a-btn { width: 100%; }
+}
+
+/* ---- Analytics tiles ----
+   Slightly smaller than a dashboard metric because several of these carry a
+   unit ("2m 14s", "63%") rather than a bare count, and the drawer is
+   narrower than the dashboard grid. */
+.pres-metric-value { font-size: 20px; }
+.pres-metric-sub {
+    font-size: 12px;
+    color: var(--a-text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+}

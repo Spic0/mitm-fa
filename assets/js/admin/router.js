@@ -11,6 +11,7 @@
     navigation: { title: "Navigation", needsChartJs: false },
     customers: { title: "Customers", needsChartJs: false },
     promotions: { title: "Promotions", needsChartJs: false },
+    presentations: { title: "Private Presentations", needsChartJs: false },
     analytics: { title: "Analytics", needsChartJs: true },
     "email-logs": { title: "Email Logs", needsChartJs: false },
     "payment-logs": { title: "Payment Logs", needsChartJs: false },

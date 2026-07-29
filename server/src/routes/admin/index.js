@@ -15,6 +15,7 @@ const taxonomyRoutes = require("./taxonomy");
 const promotionsRoutes = require("./promotions");
 const influencersRoutes = require("./influencers");
 const promotionNotificationsRoutes = require("./promotionNotifications");
+const presentationsRoutes = require("./presentations");
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.use("/payment-logs", requireAdmin, paymentLogsRoutes);
 router.use("/system-logs", requireAdmin, systemLogsRoutes);
 router.use("/settings", requireAdmin, settingsRoutes);
 router.use("/taxonomy", requireAdmin, taxonomyRoutes);
+router.use("/presentations", requireAdmin, presentationsRoutes);
 router.use("/promotions", promotionsRoutes);
 router.use("/influencers", influencersRoutes);
 router.use("/promotion-notifications", promotionNotificationsRoutes);

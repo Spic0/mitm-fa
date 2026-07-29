@@ -52,4 +52,35 @@ const promoValidateLimiter = rateLimit({
   message: { error: "Too many promo code attempts. Please wait a few minutes and try again." },
 });
 
-module.exports = { authLimiter, magicLinkLimiter, apiLimiter, promoValidateLimiter };
+// Private-presentation password entry. Same reasoning as promoValidateLimiter:
+// an anonymous caller holding the link can test passwords against it, and
+// apiLimiter's 100/15min would barely slow a dictionary run. Tight, and keyed
+// by IP since there is no account to key on.
+const presentationUnlockLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { error: "Too many attempts. Please wait a few minutes and try again." },
+});
+
+// Presentation engagement heartbeats. Deliberately far looser than apiLimiter:
+// a real 45-minute meeting on one deck legitimately sends a heartbeat every
+// 30s from a single IP, which apiLimiter's 100/15min would cut off mid-pitch —
+// and the write it guards is a single bounded UPDATE on one row.
+const presentationTrackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 400,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = {
+  authLimiter,
+  magicLinkLimiter,
+  apiLimiter,
+  promoValidateLimiter,
+  presentationUnlockLimiter,
+  presentationTrackLimiter,
+};

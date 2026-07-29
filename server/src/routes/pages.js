@@ -541,6 +541,10 @@ router.get("/robots.txt", (req, res) => {
       "Disallow: /login",
       "Disallow: /register",
       "Disallow: /my-library",
+      // Private presentations are unlisted meeting decks. They're already
+      // unguessable and never linked to, but a crawler that gets a link from
+      // a pasted URL somewhere should still refuse it.
+      "Disallow: /presentation",
       "",
       `Sitemap: ${appUrl("/sitemap.xml")}`,
       "",

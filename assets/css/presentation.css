@@ -1,0 +1,1757 @@
+/* =======================================================================
+   PRIVATE PRESENTATION — /presentation/:slug
+   -----------------------------------------------------------------------
+   Standalone by design, and the only page on the platform that is. Every
+   storefront page loads bootstrap + all.min + animate + swiper + style.css
+   before it can paint; a deck opened live in a meeting cannot afford that,
+   so this file carries its own reset and its own @font-face and nothing
+   else is requested.
+
+   Standalone is NOT a second design system. Every value in the token block
+   below is copied from, or derived from, the platform's own tokens in
+   assets/css/style.css — the same warm off-white paper (#fafaf9 / #fdfdfc /
+   #f2f1ee), the same near-black ink (#1a1a1a) that is deliberately never
+   pure black, the same muted/faint text stops, the same 10px + 100px radius
+   pair, the same shadow ramp, the same Inter. Where this file departs, it
+   departs in ONE direction only: scale. Bigger type, more air, longer
+   easing. A deck is the same brand spoken at a different volume, and the
+   things that carry brand identity — hue, weight, radius, letterspacing,
+   the pill button, the hairline rule — are untouched.
+
+   Mobile and desktop are authored as separate layouts, not one scaled: see
+   the wizard (§7, accordion vs. two-column rail), the comparison block
+   (§8, stacked vs. opposed columns) and the device row (§9).
+   ======================================================================= */
+
+/* Same six faces, same paths, same font-display as style.css declares —
+   a deck rendered in a fallback face while Inter loads would not be the
+   same brand for the first 200ms. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
+
+/* -----------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------- */
+:root {
+  /* ---- Palette: identical values to style.css's monochrome system ---- */
+  --p-bg: #fafaf9;
+  --p-surface: #fdfdfc;
+  --p-surface-2: #f2f1ee;
+  --p-ink: #1a1a1a;
+  --p-ink-hover: #2e2e2c;
+  --p-muted: #55534f;
+  --p-faint: #9c9993;
+  --p-border: rgba(26, 26, 26, 0.1);
+  --p-border-soft: rgba(26, 26, 26, 0.06);
+  --p-danger: #dc2626;
+  --p-success: #059669;
+
+  --p-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* ---- Radius + shadow: the platform's exact scale ---- */
+  --p-radius: 10px;
+  --p-radius-lg: 18px;
+  --p-radius-pill: 100px;
+  --p-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --p-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --p-shadow-lg: 0 24px 64px rgba(15, 23, 42, 0.12), 0 4px 16px rgba(15, 23, 42, 0.06);
+
+  /* ---- Motion. --p-ease is style.css's own --nav-ease, the curve the
+     mobile drawer and its accordion already move on, so a step opening
+     here feels like the same product as a nav panel opening there.
+     --p-ease-soft is its longer sibling, used only for scroll reveals
+     where the distance travelled is larger. ---- */
+  --p-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --p-ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --p-dur-fast: 160ms;
+  --p-dur: 240ms;
+  --p-dur-slow: 620ms;
+
+  /* ---- Spacing. One rhythm, expressed fluidly so 320px and 1920px each
+     get a proportionate amount of air rather than the same pixel gap. ---- */
+  --p-gap-xs: 8px;
+  --p-gap-sm: 14px;
+  --p-gap: clamp(20px, 2.4vw, 32px);
+  --p-gap-lg: clamp(32px, 4vw, 56px);
+  --p-section-y: clamp(84px, 11vw, 168px);
+  --p-shell-x: clamp(20px, 5vw, 56px);
+  --p-max: 1240px;
+
+  /* ---- Type scale ---- */
+  --p-hero: clamp(46px, 9.2vw, 132px);
+  --p-h2: clamp(29px, 4.4vw, 60px);
+  --p-h3: clamp(18px, 1.5vw, 21px);
+  --p-lead: clamp(17px, 1.55vw, 21px);
+  --p-body: clamp(15.5px, 1.15vw, 17px);
+  --p-small: 13px;
+}
+
+/* -----------------------------------------------------------------------
+   2. RESET + SHELL
+   No bootstrap on this page, so the handful of resets it would have
+   provided are declared here explicitly rather than assumed.
+   -------------------------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  /* Anchored rail jumps land below the progress bar, not under it. */
+  scroll-padding-top: 80px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body,
+h1, h2, h3, h4, p, ul, ol, li, blockquote, figure, form {
+  margin: 0;
+  padding: 0;
+}
+
+ul, ol { list-style: none; }
+
+img, svg { max-width: 100%; display: block; }
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+input, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.pres-body {
+  font-family: var(--p-font);
+  font-size: var(--p-body);
+  line-height: 1.65;
+  font-weight: 400;
+  color: var(--p-muted);
+  background: var(--p-bg);
+  /* Not on the storefront's `text-transform: capitalize` body rule on
+     purpose: this deck is written in sentences, and Title Casing an
+     investor-facing paragraph is the fastest way to look unconsidered. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* The rail is positioned against the viewport; nothing here may ever
+     produce a horizontal scrollbar at any width. */
+  overflow-x: hidden;
+}
+
+/* Focus ring matches style.css's sitewide :focus-visible treatment exactly
+   (2px solid ink, 2px offset) — keyboard users get the same affordance here
+   as on every other page. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--p-ink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.u-hidden { display: none !important; }
+
+.pres-container {
+  width: 100%;
+  max-width: var(--p-max);
+  margin: 0 auto;
+  /* env() carries the notch/home-indicator inset on iOS in landscape, where
+     the safe area is horizontal rather than vertical. */
+  padding-left: max(var(--p-shell-x), env(safe-area-inset-left));
+  padding-right: max(var(--p-shell-x), env(safe-area-inset-right));
+}
+.pres-container--narrow { max-width: 860px; }
+
+.pres-section {
+  position: relative;
+  padding-top: var(--p-section-y);
+  padding-bottom: var(--p-section-y);
+}
+
+/* Alternating paper tone is the only sectioning device used — no borders
+   between sections, no colored bands. It is the same --color-surface-2 the
+   storefront uses for its own tinted strips. */
+.pres-section--tint { background: var(--p-surface-2); }
+
+/* Hairline above each tinted band, so the tone change reads as intentional
+   at the exact pixel rather than as a rendering artefact on a low-contrast
+   display. */
+.pres-section--tint::before,
+.pres-section--tint::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--p-border-soft);
+}
+.pres-section--tint::before { top: 0; }
+.pres-section--tint::after { bottom: 0; }
+
+/* -----------------------------------------------------------------------
+   3. SCROLL REVEAL
+   Only opacity and transform animate — both composited, neither triggers
+   layout or paint, which is what keeps the deck at 60fps while scrolling on
+   a phone. The hidden state is scoped to html.pres-js (set by
+   presentation-boot.js) so the page is fully readable without scripting.
+   -------------------------------------------------------------------- */
+.pres-js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  transition:
+    opacity var(--p-dur-slow) var(--p-ease-soft),
+    transform var(--p-dur-slow) var(--p-ease-soft);
+}
+.pres-js [data-reveal].is-revealed {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Stagger inside a group. Expressed as nth-child delays rather than a
+   per-element inline --i custom property, because the platform's CSP
+   forbids inline style attributes outright (see index.js). Nine steps
+   covers the largest group on the page; anything beyond it lands on the
+   last delay, which is the right behaviour anyway — a 12th card arriving
+   700ms after the first would read as broken, not as choreography. */
+[data-reveal-group] > [data-reveal]:nth-child(1) { transition-delay: 0ms; }
+[data-reveal-group] > [data-reveal]:nth-child(2) { transition-delay: 55ms; }
+[data-reveal-group] > [data-reveal]:nth-child(3) { transition-delay: 110ms; }
+[data-reveal-group] > [data-reveal]:nth-child(4) { transition-delay: 165ms; }
+[data-reveal-group] > [data-reveal]:nth-child(5) { transition-delay: 200ms; }
+[data-reveal-group] > [data-reveal]:nth-child(6) { transition-delay: 235ms; }
+[data-reveal-group] > [data-reveal]:nth-child(7) { transition-delay: 270ms; }
+[data-reveal-group] > [data-reveal]:nth-child(8) { transition-delay: 300ms; }
+[data-reveal-group] > [data-reveal]:nth-child(n + 9) { transition-delay: 330ms; }
+
+/* -----------------------------------------------------------------------
+   4. TYPOGRAPHY PRIMITIVES
+   -------------------------------------------------------------------- */
+.pres-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+  margin-bottom: var(--p-gap-sm);
+}
+
+.pres-h2 {
+  font-size: var(--p-h2);
+  font-weight: 700;
+  line-height: 1.08;
+  /* Negative tracking is what stops Inter looking loose at display sizes;
+     it scales with the type, which is why it's set here and not per-block. */
+  letter-spacing: -0.03em;
+  color: var(--p-ink);
+  text-wrap: balance;
+}
+
+.pres-lead {
+  font-size: var(--p-lead);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 62ch;
+  margin-top: var(--p-gap);
+}
+
+.pres-head { margin-bottom: var(--p-gap-lg); }
+.pres-head--center {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+.pres-head--center .pres-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* -----------------------------------------------------------------------
+   5. BUTTONS
+   The platform's pill button, restated. Same 100px radius, same ink fill,
+   same white label, same secondary treatment (transparent with a hairline).
+   The storefront's .btn-one builds its hover from two rotating pseudo-
+   element discs; that effect depends on markup this page doesn't have, so
+   the hover here is the same *intent* (the surface darkens and lifts)
+   expressed with transform + shadow, which is also the cheaper one to run.
+   -------------------------------------------------------------------- */
+.pres-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 52px tall: comfortably past the 44px minimum touch target, and the same
+     height as the checkout's primary action. */
+  min-height: 52px;
+  padding: 14px 32px;
+  border-radius: var(--p-radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+
+.pres-btn--primary {
+  background: var(--p-ink);
+  /* Literal white, not a token: a label on a filled surface always wants
+     white regardless of page theme — the same rule style.css states for its
+     own accent buttons. */
+  color: #ffffff;
+  box-shadow: var(--p-shadow-sm);
+}
+.pres-btn--primary:hover {
+  background: var(--p-ink-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--p-shadow-md);
+}
+.pres-btn--primary:active { transform: translateY(0); }
+
+.pres-btn--secondary {
+  background: transparent;
+  color: var(--p-ink);
+  border: 1px solid var(--p-border);
+}
+.pres-btn--secondary:hover {
+  background: var(--p-surface);
+  border-color: rgba(26, 26, 26, 0.28);
+  transform: translateY(-2px);
+  box-shadow: var(--p-shadow-sm);
+}
+.pres-btn--secondary:active { transform: translateY(0); }
+
+.pres-btn[disabled] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Selected CTA. The form below the buttons reflects whichever one is
+   active, so the active state has to be unmistakable, not a tint. */
+.pres-btn--secondary.is-active {
+  background: var(--p-ink);
+  color: #ffffff;
+  border-color: var(--p-ink);
+}
+
+/* -----------------------------------------------------------------------
+   6. PROGRESS BAR + SECTION RAIL
+   -------------------------------------------------------------------- */
+.pres-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 40;
+  background: var(--p-border-soft);
+  /* The bar is the one always-visible piece of chrome; it must sit above
+     the notch inset rather than under it on a landscape iPhone. */
+  padding-top: env(safe-area-inset-top);
+}
+.pres-progress__bar {
+  height: 100%;
+  background: var(--p-ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  /* scaleX, never width — this updates on every scroll frame, and a width
+     animation would relayout the document each time. */
+  will-change: transform;
+}
+
+.pres-rail {
+  position: fixed;
+  top: 50%;
+  right: clamp(20px, 2.2vw, 40px);
+  transform: translateY(-50%);
+  z-index: 35;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pres-rail__item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 7px 0;
+  color: var(--p-faint);
+  /* These are anchors (so they work without JS and can be opened/copied),
+     which means the UA underline has to be turned off explicitly. */
+  text-decoration: none;
+  transition: color var(--p-dur) var(--p-ease);
+}
+.pres-rail__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(6px);
+  transition:
+    opacity var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+.pres-rail__dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  transition:
+    opacity var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+.pres-rail__item:hover,
+.pres-rail__item:focus-visible,
+.pres-rail__item.is-active { color: var(--p-ink); }
+
+/* Labels appear on hover/focus ONLY — never for the merely-active item.
+   The rail lives in the page gutter, which at 1440px is about 100px wide;
+   a label that stayed expanded for the current section would sit on top of
+   the right-hand column of every grid on the page. The enlarged dot carries
+   "you are here" on its own, and the name is one hover away. */
+.pres-rail__item:hover .pres-rail__label,
+.pres-rail__item:focus-visible .pres-rail__label {
+  opacity: 1;
+  transform: translateX(0);
+}
+.pres-rail__item.is-active .pres-rail__dot {
+  opacity: 1;
+  transform: scale(1.35);
+}
+
+/* A hovered label needs a surface under it, since it reaches into the
+   gutter and can pass over content on a narrower desktop. */
+.pres-rail__label {
+  padding: 3px 9px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-sm);
+}
+
+/* The rail needs a gutter to sit in. Below this the deck is full-bleed
+   enough that a fixed rail would overlap content, and the progress bar
+   carries orientation on its own. */
+@media (min-width: 1200px) {
+  .pres-rail { display: flex; }
+}
+
+/* -----------------------------------------------------------------------
+   7. HERO
+   -------------------------------------------------------------------- */
+.pres-hero {
+  position: relative;
+  min-height: 100vh;
+  /* dvh follows collapsing mobile browser chrome; the vh above is the
+     fallback for browsers without it. Both are needed. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(120px, 16vh, 200px) 0 clamp(96px, 14vh, 140px);
+  background: var(--p-bg);
+}
+
+.pres-hero__inner {
+  width: 100%;
+  max-width: var(--p-max);
+  margin: 0 auto;
+  padding-left: max(var(--p-shell-x), env(safe-area-inset-left));
+  padding-right: max(var(--p-shell-x), env(safe-area-inset-right));
+}
+
+/* The hero's own entrance. A deliberately short, ordered sequence on load —
+   eyebrow, title, subtitle, then the supporting lines — rather than four
+   things arriving at once. Runs regardless of the IntersectionObserver,
+   which never fires for content already in the viewport at first paint. */
+.pres-hero__eyebrow,
+.pres-hero__title,
+.pres-hero__subtitle,
+.pres-hero__recipient,
+.pres-hero__note,
+.pres-hero__intro {
+  animation: pres-rise var(--p-dur-slow) var(--p-ease-soft) both;
+}
+.pres-hero__eyebrow { animation-delay: 60ms; }
+.pres-hero__title { animation-delay: 130ms; }
+.pres-hero__subtitle { animation-delay: 220ms; }
+.pres-hero__recipient { animation-delay: 300ms; }
+.pres-hero__note { animation-delay: 340ms; }
+.pres-hero__intro { animation-delay: 380ms; }
+
+@keyframes pres-rise {
+  from { opacity: 0; transform: translate3d(0, 30px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.pres-hero__title {
+  font-size: var(--p-hero);
+  font-weight: 700;
+  /* Sub-1 leading is only safe because this string is one or two words at
+     display size; it is what makes the wordmark read as a mark. */
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  color: var(--p-ink);
+  margin-bottom: clamp(20px, 2.6vw, 34px);
+}
+
+.pres-hero__subtitle {
+  font-size: clamp(19px, 2.1vw, 30px);
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  font-weight: 500;
+  color: var(--p-ink);
+  max-width: 20ch;
+}
+
+.pres-hero__recipient {
+  margin-top: clamp(28px, 3.4vw, 44px);
+  font-size: var(--p-small);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--p-faint);
+}
+.pres-hero__recipient strong {
+  font-weight: 700;
+  color: var(--p-ink);
+}
+
+.pres-hero__note {
+  margin-top: var(--p-gap-sm);
+  font-size: var(--p-lead);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 56ch;
+}
+
+.pres-hero__intro {
+  margin-top: clamp(28px, 3.2vw, 40px);
+  padding-top: clamp(24px, 2.8vw, 34px);
+  border-top: 1px solid var(--p-border);
+  font-size: var(--p-lead);
+  line-height: 1.62;
+  color: var(--p-muted);
+  max-width: 58ch;
+}
+
+.pres-hero__cue {
+  position: absolute;
+  left: max(var(--p-shell-x), env(safe-area-inset-left));
+  bottom: max(clamp(28px, 5vh, 52px), env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: pres-rise var(--p-dur-slow) var(--p-ease-soft) 560ms both;
+}
+.pres-hero__cue-line {
+  display: block;
+  width: 44px;
+  height: 1px;
+  background: var(--p-ink);
+  transform-origin: 0 50%;
+  animation: pres-cue 2.4s var(--p-ease) infinite;
+}
+.pres-hero__cue-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+@keyframes pres-cue {
+  0%, 100% { transform: scaleX(0.35); opacity: 0.35; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+
+/* -----------------------------------------------------------------------
+   8. WHO WE ARE — audience list
+   Four numbered entries. On desktop they sit as columns divided by
+   hairlines, which is the editorial treatment; on mobile the same hairline
+   becomes a horizontal rule between stacked rows. Same DOM, same device,
+   rotated.
+   -------------------------------------------------------------------- */
+.pres-audience {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--p-border);
+}
+.pres-audience__item {
+  padding: clamp(26px, 3vw, 36px) 0;
+  border-bottom: 1px solid var(--p-border);
+}
+.pres-audience__index {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--p-faint);
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.pres-audience__name {
+  font-size: clamp(20px, 1.9vw, 25px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-audience__desc {
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 42ch;
+}
+
+@media (min-width: 860px) {
+  .pres-audience {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid var(--p-border);
+  }
+  .pres-audience__item {
+    padding: clamp(28px, 2.6vw, 38px) clamp(20px, 2vw, 30px);
+    border-bottom: 0;
+    border-left: 1px solid var(--p-border);
+  }
+  .pres-audience__item:first-child { padding-left: 0; border-left: 0; }
+  .pres-audience__item:last-child { padding-right: 0; }
+}
+
+/* -----------------------------------------------------------------------
+   9. CARD GRIDS — services + studio
+   -------------------------------------------------------------------- */
+.pres-grid {
+  display: grid;
+  gap: var(--p-gap);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 620px) {
+  .pres-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .pres-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Service card: the platform's own bordered-flat-card idiom (surface fill,
+   hairline border, 10px radius) with the deck's larger padding. Hover lifts
+   by 3px and swaps the hairline for a shadow — the same gesture the
+   storefront's product cards use. */
+.pres-card {
+  position: relative;
+  padding: clamp(24px, 2.4vw, 32px);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius);
+  transition:
+    transform var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease);
+}
+.pres-card:hover {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: var(--p-shadow-md);
+}
+
+/* The check mark, drawn rather than iconfont-loaded — Font Awesome is not
+   on this page, and one CSS shape is cheaper than a webfont request for the
+   eleven identical marks this grid needs. */
+.pres-card__mark {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background: var(--p-ink);
+  position: relative;
+}
+.pres-card__mark::after {
+  content: "";
+  position: absolute;
+  left: 6.5px;
+  top: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
+}
+
+.pres-card__title {
+  font-size: var(--p-h3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-card__desc {
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+}
+
+/* Studio tile: same family, lighter weight. No mark, a top rule instead of
+   a full border — so the two grids read as related but not interchangeable,
+   which is the difference between a platform capability and a service. */
+.pres-tile {
+  padding: clamp(22px, 2.2vw, 30px) 0 0;
+  border-top: 2px solid var(--p-ink);
+  transition: border-color var(--p-dur) var(--p-ease);
+}
+.pres-tile:hover { border-color: var(--p-faint); }
+.pres-tile__title {
+  font-size: var(--p-h3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-tile__desc {
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 40ch;
+}
+
+/* -----------------------------------------------------------------------
+   10. HOW IT WORKS — the step wizard
+   Two authored layouts sharing one DOM.
+
+   MOBILE (< 1024px): a vertical accordion. Each head opens its own body
+   directly beneath it, with a continuous rail running down the left through
+   every number. Heights animate via max-height against a measured value set
+   by presentation.js — grid-template-rows: 0fr/1fr would be cleaner but is
+   not safe on the Safari versions a client's iPad is likely to be running.
+
+   DESKTOP (>= 1024px): the heads become a fixed numbered rail in column 1
+   and every body is stacked into column 2, cross-fading between them. The
+   rail no longer moves when the selection changes, which is what makes it
+   feel like a presentation rather than a FAQ.
+   -------------------------------------------------------------------- */
+.pres-wizard {
+  position: relative;
+  padding-left: 0;
+}
+
+/* The rail line itself, and the fill that tracks progress through it. */
+.pres-wizard__rail {
+  position: absolute;
+  left: 21px;
+  top: 30px;
+  bottom: 30px;
+  width: 1px;
+  background: var(--p-border);
+}
+.pres-wizard__rail-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: var(--p-ink);
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+  transition: transform var(--p-dur-slow) var(--p-ease-soft);
+}
+
+.pres-step { position: relative; }
+
+.pres-step__head {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.6vw, 22px);
+  width: 100%;
+  /* Full-width, 64px-tall target — the whole row is tappable, not just the
+     label. */
+  min-height: 64px;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.pres-step__num {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--p-bg);
+  border: 1px solid var(--p-border);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-faint);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    color var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+.pres-section--tint .pres-step__num { background: var(--p-surface-2); }
+
+.pres-step.is-active .pres-step__num,
+.pres-step.is-complete .pres-step__num {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+  color: #ffffff;
+}
+.pres-step.is-active .pres-step__num { transform: scale(1.06); }
+
+.pres-step__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: clamp(18px, 1.7vw, 23px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-faint);
+  transition: color var(--p-dur) var(--p-ease);
+}
+.pres-step.is-active .pres-step__label,
+.pres-step.is-complete .pres-step__label { color: var(--p-ink); }
+.pres-step__head:hover .pres-step__label { color: var(--p-ink); }
+
+/* Chevron drawn from a rotated border, same as the mobile drawer's
+   accordion in style.css. */
+.pres-step__chevron {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: solid var(--p-faint);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--p-dur) var(--p-ease), border-color var(--p-dur) var(--p-ease);
+}
+.pres-step.is-active .pres-step__chevron {
+  border-color: var(--p-ink);
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.pres-step__body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height var(--p-dur) var(--p-ease),
+    opacity var(--p-dur) var(--p-ease);
+}
+.pres-step.is-active .pres-step__body { opacity: 1; }
+
+.pres-step__body-inner {
+  padding: 0 0 26px calc(42px + clamp(14px, 1.6vw, 22px));
+  font-size: var(--p-lead);
+  line-height: 1.62;
+  color: var(--p-muted);
+  max-width: 60ch;
+}
+
+@media (min-width: 1024px) {
+  .pres-wizard {
+    display: grid;
+    grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+    /* Six explicit rows, one per step, and they must be EXPLICIT: the rail
+       and the body panels below both span `1 / -1`, and -1 resolves against
+       the explicit grid only. Left implicit, -1 would collapse to line 1 and
+       every panel would silently shrink to a single row. */
+    grid-template-rows: repeat(6, auto);
+    column-gap: clamp(40px, 5vw, 88px);
+    align-items: start;
+  }
+  /* Absolutely positioned, but still grid-placed: with the wizard as its
+     containing block, the placement below is what sizes the rail to column
+     1's full height instead of the whole container. */
+  .pres-wizard__rail {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+  .pres-step {
+    grid-column: 1;
+    display: contents;
+  }
+  .pres-step__head { grid-column: 1; }
+
+  /* Every body lands in the same cell of column 2 and they cross-fade.
+     `visibility` (not just opacity) so an inactive panel is never a
+     keyboard tab stop or a screen-reader stop sitting invisibly on top of
+     the active one. */
+  .pres-step__body {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    max-height: none;
+    visibility: hidden;
+    align-self: start;
+    /* Held off the top edge so the panel optically aligns with step 1's
+       label rather than its container. */
+    padding-top: 4px;
+    transform: translate3d(0, 12px, 0);
+    transition:
+      opacity var(--p-dur) var(--p-ease),
+      transform var(--p-dur) var(--p-ease),
+      visibility 0s linear var(--p-dur);
+  }
+  .pres-step.is-active .pres-step__body {
+    visibility: visible;
+    transform: translate3d(0, 0, 0);
+    transition-delay: 0s, 0s, 0s;
+  }
+  .pres-step__body-inner {
+    padding: 0;
+    font-size: clamp(18px, 1.35vw, 21px);
+  }
+
+  /* No chevron on desktop. It is an accordion affordance, and here nothing
+     expands beneath the row — a chevron flipping to point up at the active
+     step promises a disclosure that isn't there. The filled number and the
+     ink label already say which step is selected. */
+  .pres-step__chevron { display: none; }
+}
+
+/* -----------------------------------------------------------------------
+   11. WHY — comparison
+   Mobile stacks the two columns with the "vs" mark as a horizontal divider
+   between them; desktop opposes them with a vertical rule. The "before"
+   column is deliberately quieter (muted ink, no surface) and the "after"
+   column is the one on paper with a shadow — the visual hierarchy carries
+   the argument before the copy does.
+   -------------------------------------------------------------------- */
+.pres-compare {
+  display: grid;
+  gap: var(--p-gap);
+  align-items: stretch;
+}
+
+.pres-compare__col {
+  padding: clamp(26px, 2.8vw, 40px);
+  border-radius: var(--p-radius-lg);
+}
+.pres-compare__col--before {
+  background: transparent;
+  border: 1px dashed var(--p-border);
+}
+.pres-compare__col--after {
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  box-shadow: var(--p-shadow-md);
+}
+
+.pres-compare__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--p-gap);
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--p-border);
+}
+.pres-compare__col--before .pres-compare__label { color: var(--p-faint); }
+.pres-compare__col--after .pres-compare__label { color: var(--p-ink); }
+
+.pres-compare__list li {
+  position: relative;
+  padding-left: 30px;
+  padding-block: 11px;
+  font-size: var(--p-body);
+  line-height: 1.55;
+}
+.pres-compare__list li + li { border-top: 1px solid var(--p-border-soft); }
+
+.pres-compare__col--before .pres-compare__list li { color: var(--p-faint); }
+.pres-compare__col--after .pres-compare__list li { color: var(--p-ink); }
+
+/* A drawn cross for "before", a drawn check for "after" — the same shapes
+   as the service-card mark, at list weight. */
+.pres-compare__col--before .pres-compare__list li::before,
+.pres-compare__col--before .pres-compare__list li::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 20px;
+  width: 11px;
+  height: 1.5px;
+  background: var(--p-faint);
+}
+.pres-compare__col--before .pres-compare__list li::before { transform: rotate(45deg); }
+.pres-compare__col--before .pres-compare__list li::after { transform: rotate(-45deg); }
+
+.pres-compare__col--after .pres-compare__list li::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 16px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--p-ink);
+  border-width: 0 1.7px 1.7px 0;
+  transform: rotate(45deg);
+}
+
+.pres-compare__divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.pres-compare__divider-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--p-border);
+}
+.pres-compare__divider-mark {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+
+@media (min-width: 920px) {
+  .pres-compare {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: clamp(20px, 2.4vw, 36px);
+  }
+  .pres-compare__divider { flex-direction: column; }
+  .pres-compare__divider-line { width: 1px; height: auto; flex: 1 1 auto; }
+}
+
+/* Three supporting pillars under the comparison. */
+.pres-pillars {
+  display: grid;
+  gap: var(--p-gap);
+  grid-template-columns: 1fr;
+  margin-top: var(--p-gap-lg);
+  padding-top: var(--p-gap-lg);
+  border-top: 1px solid var(--p-border);
+}
+.pres-pillar__title {
+  font-size: var(--p-h3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-pillar__desc {
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+}
+@media (min-width: 780px) {
+  .pres-pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* -----------------------------------------------------------------------
+   12. PLATFORM SHOWCASE — CSS device frames
+   Everything inside a frame is an abstract shape on a loop. There are no
+   screenshots and nothing that could be mistaken for one.
+
+   The animations are gated on .is-revealed (added when the section scrolls
+   into view) so three infinite loops are not running against the compositor
+   for the whole time the deck sits on an earlier section.
+   -------------------------------------------------------------------- */
+.pres-devices {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(36px, 4vw, 56px);
+}
+
+.pres-device { width: 100%; max-width: 100%; }
+.pres-device__frame {
+  position: relative;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  box-shadow: var(--p-shadow-lg);
+  overflow: hidden;
+}
+.pres-device__label {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+
+.pres-device--desktop .pres-device__frame { border-radius: 12px; }
+.pres-device--tablet .pres-device__frame { border-radius: 16px; }
+.pres-device--mobile .pres-device__frame { border-radius: 26px; }
+
+.pres-device--tablet { max-width: 420px; }
+.pres-device--mobile { max-width: 230px; }
+
+/* Browser chrome dots on the desktop frame only. */
+.pres-device__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--p-border);
+  background: var(--p-surface-2);
+}
+.pres-device__bar span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--p-border);
+}
+
+.pres-device__notch {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 62px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--p-border);
+  z-index: 2;
+}
+
+.pres-device__screen {
+  background: var(--p-bg);
+  overflow: hidden;
+}
+.pres-device--desktop .pres-device__screen { aspect-ratio: 16 / 10; }
+.pres-device--tablet .pres-device__screen { aspect-ratio: 4 / 3; }
+.pres-device--mobile .pres-device__screen { aspect-ratio: 9 / 19; }
+
+.pres-ui {
+  height: 100%;
+  padding: 8%;
+  display: flex;
+  flex-direction: column;
+  gap: 7%;
+}
+.pres-device--mobile .pres-ui { padding: 9% 8%; gap: 5%; }
+
+.pres-ui__nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pres-ui__nav i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--p-border);
+}
+.pres-ui__nav i:nth-child(1) { width: 26px; background: var(--p-ink); }
+.pres-ui__nav i:nth-child(2) { width: 34px; }
+.pres-ui__nav i:nth-child(3) { width: 28px; }
+.pres-ui__nav i:nth-child(4) { width: 40px; }
+
+.pres-ui__hero {
+  height: 22%;
+  min-height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(100deg, var(--p-surface-2) 0%, #e7e5e1 50%, var(--p-surface-2) 100%);
+  background-size: 220% 100%;
+}
+
+.pres-ui__row {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pres-ui__card {
+  flex: 1 1 0;
+  border-radius: 6px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  transform-origin: 50% 100%;
+}
+.pres-device--mobile .pres-ui__card { flex: 0 0 34%; }
+
+.pres-ui__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.pres-ui__lines span {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--p-border);
+  transform-origin: 0 50%;
+}
+.pres-ui__lines span:nth-child(1) { width: 86%; }
+.pres-ui__lines span:nth-child(2) { width: 62%; }
+.pres-ui__lines span:nth-child(3) { width: 74%; }
+
+.pres-ui__cta {
+  height: 26px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-ink);
+  margin-top: auto;
+}
+
+.pres-ui__chart { height: 26%; min-height: 40px; }
+.pres-ui__chart svg { width: 100%; height: 100%; overflow: visible; }
+.pres-ui__spark {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+}
+
+/* ---- Motion, only once the section is on screen ---- */
+.pres-devices.is-revealed .pres-ui__hero {
+  animation: pres-shimmer 3.2s var(--p-ease) infinite;
+}
+.pres-devices.is-revealed .pres-ui__card {
+  animation: pres-card-in 2.8s var(--p-ease) infinite;
+}
+.pres-devices.is-revealed .pres-ui__card:nth-child(2) { animation-delay: 180ms; }
+.pres-devices.is-revealed .pres-ui__card:nth-child(3) { animation-delay: 360ms; }
+.pres-devices.is-revealed .pres-ui__lines span {
+  animation: pres-line-in 2.8s var(--p-ease) infinite;
+}
+.pres-devices.is-revealed .pres-ui__lines span:nth-child(2) { animation-delay: 140ms; }
+.pres-devices.is-revealed .pres-ui__lines span:nth-child(3) { animation-delay: 280ms; }
+.pres-devices.is-revealed .pres-ui__spark {
+  animation: pres-draw 3.4s var(--p-ease-soft) infinite;
+}
+.pres-devices.is-revealed .pres-ui__cta {
+  animation: pres-pulse 2.8s var(--p-ease) infinite;
+}
+
+@keyframes pres-shimmer {
+  0%, 100% { background-position: 140% 0; }
+  55% { background-position: -40% 0; }
+}
+@keyframes pres-card-in {
+  0%, 12% { opacity: 0; transform: translate3d(0, 10%, 0); }
+  32%, 88% { opacity: 1; transform: translate3d(0, 0, 0); }
+  100% { opacity: 0; transform: translate3d(0, 10%, 0); }
+}
+@keyframes pres-line-in {
+  0%, 14% { opacity: 0; transform: scaleX(0.2); }
+  36%, 88% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(0.2); }
+}
+@keyframes pres-draw {
+  0%, 8% { stroke-dashoffset: 260; }
+  62%, 88% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 260; }
+}
+@keyframes pres-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (min-width: 900px) {
+  .pres-devices {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(20px, 2.6vw, 40px);
+  }
+  .pres-device--desktop { flex: 1 1 auto; max-width: 620px; }
+  .pres-device--tablet { flex: 0 0 clamp(200px, 22vw, 280px); }
+  .pres-device--mobile { flex: 0 0 clamp(120px, 13vw, 170px); }
+}
+
+/* -----------------------------------------------------------------------
+   13. TECHNOLOGY
+   -------------------------------------------------------------------- */
+.pres-tech {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--p-border);
+}
+.pres-tech__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: clamp(16px, 2.4vw, 34px);
+  align-items: baseline;
+  padding: clamp(22px, 2.6vw, 32px) 0;
+  border-bottom: 1px solid var(--p-border);
+  transition: background-color var(--p-dur) var(--p-ease);
+}
+.pres-tech__index {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--p-faint);
+  font-variant-numeric: tabular-nums;
+  grid-row: 1;
+}
+.pres-tech__name {
+  grid-row: 1;
+  font-size: clamp(19px, 1.8vw, 24px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+}
+.pres-tech__desc {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 8px;
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 64ch;
+}
+
+@media (min-width: 900px) {
+  .pres-tech__item {
+    grid-template-columns: auto minmax(0, 300px) minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: clamp(24px, 3vw, 56px);
+  }
+  .pres-tech__desc {
+    grid-column: 3;
+    grid-row: 1;
+    margin-top: 0;
+  }
+}
+
+/* -----------------------------------------------------------------------
+   14. PHILOSOPHY — statement
+   -------------------------------------------------------------------- */
+.pres-section--statement { text-align: center; }
+.pres-section--statement .pres-eyebrow { margin-bottom: var(--p-gap); }
+
+.pres-statement {
+  font-size: clamp(30px, 5.2vw, 68px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  color: var(--p-ink);
+  text-wrap: balance;
+}
+.pres-statement__body {
+  margin: var(--p-gap-lg) auto 0;
+  max-width: 60ch;
+  font-size: var(--p-lead);
+  line-height: 1.68;
+  color: var(--p-muted);
+}
+
+/* -----------------------------------------------------------------------
+   15. CTA + FORM
+   -------------------------------------------------------------------- */
+.pres-section--cta {
+  background: var(--p-surface-2);
+  border-top: 1px solid var(--p-border-soft);
+}
+
+.pres-cta__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: var(--p-gap-lg);
+}
+.pres-cta__actions .pres-btn { width: 100%; }
+
+@media (min-width: 680px) {
+  .pres-cta__actions {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .pres-cta__actions .pres-btn { width: auto; }
+}
+
+.pres-form {
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-lg);
+  padding: clamp(24px, 3vw, 40px);
+  box-shadow: var(--p-shadow-md);
+}
+
+.pres-form__intent {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+  padding-bottom: var(--p-gap-sm);
+  margin-bottom: var(--p-gap);
+  border-bottom: 1px solid var(--p-border);
+}
+
+.pres-field { margin-bottom: 18px; }
+.pres-field__label {
+  display: block;
+  font-size: var(--p-small);
+  font-weight: 600;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-field__opt {
+  font-weight: 400;
+  color: var(--p-faint);
+}
+
+.pres-field__input {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius);
+  background: var(--p-bg);
+  color: var(--p-ink);
+  /* 16px is not a style choice: anything smaller makes iOS Safari zoom the
+     viewport on focus, which on this page would break the layout mid-pitch.
+     Same reasoning, same value, as the checkout fields in style.css. */
+  font-size: 16px;
+  line-height: 1.5;
+  transition:
+    border-color var(--p-dur-fast) var(--p-ease),
+    box-shadow var(--p-dur-fast) var(--p-ease),
+    background-color var(--p-dur-fast) var(--p-ease);
+}
+.pres-field__input::placeholder { color: var(--p-faint); }
+.pres-field__input:focus {
+  outline: none;
+  background: var(--p-surface);
+  border-color: var(--p-ink);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+}
+.pres-field__input--area {
+  min-height: 116px;
+  resize: vertical;
+}
+.pres-field.is-invalid .pres-field__input {
+  border-color: var(--p-danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.09);
+}
+.pres-field__error {
+  margin-top: 7px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--p-danger);
+}
+
+.pres-form__submit {
+  width: 100%;
+  margin-top: var(--p-gap-xs);
+}
+
+.pres-form__status {
+  margin-bottom: var(--p-gap-sm);
+  padding: 13px 16px;
+  border-radius: var(--p-radius);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pres-form__status--error {
+  background: rgba(220, 38, 38, 0.07);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  color: var(--p-danger);
+}
+.pres-form__status--success {
+  background: rgba(5, 150, 105, 0.07);
+  border: 1px solid rgba(5, 150, 105, 0.22);
+  color: var(--p-success);
+}
+
+/* Button busy state — a drawn ring, no icon font. */
+.pres-btn.is-busy { pointer-events: none; }
+.pres-btn.is-busy span { opacity: 0.45; }
+.pres-btn.is-busy::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: pres-spin 700ms linear infinite;
+}
+.pres-btn--secondary.is-busy::after {
+  border-color: rgba(26, 26, 26, 0.25);
+  border-top-color: var(--p-ink);
+}
+.pres-btn { position: relative; }
+@keyframes pres-spin { to { transform: rotate(360deg); } }
+
+/* Success panel replacing the form once an enquiry lands. */
+.pres-form__done {
+  text-align: center;
+  padding: clamp(20px, 3vw, 34px) 0;
+}
+.pres-form__done-mark {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: var(--p-ink);
+  position: relative;
+  animation: pres-pop 460ms var(--p-ease-soft) both;
+}
+.pres-form__done-mark::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 13px;
+  width: 10px;
+  height: 18px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.pres-form__done-title {
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-form__done-body {
+  font-size: var(--p-body);
+  color: var(--p-muted);
+  max-width: 44ch;
+  margin: 0 auto;
+}
+@keyframes pres-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* -----------------------------------------------------------------------
+   16. FOOTER
+   -------------------------------------------------------------------- */
+.pres-footer {
+  padding: clamp(40px, 5vw, 64px) 0;
+  padding-bottom: max(clamp(40px, 5vw, 64px), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--p-border);
+  background: var(--p-bg);
+  text-align: center;
+}
+.pres-footer__brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--p-ink);
+  margin-bottom: 6px;
+}
+.pres-footer__meta {
+  font-size: 12.5px;
+  color: var(--p-faint);
+}
+
+/* -----------------------------------------------------------------------
+   17. GATE SCREENS — password + expired
+   Server-rendered (see renderGateScreen in routes/presentation.js) and
+   sharing this stylesheet, so the first thing a visitor sees is already the
+   deck's typography rather than a browser default.
+   -------------------------------------------------------------------- */
+.pres-body--gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.pres-gate {
+  width: 100%;
+  padding: 40px max(20px, env(safe-area-inset-left)) 40px max(20px, env(safe-area-inset-right));
+}
+.pres-gate__card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: clamp(32px, 5vw, 48px);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-lg);
+  box-shadow: var(--p-shadow-lg);
+  text-align: center;
+  animation: pres-rise 520ms var(--p-ease-soft) both;
+}
+.pres-gate__mark {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 22px;
+  border-radius: 9px;
+  background: var(--p-ink);
+  position: relative;
+}
+/* A drawn padlock: ::after is the shackle, ::before the body it sits on.
+   Both are needed — the shackle alone reads as an arch, not a lock. No icon
+   font is loaded on this page for the sake of one glyph. */
+.pres-gate__mark::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 16px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border-radius: 2px;
+}
+.pres-gate__mark::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  /* Bottom edge meets the top of the body above: 36 - 8 (inset) - 12 (body)
+     = 16px, minus the 8px shackle height. */
+  top: 8px;
+  width: 11px;
+  height: 8px;
+  transform: translateX(-50%);
+  border: 2px solid #ffffff;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.pres-gate__title {
+  font-size: clamp(21px, 3vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  color: var(--p-ink);
+  margin-bottom: 10px;
+}
+.pres-gate__body {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--p-muted);
+}
+.pres-gate__form { margin-top: 26px; text-align: left; }
+.pres-gate__label {
+  display: block;
+  font-size: var(--p-small);
+  font-weight: 600;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-gate__input {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius);
+  background: var(--p-bg);
+  color: var(--p-ink);
+  font-size: 16px;
+  transition: border-color var(--p-dur-fast) var(--p-ease), box-shadow var(--p-dur-fast) var(--p-ease);
+}
+.pres-gate__input:focus {
+  outline: none;
+  border-color: var(--p-ink);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+}
+.pres-gate__error {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--p-danger);
+}
+.pres-gate__submit { width: 100%; margin-top: 18px; }
+/* A wrong password shakes the card — short, small amplitude, once. */
+.pres-gate__card.is-shake { animation: pres-shake 380ms var(--p-ease); }
+@keyframes pres-shake {
+  0%, 100% { transform: translateX(0); }
+  22% { transform: translateX(-7px); }
+  46% { transform: translateX(6px); }
+  70% { transform: translateX(-3px); }
+  88% { transform: translateX(2px); }
+}
+
+/* -----------------------------------------------------------------------
+   18. NARROW-VIEWPORT CORRECTIONS
+   The layout is fluid from 320px up, so these are corrections to specific
+   things that stop being comfortable at the bottom of the range — not a
+   separate mobile stylesheet.
+   -------------------------------------------------------------------- */
+@media (max-width: 400px) {
+  /* At 320-390px the hero headline is the one string that can still overflow
+     if it is a long single word; wrapping is preferable to a clipped
+     wordmark or a horizontal scrollbar. */
+  .pres-hero__title {
+    font-size: clamp(40px, 12.5vw, 52px);
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  .pres-hero__subtitle { max-width: none; }
+  /* Reclaim the indent under the step number: at this width the body copy
+     needs the full measure more than it needs the alignment. */
+  .pres-step__body-inner { padding-left: 0; }
+  .pres-compare__col { padding: 22px 18px; }
+  .pres-form { padding: 22px 18px; }
+}
+
+/* -----------------------------------------------------------------------
+   19. REDUCED MOTION
+   Everything above is decoration over content that is already complete and
+   readable, so the honest response to the preference is to remove the
+   motion entirely rather than shorten it — including the three infinite
+   loops in the device showcase, which are the most likely thing on the page
+   to cause discomfort.
+   -------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pres-js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+  .pres-hero__cue-line { animation: none; transform: scaleX(1); }
+}
+
+/* -----------------------------------------------------------------------
+   20. PRINT
+   Decks get printed to PDF and emailed after the meeting — often by the
+   person who was pitched, to circulate internally. Worth getting right.
+   -------------------------------------------------------------------- */
+@media print {
+  .pres-progress,
+  .pres-rail,
+  .pres-hero__cue,
+  .pres-cta__actions,
+  .pres-form { display: none !important; }
+
+  .pres-body { background: #ffffff; }
+  .pres-section,
+  .pres-hero {
+    min-height: 0;
+    padding: 28px 0;
+    break-inside: avoid;
+  }
+  .pres-section--tint { background: none; }
+  /* Every wizard panel prints, not just the open one. */
+  .pres-step__body {
+    max-height: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  .pres-js [data-reveal] { opacity: 1 !important; transform: none !important; }
+}

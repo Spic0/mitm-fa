@@ -24,6 +24,10 @@ const taxonomyRoutes = require("./routes/taxonomy");
 const recommendationsRoutes = require("./routes/recommendations");
 const promotionsRoutes = require("./routes/promotions");
 const { router: pagesRouter, render404 } = require("./routes/pages");
+const {
+  pageRouter: presentationPageRouter,
+  apiRouter: presentationApiRouter,
+} = require("./routes/presentation");
 const { isDevRoutesEnabled } = require("./lib/devMode");
 
 if (!process.env.CSRF_SECRET) {
@@ -134,6 +138,10 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/taxonomy", taxonomyRoutes);
 app.use("/api/recommendations", recommendationsRoutes);
 app.use("/api/promotions", promotionsRoutes);
+// Anonymous by design (unlock / engagement beacons / enquiry form from a
+// link-only deck) — see routes/presentation.js for why that's in scope for
+// the rate limiters rather than CSRF.
+app.use("/api/presentation", presentationApiRouter);
 
 // Dev-only tools (instant admin login, test data, simulated purchases) — never
 // mounted in production, regardless of what the frontend tries to call.
@@ -155,6 +163,17 @@ app.get(["/admin/manage", "/admin/manage/*"], requireAdminPage, (req, res) => {
 app.use("/admin", requireAdminPage, express.static(path.join(SITE_ROOT, "admin")));
 
 app.use("/partials", (req, res) => res.sendStatus(404));
+// private/ holds the private-presentation deck template. It must never be
+// reachable through the static mount below — fetching it directly would hand
+// out the whole deck without passing the enabled/expiry/password gate in
+// routes/presentation.js. Same guard, same reason, as /partials above.
+app.use("/private", (req, res) => res.sendStatus(404));
+
+// Private presentations: unlisted, link-only, and mounted BEFORE the static
+// handler so /presentation/:slug resolves here rather than 404ing against a
+// nonexistent file. Nothing links to these routes from anywhere on the
+// public site, and robots.txt disallows the whole path.
+app.use(presentationPageRouter);
 
 // Every customer-facing page route (clean paths like /shop, /program/:slug,
 // /creator/:slug, ... plus 301 redirects from the old .html/query-param

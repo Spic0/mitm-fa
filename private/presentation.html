@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Unlisted deck. The X-Robots-Tag header set in routes/presentation.js is
+         the real control (it covers responses nothing links to); this is the
+         belt-and-braces copy for anything that only reads markup. -->
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title><!--PRES_TITLE--> | Fitness Agency</title>
+    <link rel="shortcut icon" href="/assets/images/favicon.png" data-brand-favicon>
+
+    <!-- Deliberately NOT loading bootstrap/all.min/animate/swiper the way the
+         storefront pages do. This deck shares the platform's design tokens and
+         typeface, not its vendor CSS: presentation.css declares the same Inter
+         @font-face and re-derives every token from the values in style.css, so
+         first paint costs two files instead of seven. See the header comment in
+         presentation.css for the token mapping. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-400-normal.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-600-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/css/presentation.css">
+
+    <!-- Render-blocking on purpose, and the only thing on this page that is.
+         It sets html.pres-js, which is what arms the scroll-reveal system's
+         initial hidden state. Deferring it would let the deck paint fully
+         visible for a frame and then blank itself; leaving the hidden state
+         unconditional would mean a blank page if JS never runs. A ~100-byte
+         same-origin file is the cheapest correct answer. (A CSP-legal inline
+         script is not available here — see the strict policy in index.js.) -->
+    <script src="/assets/js/presentation-boot.js"></script>
+</head>
+
+<body class="pres-body">
+    <!--PRES_BOOT-->
+
+    <!-- Scroll progress. A single transform-scaled bar rather than a width
+         animation, so it never triggers layout on any of the ~60 scroll frames
+         a second it updates. -->
+    <div class="pres-progress" aria-hidden="true">
+        <div class="pres-progress__bar" id="presProgressBar"></div>
+    </div>
+
+    <!-- Section rail: the only navigation this page has. Built from the
+         sections that actually survived server-side stripping (see
+         presentation.js), so a deck with sections switched off never shows a
+         dot that goes nowhere. Hidden below 1200px, where the progress bar and
+         the deck's own rhythm carry orientation instead. -->
+    <nav class="pres-rail" id="presRail" aria-label="Presentation sections"></nav>
+
+    <main class="pres-main">
+
+        <!-- ============================================================
+             1. HERO
+             ============================================================ -->
+        <section class="pres-hero" id="pres-hero" data-section-id="hero" data-section-label="Introduction">
+            <div class="pres-hero__inner">
+                <p class="pres-eyebrow pres-hero__eyebrow"><!--PRES_EYEBROW--></p>
+                <h1 class="pres-hero__title"><!--PRES_HERO_TITLE--></h1>
+                <p class="pres-hero__subtitle"><!--PRES_HERO_SUBTITLE--></p>
+                <!--PRES_RECIPIENT-->
+                <!--PRES_WELCOME-->
+                <p class="pres-hero__intro">
+                    We build and run the entire commercial layer behind an athlete's
+                    or creator's brand — the platform, the products, the payments and
+                    the production — so the only thing left to them is the thing only
+                    they can do.
+                </p>
+            </div>
+            <div class="pres-hero__cue" aria-hidden="true">
+                <span class="pres-hero__cue-line"></span>
+                <span class="pres-hero__cue-label">Scroll</span>
+            </div>
+        </section>
+
+        <!--SECTION:who-->
+        <!-- ============================================================
+             2. WHO WE ARE
+             ============================================================ -->
+        <section class="pres-section" id="pres-who" data-section-id="who" data-section-label="Who we are">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Who we are</p>
+                    <h2 class="pres-h2" data-reveal>
+                        A complete digital commerce platform, headquartered in Winnipeg, Canada.
+                    </h2>
+                    <p class="pres-lead" data-reveal>
+                        Instead of building and maintaining their own websites, the people we
+                        work with get everything under one platform — one system, one team,
+                        one place where the business actually runs.
+                    </p>
+                </header>
+
+                <ul class="pres-audience" data-reveal-group>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">01</span>
+                        <h3 class="pres-audience__name">Athletes</h3>
+                        <p class="pres-audience__desc">Competitive and professional athletes turning a career's worth of method into products.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">02</span>
+                        <h3 class="pres-audience__name">Fitness Influencers</h3>
+                        <p class="pres-audience__desc">Established audiences that have outgrown link-in-bio tools and one-off launches.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">03</span>
+                        <h3 class="pres-audience__name">Sports Creators</h3>
+                        <p class="pres-audience__desc">Content-first brands that need a commercial engine behind the publishing schedule.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">04</span>
+                        <h3 class="pres-audience__name">Nutrition Coaches</h3>
+                        <p class="pres-audience__desc">Practitioners packaging structured programs, plans and ongoing client support.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:who-->
+
+        <!--SECTION:services-->
+        <!-- ============================================================
+             3. EVERYTHING WE HANDLE
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-services" data-section-id="services" data-section-label="What we handle">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>The platform</p>
+                    <h2 class="pres-h2" data-reveal>Everything we handle</h2>
+                    <p class="pres-lead" data-reveal>
+                        Eleven separate systems a creator would otherwise have to buy,
+                        integrate and maintain themselves. Here they are one product.
+                    </p>
+                </header>
+
+                <ul class="pres-grid pres-grid--services" data-reveal-group>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Digital platform</h3>
+                        <p class="pres-card__desc">A branded storefront and member area, hosted, maintained and updated by us.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Product publishing</h3>
+                        <p class="pres-card__desc">Programs, plans and bundles built, priced and published without touching code.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Training plans</h3>
+                        <p class="pres-card__desc">Structured week-by-week programming with sets, reps, notes and substitutions.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Nutrition programs</h3>
+                        <p class="pres-card__desc">Meal frameworks, macros and sample plans delivered alongside the training.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Digital downloads</h3>
+                        <p class="pres-card__desc">Guides, templates and assets released through expiring, signed download links.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Memberships</h3>
+                        <p class="pres-card__desc">Recurring access with entitlements resolved per customer, per product.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Checkout</h3>
+                        <p class="pres-card__desc">A conversion-tuned checkout with saved details, discounts and one clear action.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Payments</h3>
+                        <p class="pres-card__desc">Card and wallet payments, refunds and reconciliation, handled end to end.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Customer accounts</h3>
+                        <p class="pres-card__desc">Accounts created automatically at purchase, with passwordless sign-in.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Analytics</h3>
+                        <p class="pres-card__desc">Revenue, orders, products and customer behaviour in one live dashboard.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Customer support</h3>
+                        <p class="pres-card__desc">Buyer questions, access issues and refunds answered by our team, not theirs.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:services-->
+
+        <!--SECTION:studio-->
+        <!-- ============================================================
+             4. CREATIVE STUDIO
+             ============================================================ -->
+        <section class="pres-section" id="pres-studio" data-section-id="studio" data-section-label="Creative studio">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Creative studio</p>
+                    <h2 class="pres-h2" data-reveal>Production is part of the platform.</h2>
+                    <p class="pres-lead" data-reveal>
+                        The commercial system only works if there is something to sell and
+                        something to say. Our in-house studio produces both, so creators can
+                        stay on the one job that can't be delegated — creating — while our
+                        team handles everything downstream of it.
+                    </p>
+                </header>
+
+                <ul class="pres-grid pres-grid--studio" data-reveal-group>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Video Editing</h3>
+                        <p class="pres-tile__desc">Full post-production on launch films, program trailers and campaign cuts.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Short-form Content</h3>
+                        <p class="pres-tile__desc">Vertical edits built for reach, cut from footage that already exists.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Long-form Content</h3>
+                        <p class="pres-tile__desc">Episodes, documentaries and deep-dive pieces that carry the brand story.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Product Photography</h3>
+                        <p class="pres-tile__desc">Studio and location imagery for every product, page and placement.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Graphic Design</h3>
+                        <p class="pres-tile__desc">Covers, layouts and program artwork, consistent across the catalogue.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Branding</h3>
+                        <p class="pres-tile__desc">Identity, type, palette and voice — defined once, applied everywhere.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Merch Design</h3>
+                        <p class="pres-tile__desc">Apparel and physical product design ready for production runs.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Marketing Assets</h3>
+                        <p class="pres-tile__desc">Ad creative, email art direction and launch collateral on schedule.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Social Media Optimization</h3>
+                        <p class="pres-tile__desc">Formats, captions, cadence and testing tuned to each platform.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:studio-->
+
+        <!--SECTION:process-->
+        <!-- ============================================================
+             5. HOW IT WORKS — the step wizard
+             One DOM, two genuinely different layouts: below 1024px it is a
+             vertical accordion timeline (headers open their own body inline);
+             above it, every body is placed in a second grid column and cross-
+             faded, so the numbered rail stays fixed while the detail changes.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-process" data-section-id="process" data-section-label="How it works">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>How it works</p>
+                    <h2 class="pres-h2" data-reveal>Six steps from first conversation to compounding revenue.</h2>
+                </header>
+
+                <div class="pres-wizard" id="presWizard" data-reveal>
+                    <div class="pres-wizard__rail" aria-hidden="true">
+                        <span class="pres-wizard__rail-fill" id="presWizardFill"></span>
+                    </div>
+
+                    <div class="pres-step" data-step="1">
+                        <button class="pres-step__head" type="button" aria-expanded="true">
+                            <span class="pres-step__num">1</span>
+                            <span class="pres-step__label">Apply</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>We review every application against a single question: is there an audience
+                                    here that would buy something we can build well? Fit matters more than size —
+                                    we take on a small number of partners at a time.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="2">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">2</span>
+                            <span class="pres-step__label">Strategy Call</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>A working session, not a pitch. We map the audience, the offer and the
+                                    pricing, and leave with a concrete product roadmap and a launch date
+                                    everyone has agreed to.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="3">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">3</span>
+                            <span class="pres-step__label">Content Preparation</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>Our studio produces what the launch needs — filming, editing, photography,
+                                    design and copy — while the creator keeps to their normal publishing
+                                    rhythm. Production is our problem from here.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="4">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">4</span>
+                            <span class="pres-step__label">Product Publishing</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>Programs, plans and downloads are built inside the platform, priced,
+                                    proofed and staged behind the scenes. Checkout, delivery and accounts
+                                    are wired up and tested before anyone sees them.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="5">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">5</span>
+                            <span class="pres-step__label">Launch</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>The storefront goes live with the campaign already loaded: assets
+                                    scheduled, emails queued, discounts configured. We monitor the first
+                                    days closely and adjust in real time.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="6">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">6</span>
+                            <span class="pres-step__label">Sales &amp; Growth</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>The platform keeps selling after the launch window closes. We read the
+                                    analytics, expand the catalogue, run promotions and support every
+                                    customer — so revenue compounds instead of spiking once.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:process-->
+
+        <!--SECTION:why-->
+        <!-- ============================================================
+             6. WHY FITNESS AGENCY
+             ============================================================ -->
+        <section class="pres-section" id="pres-why" data-section-id="why" data-section-label="Why Fitness Agency">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Why Fitness Agency</p>
+                    <h2 class="pres-h2" data-reveal>The same ambition, with the operational weight removed.</h2>
+                </header>
+
+                <div class="pres-compare" data-reveal-group>
+                    <div class="pres-compare__col pres-compare__col--before" data-reveal>
+                        <p class="pres-compare__label">Without Fitness Agency</p>
+                        <ul class="pres-compare__list">
+                            <li>A website to commission, pay for and keep alive</li>
+                            <li>Five or six tools stitched together by hand</li>
+                            <li>Payments, tax and refunds to administer personally</li>
+                            <li>Every launch built again from nothing</li>
+                            <li>Production squeezed between training and posting</li>
+                            <li>Customer support landing in the personal inbox</li>
+                            <li>Growth capped by the hours in the founder's day</li>
+                        </ul>
+                    </div>
+
+                    <div class="pres-compare__divider" aria-hidden="true">
+                        <span class="pres-compare__divider-line"></span>
+                        <span class="pres-compare__divider-mark">vs</span>
+                        <span class="pres-compare__divider-line"></span>
+                    </div>
+
+                    <div class="pres-compare__col pres-compare__col--after" data-reveal>
+                        <p class="pres-compare__label">With Fitness Agency</p>
+                        <ul class="pres-compare__list">
+                            <li>One platform, hosted and maintained for you</li>
+                            <li>One system where every part already fits</li>
+                            <li>Payments, delivery and refunds fully handled</li>
+                            <li>Launches that reuse everything built before</li>
+                            <li>A studio producing on a schedule you approve</li>
+                            <li>Support answered by our team, not yours</li>
+                            <li>Growth that no longer depends on your hours</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <ul class="pres-pillars" data-reveal-group>
+                    <li class="pres-pillar" data-reveal>
+                        <h3 class="pres-pillar__title">Simplicity</h3>
+                        <p class="pres-pillar__desc">One platform, one team, one dashboard — instead of a stack to administer.</p>
+                    </li>
+                    <li class="pres-pillar" data-reveal>
+                        <h3 class="pres-pillar__title">Automation</h3>
+                        <p class="pres-pillar__desc">Accounts, delivery, receipts and access provisioned the moment a payment clears.</p>
+                    </li>
+                    <li class="pres-pillar" data-reveal>
+                        <h3 class="pres-pillar__title">Scalability</h3>
+                        <p class="pres-pillar__desc">The thousandth customer costs the same effort as the first. None of it is manual.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:why-->
+
+        <!--SECTION:showcase-->
+        <!-- ============================================================
+             7. PLATFORM SHOWCASE
+             Device frames drawn entirely in CSS, with abstract animated
+             UI inside them. Deliberately not screenshots: a mocked-up
+             screen shown to an investor is a claim about a product that
+             doesn't exist yet, and these say "this is the shape of it"
+             without pretending to be evidence.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-showcase" data-section-id="showcase" data-section-label="Platform">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Platform showcase</p>
+                    <h2 class="pres-h2" data-reveal>One platform, every screen.</h2>
+                    <p class="pres-lead" data-reveal>
+                        The storefront, the member area and the admin dashboard are the same
+                        system rendered for the device in front of the customer.
+                    </p>
+                </header>
+
+                <div class="pres-devices" data-reveal>
+                    <div class="pres-device pres-device--desktop">
+                        <div class="pres-device__frame">
+                            <div class="pres-device__bar" aria-hidden="true">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <div class="pres-device__screen">
+                                <div class="pres-ui pres-ui--desktop" aria-hidden="true">
+                                    <div class="pres-ui__nav"><i></i><i></i><i></i><i></i></div>
+                                    <div class="pres-ui__hero"></div>
+                                    <div class="pres-ui__row">
+                                        <span class="pres-ui__card"></span>
+                                        <span class="pres-ui__card"></span>
+                                        <span class="pres-ui__card"></span>
+                                    </div>
+                                    <div class="pres-ui__chart">
+                                        <svg viewBox="0 0 200 60" preserveAspectRatio="none" role="presentation" focusable="false">
+                                            <path class="pres-ui__spark" d="M0 48 L28 42 L56 46 L84 30 L112 34 L140 18 L168 22 L200 6" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="pres-device__label">Desktop</p>
+                    </div>
+
+                    <div class="pres-device pres-device--tablet">
+                        <div class="pres-device__frame">
+                            <div class="pres-device__screen">
+                                <div class="pres-ui pres-ui--tablet" aria-hidden="true">
+                                    <div class="pres-ui__hero"></div>
+                                    <div class="pres-ui__row">
+                                        <span class="pres-ui__card"></span>
+                                        <span class="pres-ui__card"></span>
+                                    </div>
+                                    <div class="pres-ui__lines">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="pres-device__label">Tablet</p>
+                    </div>
+
+                    <div class="pres-device pres-device--mobile">
+                        <div class="pres-device__frame">
+                            <div class="pres-device__notch" aria-hidden="true"></div>
+                            <div class="pres-device__screen">
+                                <div class="pres-ui pres-ui--mobile" aria-hidden="true">
+                                    <div class="pres-ui__hero"></div>
+                                    <span class="pres-ui__card"></span>
+                                    <div class="pres-ui__lines">
+                                        <span></span><span></span>
+                                    </div>
+                                    <div class="pres-ui__cta"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="pres-device__label">Mobile</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:showcase-->
+
+        <!--SECTION:technology-->
+        <!-- ============================================================
+             8. TECHNOLOGY
+             ============================================================ -->
+        <section class="pres-section" id="pres-technology" data-section-id="technology" data-section-label="Technology">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Technology</p>
+                    <h2 class="pres-h2" data-reveal>Built on infrastructure that already handles the hard parts.</h2>
+                </header>
+
+                <ul class="pres-tech" data-reveal-group>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">01</span>
+                        <h3 class="pres-tech__name">Stripe</h3>
+                        <p class="pres-tech__desc">Card and wallet payments, 3D Secure, refunds and payouts on the same rails the largest platforms use.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">02</span>
+                        <h3 class="pres-tech__name">Resend</h3>
+                        <p class="pres-tech__desc">Transactional email — receipts, access links, welcome messages — delivered and logged, never guessed at.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">03</span>
+                        <h3 class="pres-tech__name">Cloud Infrastructure</h3>
+                        <p class="pres-tech__desc">Managed hosting, backups and TLS, with capacity that absorbs a launch-day traffic spike.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">04</span>
+                        <h3 class="pres-tech__name">Automatic Account Creation</h3>
+                        <p class="pres-tech__desc">A customer account exists the moment a payment clears — no signup step between paying and access.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">05</span>
+                        <h3 class="pres-tech__name">Magic Login</h3>
+                        <p class="pres-tech__desc">Passwordless sign-in by emailed link. Nothing to remember, nothing to reset, nothing to leak.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">06</span>
+                        <h3 class="pres-tech__name">Secure Digital Delivery</h3>
+                        <p class="pres-tech__desc">Downloads issued as short-lived signed links tied to a verified purchase, not public file URLs.</p>
+                    </li>
+                    <li class="pres-tech__item" data-reveal>
+                        <span class="pres-tech__index">07</span>
+                        <h3 class="pres-tech__name">Modern API Architecture</h3>
+                        <p class="pres-tech__desc">A clean service layer behind every screen, so new products and integrations ship without a rebuild.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:technology-->
+
+        <!--SECTION:philosophy-->
+        <!-- ============================================================
+             9. OUR PHILOSOPHY
+             ============================================================ -->
+        <section class="pres-section pres-section--statement" id="pres-philosophy" data-section-id="philosophy" data-section-label="Philosophy">
+            <div class="pres-container pres-container--narrow">
+                <p class="pres-eyebrow" data-reveal>Our philosophy</p>
+                <blockquote class="pres-statement" data-reveal>
+                    Creators should create.<br>
+                    Everything else is ours.
+                </blockquote>
+                <p class="pres-statement__body" data-reveal>
+                    An athlete's advantage is their method, their standard and the trust of the
+                    people who follow them. None of that is improved by learning to configure a
+                    payment processor or chase a failed download at midnight. So we took the
+                    whole operation — platform, products, payments, production and support —
+                    and made it our responsibility. What's left is the work only they can do,
+                    and a business that keeps running while they do it.
+                </p>
+            </div>
+        </section>
+        <!--/SECTION:philosophy-->
+
+        <!--SECTION:cta-->
+        <!-- ============================================================
+             10. SCHEDULE NEXT MEETING
+             ============================================================ -->
+        <section class="pres-section pres-section--cta" id="pres-cta" data-section-id="cta" data-section-label="Next steps">
+            <div class="pres-container pres-container--narrow">
+                <header class="pres-head pres-head--center">
+                    <p class="pres-eyebrow" data-reveal>Next steps</p>
+                    <h2 class="pres-h2" data-reveal>Where would you like to take this?</h2>
+                    <p class="pres-lead" data-reveal>
+                        Pick the option that matches where the conversation is. We'll follow up
+                        personally within one business day.
+                    </p>
+                </header>
+
+                <!-- The three CTAs are a choice, not a hierarchy — so they
+                     share one treatment and the SELECTED one is the filled
+                     button, mirrored by the form's heading below. The page's
+                     single primary action is the form's own submit. -->
+                <div class="pres-cta__actions" data-reveal>
+                    <button class="pres-btn pres-btn--secondary is-active" type="button" data-cta="Continue Partnership">
+                        <span>Continue Partnership</span>
+                    </button>
+                    <button class="pres-btn pres-btn--secondary" type="button" data-cta="Schedule Meeting">
+                        <span>Schedule Meeting</span>
+                    </button>
+                    <button class="pres-btn pres-btn--secondary" type="button" data-cta="Request Demo">
+                        <span>Request Demo</span>
+                    </button>
+                </div>
+
+                <form class="pres-form" id="presContactForm" novalidate>
+                    <p class="pres-form__intent" id="presFormIntent">Continue Partnership</p>
+
+                    <div class="pres-field">
+                        <label class="pres-field__label" for="presName">Full name</label>
+                        <input class="pres-field__input" type="text" id="presName" name="name"
+                            autocomplete="name" required>
+                    </div>
+
+                    <div class="pres-field">
+                        <label class="pres-field__label" for="presEmail">Email address</label>
+                        <input class="pres-field__input" type="email" id="presEmail" name="email"
+                            autocomplete="email" inputmode="email" required>
+                    </div>
+
+                    <div class="pres-field">
+                        <label class="pres-field__label" for="presCompany">Company <span class="pres-field__opt">optional</span></label>
+                        <input class="pres-field__input" type="text" id="presCompany" name="company"
+                            autocomplete="organization">
+                    </div>
+
+                    <div class="pres-field">
+                        <label class="pres-field__label" for="presMessage">Anything we should know <span class="pres-field__opt">optional</span></label>
+                        <textarea class="pres-field__input pres-field__input--area" id="presMessage"
+                            name="message" rows="4"></textarea>
+                    </div>
+
+                    <p class="pres-form__status u-hidden" id="presFormStatus" role="status"></p>
+
+                    <button class="pres-btn pres-btn--primary pres-form__submit" type="submit" id="presFormSubmit">
+                        <span>Send</span>
+                    </button>
+                </form>
+
+                <div class="pres-cta__links" id="presCtaLinks"
+                    data-partnership="<!--PRES_CTA_PARTNERSHIP-->"
+                    data-meeting="<!--PRES_CTA_MEETING-->"
+                    data-demo="<!--PRES_CTA_DEMO-->"></div>
+            </div>
+        </section>
+        <!--/SECTION:cta-->
+
+        <footer class="pres-footer">
+            <div class="pres-container">
+                <p class="pres-footer__brand">Fitness Agency</p>
+                <p class="pres-footer__meta">Winnipeg, Canada — Private presentation, not for distribution.</p>
+            </div>
+        </footer>
+    </main>
+
+    <script src="/assets/js/presentation.js" defer></script>
+</body>
+
+</html>

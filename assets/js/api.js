@@ -47,6 +47,9 @@ window.ProFitAPI = (function () {
   function post(path, body) {
     return request(path, { method: "POST", body: JSON.stringify(body || {}) });
   }
+  function put(path, body) {
+    return request(path, { method: "PUT", body: JSON.stringify(body || {}) });
+  }
 
   // Shared "$X.XX" formatter — every page that renders a product price
   // (home, shop, nav mega-menu, cart, checkout, library) used to redefine
@@ -115,6 +118,12 @@ window.ProFitAPI = (function () {
     getLibrary: function () { return get("/library"); },
     getOrders: function () { return get("/library/orders"); },
     getProgram: function (productIdOrSlug) { return get("/library/program/" + encodeURIComponent(productIdOrSlug)); },
+    // Deliberately not routed through get()'s page-lifetime cache: progress
+    // is written repeatedly during a single page view, so a cached response
+    // would be wrong the moment the customer ticks anything.
+    saveProgramProgress: function (productIdOrSlug, progress) {
+      return put("/library/program/" + encodeURIComponent(productIdOrSlug) + "/progress", progress);
+    },
   };
 })();
 

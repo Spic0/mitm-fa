@@ -80,12 +80,20 @@ const cspDirectives = {
   connectSrc: ["'self'", "https://api.stripe.com", "https://www.paypal.com"],
   // hooks.stripe.com: 3D Secure / bank-redirect authentication flows.
   // www.paypal.com: PayPal's own checkout/login iframes and popups.
-  // youtube.com: the video lightbox on about.html/blog.html.
+  // youtube.com: the video lightbox on about.html/blog.html, and the
+  // inline players the purchased-program Videos section builds from
+  // ProductResource(type:"link") rows.
+  // player.vimeo.com: the same, for Vimeo links. assets/js/program-viewer.js
+  // has generated Vimeo embeds since it was written, but without this entry
+  // every one of them was silently blocked — a creator who stored a Vimeo
+  // bonus video got an empty frame. YouTube and Vimeo are the only two
+  // hosts turned into iframes; anything else stays an ordinary link.
   frameSrc: [
     "https://js.stripe.com",
     "https://hooks.stripe.com",
     "https://www.paypal.com",
     "https://www.youtube.com",
+    "https://player.vimeo.com",
   ],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],

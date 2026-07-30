@@ -43,6 +43,7 @@ model User {
   promotionRedemptions PromotionRedemption[]
   promotionEligibility PromotionUser[]
   presentationsCreated PrivatePresentation[] @relation("PresentationCreatedBy")
+  programProgress      ProgramProgress[]
 }
 
 model Product {
@@ -79,6 +80,7 @@ model Product {
   taxonomies ProductTaxonomy[]
   promotionEligibility PromotionProduct[]
   promotionsAsFreeGift Promotion[] @relation("PromotionFreeProduct")
+  progress             ProgramProgress[]
 }
 
 // One tree per top-level nav root (Shop by Goal / Browse Athletes / Browse
@@ -574,4 +576,48 @@ model PresentationEvent {
   createdAt DateTime @default(now())
 
   @@index([presentationId, type, createdAt])
+}
+
+// =====================================================================
+// PROGRAM PROGRESS
+// =====================================================================
+//
+// One row per (customer, product) — the state that makes the purchased
+// program view feel like an application the customer returns to rather
+// than a page they re-read from the top. Deliberately NOT one row per
+// completed item: a program is a few dozen trackable items at most, so a
+// single row with an array is one query per open and one upsert per
+// change, instead of N inserts and a join.
+//
+// `completedKeys` holds opaque, content-derived keys minted client-side
+// by assets/js/program.js (e.g. "training:0:2", "video:<mediaId>",
+// "chapter:overview"). The server deliberately does not validate them
+// against the product's current content: a program that is re-edited in
+// the admin wizard would otherwise silently drop a customer's history,
+// and a key that no longer resolves is simply ignored at render time.
+// They are clamped for length/count instead — see routes/library.js.
+model ProgramProgress {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  completedKeys String[] @default([])
+
+  // Where "Continue where you left off" resumes. lastKey is the item key;
+  // lastSection is the section id the UI should open ("program", "videos",
+  // "handbook", ...) so resuming works even when lastKey no longer exists.
+  lastKey     String?
+  lastSection String?
+
+  // Separate from updatedAt: updatedAt moves on any write including a
+  // completion toggle, whereas this is specifically "last time the
+  // customer opened the program", which is what the hero shows.
+  lastOpenedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId, lastOpenedAt])
 }

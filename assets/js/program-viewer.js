@@ -14,8 +14,17 @@
    parse 60 pages of HTML or start 200 media downloads up front. Pages already
    built are cached and never rebuilt.
 
+   Every page carries a stable `key` derived from the content it renders
+   ("chapter:day:2:1", "chapter:meal:0", ...) rather than its ordinal, so a
+   customer's reading position survives the creator adding a week in the
+   middle of the program. program.js persists those keys as progress; see
+   the ProgramProgress comment in server/prisma/schema.prisma.
+
    Usage:
-     window.ProgramViewer.open(payload);   // payload = the /api/library response
+     window.ProgramViewer.open(payload, {
+       startKey,                  // resume here instead of the cover
+       onPage: function (page, index, total) {},
+     });
 
    Exposed on window so program.js (and any future entry point, e.g. a card in
    my-library) can launch it without importing anything.
@@ -27,6 +36,19 @@
   var SWIPE_RATIO = 0.18;      // fraction of width that commits a turn
   var SWIPE_VELOCITY = 0.45;   // px/ms that commits a turn regardless of distance
   var AXIS_LOCK_SLOP = 10;     // px before deciding the gesture is horizontal
+
+  // 24px inline icons. This page deliberately does not load all.min.css
+  // (see the <head> comment in program.html), so the viewer carries the
+  // handful of glyphs it needs rather than a 100KB icon font.
+  var ICON = {
+    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    level: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V14M12 20V8M19 20V4"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v3M16 3.5v3"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7.5A2 2 0 005.5 5.5v13a2 2 0 002 2h9a2 2 0 002-2V8z"/><path d="M14 3.5V8h4.5"/></svg>',
+    external: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v5a1.8 1.8 0 01-1.8 1.8H5A1.8 1.8 0 013.2 19V7.8A1.8 1.8 0 015 6h5"/></svg>',
+  };
 
   function esc(str) {
     return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
@@ -42,11 +64,13 @@
     var pages = [];
 
     pages.push({
+      key: "chapter:cover",
       section: "Cover",
+      title: p.name || "Cover",
       render: function () {
         var meta = [];
-        if (p.difficulty) meta.push('<span class="pv-chip"><i class="fa-solid fa-signal"></i>' + esc(p.difficulty) + "</span>");
-        if (p.durationWeeks) meta.push('<span class="pv-chip"><i class="fa-regular fa-calendar"></i>' + esc(p.durationWeeks) + "-week</span>");
+        if (p.difficulty) meta.push('<span class="pv-chip">' + ICON.level + esc(p.difficulty) + "</span>");
+        if (p.durationWeeks) meta.push('<span class="pv-chip">' + ICON.calendar + esc(p.durationWeeks) + "-week</span>");
         return (
           '<div class="pv-cover">' +
           (p.imageUrl
@@ -62,7 +86,9 @@
 
     if (p.overview) {
       pages.push({
+        key: "chapter:intro",
         section: "Introduction",
+        title: "About this program",
         render: function () {
           return (
             '<p class="pv-page__eyebrow">Introduction</p><h2>About this program</h2>' +
@@ -76,7 +102,9 @@
     var training = p.trainingContent || {};
     if (training.notes) {
       pages.push({
+        key: "chapter:training-notes",
         section: "Training",
+        title: "How to train",
         render: function () {
           return '<p class="pv-page__eyebrow">Training</p><h2>How to train</h2><p>' +
             esc(training.notes).replace(/\n+/g, "</p><p>") + "</p>";
@@ -87,7 +115,9 @@
       var weekTitle = week.title || "Week " + (wi + 1);
       (week.days || []).forEach(function (day, di) {
         pages.push({
+          key: "chapter:day:" + wi + ":" + di,
           section: "Training",
+          title: day.title || "Day " + (di + 1),
           render: function () {
             var exercises = (day.exercises || []).map(function (ex) {
               var prescription = [ex.sets, ex.reps].filter(Boolean).join(" × ");
@@ -125,16 +155,20 @@
     var nutrition = p.nutritionContent || {};
     if (nutrition.notes) {
       pages.push({
+        key: "chapter:nutrition-notes",
         section: "Nutrition",
+        title: "How to eat",
         render: function () {
           return '<p class="pv-page__eyebrow">Nutrition</p><h2>How to eat</h2><p>' +
             esc(nutrition.notes).replace(/\n+/g, "</p><p>") + "</p>";
         },
       });
     }
-    (nutrition.meals || []).forEach(function (meal) {
+    (nutrition.meals || []).forEach(function (meal, mi) {
       pages.push({
+        key: "chapter:meal:" + mi,
         section: "Nutrition",
+        title: meal.name || "Meal " + (mi + 1),
         render: function () {
           return (
             '<p class="pv-page__eyebrow">Nutrition</p><h2>' + esc(meal.name || "Meal") + "</h2>" +
@@ -149,9 +183,11 @@
     // ---- FAQ, chunked so a page stays a readable spread ----
     var faqs = p.faqs || [];
     for (var i = 0; i < faqs.length; i += 4) {
-      (function (chunk) {
+      (function (chunk, ci) {
         pages.push({
+          key: "chapter:faq:" + ci,
           section: "FAQ",
+          title: "FAQ",
           render: function () {
             return '<p class="pv-page__eyebrow">Questions</p><h2>FAQ</h2>' +
               chunk.map(function (f) {
@@ -159,14 +195,16 @@
               }).join("");
           },
         });
-      })(faqs.slice(i, i + 4));
+      })(faqs.slice(i, i + 4), i / 4);
     }
 
     // ---- Bonus material: PDFs, files, and embeddable video links ----
     var resources = p.resources || [];
     if (resources.length || p.bonusNotes) {
       pages.push({
+        key: "chapter:bonus",
         section: "Bonus",
+        title: "Bonus material",
         render: function () {
           var embeds = "";
           var links = "";
@@ -182,7 +220,7 @@
             var isPdf = /\.pdf(\?|$)/i.test(r.url || "") || r.type === "file";
             links +=
               '<a class="pv-res" href="' + esc(r.url) + '" target="_blank" rel="noopener">' +
-              '<span class="pv-res__icon"><i class="fa-solid ' + (isPdf ? "fa-file-pdf" : "fa-arrow-up-right-from-square") + '"></i></span>' +
+              '<span class="pv-res__icon">' + (isPdf ? ICON.pdf : ICON.external) + "</span>" +
               '<span class="pv-res__body"><strong>' + esc(r.title) + "</strong>" +
               (r.description ? "<span>" + esc(r.description) + "</span>" : "") + "</span></a>";
           });
@@ -213,12 +251,20 @@
 
   /* --------------------------------------------------------------- viewer --- */
 
-  function open(payload) {
+  function open(payload, opts) {
     var product = (payload && payload.product) || payload || {};
+    var options = opts || {};
     var pages = buildPages(product);
     if (!pages.length) return;
 
+    // Resume. An unknown startKey (content edited since it was stored) is
+    // not an error — it simply falls back to the cover.
     var index = 0;
+    if (options.startKey) {
+      for (var si = 0; si < pages.length; si++) {
+        if (pages[si].key === options.startKey) { index = si; break; }
+      }
+    }
     var built = [];              // hydrated page indices
     var lastFocused = document.activeElement;
 
@@ -232,16 +278,16 @@
         '<div class="pv__bar">' +
           '<h2 class="pv__title">' + esc(product.name || "Program") + "</h2>" +
           '<span class="pv__section" data-pv-section></span>' +
-          '<button class="pv__close" type="button" aria-label="Close handbook"><i class="fa-solid fa-xmark"></i></button>' +
+          '<button class="pv__close" type="button" aria-label="Close handbook">' + ICON.close + "</button>" +
         "</div>" +
         '<div class="pv__progress"><div class="pv__progress-fill" data-pv-fill></div></div>' +
         '<div class="pv__stage">' +
           '<div class="pv__track" data-pv-track></div>' +
         "</div>" +
         '<div class="pv__nav">' +
-          '<button class="pv__nav-btn" type="button" data-pv-prev aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>' +
+          '<button class="pv__nav-btn" type="button" data-pv-prev aria-label="Previous page">' + ICON.prev + "</button>" +
           '<span class="pv__count" data-pv-count aria-live="polite"></span>' +
-          '<button class="pv__nav-btn" type="button" data-pv-next aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>' +
+          '<button class="pv__nav-btn" type="button" data-pv-next aria-label="Next page">' + ICON.next + "</button>" +
         "</div>" +
       "</div>";
 
@@ -283,6 +329,13 @@
       nextBtn.disabled = index === pages.length - 1;
       // A turned-to page always starts at its own top, like a real book.
       if (pageEls[index]) pageEls[index].scrollTop = 0;
+
+      // Reaching a page is what marks it read — program.js turns this into
+      // both the "chapters completed" count and the resume position.
+      if (options.onPage) {
+        try { options.onPage(pages[index], index, pages.length); }
+        catch (err) { /* never break the reader over a callback */ }
+      }
     }
 
     function goTo(next) {
@@ -414,7 +467,15 @@
       });
     });
 
-    return { close: close };
+    return {
+      close: close,
+      goToKey: function (key) {
+        for (var i = 0; i < pages.length; i++) {
+          if (pages[i].key === key) { goTo(i); return true; }
+        }
+        return false;
+      },
+    };
   }
 
   // _buildPages is exposed for headless testing of the paginator (page counts,

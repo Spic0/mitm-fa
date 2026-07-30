@@ -25,6 +25,22 @@
   --pv-rule: rgba(20, 22, 26, 0.1);
 }
 
+/* Icons are inline SVG (see the ICON table in program-viewer.js) rather
+   than an icon font — the purchased-program page deliberately doesn't load
+   all.min.css, and the viewer must not be the one thing that drags it back
+   in. Sized off the button's own font-size so every existing rule below
+   that sets a font-size still controls its glyph. */
+.pv svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
 /* The page behind the modal. Blurring `body > *` directly would also blur the
    modal itself, so the app content is blurred via this class on <body> which
    targets only the siblings the viewer is not inside of. */
@@ -33,7 +49,13 @@ body.pv-open main,
 body.pv-open footer,
 body.pv-open header,
 body.pv-open .header-section,
-body.pv-open .cart-drawer {
+body.pv-open .cart-drawer,
+/* The purchased-program app shell's own fixed chrome — without these the
+   rail, tab bar and dock stay razor sharp above a blurred page. */
+body.pv-open .pg-shell,
+body.pv-open .pg-appbar,
+body.pv-open .pg-tabbar,
+body.pv-open .pg-dock {
   filter: blur(7px) saturate(0.85);
   transition: filter var(--pv-dur) var(--pv-ease);
   pointer-events: none;

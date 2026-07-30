@@ -79,6 +79,15 @@ router.get("/program/:productId", async (req, res) => {
     include: {
       faqs: { orderBy: { order: "asc" } },
       resources: { orderBy: { order: "asc" } },
+      // Gallery ordering is admin-defined; `id` only breaks ties so two rows
+      // sharing an order value don't shuffle between requests. `id` is also
+      // what the client derives its stable "video:<id>" progress key from,
+      // so it must be selected, unlike on the public product endpoint.
+      media: {
+        select: { id: true, url: true, type: true, alt: true },
+        orderBy: [{ order: "asc" }, { id: "asc" }],
+      },
+      taxonomies: { include: { taxonomyNode: { select: { name: true } } } },
     },
   });
   if (!product) return res.status(404).json({ error: "Program not found" });
@@ -99,15 +108,60 @@ router.get("/program/:productId", async (req, res) => {
     });
   }
 
+  // The hero's "purchased on" / "owned since" line. Earliest paid order
+  // containing this product — a re-purchase (or a gifted second copy) must
+  // not make the customer look newer than they are.
+  const firstOrder = isPreview
+    ? null
+    : await prisma.orderItem.findFirst({
+        where: { productId: product.id, order: { userId: req.user.id, status: "paid" } },
+        orderBy: { order: { createdAt: "asc" } },
+        select: { order: { select: { createdAt: true } } },
+      });
+
+  // Progress is read before it's touched, so the hero can say "last opened
+  // 3 days ago" on this very request rather than "just now" — opening the
+  // program is exactly what's being recorded here. Admins previewing
+  // without an entitlement never write progress: preview is a QA view of
+  // someone else's experience, not their own.
+  let progress = null;
+  if (!isPreview) {
+    const existing = await prisma.programProgress.findUnique({
+      where: { userId_productId: { userId: req.user.id, productId: product.id } },
+      select: { completedKeys: true, lastKey: true, lastSection: true, lastOpenedAt: true },
+    });
+    progress = existing || { completedKeys: [], lastKey: null, lastSection: null, lastOpenedAt: null };
+
+    // Fire-and-forget: recording that the program was opened must never
+    // delay or fail the render of the program itself.
+    prisma.programProgress
+      .upsert({
+        where: { userId_productId: { userId: req.user.id, productId: product.id } },
+        create: { userId: req.user.id, productId: product.id, lastOpenedAt: new Date() },
+        update: { lastOpenedAt: new Date() },
+      })
+      .catch(() => {});
+  }
+
   res.json({
     preview: isPreview,
     productStatus: product.status,
+    purchasedAt: firstOrder ? firstOrder.order.createdAt : null,
+    progress,
     product: {
       id: product.id,
       slug: product.slug,
       name: product.name,
       imageUrl: normalizeImageUrl(product.imageUrl),
+      // Publication date — the anchor of the Updates timeline, which is
+      // built from real timestamps rather than a changelog model.
+      createdAt: product.createdAt,
       creator: product.creator,
+      // Taxonomy replaced the old free-text Product.category; the leaf node
+      // names are what the hero shows as topic chips.
+      categories: (product.taxonomies || [])
+        .map((t) => t.taxonomyNode && t.taxonomyNode.name)
+        .filter(Boolean),
       difficulty: product.difficulty,
       durationWeeks: product.durationWeeks,
       overview: product.overview,
@@ -115,15 +169,82 @@ router.get("/program/:productId", async (req, res) => {
       nutritionContent: product.nutritionContent,
       bonusNotes: product.bonusNotes,
       faqs: product.faqs,
+      media: (product.media || []).map((m) => ({
+        id: m.id,
+        url: normalizeImageUrl(m.url),
+        type: m.type,
+        alt: m.alt || product.name,
+      })),
       resources: product.resources.map((r) => ({
         id: r.id,
         title: r.title,
         description: r.description,
         type: r.type,
+        createdAt: r.createdAt,
         url: r.type === "link" ? r.url : `/api/library/resource/${r.id}`,
       })),
     },
   });
+});
+
+// Progress write-back for the program view. The client owns the completed
+// set (it's a few dozen keys at most) and PUTs the whole thing debounced,
+// rather than the server maintaining it item by item — one upsert per
+// change instead of a read-modify-write round trip per checkbox.
+//
+// Keys are opaque here on purpose: see the ProgramProgress comment in
+// schema.prisma for why they're clamped rather than validated.
+const MAX_KEYS = 600;
+const MAX_KEY_LEN = 200;
+
+function clampKeys(value) {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set();
+  for (const key of value) {
+    if (typeof key !== "string" || !key) continue;
+    seen.add(key.slice(0, MAX_KEY_LEN));
+    if (seen.size >= MAX_KEYS) break;
+  }
+  return [...seen];
+}
+
+function clampField(value) {
+  if (value == null) return null;
+  return typeof value === "string" ? value.slice(0, MAX_KEY_LEN) : null;
+}
+
+router.put("/program/:productId/progress", async (req, res) => {
+  const product = await prisma.product.findFirst({
+    where: { OR: [{ id: req.params.productId }, { slug: req.params.productId }] },
+    select: { id: true },
+  });
+  if (!product) return res.status(404).json({ error: "Program not found" });
+
+  // Entitlement only — an admin previewing a program they don't own is
+  // looking at the customer experience, not accruing progress of their own,
+  // so this deliberately does not have the isAdmin escape hatch the read
+  // path above has. The client treats the 403 as "don't sync", not an error.
+  const entitled = await hasEntitlement(req.user.id, product.id);
+  if (!entitled) return res.status(403).json({ error: "You don't have access to this program" });
+
+  const completedKeys = clampKeys(req.body && req.body.completedKeys);
+  const data = {
+    lastKey: clampField(req.body && req.body.lastKey),
+    lastSection: clampField(req.body && req.body.lastSection),
+  };
+  // Omitted (rather than empty) completedKeys means "position only" — a
+  // section change shouldn't be able to wipe completions if the two
+  // requests ever race.
+  if (completedKeys) data.completedKeys = completedKeys;
+
+  const saved = await prisma.programProgress.upsert({
+    where: { userId_productId: { userId: req.user.id, productId: product.id } },
+    create: { userId: req.user.id, productId: product.id, ...data },
+    update: data,
+    select: { completedKeys: true, lastKey: true, lastSection: true, lastOpenedAt: true },
+  });
+
+  res.json({ progress: saved });
 });
 
 // Exercise demo media (GIFs / short videos / images) uploaded through the

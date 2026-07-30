@@ -1,51 +1,1313 @@
-/* Mobile-first: most buyers open their program on a phone (Meta Ads
-   traffic), so the base styles are the phone layout and desktop is
-   the enhancement. */
-.program-hero { display: flex; gap: 20px; flex-direction: column; }
-.program-hero img { width: 100%; max-width: 220px; aspect-ratio: 1; height: auto; object-fit: cover; border-radius: 12px; }
-.program-meta span { display: inline-block; margin: 0 14px 8px 0; font-size: 14px; color: var(--paragraph); }
-.program-meta span i { color: var(--primary-color, #1a1a1a); margin-right: 6px; }
+/* =======================================================================
+   PURCHASED PROGRAM — /my-library/:slug
+   -----------------------------------------------------------------------
+   The room a customer walks into after paying. It is authored as an
+   application shell, not a document: a slim app bar, a persistent section
+   rail (a bottom bar + sheet on a phone), one section visible at a time,
+   and a resume control that is always the loudest thing on screen.
 
-/* Tabs: one horizontal, swipeable row — never wrapped into two lines
-   of tiny targets; every tab keeps a ≥44px tap height. */
-.program-tabs { list-style: none; display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding: 0; margin: 40px 0 25px; border-bottom: 1px solid rgba(0,0,0,.08); }
-.program-tabs li a { display: flex; align-items: center; min-height: 46px; padding: 12px 18px; font-weight: 600; text-transform: uppercase; font-size: 13px; white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent; touch-action: manipulation; }
-.program-tabs li a.active { border-bottom-color: var(--primary-color, #1a1a1a); }
-.program-panel { display: none; }
-.program-panel.active { display: block; }
+   Standalone by design — no bootstrap, no swiper, no animate.css — for the
+   same reason private/presentation.css is: this page is opened on a phone,
+   on mobile data, in the minute after a payment clears, and it cannot
+   spend seven render-blocking requests before it paints.
 
-/* Weeks are native <details> accordions — a long program collapses
-   to a scannable list; the summary row is a full-width tap target. */
-.program-week { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; margin-bottom: 14px; }
-.program-week > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px; padding: 14px 20px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
-.program-week > summary::-webkit-details-marker { display: none; }
-.program-week-meta { font-size: 13px; font-weight: 500; color: var(--paragraph-light, #999); white-space: nowrap; }
-.program-week-meta i { transition: transform .25s ease; }
-.program-week[open] .program-week-meta i { transform: rotate(180deg); }
-.program-week-body { padding: 0 20px 20px; }
-.program-day { border-top: 1px solid rgba(0,0,0,.06); padding-top: 14px; margin-top: 14px; }
+   Standalone is NOT a second design system. Every value in the token block
+   below is copied from, or derived from, assets/css/style.css: the same
+   warm off-white paper (#fafaf9 / #fdfdfc / #f2f1ee), the same near-black
+   ink (#1a1a1a) that is deliberately never pure black, the same muted and
+   faint text stops, the same 10px + 100px radius pair, the same shadow
+   ramp, the same --nav-ease curve, the same self-hosted Inter. Where this
+   file departs it departs in one direction only: scale and depth. Bigger
+   cover art, more air, longer easing, and a real elevation ramp — because
+   this is the only page on the platform whose job is to feel owned.
 
-/* Exercise card: demo media (GIF/video) beside the prescription.
-   The media box reserves its square via aspect-ratio, so lazy-loaded
-   GIFs never shift the layout while you scroll mid-workout. */
-.program-exercise { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px dashed rgba(0,0,0,.08); }
-.program-exercise:last-child { border-bottom: none; }
-.program-exercise-media { flex: 0 0 104px; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.05); }
-.program-exercise-media img, .program-exercise-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.program-exercise-info { min-width: 0; }
-.program-exercise-info strong { display: block; }
-.program-exercise-reps { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 100px; background: rgba(0,0,0,.06); font-size: 13px; font-weight: 600; }
-.program-exercise-notes { margin: 6px 0 0; font-size: 13px; color: var(--paragraph-light, #777); }
+   Mobile and desktop are authored as two layouts, not one scaled. The
+   clearest examples, in section order: the shell (§5, single column with
+   a bottom tab bar vs. a two-column sticky rail), the hero (§7, a
+   full-bleed card whose art is 4:5 vs. a contained 21:9 cinematic stage),
+   the section switch (§8, sheet-driven vs. rail-driven) and the quick
+   actions (§13, a dock above the tab bar vs. a right-edge column).
+   ======================================================================= */
 
-.program-locked { text-align: center; padding: 80px 20px; }
-.resource-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border: 1px solid rgba(0,0,0,.08); border-radius: 10px; margin-bottom: 12px; }
+/* Same six faces, same paths, same font-display as style.css declares — a
+   program rendered in a fallback face while Inter loads would not be the
+   same brand for the first 200ms. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
 
-/* Customer Preview bar (admins only — injected by program.js) */
-.program-preview-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 99999; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 18px; background: #1a1a1a; color: #fff; font-size: 14px; }
-.program-preview-bar a { color: #fff; text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
-body.has-preview-bar { padding-bottom: 72px; }
+/* -----------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------- */
+:root {
+  /* ---- Palette: identical values to style.css's monochrome system ---- */
+  --pg-bg: #fafaf9;
+  --pg-surface: #fdfdfc;
+  --pg-surface-2: #f2f1ee;
+  --pg-ink: #1a1a1a;
+  --pg-ink-hover: #2e2e2c;
+  --pg-muted: #55534f;
+  --pg-faint: #9c9993;
+  --pg-border: rgba(26, 26, 26, 0.1);
+  --pg-border-soft: rgba(26, 26, 26, 0.06);
+  --pg-success: #059669;
+  --pg-warning: #d97706;
+  --pg-danger: #dc2626;
+
+  --pg-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* ---- Radius: the platform's 10/100 pair, plus the two larger stops a
+     cinematic cover and a bottom sheet need. Both are multiples of the
+     base rather than new arbitrary numbers. ---- */
+  --pg-radius: 10px;
+  --pg-radius-lg: 18px;
+  --pg-radius-xl: 26px;
+  --pg-radius-pill: 100px;
+
+  /* ---- Elevation: style.css's two stops, extended with the two deeper
+     ones this page needs for the cover and the floating chrome. Same hue
+     (#0f172a at low alpha), same direction. ---- */
+  --pg-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --pg-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --pg-shadow-lg: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 14px rgba(15, 23, 42, 0.06);
+  --pg-shadow-xl: 0 32px 80px rgba(15, 23, 42, 0.18), 0 8px 24px rgba(15, 23, 42, 0.08);
+
+  /* ---- Motion. --pg-ease IS style.css's --nav-ease, the curve the mobile
+     drawer already moves on, so a section opening here feels like the same
+     product as a nav panel opening there. --pg-ease-soft is its longer
+     sibling for scroll reveals, where the distance travelled is larger. ---- */
+  --pg-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --pg-ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --pg-dur-fast: 160ms;
+  --pg-dur: 240ms;
+  --pg-dur-slow: 560ms;
+
+  /* ---- Spacing: one rhythm, expressed fluidly so 320px and 1920px each
+     get a proportionate amount of air rather than the same pixel gap. ---- */
+  --pg-gap-xs: 8px;
+  --pg-gap-sm: 14px;
+  --pg-gap: clamp(18px, 2.2vw, 28px);
+  --pg-gap-lg: clamp(30px, 3.6vw, 52px);
+  --pg-shell-x: clamp(18px, 4vw, 44px);
+  --pg-max: 900px;
+
+  /* ---- Type scale. Body sits at 16.5-18px, not the 15px a marketing page
+     can get away with: this is the only page on the platform people read
+     for twenty minutes at a time. ---- */
+  --pg-display: clamp(30px, 6.4vw, 60px);
+  --pg-h2: clamp(24px, 3vw, 36px);
+  --pg-h3: clamp(18px, 1.6vw, 22px);
+  --pg-lead: clamp(17px, 1.5vw, 20px);
+  --pg-body: clamp(16.5px, 1.15vw, 18px);
+  --pg-small: 14px;
+  --pg-micro: 12px;
+
+  /* ---- Chrome heights, referenced by sticky offsets and safe-area pads
+     in several places each. ---- */
+  --pg-appbar-h: 56px;
+  --pg-tabbar-h: 64px;
+  --pg-safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+/* -----------------------------------------------------------------------
+   2. RESET
+   No bootstrap here, so the handful of resets it would have provided are
+   declared explicitly rather than assumed.
+   -------------------------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Anchored jumps land below the app bar, not under it. */
+  scroll-padding-top: calc(var(--pg-appbar-h) + 16px);
+}
+
+body,
+h1, h2, h3, h4, h5, p, ul, ol, li, figure, blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+ul, ol { list-style: none; }
+img, video { max-width: 100%; display: block; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+.pg-body {
+  margin: 0;
+  font-family: var(--pg-font);
+  font-size: var(--pg-body);
+  line-height: 1.65;
+  color: var(--pg-muted);
+  background: var(--pg-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* The bottom bar and dock are fixed; without this the last card on a
+     phone sits permanently underneath them. */
+  padding-bottom: calc(var(--pg-tabbar-h) + var(--pg-safe-b) + 12px);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5 {
+  color: var(--pg-ink);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pg-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Icons. Stroke by default (the whole icon set is 24px line art);
+   `.is-solid` and the two named exceptions are the filled shapes. */
+.pg-body svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+.pg-body svg.is-solid,
+.pg-btn__icon,
+.pg-dock__icon-open { fill: currentColor; stroke: none; }
+
+/* -----------------------------------------------------------------------
+   3. UTILITIES
+   -------------------------------------------------------------------- */
+.u-hidden { display: none !important; }
+
+.u-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pg-anchor { display: block; height: 0; scroll-margin-top: calc(var(--pg-appbar-h) + 12px); }
+
+/* -----------------------------------------------------------------------
+   4. BUTTONS
+   The platform's pill button, at three sizes. Same radius, same near-black
+   fill, same hover stop (--pg-ink-hover) as .btn-one in style.css.
+   -------------------------------------------------------------------- */
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: var(--pg-radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  transition: background-color var(--pg-dur) var(--pg-ease),
+              color var(--pg-dur) var(--pg-ease),
+              border-color var(--pg-dur) var(--pg-ease),
+              transform var(--pg-dur-fast) var(--pg-ease),
+              box-shadow var(--pg-dur) var(--pg-ease);
+  touch-action: manipulation;
+}
+.pg-btn:active { transform: scale(0.978); }
+.pg-btn__icon { font-size: 1.15em; }
+
+.pg-btn--primary { background: var(--pg-ink); color: #ffffff; box-shadow: var(--pg-shadow-md); }
+.pg-btn--primary:hover { background: var(--pg-ink-hover); box-shadow: var(--pg-shadow-lg); }
+
+.pg-btn--ghost { background: transparent; color: var(--pg-ink); border: 1px solid var(--pg-border); }
+.pg-btn--ghost:hover { background: var(--pg-surface-2); border-color: var(--pg-ink); }
+
+.pg-btn--quiet { background: var(--pg-surface-2); color: var(--pg-ink); }
+.pg-btn--quiet:hover { background: rgba(26, 26, 26, 0.1); }
+
+.pg-btn--lg { min-height: 56px; padding: 16px 30px; font-size: 16.5px; width: 100%; }
+.pg-btn--sm { min-height: 40px; padding: 8px 16px; font-size: 13.5px; }
+
+/* -----------------------------------------------------------------------
+   5. APP BAR
+   -------------------------------------------------------------------- */
+.pg-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: var(--pg-gap-sm);
+  height: var(--pg-appbar-h);
+  padding-right: max(var(--pg-shell-x), env(safe-area-inset-right, 0px));
+  padding-left: max(var(--pg-shell-x), env(safe-area-inset-left, 0px));
+  background: rgba(250, 250, 249, 0.82);
+  /* Only applied where it is actually supported — an unsupported blur
+     leaves a flat translucent bar, which would let the cover read straight
+     through the title. */
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--pg-dur) var(--pg-ease), background-color var(--pg-dur) var(--pg-ease);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pg-appbar {
+    background: rgba(250, 250, 249, 0.68);
+    -webkit-backdrop-filter: saturate(1.6) blur(16px);
+    backdrop-filter: saturate(1.6) blur(16px);
+  }
+}
+.pg-appbar.is-stuck { border-bottom-color: var(--pg-border-soft); }
+
+.pg-appbar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding-right: 6px;
+  margin-left: -6px;
+  padding-left: 6px;
+  border-radius: var(--pg-radius-pill);
+  font-size: var(--pg-small);
+  font-weight: 600;
+  color: var(--pg-ink);
+  transition: opacity var(--pg-dur) var(--pg-ease);
+}
+.pg-appbar__back svg { font-size: 20px; }
+.pg-appbar__back:hover { opacity: 0.6; }
+
+/* The title only exists once the hero has scrolled away — at the top of
+   the page the bar is deliberately empty. */
+.pg-appbar__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--pg-small);
+  font-weight: 700;
+  color: var(--pg-ink);
+  letter-spacing: -0.01em;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--pg-dur) var(--pg-ease), transform var(--pg-dur) var(--pg-ease);
+}
+.pg-appbar.is-stuck .pg-appbar__title { opacity: 1; transform: none; }
+
+.pg-appbar__right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.pg-appbar__logo img { height: 22px; width: auto; }
+
+/* Progress ring. Stroke-dashoffset is set from JS (CSSOM, which the strict
+   CSP allows — an inline style="" attribute would not be). */
+.pg-appbar__ring { position: relative; width: 34px; height: 34px; }
+.pg-appbar__ring svg { width: 34px; height: 34px; transform: rotate(-90deg); }
+.pg-ring__track { fill: none; stroke: var(--pg-border); stroke-width: 3; }
+.pg-ring__fill {
+  fill: none;
+  stroke: var(--pg-ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+  /* 2π × 15.5 ≈ 97.4 — the full circumference, so offset 0 = complete. */
+  stroke-dasharray: 97.4;
+  stroke-dashoffset: 97.4;
+  transition: stroke-dashoffset var(--pg-dur-slow) var(--pg-ease-soft);
+}
+.pg-appbar__ring span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--pg-ink);
+  letter-spacing: -0.03em;
+}
+
+/* -----------------------------------------------------------------------
+   6. BOOT + LOCKED
+   -------------------------------------------------------------------- */
+.pg-boot {
+  max-width: var(--pg-max);
+  margin: 0 auto;
+  padding: var(--pg-gap) var(--pg-shell-x) 0;
+}
+.pg-boot__cover {
+  aspect-ratio: 4 / 5;
+  border-radius: var(--pg-radius-xl);
+  background: var(--pg-surface-2);
+}
+.pg-boot__lines { display: flex; flex-direction: column; gap: 12px; margin-top: 26px; }
+.pg-boot__line { height: 14px; border-radius: var(--pg-radius-pill); background: var(--pg-surface-2); }
+.pg-boot__line--sm { width: 32%; }
+.pg-boot__line--lg { height: 26px; width: 74%; }
+.pg-boot__cover,
+.pg-boot__line { animation: pgPulse 1.5s var(--pg-ease) infinite; }
+@keyframes pgPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+@media (min-width: 768px) { .pg-boot__cover { aspect-ratio: 21 / 9; } }
+
+.pg-locked { display: flex; align-items: center; justify-content: center; min-height: 70vh; padding: var(--pg-gap-lg) var(--pg-shell-x); }
+.pg-locked__inner { max-width: 460px; text-align: center; }
+.pg-locked__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: var(--pg-gap);
+  border-radius: 50%;
+  background: var(--pg-surface-2);
+  color: var(--pg-ink);
+  font-size: 30px;
+}
+.pg-locked h1 { font-size: var(--pg-h2); margin-bottom: 12px; }
+.pg-locked p { margin-bottom: var(--pg-gap); }
+.pg-locked__actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+/* -----------------------------------------------------------------------
+   7. SHELL
+   One column on a phone. From 1080px the rail becomes a real sticky
+   sidebar and the content column stops growing — a 1600px-wide line of
+   body text is not a premium reading experience at any font size.
+   -------------------------------------------------------------------- */
+.pg-shell { display: block; }
+.pg-main { max-width: var(--pg-max); margin: 0 auto; padding: 0 var(--pg-shell-x); }
+
+@media (min-width: 1080px) {
+  .pg-shell {
+    display: grid;
+    grid-template-columns: 288px minmax(0, 1fr);
+    gap: clamp(32px, 3.4vw, 60px);
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 var(--pg-shell-x);
+    align-items: start;
+  }
+  .pg-main { padding: 0; max-width: none; }
+  .pg-body { padding-bottom: 0; }
+}
+
+/* -----------------------------------------------------------------------
+   8. RAIL (desktop only)
+   -------------------------------------------------------------------- */
+.pg-rail { display: none; }
+
+@media (min-width: 1080px) {
+  .pg-rail {
+    display: block;
+    position: sticky;
+    top: calc(var(--pg-appbar-h) + 24px);
+    padding: 24px 0 40px;
+  }
+
+  .pg-rail__product { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .pg-rail__thumb {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--pg-surface-2);
+    box-shadow: var(--pg-shadow-sm);
+  }
+  .pg-rail__thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .pg-rail__meta { min-width: 0; display: flex; flex-direction: column; }
+  .pg-rail__meta strong {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--pg-ink);
+    line-height: 1.3;
+    /* Two lines then ellipsis: a long program name must never push the
+       rail's nav out of the sticky viewport. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pg-rail__meta span { font-size: var(--pg-micro); color: var(--pg-faint); }
+
+  .pg-rail__progress { margin-bottom: 22px; }
+  .pg-rail__progress-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: var(--pg-micro);
+    font-weight: 600;
+  }
+  .pg-rail__progress-head span:first-child { color: var(--pg-ink); }
+  .pg-rail__progress-head span:last-child { color: var(--pg-faint); }
+
+  .pg-rail__nav { display: flex; flex-direction: column; gap: 2px; margin-bottom: 22px; }
+  .pg-rail__cta { width: 100%; }
+}
+
+.pg-meter { height: 5px; border-radius: var(--pg-radius-pill); background: var(--pg-border-soft); overflow: hidden; }
+.pg-meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--pg-ink);
+  transition: width var(--pg-dur-slow) var(--pg-ease-soft);
+}
+
+/* Rail nav item — shared markup with the bottom sheet's list, styled
+   per-context rather than duplicated in JS. */
+.pg-navitem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: var(--pg-radius);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--pg-muted);
+  text-align: left;
+  transition: background-color var(--pg-dur-fast) var(--pg-ease), color var(--pg-dur-fast) var(--pg-ease);
+}
+.pg-navitem:hover { background: var(--pg-surface-2); color: var(--pg-ink); }
+.pg-navitem.is-active { background: var(--pg-ink); color: #ffffff; }
+.pg-navitem.is-active .pg-navitem__count { color: rgba(255, 255, 255, 0.62); }
+.pg-navitem__icon { font-size: 18px; }
+.pg-navitem__label { flex: 1 1 auto; min-width: 0; }
+.pg-navitem__count { font-size: var(--pg-micro); font-weight: 600; color: var(--pg-faint); }
+.pg-navitem--soon { opacity: 0.55; }
+
+/* -----------------------------------------------------------------------
+   9. HERO
+   Phone: a full-bleed 4:5 card, rounded and lifted off the page, so the
+   cover is the first and largest thing on screen. Desktop: a contained
+   21:9 stage. Both put the copy over the art on a scrim rather than
+   beside it in a text block.
+   -------------------------------------------------------------------- */
+.pg-hero { padding-top: var(--pg-gap); }
+
+.pg-hero__stage {
+  position: relative;
+  isolation: isolate;
+  /* Full-bleed on a phone: cancel the shell's side padding so the art
+     touches both edges, while the copy inside keeps its own inset. */
+  margin: 0 calc(var(--pg-shell-x) * -1);
+  aspect-ratio: 4 / 5;
+  max-height: 78vh;
+  overflow: hidden;
+  border-radius: var(--pg-radius-xl);
+  background: var(--pg-surface-2);
+  box-shadow: var(--pg-shadow-lg);
+}
+
+/* The art layer is taller than its frame so it has room to travel under
+   the parallax transform program.js applies on scroll. */
+.pg-hero__art { position: absolute; inset: -8% 0; will-change: transform; }
+.pg-hero__art img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Two stops rather than a single linear fade: the upper one keeps the
+   eyebrow legible over a bright cover, the lower one carries the title
+   block. Both are the brand's near-black, never a blue-black. */
+.pg-hero__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(12, 12, 11, 0.42) 0%, rgba(12, 12, 11, 0) 34%),
+    linear-gradient(to top, rgba(12, 12, 11, 0.88) 0%, rgba(12, 12, 11, 0.55) 26%, rgba(12, 12, 11, 0) 62%);
+}
+
+.pg-hero__body {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--pg-gap) clamp(20px, 5vw, 34px) clamp(22px, 5vw, 32px);
+  color: #ffffff;
+}
+.pg-hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: var(--pg-micro);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+}
+.pg-hero__title {
+  font-size: var(--pg-display);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  text-wrap: balance;
+}
+.pg-hero__creator {
+  margin-top: 10px;
+  font-size: var(--pg-small);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+.pg-hero__creator strong { color: #ffffff; font-weight: 700; }
+
+.pg-hero__chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.pg-hero__chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: var(--pg-radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: var(--pg-micro);
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pg-hero__chips li { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+}
+.pg-hero__chips li svg { font-size: 14px; }
+
+/* Owned badge — the one green accent on the page, and only because
+   "you own this" is the single fact the hero exists to confirm. */
+.pg-hero__owned { display: inline-flex; align-items: center; gap: 6px; color: #ffffff; }
+.pg-hero__owned::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pg-success);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.28);
+}
+
+/* ---- The deck below the cover: resume + at-a-glance progress ---- */
+.pg-hero__deck { margin-top: var(--pg-gap); }
+.pg-hero__resume-sub {
+  margin-top: 10px;
+  font-size: var(--pg-small);
+  color: var(--pg-faint);
+  text-align: center;
+}
+
+.pg-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: var(--pg-gap);
+}
+.pg-stat {
+  padding: 14px 16px;
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  box-shadow: var(--pg-shadow-sm);
+}
+.pg-stat__value {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--pg-ink);
+}
+.pg-stat__label {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--pg-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pg-faint);
+}
+.pg-stat--wide { grid-column: 1 / -1; }
+.pg-stat--wide .pg-meter { margin-top: 10px; }
 
 @media (min-width: 768px) {
-    .program-hero { flex-direction: row; align-items: center; gap: 30px; }
-    .program-exercise-media { flex-basis: 130px; }
+  .pg-hero__stage { margin: 0; aspect-ratio: 21 / 9; max-height: 62vh; }
+  .pg-hero__art { inset: -12% 0; }
+  .pg-hero__body { padding: var(--pg-gap-lg) clamp(30px, 4vw, 52px) clamp(28px, 3.4vw, 44px); max-width: 76%; }
+  .pg-hero__deck { display: flex; align-items: center; gap: var(--pg-gap); }
+  .pg-hero__resume { flex: 0 0 auto; width: 300px; }
+  .pg-hero__stats { flex: 1 1 auto; margin-top: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pg-hero__resume-sub { text-align: left; }
+  .pg-stat--wide { grid-column: auto; }
+}
+
+/* -----------------------------------------------------------------------
+   10. PANELS
+   One section at a time, cross-faded. Panels are hidden with [hidden] +
+   display:none rather than opacity so an inactive section costs nothing
+   to lay out and its media never loads.
+   -------------------------------------------------------------------- */
+.pg-panels { padding: var(--pg-gap-lg) 0 var(--pg-gap-lg); }
+.pg-panel { display: none; }
+.pg-panel.is-active { display: block; animation: pgPanelIn var(--pg-dur-slow) var(--pg-ease-soft) both; }
+
+@keyframes pgPanelIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+.pg-panel__head { margin-bottom: var(--pg-gap); }
+.pg-panel__eyebrow {
+  margin-bottom: 6px;
+  font-size: var(--pg-micro);
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--pg-faint);
+}
+.pg-panel__head h2 { font-size: var(--pg-h2); }
+
+/* Segmented control (Training | Nutrition inside Program). The platform's
+   pill, scaled down and inverted for the selected state. */
+.pg-segmented {
+  display: inline-flex;
+  gap: 3px;
+  margin-top: var(--pg-gap);
+  padding: 4px;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-surface-2);
+}
+.pg-segmented button {
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: var(--pg-radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pg-muted);
+  transition: background-color var(--pg-dur) var(--pg-ease), color var(--pg-dur) var(--pg-ease);
+}
+.pg-segmented button.is-active { background: var(--pg-surface); color: var(--pg-ink); box-shadow: var(--pg-shadow-sm); }
+
+/* -----------------------------------------------------------------------
+   11. CONTENT PRIMITIVES
+   The vocabulary every section is built from — cards, callouts,
+   checklists, accordions, a timeline — so no section ever renders as a
+   paragraph of prose sitting on the page background.
+   -------------------------------------------------------------------- */
+
+/* ---- Prose. Measure is capped at ~68 characters; a purchased handbook
+   is read, not skimmed, and full-width body text is the single fastest
+   way to make a premium page feel like a wiki. ---- */
+.pg-prose { max-width: 68ch; }
+.pg-prose p { margin-bottom: 1.15em; }
+.pg-prose p:last-child { margin-bottom: 0; }
+.pg-prose--lead p { font-size: var(--pg-lead); line-height: 1.6; color: var(--pg-muted); }
+
+.pg-stack { display: flex; flex-direction: column; gap: var(--pg-gap-sm); }
+.pg-stack--lg { gap: var(--pg-gap); }
+
+.pg-card {
+  padding: clamp(18px, 2.6vw, 28px);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  box-shadow: var(--pg-shadow-sm);
+  transition: transform var(--pg-dur) var(--pg-ease), box-shadow var(--pg-dur) var(--pg-ease), border-color var(--pg-dur) var(--pg-ease);
+}
+/* Ink, explicitly: card titles are <div>/<span> (a card is often a button,
+   whose only legal children are phrasing content), so they never match the
+   h1–h5 colour rule and would otherwise inherit the body's muted grey. */
+.pg-card__title { font-size: var(--pg-h3); font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; color: var(--pg-ink); margin-bottom: 8px; }
+.pg-card--link:hover { transform: translateY(-2px); box-shadow: var(--pg-shadow-md); border-color: var(--pg-border); }
+
+/* ---- Callout. Four tones, distinguished by the rule and the icon only —
+   never by a tinted background, which would import colour the platform's
+   monochrome system does not have. ---- */
+.pg-callout {
+  display: flex;
+  gap: 14px;
+  padding: clamp(16px, 2.2vw, 22px);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  border-left: 3px solid var(--pg-ink);
+}
+.pg-callout__icon { font-size: 20px; color: var(--pg-ink); margin-top: 1px; }
+.pg-callout__body { min-width: 0; }
+.pg-callout__title { font-size: 15px; font-weight: 700; color: var(--pg-ink); margin-bottom: 4px; }
+.pg-callout__body p { font-size: 15.5px; }
+.pg-callout--tip { border-left-color: var(--pg-success); }
+.pg-callout--tip .pg-callout__icon { color: var(--pg-success); }
+.pg-callout--warn { border-left-color: var(--pg-warning); }
+.pg-callout--warn .pg-callout__icon { color: var(--pg-warning); }
+.pg-callout--note { border-left-color: var(--pg-faint); }
+.pg-callout--note .pg-callout__icon { color: var(--pg-faint); }
+
+/* ---- Accordion (FAQ, and any long secondary block). Native <details>:
+   it is keyboard- and screen-reader-correct for free, and it still works
+   with JS off. The open/close height animation is done on a grid-rows
+   track so it composites instead of reflowing. ---- */
+.pg-acc {
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  overflow: hidden;
+  transition: border-color var(--pg-dur) var(--pg-ease);
+}
+.pg-acc[open] { border-color: var(--pg-border); }
+.pg-acc > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 58px;
+  padding: 16px clamp(18px, 2.4vw, 24px);
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--pg-ink);
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+.pg-acc > summary::-webkit-details-marker { display: none; }
+.pg-acc__chevron { font-size: 18px; color: var(--pg-faint); transition: transform var(--pg-dur) var(--pg-ease); }
+.pg-acc[open] .pg-acc__chevron { transform: rotate(180deg); }
+.pg-acc__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--pg-dur) var(--pg-ease);
+}
+.pg-acc[open] .pg-acc__body { grid-template-rows: 1fr; }
+.pg-acc__body > div { overflow: hidden; }
+.pg-acc__body-inner { padding: 0 clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 24px); }
+
+/* ---- Checklist row. The one interactive primitive that writes progress:
+   the whole row is the tap target, 56px tall, with the box as an
+   indicator rather than a 20px hit area. ---- */
+.pg-check {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-radius: var(--pg-radius);
+  text-align: left;
+  transition: background-color var(--pg-dur-fast) var(--pg-ease);
+}
+.pg-check:hover { background: var(--pg-surface-2); }
+.pg-check__box {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1.8px solid var(--pg-border);
+  color: transparent;
+  font-size: 14px;
+  transition: background-color var(--pg-dur) var(--pg-ease), border-color var(--pg-dur) var(--pg-ease), color var(--pg-dur) var(--pg-ease);
+}
+.pg-check[aria-pressed="true"] .pg-check__box { background: var(--pg-ink); border-color: var(--pg-ink); color: #ffffff; }
+.pg-check__label { flex: 1 1 auto; min-width: 0; font-size: 15.5px; font-weight: 600; color: var(--pg-ink); }
+.pg-check[aria-pressed="true"] .pg-check__label { color: var(--pg-faint); text-decoration: line-through; }
+
+/* ---- Timeline (weeks, and the Updates section). The rule is drawn on the
+   list, not per item, so it never breaks between rows. ---- */
+.pg-timeline { position: relative; padding-left: 30px; }
+.pg-timeline::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 1.5px;
+  background: linear-gradient(to bottom, var(--pg-border), var(--pg-border-soft));
+}
+.pg-timeline__item { position: relative; padding-bottom: var(--pg-gap); }
+.pg-timeline__item:last-child { padding-bottom: 0; }
+.pg-timeline__dot {
+  position: absolute;
+  left: -30px;
+  top: 6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--pg-surface);
+  border: 2px solid var(--pg-border);
+}
+.pg-timeline__item.is-done .pg-timeline__dot { background: var(--pg-ink); border-color: var(--pg-ink); }
+.pg-timeline__when {
+  font-size: var(--pg-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pg-faint);
+}
+.pg-timeline__title { font-size: 16.5px; margin: 3px 0 5px; }
+
+/* ---- Exercise card ---- */
+.pg-ex {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--pg-border-soft);
+}
+.pg-ex:last-child { border-bottom: 0; padding-bottom: 0; }
+.pg-ex__media {
+  flex: 0 0 88px;
+  width: 88px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--pg-surface-2);
+  position: relative;
+  cursor: zoom-in;
+}
+.pg-ex__media img,
+.pg-ex__media video { width: 100%; height: 100%; object-fit: cover; }
+.pg-ex__body { min-width: 0; flex: 1 1 auto; }
+.pg-ex__name { font-size: 16px; font-weight: 700; color: var(--pg-ink); }
+.pg-ex__reps {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 12px;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-surface-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pg-ink);
+  letter-spacing: -0.01em;
+}
+.pg-ex__note { margin-top: 7px; font-size: 14.5px; line-height: 1.55; color: var(--pg-muted); }
+.pg-ex__note b { color: var(--pg-ink); font-weight: 650; }
+@media (min-width: 768px) { .pg-ex__media { flex-basis: 116px; width: 116px; } }
+
+/* ---- Nutrition card ---- */
+.pg-macros { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.pg-macros span {
+  padding: 5px 13px;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-surface-2);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--pg-ink);
+}
+.pg-ingredients { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.pg-ingredients li {
+  display: flex;
+  gap: 10px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.pg-ingredients li::before { content: ""; flex: 0 0 auto; width: 5px; height: 5px; margin-top: 10px; border-radius: 50%; background: var(--pg-faint); }
+
+/* ---- Asset / media grid ---- */
+.pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: var(--pg-gap-sm); }
+
+.pg-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--pg-radius-lg);
+  overflow: hidden;
+  background: var(--pg-surface-2);
+  box-shadow: var(--pg-shadow-sm);
+  transition: transform var(--pg-dur) var(--pg-ease), box-shadow var(--pg-dur) var(--pg-ease);
+}
+.pg-tile:hover { transform: translateY(-3px); box-shadow: var(--pg-shadow-lg); }
+.pg-tile__frame { position: relative; aspect-ratio: 16 / 10; }
+.pg-tile__frame img,
+.pg-tile__frame video { width: 100%; height: 100%; object-fit: cover; }
+.pg-tile__frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 11, 0.72), rgba(12, 12, 11, 0) 58%);
+}
+.pg-tile__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.pg-tile__play span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--pg-ink);
+  font-size: 22px;
+  box-shadow: var(--pg-shadow-md);
+  transition: transform var(--pg-dur) var(--pg-ease);
+}
+.pg-tile:hover .pg-tile__play span { transform: scale(1.08); }
+.pg-tile__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 1;
+  padding: 14px 16px;
+  color: #ffffff;
+}
+.pg-tile__caption strong { display: block; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.pg-tile__caption em { display: block; margin-top: 2px; font-size: var(--pg-micro); font-style: normal; color: rgba(255, 255, 255, 0.72); }
+.pg-tile__done {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pg-ink);
+  color: #ffffff;
+  font-size: 15px;
+}
+
+/* ---- Asset row (downloads) ---- */
+.pg-asset {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px clamp(16px, 2.2vw, 22px);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  box-shadow: var(--pg-shadow-sm);
+  transition: transform var(--pg-dur) var(--pg-ease), box-shadow var(--pg-dur) var(--pg-ease), border-color var(--pg-dur) var(--pg-ease);
+}
+.pg-asset:hover { transform: translateY(-2px); box-shadow: var(--pg-shadow-md); border-color: var(--pg-border); }
+.pg-asset__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--pg-surface-2);
+  color: var(--pg-ink);
+  font-size: 22px;
+}
+.pg-asset__body { flex: 1 1 auto; min-width: 0; }
+.pg-asset__body strong { display: block; font-size: 16px; font-weight: 700; color: var(--pg-ink); line-height: 1.35; }
+.pg-asset__body span { display: block; margin-top: 2px; font-size: 14px; color: var(--pg-muted); }
+.pg-asset__kind {
+  display: inline-block;
+  margin-top: 7px;
+  padding: 2px 9px;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-surface-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pg-faint);
+}
+.pg-asset__go { flex: 0 0 auto; font-size: 20px; color: var(--pg-faint); transition: color var(--pg-dur) var(--pg-ease), transform var(--pg-dur) var(--pg-ease); }
+.pg-asset:hover .pg-asset__go { color: var(--pg-ink); transform: translateX(2px); }
+
+/* ---- Empty state ---- */
+.pg-empty {
+  padding: clamp(30px, 5vw, 56px) var(--pg-gap);
+  border-radius: var(--pg-radius-lg);
+  border: 1px dashed var(--pg-border);
+  text-align: center;
+}
+.pg-empty__icon { font-size: 30px; color: var(--pg-faint); margin-bottom: 12px; }
+.pg-empty h3 { font-size: var(--pg-h3); margin-bottom: 6px; }
+.pg-empty p { max-width: 42ch; margin: 0 auto; font-size: 15.5px; }
+
+/* ---- Section-internal subheading ---- */
+.pg-subhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: var(--pg-gap-lg) 0 var(--pg-gap-sm);
+}
+.pg-subhead:first-child { margin-top: 0; }
+.pg-subhead h3 { font-size: var(--pg-h3); }
+.pg-subhead span { font-size: var(--pg-micro); font-weight: 600; color: var(--pg-faint); white-space: nowrap; }
+
+/* -----------------------------------------------------------------------
+   12. FOOTER
+   -------------------------------------------------------------------- */
+.pg-foot {
+  padding: var(--pg-gap-lg) 0 var(--pg-gap-lg);
+  border-top: 1px solid var(--pg-border-soft);
+  text-align: center;
+}
+.pg-foot__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pg-ink);
+}
+.pg-foot__back:hover { opacity: 0.62; }
+.pg-foot__legal { margin-top: 8px; font-size: var(--pg-micro); color: var(--pg-faint); }
+
+/* -----------------------------------------------------------------------
+   13. QUICK-ACTION DOCK
+   Phone: bottom-right, riding above the tab bar. Desktop: same corner,
+   clear of the rail. One toggle that fans out a short menu — never a
+   permanent row of buttons competing with the hero's resume CTA.
+   -------------------------------------------------------------------- */
+.pg-dock {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--pg-tabbar-h) + var(--pg-safe-b) + 16px);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+@media (min-width: 1080px) { .pg-dock { bottom: max(24px, env(safe-area-inset-bottom, 0px)); } }
+
+.pg-dock__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--pg-ink);
+  color: #ffffff;
+  font-size: 21px;
+  box-shadow: var(--pg-shadow-lg);
+  transition: transform var(--pg-dur) var(--pg-ease), background-color var(--pg-dur) var(--pg-ease);
+}
+.pg-dock__toggle:hover { background: var(--pg-ink-hover); transform: scale(1.05); }
+.pg-dock__toggle:active { transform: scale(0.95); }
+.pg-dock__icon-close { display: none; }
+.pg-dock.is-open .pg-dock__icon-open { display: none; }
+.pg-dock.is-open .pg-dock__icon-close { display: block; }
+
+.pg-dock__menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.96);
+  transform-origin: bottom right;
+  transition: opacity var(--pg-dur) var(--pg-ease), transform var(--pg-dur) var(--pg-ease), visibility var(--pg-dur);
+}
+.pg-dock.is-open .pg-dock__menu { opacity: 1; visibility: visible; transform: none; }
+
+.pg-dock__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 18px;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-surface);
+  border: 1px solid var(--pg-border-soft);
+  box-shadow: var(--pg-shadow-md);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--pg-ink);
+  white-space: nowrap;
+  transition: background-color var(--pg-dur-fast) var(--pg-ease), transform var(--pg-dur-fast) var(--pg-ease);
+}
+.pg-dock__item:hover { background: var(--pg-surface-2); transform: translateX(-2px); }
+.pg-dock__item svg { font-size: 17px; color: var(--pg-muted); }
+
+/* -----------------------------------------------------------------------
+   14. MOBILE TAB BAR + BOTTOM SHEET
+   -------------------------------------------------------------------- */
+.pg-tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 65;
+  display: flex;
+  align-items: stretch;
+  height: calc(var(--pg-tabbar-h) + var(--pg-safe-b));
+  padding-bottom: var(--pg-safe-b);
+  background: rgba(250, 250, 249, 0.9);
+  border-top: 1px solid var(--pg-border-soft);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pg-tabbar { background: rgba(250, 250, 249, 0.74); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); }
+}
+@media (min-width: 1080px) { .pg-tabbar { display: none !important; } }
+
+.pg-tab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--pg-faint);
+  transition: color var(--pg-dur-fast) var(--pg-ease);
+}
+.pg-tab svg { font-size: 21px; transition: transform var(--pg-dur) var(--pg-ease); }
+.pg-tab.is-active { color: var(--pg-ink); }
+.pg-tab.is-active svg { transform: translateY(-1px) scale(1.06); }
+.pg-tab__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pg-sheet { position: fixed; inset: 0; z-index: 90; visibility: hidden; }
+.pg-sheet.is-open { visibility: visible; }
+.pg-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 12, 11, 0.42);
+  opacity: 0;
+  transition: opacity var(--pg-dur) var(--pg-ease);
+}
+.pg-sheet.is-open .pg-sheet__scrim { opacity: 1; }
+
+.pg-sheet__panel {
+  position: absolute;
+  inset: auto 0 0 0;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding-top: 8px;
+  padding-right: max(var(--pg-shell-x), env(safe-area-inset-right, 0px));
+  padding-bottom: calc(20px + var(--pg-safe-b));
+  padding-left: max(var(--pg-shell-x), env(safe-area-inset-left, 0px));
+  background: var(--pg-surface);
+  border-radius: var(--pg-radius-xl) var(--pg-radius-xl) 0 0;
+  box-shadow: var(--pg-shadow-xl);
+  transform: translateY(100%);
+  transition: transform var(--pg-dur-slow) var(--pg-ease-soft);
+}
+.pg-sheet.is-open .pg-sheet__panel { transform: none; }
+
+.pg-sheet__grip { width: 40px; height: 4px; margin: 6px auto 12px; border-radius: var(--pg-radius-pill); background: var(--pg-border); }
+.pg-sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.pg-sheet__head h2 { font-size: 19px; }
+.pg-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pg-surface-2);
+  color: var(--pg-ink);
+  font-size: 17px;
+}
+.pg-sheet__list { display: flex; flex-direction: column; gap: 2px; }
+.pg-sheet__list .pg-navitem { min-height: 54px; font-size: 16px; }
+
+/* -----------------------------------------------------------------------
+   15. PREVIEW BAR (admins only — injected by program.js)
+   -------------------------------------------------------------------- */
+.pg-preview {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px max(16px, env(safe-area-inset-left, 0px)) calc(10px + var(--pg-safe-b));
+  background: var(--pg-ink);
+  color: #ffffff;
+  font-size: 13.5px;
+}
+.pg-preview a { color: #ffffff; text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
+.pg-preview strong { font-weight: 700; }
+/* The preview bar takes the tab bar's slot rather than stacking on it —
+   two fixed bars would eat a third of a phone screen. */
+body.has-preview .pg-tabbar { bottom: 52px; }
+body.has-preview .pg-dock { bottom: calc(var(--pg-tabbar-h) + var(--pg-safe-b) + 68px); }
+@media (min-width: 1080px) { body.has-preview .pg-dock { bottom: 76px; } }
+
+/* -----------------------------------------------------------------------
+   15b. ELEMENT NORMALISERS
+   The controller builds cards and tiles out of <button>/<a> (so every one
+   of them is a real, focusable, keyboard-operable control rather than a
+   div with a click handler) and fills them with <span>s (the only legal
+   children of a button). These rules give those elements the block layout
+   the components above assume.
+   -------------------------------------------------------------------- */
+.pg-card--link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+}
+.pg-card--link .pg-asset__icon { margin-bottom: 14px; }
+.pg-card--link p { font-size: 14.5px; }
+.pg-card > .pg-meter { margin-top: 16px; }
+.pg-card > .pg-btn { margin-top: 18px; }
+.pg-card > .pg-check,
+.pg-timeline__item > .pg-check { margin-top: 12px; margin-left: -16px; }
+
+.pg-tile { text-align: left; }
+.pg-tile__frame { display: block; }
+.pg-asset { width: 100%; text-align: left; }
+.pg-asset__body { display: block; }
+.pg-ex__media { display: block; }
+
+/* The week summary is title | count | chevron; only the title flexes. */
+.pg-acc > summary > span:first-child { flex: 1 1 auto; min-width: 0; }
+
+/* Body scroll lock while the sheet is open — without it the page behind
+   scrolls under the customer's thumb on iOS. */
+body.pg-sheet-open { overflow: hidden; }
+
+/* "Continue" landing on an item off screen: it scrolls into view, then
+   says so. Outline rather than a background change, so a card that is
+   already tinted (a completed day) still reads as flashing. */
+.is-flash { animation: pgFlash 1.6s var(--pg-ease) 1; border-radius: var(--pg-radius); }
+@keyframes pgFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
+  18% { box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.16); }
+  70% { box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.16); }
+}
+
+/* -----------------------------------------------------------------------
+   16. MOTION
+   Scroll reveal is opt-in per element via [data-reveal] and only armed
+   when JS is present (html.pg-js, set by program-boot.js before paint),
+   so the page degrades to fully visible rather than blank.
+   -------------------------------------------------------------------- */
+.pg-js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity var(--pg-dur-slow) var(--pg-ease-soft), transform var(--pg-dur-slow) var(--pg-ease-soft);
+}
+.pg-js [data-reveal].is-revealed { opacity: 1; transform: none; }
+
+/* Honour the OS setting. Everything above degrades to an instant state
+   change; nothing depends on a transition having run to be usable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pg-js [data-reveal] { opacity: 1; transform: none; }
+  .pg-hero__art { transform: none !important; }
 }

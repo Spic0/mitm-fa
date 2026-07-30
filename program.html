@@ -3,200 +3,294 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#fafaf9">
     <title data-brand-title="{brand} - Program">Fitness Agency - Program</title>
     <!-- description/canonical/OpenGraph/Twitter/robots, injected server-side per route — see server/src/routes/pages.js -> applyStaticSeo. -->
     <!--PAGE_SEO-->
-    <!-- Favicon img -->
     <link rel="shortcut icon" href="/assets/images/favicon.png" data-brand-favicon>
-    <!-- Bootstarp min css -->
-    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
-    <!-- All min css -->
-    <link rel="stylesheet" href="/assets/css/all.min.css">
-    <!-- Swiper bundle min css -->
-    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
-         select-widget styling only -- not needed for first paint -- loaded
-         as rel="preload" so they can't block rendering; assets/js/css-
-         preload-swap.js flips them to active stylesheets once the DOM is
-         parsed. animate.css stays render-blocking: the .wow scroll-reveal
-         system depends on its initial opacity:0 state site-wide, and
-         deferring it risks a visible flash/flicker. -->
-    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
-    <!-- Magnigic popup css -->
-    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
-    <!-- Animate css -->
-    <link rel="stylesheet" href="/assets/css/animate.css">
-    <!-- Nice select css -->
-    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
-    <noscript>
-      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
-      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
-      <link rel="stylesheet" href="/assets/css/nice-select.css">
-    </noscript>
-    <!-- Style css -->
-    <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/program.css">
-    <link rel="stylesheet" href="/assets/css/program-viewer.css">
+
+    <!-- Deliberately NOT loading bootstrap/all.min/animate/swiper/magnific/
+         nice-select the way the storefront pages do. This is the room a
+         customer opens after paying, on a phone, usually on mobile data —
+         it cannot spend seven render-blocking requests before it paints.
+         Same call, and same reasoning, as private/presentation.html.
+
+         Standalone is NOT a second design system: program.css declares the
+         same Inter @font-face as style.css and re-derives every token from
+         it. See the header comment in program.css for the mapping. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-400-normal.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-600-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/css/program.css?v=20260730">
+    <link rel="stylesheet" href="/assets/css/program-media.css?v=20260730">
+    <link rel="stylesheet" href="/assets/css/program-viewer.css?v=20260730">
+
+    <!-- Render-blocking on purpose, and the only thing here that is: it sets
+         html.pg-js, which arms the scroll-reveal system's initial hidden
+         state. Deferring it would let the page paint fully visible for a
+         frame and then blank itself; leaving the hidden state unconditional
+         would mean a blank page if JS never runs. A ~90-byte same-origin
+         file is the cheapest correct answer. (A CSP-legal inline script is
+         not available — see the strict policy in server/src/index.js.) -->
+    <script src="/assets/js/program-boot.js"></script>
 </head>
 
-<body>
+<body class="pg-body">
 
-    <!--SHARED_HEADER-->
+    <!-- ================================================================
+         APP BAR
+         Slim, sticky, and the whole of this page's chrome. The storefront's
+         mega-menu header is deliberately absent: this route is the product
+         a customer already paid for, not a place to sell them another one,
+         and a 3-deep shop menu on top of a sticky section rail is exactly
+         the "webpage" feeling this page is meant to lose. The two things a
+         customer actually needs from here — back to the library, and their
+         account — are both present.
+         ================================================================= -->
+    <header class="pg-appbar" id="pgAppbar">
+        <a class="pg-appbar__back" href="/my-library" aria-label="Back to my library">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>
+            <span>Library</span>
+        </a>
 
-    <!-- Cart Drawer -->
-    <div class="cart-drawer" id="cartDrawer">
-        <div class="cart-drawer__head">
-            <h5>Shopping Cart (<span id="cartDrawerCount">0</span>)</h5>
-            <button class="cart-drawer__close" id="cartClose" aria-label="Close cart">
-                <i class="fa-solid fa-xmark"></i>
+        <!-- Fades in only once the hero title has scrolled past, so the bar
+             is empty and calm at the top of the page. -->
+        <div class="pg-appbar__title" id="pgAppbarTitle" aria-hidden="true"></div>
+
+        <div class="pg-appbar__right">
+            <div class="pg-appbar__ring" id="pgAppbarRing" title="Program progress">
+                <svg viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+                    <circle class="pg-ring__track" cx="18" cy="18" r="15.5"/>
+                    <circle class="pg-ring__fill" cx="18" cy="18" r="15.5" id="pgAppbarRingFill"/>
+                </svg>
+                <span id="pgAppbarRingLabel">0%</span>
+            </div>
+            <a class="pg-appbar__logo" href="/" aria-label="Home">
+                <img src="/assets/images/logo/logo.svg" alt="Fitness Agency" data-brand-logo>
+            </a>
+        </div>
+    </header>
+
+    <!-- ================================================================
+         BOOT / LOCKED STATES
+         ================================================================= -->
+    <div class="pg-boot" id="pgBoot" role="status" aria-live="polite">
+        <div class="pg-boot__cover"></div>
+        <div class="pg-boot__lines">
+            <span class="pg-boot__line pg-boot__line--sm"></span>
+            <span class="pg-boot__line pg-boot__line--lg"></span>
+            <span class="pg-boot__line"></span>
+        </div>
+        <span class="u-visually-hidden">Loading your program</span>
+    </div>
+
+    <div class="pg-locked u-hidden" id="pgLocked">
+        <div class="pg-locked__inner">
+            <div class="pg-locked__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M6 10V8a6 6 0 1112 0v2"/><rect x="4" y="10" width="16" height="11" rx="2.5"/></svg>
+            </div>
+            <h1>This program isn't in your library</h1>
+            <p>Buy it to unlock it here, or sign in with the account you bought it on.</p>
+            <div class="pg-locked__actions">
+                <a href="/shop" class="pg-btn pg-btn--primary"><span>Browse programs</span></a>
+                <a href="/login" class="pg-btn pg-btn--ghost"><span>Sign in</span></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         APP SHELL
+         Two columns from 1080px up (sticky rail + content), one column
+         below it with the rail's job handed to the bottom bar + sheet.
+         Authored as two layouts rather than one scaled — same approach
+         presentation.css takes.
+         ================================================================= -->
+    <div class="pg-shell u-hidden" id="pgShell">
+
+        <!-- ---------------------------------------------------------- rail -->
+        <aside class="pg-rail" id="pgRail" aria-label="Program sections">
+            <a class="pg-rail__product" href="#top">
+                <span class="pg-rail__thumb"><img id="pgRailThumb" alt="" decoding="async"></span>
+                <span class="pg-rail__meta">
+                    <strong id="pgRailTitle"></strong>
+                    <span id="pgRailCreator"></span>
+                </span>
+            </a>
+
+            <div class="pg-rail__progress">
+                <div class="pg-rail__progress-head">
+                    <span id="pgRailPct">0% complete</span>
+                    <span id="pgRailCount"></span>
+                </div>
+                <div class="pg-meter"><i id="pgRailMeter"></i></div>
+            </div>
+
+            <nav class="pg-rail__nav" id="pgRailNav"></nav>
+
+            <button type="button" class="pg-btn pg-btn--primary pg-rail__cta" id="pgRailContinue">
+                <span id="pgRailContinueLabel">Continue</span>
             </button>
-        </div>
-        <div class="cart-drawer__body" id="cartItems">
-            <p class="cart-empty-msg">Your cart is empty.</p>
-        </div>
-        <div class="cart-drawer__foot" id="cartFooter">
-            <div class="cart-subtotal">
-                <span>Subtotal:</span>
-                <strong id="cartTotal">$0.00</strong>
-            </div>
-            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
-            <div class="cart-drawer__payments">
-                <span class="card-brand visa">VISA</span>
-                <span class="card-brand mc">MC</span>
-                <span class="card-brand amex">AMEX</span>
-                <span class="card-brand paypal">PayPal</span>
-                <span class="card-brand applepay">Pay</span>
-            </div>
-        </div>
-    </div>
-    <div class="cart-overlay" id="cartOverlay"></div>
-    <!-- Cart Drawer end -->
+        </aside>
 
-    <main>
-        <!-- Page banner area start here -->
-        <section class="page-banner bg-image pt-130 pb-130">
-            <div class="container">
-                <h2 class="wow fadeInUp mb-15" data-wow-duration="1.1s" data-wow-delay=".1s" id="programBannerTitle">Loading&hellip;</h2>
-                <div class="breadcrumb-list wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
-                    <a href="/" class="primary-hover"><i class="fa-solid fa-house me-1"></i> Home <i class="fa-regular text-white fa-angle-right"></i></a>
-                    <a href="/my-library" class="primary-hover">My Library <i class="fa-regular text-white fa-angle-right"></i></a>
-                    <span>Program</span>
-                </div>
-            </div>
-        </section>
-        <!-- Page banner area end here -->
+        <!-- ------------------------------------------------------- content -->
+        <main class="pg-main" id="pgMain">
+            <span id="top" class="pg-anchor" aria-hidden="true"></span>
 
-        <section class="pt-130 pb-130">
-            <div class="container">
-
-                <!-- Shown while checking access / if not entitled -->
-                <div id="programLocked" class="program-locked u-hidden">
-                    <h3 class="mb-15">You don't have access to this program</h3>
-                    <p class="mb-30 u-text-body">Purchase this program to unlock it inside your library, or sign in if you already own it.</p>
-                    <a href="/shop" class="btn-one"><span>Browse Programs</span></a>
-                </div>
-
-                <!-- Shown once access is confirmed -->
-                <div id="programContent" class="u-hidden">
-                    <div class="program-hero mb-40">
-                        <img id="programImage" src="/assets/images/product/product-image1.png" alt="">
-                        <div>
-                            <h2 class="mb-10" id="programTitle"></h2>
-                            <div class="program-meta">
-                                <span id="programCreator" class="u-hidden"><i class="fa-solid fa-user"></i><span></span></span>
-                                <span id="programCategory" class="u-hidden"><i class="fa-solid fa-tag"></i><span></span></span>
-                                <span id="programDifficulty" class="u-hidden"><i class="fa-solid fa-signal"></i><span></span></span>
-                                <span id="programDuration" class="u-hidden"><i class="fa-regular fa-calendar"></i><span></span></span>
-                            </div>
-                            <!-- Primary way into the program. The tabbed panels
-                                 below remain as the desktop/no-JS fallback and
-                                 stay in sync from the same payload. -->
-                            <button type="button" class="btn-one mt-20" id="openHandbook">
-                                <span><i class="fa-solid fa-book-open me-2"></i>Open Handbook</span>
-                            </button>
-                        </div>
+            <!-- =====================================================
+                 HERO
+                 The cover is the page's first statement, not a
+                 thumbnail beside a text block: full-bleed on a phone,
+                 a cinematic 21:9 stage on desktop, with the copy laid
+                 over a scrim rather than beside it.
+                 ===================================================== -->
+            <section class="pg-hero" id="pgHero">
+                <div class="pg-hero__stage">
+                    <div class="pg-hero__art" id="pgHeroArt">
+                        <img id="pgHeroImage" alt="" decoding="async" fetchpriority="high">
                     </div>
+                    <div class="pg-hero__scrim" aria-hidden="true"></div>
 
-                    <ul class="program-tabs" id="programTabs">
-                        <li><a data-tab="overview" class="active">Overview</a></li>
-                        <li><a data-tab="training">Training Plan</a></li>
-                        <li><a data-tab="nutrition">Nutrition Plan</a></li>
-                        <li><a data-tab="faq">FAQ</a></li>
-                        <li><a data-tab="bonus">Bonus Content</a></li>
-                    </ul>
-
-                    <div class="program-panel active" id="panel-overview">
-                        <p class="u-pre-line" id="programOverview"></p>
-                    </div>
-
-                    <div class="program-panel" id="panel-training">
-                        <p class="u-pre-line" id="trainingNotes"></p>
-                        <div id="trainingWeeks"></div>
-                        <p id="trainingEmpty" class="u-text-light u-hidden">No training content has been added to this program yet.</p>
-                    </div>
-
-                    <div class="program-panel" id="panel-nutrition">
-                        <p class="u-pre-line" id="nutritionNotes"></p>
-                        <div id="nutritionMeals"></div>
-                        <p id="nutritionEmpty" class="u-text-light u-hidden">No nutrition content has been added to this program yet.</p>
-                    </div>
-
-                    <div class="program-panel" id="panel-faq">
-                        <div id="faqList"></div>
-                        <p id="faqEmpty" class="u-text-light u-hidden">No FAQs have been added yet.</p>
-                    </div>
-
-                    <div class="program-panel" id="panel-bonus">
-                        <p class="u-pre-line" id="bonusNotes"></p>
-                        <div id="resourceList"></div>
-                        <p id="bonusEmpty" class="u-text-light u-hidden">No bonus resources for this program.</p>
+                    <div class="pg-hero__body">
+                        <p class="pg-hero__eyebrow" id="pgHeroEyebrow"></p>
+                        <h1 class="pg-hero__title" id="pgHeroTitle"></h1>
+                        <p class="pg-hero__creator u-hidden" id="pgHeroCreator"></p>
+                        <ul class="pg-hero__chips" id="pgHeroChips"></ul>
                     </div>
                 </div>
 
-            </div>
-        </section>
-    </main>
+                <!-- The bar under the cover: the single most important
+                     control on the page (resume), the progress it resumes
+                     into, and the secondary ways in. -->
+                <div class="pg-hero__deck">
+                    <div class="pg-hero__resume">
+                        <button type="button" class="pg-btn pg-btn--primary pg-btn--lg" id="pgContinue">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="pg-btn__icon"><path d="M8 5.5v13l11-6.5z"/></svg>
+                            <span id="pgContinueLabel">Start the program</span>
+                        </button>
+                        <p class="pg-hero__resume-sub" id="pgContinueSub"></p>
+                    </div>
 
-    <!-- Footer area start here -->
-    <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
-        <div class="container">
-            <div class="footer__copy-text pt-50 pb-50">
-    <a href="/" class="logo d-block">
-                    <img src="/assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+                    <div class="pg-hero__stats" id="pgHeroStats"></div>
+                </div>
+            </section>
+
+            <!-- Section panels. Every one is present in the markup so the
+                 rail and the panels can never drift apart; program.js hides
+                 the ones this product has no content for. -->
+            <div class="pg-panels" id="pgPanels">
+                <section class="pg-panel is-active" id="pgPanel-overview" data-section="overview" aria-labelledby="pgPanelTitle-overview">
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 01</p>
+                        <h2 id="pgPanelTitle-overview">Overview</h2>
+                    </header>
+                    <div id="pgOverview"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-program" data-section="program" aria-labelledby="pgPanelTitle-program" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 02</p>
+                        <h2 id="pgPanelTitle-program">Program</h2>
+                        <div class="pg-segmented" id="pgProgramSwitch" role="tablist" aria-label="Program view"></div>
+                    </header>
+                    <div id="pgProgram"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-videos" data-section="videos" aria-labelledby="pgPanelTitle-videos" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 03</p>
+                        <h2 id="pgPanelTitle-videos">Videos</h2>
+                    </header>
+                    <div id="pgVideos"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-handbook" data-section="handbook" aria-labelledby="pgPanelTitle-handbook" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 04</p>
+                        <h2 id="pgPanelTitle-handbook">Handbook</h2>
+                    </header>
+                    <div id="pgHandbook"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-downloads" data-section="downloads" aria-labelledby="pgPanelTitle-downloads" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 05</p>
+                        <h2 id="pgPanelTitle-downloads">Downloads</h2>
+                    </header>
+                    <div id="pgDownloads"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-updates" data-section="updates" aria-labelledby="pgPanelTitle-updates" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 06</p>
+                        <h2 id="pgPanelTitle-updates">Updates</h2>
+                    </header>
+                    <div id="pgUpdates"></div>
+                </section>
+
+                <section class="pg-panel" id="pgPanel-community" data-section="community" aria-labelledby="pgPanelTitle-community" hidden>
+                    <header class="pg-panel__head">
+                        <p class="pg-panel__eyebrow">Section 07</p>
+                        <h2 id="pgPanelTitle-community">Community</h2>
+                    </header>
+                    <div id="pgCommunity"></div>
+                </section>
+            </div>
+
+            <footer class="pg-foot">
+                <a href="/my-library" class="pg-foot__back">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>
+                    All my programs
                 </a>
-</div>
-<div class="footer__bottombar">
-    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="#0" class="primary-hover" data-brand-name>Fitness Agency</a> All Rights Reserved</p>
-    <div class="footer__bottombar-right">
-        <div class="footer__legal">
-            <a href="/coming-soon">Terms and Conditions</a>
-            <a href="/coming-soon">Terms of Use</a>
-            <a href="/coming-soon">Privacy Notice</a>
-            <a href="/coming-soon">Cookie Policy</a>
+                <p class="pg-foot__legal">&copy; 2026 <span data-brand-name>Fitness Agency</span>. This program is licensed to you personally.</p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- ================================================================
+         QUICK ACTIONS
+         A single floating affordance rather than a row of buttons: on a
+         phone a persistent action row would eat the bottom third of a
+         6.1" screen next to the tab bar.
+         ================================================================= -->
+    <div class="pg-dock u-hidden" id="pgDock">
+        <div class="pg-dock__menu" id="pgDockMenu" role="menu" aria-hidden="true"></div>
+        <button type="button" class="pg-dock__toggle" id="pgDockToggle" aria-expanded="false" aria-label="Quick actions">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="pg-dock__icon-open"><path d="M13 2L4.5 13.5H11l-.5 8.5L19 10.5h-6.5z"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="pg-dock__icon-close"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+    </div>
+
+    <!-- ================================================================
+         MOBILE NAVIGATION
+         Four primary sections always reachable in one tap, everything
+         else behind a bottom sheet — never a horizontal strip of tiny
+         tabs the customer has to scroll to discover.
+         ================================================================= -->
+    <nav class="pg-tabbar u-hidden" id="pgTabbar" aria-label="Program sections"></nav>
+
+    <div class="pg-sheet" id="pgSheet" role="dialog" aria-modal="true" aria-label="All sections" aria-hidden="true">
+        <div class="pg-sheet__scrim" id="pgSheetScrim"></div>
+        <div class="pg-sheet__panel">
+            <div class="pg-sheet__grip" aria-hidden="true"></div>
+            <div class="pg-sheet__head">
+                <h2>Jump to</h2>
+                <button type="button" class="pg-sheet__close" id="pgSheetClose" aria-label="Close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <div class="pg-sheet__list" id="pgSheetList"></div>
         </div>
     </div>
-</div>
-        </div>
-    </footer>
-    <!-- Footer area end here -->
 
-    <!-- Jquery 3. 7. 1 Min Js -->
-    <script src="/assets/js/css-preload-swap.js" defer></script>
-    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
-    <!-- Bootstrap min Js -->
-    <script src="/assets/js/bootstrap.min.js" defer></script>
-    <!-- Script Js -->
+    <!-- ?v= is a manual cache-bust. JS/CSS are served with max-age=3600 and
+         the app has no build-time hashing, so without this a returning
+         visitor gets this (no-cache) HTML alongside hour-stale scripts.
+         Bump the stamp whenever any of these files change. -->
     <script src="/assets/js/api.js" defer></script>
-    <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
-    <script src="/assets/js/nav-featured.js" defer></script>
-    <script src="/assets/js/program-viewer.js" defer></script>
-    <!-- ?v= is a manual cache-bust. JS/CSS are served with max-age=3600 and the
-         app has no build-time hashing, so without this a returning visitor gets
-         this (no-cache) HTML alongside an hour-stale program.js and the Open
-         Handbook button does nothing. Bump the stamp whenever this file changes. -->
-    <script src="/assets/js/program.js?v=20260721" defer></script>
+    <script src="/assets/js/program-media.js?v=20260730" defer></script>
+    <script src="/assets/js/program-viewer.js?v=20260730" defer></script>
+    <script src="/assets/js/program.js?v=20260730" defer></script>
 </body>
 
 </html>

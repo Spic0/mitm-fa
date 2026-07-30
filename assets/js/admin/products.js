@@ -7,8 +7,12 @@ window.AdminPanels.products = {
     var searchDebounce;
 
     function statusBadge(status) {
-      var map = { published: "success", draft: "warning", archived: "neutral" };
-      return '<span class="a-badge a-badge-' + (map[status] || "neutral") + '">' + status + "</span>";
+      var map = { published: "success", draft: "warning", archived: "neutral", presentation: "info" };
+      // "presentation" is spelled out, because the distinction that matters
+      // about these rows is not their state but that they are not for sale
+      // and never reach the store.
+      var label = status === "presentation" ? "showcase only" : status;
+      return '<span class="a-badge a-badge-' + (map[status] || "neutral") + '">' + label + "</span>";
     }
 
     // Shows only the leaf name (last segment of "Browse Athletes / Football /
@@ -37,7 +41,12 @@ window.AdminPanels.products = {
         "<td>" + window.AdminUI.formatDate(p.createdAt) + "</td>" +
         '<td><div style="display:flex;gap:6px;flex-wrap:wrap;">' +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-edit>Edit</button>' +
-        '<a class="a-btn a-btn-secondary a-btn-sm" href="/my-library/' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener" title="Open the program page exactly as a customer sees it">Preview</a>' +
+        // A presentation product has no customer-facing library page — it is
+        // never bought, so nobody ever has an entitlement to it. Its preview
+        // is the showcase page a deck links to.
+        (p.status === "presentation"
+          ? '<a class="a-btn a-btn-secondary a-btn-sm" href="/showcase/' + encodeURIComponent(p.slug) + '" target="_blank" rel="noopener" title="Open the showcase page exactly as a presentation viewer sees it">Preview</a>'
+          : '<a class="a-btn a-btn-secondary a-btn-sm" href="/my-library/' + encodeURIComponent(p.id) + '" target="_blank" rel="noopener" title="Open the program page exactly as a customer sees it">Preview</a>') +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-duplicate>Duplicate</button>' +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-archive ' + (p.status === "archived" ? "disabled" : "") + ">Archive</button>" +
         '<button class="a-btn a-btn-secondary a-btn-sm" data-delete style="color:var(--a-danger);">Delete</button>' +

@@ -132,19 +132,27 @@ function stripHiddenSections(html, sections) {
 }
 
 // ---------------------------------------------------------------------
-// The featured product
+// The presentation product
 //
 // The deck's two "View Product" buttons and the showcase's dressing all
 // point at one product the admin chose in the builder. It is stored as an
-// id and resolved here, on every render, for two reasons: a slug or a URL
-// frozen into the presentation record would rot the first time the product
-// was renamed, and a draft/archived product must stop being advertised the
-// moment it stops being for sale — not whenever someone remembers to edit
-// the deck.
+// id and resolved here, on every render, so that swapping the product in
+// the builder instantly re-points the hero button, the Product Showcase
+// section and both device previews with nothing to rebuild — and so a
+// renamed or withdrawn product can't leave a deck pointing at a 404.
+//
+// It resolves ONLY status "presentation". A deck must never send a viewer
+// to a paid storefront product: the point of the deck is to demonstrate
+// what the platform does, and dropping a prospect onto a checkout page
+// mid-meeting is both off-message and an unintended sale. Showcase
+// products are a separate, unsellable class (see PRODUCT_STATUSES in
+// routes/admin/products.js), rendered by /showcase/:slug below.
 //
 // A miss is not an error. Returning null simply strips the buttons (see the
 // IFPRODUCT markers below), which is the same state as a deck where no
 // product was picked at all.
+const PRESENTATION_STATUS = "presentation";
+
 // Product images are stored root-relative but WITHOUT a leading slash
 // ("assets/images/product/uploads/x.webp"), which resolves correctly from
 // "/" and from "/shop" but not from "/presentation/:slug" — a deck two path
@@ -161,7 +169,7 @@ async function loadFeaturedProduct(productId) {
   if (!productId) return null;
   try {
     return await prisma.product.findFirst({
-      where: { id: String(productId), status: "published" },
+      where: { id: String(productId), status: PRESENTATION_STATUS },
       select: {
         slug: true,
         name: true,
@@ -214,10 +222,15 @@ function renderDeck(html, { presentation, content, visitId, product }) {
   // it sits above the fold in the hero slideshow. When there is no product,
   // every slot below resolves to neutral copy and the slideshow's own drawn
   // panels carry the section on their own.
-  const productUrl = product ? `/program/${encodeURIComponent(product.slug)}` : "";
+  // /showcase, never /program. The latter is the paid storefront page and
+  // would 404 for a presentation product anyway (it filters on "published"),
+  // but the point is that this button is not a route to a checkout.
+  const productUrl = product ? `/showcase/${encodeURIComponent(product.slug)}` : "";
   const productImage = product ? productImageSrc(product.imageUrl || product.thumbnailUrl) : "";
+  // No price. A showcase product is not for sale, and printing a dollar
+  // figure next to it in the deck would imply it is.
   const productMeta = product
-    ? [product.creator, `$${(product.priceCents / 100).toFixed(2)}`].filter(Boolean).join(" · ")
+    ? [product.creator, "Presentation material"].filter(Boolean).join(" · ")
     : "";
 
   let out = stripHiddenSections(html, content.sections);
@@ -250,6 +263,165 @@ function renderDeck(html, { presentation, content, visitId, product }) {
     .replace(/<!--PRES_CTA_DEMO-->/g, escapeHtml(safeUrl(content.ctaDemoUrl)))
     .replace(/<!--PRES_BOOT-->/g, boot);
 }
+
+// ---------------------------------------------------------------------
+// /showcase/:slug — the presentation product page
+//
+// Where the deck's "View Product" buttons land. It exists so a showcase
+// product can have a real product page — images, GIFs, video, copy —
+// without that page being a storefront listing.
+//
+// It is built as its own server-rendered document rather than by reusing
+// shop-single.html, and that is a deliberate safety property, not just a
+// styling choice:
+//
+//   * shop-single.html carries the add-to-cart control and the cart JS.
+//     Reusing it would mean shipping a buy button on a page for something
+//     that must not be purchasable, and relying on CSS to hide it.
+//   * its client script reads GET /api/products/:idOrSlug, which filters
+//     on status "published" — so it would 404 against a showcase product
+//     and the page would render empty anyway.
+//
+// Writing the markup here means there is no cart code on the page at all,
+// and the page shares the deck's stylesheet so it reads as part of the
+// same ecosystem the viewer just came from.
+// ---------------------------------------------------------------------
+
+// A showcase gallery item. GIFs are just images as far as the browser is
+// concerned; video needs a real <video>, muted+loop+playsinline so a
+// demonstration clip behaves like the GIF it is replacing rather than
+// hijacking the page with sound.
+function renderShowcaseMedia(media) {
+  const src = productImageSrc(media.url);
+  if (!src) return "";
+  const alt = escapeHtml(media.alt || "");
+  if (media.type === "video") {
+    return (
+      `<figure class="shw-media shw-media--video">` +
+      `<video src="${escapeHtml(src)}" muted loop playsinline autoplay preload="metadata"` +
+      `${alt ? ` aria-label="${alt}"` : ""}></video>` +
+      `</figure>`
+    );
+  }
+  return (
+    `<figure class="shw-media">` +
+    `<img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" decoding="async">` +
+    `</figure>`
+  );
+}
+
+function renderShowcasePage(product) {
+  const cover = productImageSrc(product.imageUrl || product.thumbnailUrl);
+  const meta = [
+    product.creator,
+    product.difficulty,
+    product.durationWeeks ? `${product.durationWeeks} weeks` : null,
+  ]
+    .filter(Boolean)
+    .map((s) => escapeHtml(s))
+    .join(" · ");
+
+  const gallery = (product.media || []).map(renderShowcaseMedia).filter(Boolean).join("\n");
+
+  // Paragraph breaks in the long-form copy are preserved; everything is
+  // escaped first, so the split happens on already-safe text.
+  const paragraphs = (text) =>
+    String(text || "")
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p class="shw-prose__p">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+      .join("");
+
+  const resources = (product.resources || [])
+    .map(
+      (r) =>
+        `<li class="shw-list__item">` +
+        `<span class="shw-list__name">${escapeHtml(r.title || r.name || "Resource")}</span>` +
+        (r.description ? `<span class="shw-list__meta">${escapeHtml(r.description)}</span>` : "") +
+        `</li>`
+    )
+    .join("");
+
+  const faqs = (product.faqs || [])
+    .map(
+      (f) =>
+        `<div class="shw-faq">` +
+        `<h3 class="shw-faq__q">${escapeHtml(f.question)}</h3>` +
+        `<p class="shw-faq__a">${escapeHtml(f.answer)}</p>` +
+        `</div>`
+    )
+    .join("");
+
+  return (
+    `<!DOCTYPE html>\n<html lang="en">\n<head>\n` +
+    `<meta charset="UTF-8">\n` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n` +
+    `<meta name="robots" content="noindex, nofollow, noarchive">\n` +
+    `<title>${escapeHtml(product.name)} | Fitness Agency</title>\n` +
+    `<link rel="shortcut icon" href="/assets/images/favicon.png">\n` +
+    `<link rel="stylesheet" href="/assets/css/presentation.css">\n` +
+    `</head>\n<body class="pres-body shw-body">\n` +
+    `<main class="shw">\n` +
+    `<div class="pres-container">\n` +
+    // The notice comes first and is not decorative: this page looks like a
+    // product page, so it has to say immediately that it is not one.
+    `<p class="shw-flag">Presentation material · Not for sale</p>\n` +
+    `<header class="shw-head">\n` +
+    `<h1 class="shw-title">${escapeHtml(product.name)}</h1>\n` +
+    (meta ? `<p class="shw-meta">${meta}</p>\n` : "") +
+    (product.description ? `<p class="shw-lead">${escapeHtml(product.description)}</p>\n` : "") +
+    `</header>\n` +
+    (cover
+      ? `<figure class="shw-cover"><img src="${escapeHtml(cover)}" alt="" decoding="async"></figure>\n`
+      : "") +
+    (product.overview
+      ? `<section class="shw-prose">${paragraphs(product.overview)}</section>\n`
+      : "") +
+    (gallery ? `<section class="shw-gallery">${gallery}</section>\n` : "") +
+    (product.bonusNotes
+      ? `<section class="shw-prose">${paragraphs(product.bonusNotes)}</section>\n`
+      : "") +
+    (resources
+      ? `<section class="shw-block"><h2 class="shw-h2">What's included</h2>` +
+        `<ul class="shw-list">${resources}</ul></section>\n`
+      : "") +
+    (faqs ? `<section class="shw-block"><h2 class="shw-h2">Questions</h2>${faqs}</section>\n` : "") +
+    `<footer class="shw-foot">\n` +
+    `<p class="pres-footer__brand">Fitness Agency</p>\n` +
+    `<p class="pres-footer__meta">Winnipeg, Canada · Presentation material, not for distribution.</p>\n` +
+    `<p class="pres-footer__meta pres-footer__owner">Estimated 2026 by MITM HOLDING</p>\n` +
+    `</footer>\n` +
+    `</div>\n</main>\n</body>\n</html>\n`
+  );
+}
+
+pageRouter.get("/showcase/:slug", async (req, res) => {
+  // Same headers as the deck. This page is unlisted, tied to a private
+  // presentation, and must not be indexed or held by a shared cache.
+  res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+  res.setHeader("Cache-Control", "private, no-store");
+
+  let product = null;
+  try {
+    product = await prisma.product.findFirst({
+      where: { slug: String(req.params.slug), status: PRESENTATION_STATUS },
+      include: {
+        media: { orderBy: { order: "asc" } },
+        faqs: { orderBy: { order: "asc" } },
+        resources: { orderBy: { order: "asc" } },
+      },
+    });
+  } catch (err) {
+    console.error("Failed to load showcase product:", err);
+  }
+
+  // A published storefront product reaching this URL gets the same 404 as a
+  // nonexistent one. /showcase is not an alternative way to view the shop.
+  if (!product) return notFound(req, res);
+
+  res.type("html").send(renderShowcasePage(product));
+});
 
 // The lock and expiry screens reuse the deck's own stylesheet and type scale
 // rather than being bare text — this is the first thing a high-value visitor

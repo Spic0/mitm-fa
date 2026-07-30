@@ -108,7 +108,7 @@
                              render. Absent that pick the whole block is stripped
                              rather than rendered pointing nowhere. -->
                         <a class="pres-btn pres-btn--secondary pres-btn--product" href="<!--PRES_PRODUCT_URL-->"
-                            data-product-cta="hero">
+                            data-product-cta="hero" target="_blank" rel="noopener">
                             <span>View Product</span>
                             <span class="pres-btn__arrow" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h13"/><path d="M12.5 6.5 19 12l-6.5 5.5"/></svg>
@@ -561,10 +561,6 @@
                         <p class="pres-tile__desc">Episodes, documentaries and deep-dive pieces that carry the brand story.</p>
                     </li>
                     <li class="pres-tile" data-reveal>
-                        <h3 class="pres-tile__title">Product Photography</h3>
-                        <p class="pres-tile__desc">Studio and location imagery for every product, page and placement.</p>
-                    </li>
-                    <li class="pres-tile" data-reveal>
                         <h3 class="pres-tile__title">Graphic Design</h3>
                         <p class="pres-tile__desc">Covers, layouts and program artwork, consistent across the catalogue.</p>
                     </li>
@@ -825,21 +821,105 @@
             </div>
 
             <div class="pres-container">
+                <!-- The three pillars. Previously three flat glass panels with
+                     an index, a heading and a line of copy — structurally the
+                     weakest block on a deck that had since grown a bento, a
+                     value grid and a wizard around it.
+
+                     Rebuilt with the same vocabulary those use: a drawn icon,
+                     a proof figure, and the before/after that makes the claim
+                     concrete. Each card animates its own glyph on hover and on
+                     first reveal, which is the one thing the flat version had
+                     no room for. -->
                 <ul class="pres-pillars" data-reveal-group>
                     <li class="pres-pillar" data-reveal data-magnetic>
                         <span class="pres-pillar__index">01</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- Five scattered tools collapsing into one square:
+                                 the drawing IS the claim. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--a" x="6" y="6" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--b" x="29" y="6" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--c" x="6" y="29" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--d" x="29" y="29" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__core" x="17.5" y="17.5" width="13" height="13" rx="3.5"/>
+                            </svg>
+                        </span>
                         <h3 class="pres-pillar__title">Simplicity</h3>
-                        <p class="pres-pillar__desc">One platform, one team, one dashboard, instead of a stack of subscriptions to administer.</p>
+                        <p class="pres-pillar__desc">
+                            One platform, one team, one dashboard, instead of a stack of
+                            subscriptions to administer and reconcile.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Before</dt>
+                                <dd>6+ tools</dd>
+                            </div>
+                            <div>
+                                <dt>After</dt>
+                                <dd>One login</dd>
+                            </div>
+                        </dl>
                     </li>
+
                     <li class="pres-pillar" data-reveal data-magnetic>
                         <span class="pres-pillar__index">02</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- A payment landing, then three steps firing in
+                                 sequence along the track below it. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <path class="pres-pillar__track" d="M7 33h34"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--1" cx="13" cy="33" r="3.4"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--2" cx="24" cy="33" r="3.4"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--3" cx="35" cy="33" r="3.4"/>
+                                <path class="pres-pillar__bolt" d="M26 6 14 23h9l-2 11 13-18h-9z"/>
+                            </svg>
+                        </span>
                         <h3 class="pres-pillar__title">Automation</h3>
-                        <p class="pres-pillar__desc">Accounts, delivery, receipts and access are provisioned the moment a payment clears.</p>
+                        <p class="pres-pillar__desc">
+                            Accounts, delivery, receipts and access are provisioned the moment
+                            a payment clears — not the next time somebody checks.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Manual steps</dt>
+                                <dd>Zero</dd>
+                            </div>
+                            <div>
+                                <dt>Time to access</dt>
+                                <dd>Instant</dd>
+                            </div>
+                        </dl>
                     </li>
+
                     <li class="pres-pillar" data-reveal data-magnetic>
                         <span class="pres-pillar__index">03</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- Four rising columns. The tallest is filled, the
+                                 same device the campaign and progress charts
+                                 elsewhere in the deck use. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <rect class="pres-pillar__bar pres-pillar__bar--1" x="7" y="30" width="7" height="12" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--2" x="18" y="23" width="7" height="19" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--3" x="29" y="16" width="7" height="26" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--4 is-filled" x="40" y="7" width="7" height="35" rx="2"/>
+                            </svg>
+                        </span>
                         <h3 class="pres-pillar__title">Scalability</h3>
-                        <p class="pres-pillar__desc">Growth stops depending on your hours. None of the delivery work is done by hand.</p>
+                        <p class="pres-pillar__desc">
+                            Growth stops depending on your hours. None of the delivery work is
+                            done by hand, so the thousandth customer costs what the first did.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Cost per sale</dt>
+                                <dd>Flat</dd>
+                            </div>
+                            <div>
+                                <dt>Your time</dt>
+                                <dd>Unchanged</dd>
+                            </div>
+                        </dl>
                     </li>
                 </ul>
             </div>
@@ -1412,10 +1492,10 @@
                      interest goes to die. Same destination, same admin pick. -->
                 <div class="pres-stage__cta">
                     <!-- No nested IFPRODUCT here: the block is already inside
-                         one, and PRES_PRODUCT_META is never empty when a
-                         product resolved (price always exists). -->
+                         one, and PRES_PRODUCT_META always resolves to at least
+                         "Presentation material" when a product resolved. -->
                     <p class="pres-stage__cta-label">Showing <strong><!--PRES_PRODUCT_NAME--></strong> · <!--PRES_PRODUCT_META--></p>
-                    <a class="pres-btn pres-btn--primary pres-btn--product" href="<!--PRES_PRODUCT_URL-->" data-product-cta="showcase">
+                    <a class="pres-btn pres-btn--primary pres-btn--product" href="<!--PRES_PRODUCT_URL-->" data-product-cta="showcase" target="_blank" rel="noopener">
                         <span>View Product</span>
                         <span class="pres-btn__arrow" aria-hidden="true">
                             <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h13"/><path d="M12.5 6.5 19 12l-6.5 5.5"/></svg>
@@ -2262,6 +2342,11 @@
             <div class="pres-container">
                 <p class="pres-footer__brand">Fitness Agency</p>
                 <p class="pres-footer__meta">Winnipeg, Canada · Private presentation, not for distribution.</p>
+                <!-- Ownership line. Same type stack as the meta line above it,
+                     one step further back in the colour ramp — it is the last
+                     thing on the page and should read as a mark, not as a
+                     second piece of information competing with the notice. -->
+                <p class="pres-footer__meta pres-footer__owner">Estimated 2026 by MITM HOLDING</p>
             </div>
         </footer>
     </main>

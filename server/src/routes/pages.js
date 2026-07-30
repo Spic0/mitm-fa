@@ -545,6 +545,10 @@ router.get("/robots.txt", (req, res) => {
       // unguessable and never linked to, but a crawler that gets a link from
       // a pasted URL somewhere should still refuse it.
       "Disallow: /presentation",
+      // Presentation product pages. Reachable only from inside a deck, and
+      // never part of the store — they must not be indexed as if they were
+      // things you can buy.
+      "Disallow: /showcase",
       "",
       `Sitemap: ${appUrl("/sitemap.xml")}`,
       "",

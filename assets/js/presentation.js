@@ -1962,6 +1962,17 @@
       });
     }
 
+    // "View Product" opens the presentation product page in a new tab, so
+    // there is no navigation away from the deck to race — the event is
+    // recorded on click and the existing heartbeat carries it. Worth having:
+    // which of the two placements a viewer used says something about whether
+    // the hero or the showcase did the persuading.
+    slice(document.querySelectorAll("[data-product-cta]")).forEach(function (link) {
+      link.addEventListener("click", function () {
+        track.event("product_click", link.getAttribute("data-product-cta") || "");
+      });
+    });
+
     if (!form) return;
 
     function setFieldError(input, message) {

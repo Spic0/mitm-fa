@@ -372,15 +372,18 @@ window.AdminPanels.presentations = (function () {
       fieldRow("presHeroTitle", "Hero headline", content.heroTitle, "") +
       fieldRow("presHeroSubtitle", "Hero subheadline", content.heroSubtitle, "", "textarea") +
       fieldRow("presWelcomeNote", "Personal note (optional)", content.welcomeNote, "One line addressed to this specific viewer.", "textarea") +
-      '<h6 class="pres-form-heading">Featured product</h6>' +
-      '<p class="pres-form-hint u-mb-16">Drives both "View Product" buttons and dresses the Product Showcase. ' +
-      "Only published products are listed — the buttons disappear from the deck if the product is later unpublished.</p>" +
+      '<h6 class="pres-form-heading">Presentation product</h6>' +
+      '<p class="pres-form-hint u-mb-16">Drives both "View Product" buttons, the Product Showcase and both device previews. ' +
+      "Only <strong>presentation products</strong> are listed — products with the store statuses (published, draft, archived) " +
+      "are deliberately not selectable, so a deck can never send a visitor to a page they could buy from. " +
+      "Create one under Products with the status <em>Presentation product</em>.</p>" +
       '<div class="pres-form-row">' +
       '<label for="presFeaturedProduct">Product</label>' +
       '<select id="presFeaturedProduct" data-selected="' + esc(content.featuredProductId || "") + '">' +
-      '<option value="">Loading products…</option>' +
+      '<option value="">Loading presentation products…</option>' +
       "</select>" +
-      '<p class="pres-form-hint">Leave as "No product" to hide the View Product buttons entirely.</p>' +
+      '<p class="pres-form-hint">Swap this at any time — the deck picks the new product up on its next load, with nothing to rebuild. ' +
+      'Leave as "No product" to hide the View Product buttons entirely.</p>' +
       "</div>" +
       '<h6 class="pres-form-heading">Call-to-action links</h6>' +
       '<p class="pres-form-hint u-mb-16">Leave a field empty and that button scrolls to the enquiry form instead of opening a link.</p>' +
@@ -413,16 +416,20 @@ window.AdminPanels.presentations = (function () {
     });
   }
 
-  // Fills the featured-product select after the drawer is already on screen.
-  // The saved id lives in data-selected rather than in the option list, so a
-  // failed or slow request can never quietly reset a deck's chosen product to
-  // "none" — on failure the select keeps the stored id and says so.
+  // Fills the presentation-product select after the drawer is already on
+  // screen. The saved id lives in data-selected rather than in the option
+  // list, so a failed or slow request can never quietly reset a deck's chosen
+  // product to "none" — on failure the select keeps the stored id and says so.
+  //
+  // Filtered to status "presentation" on purpose: store products must not be
+  // selectable here at all. Offering them and then rejecting them later would
+  // be a worse version of the same rule.
   function populateProductPicker(backdrop) {
     var select = backdrop.querySelector("#presFeaturedProduct");
     if (!select) return;
     var selected = select.dataset.selected || "";
 
-    window.AdminAPI.listProducts({ status: "published" })
+    window.AdminAPI.listProducts({ status: "presentation" })
       .then(function (data) {
         var products = (data && data.products) || [];
         var options = ['<option value="">No product — hide the buttons</option>'];
@@ -435,13 +442,18 @@ window.AdminPanels.presentations = (function () {
               ">" + esc(product.name) + "</option>"
           );
         });
-        // A product that was picked and has since been unpublished or deleted
-        // would otherwise vanish silently and save back as "none". Keep it
-        // visible and labelled so the admin decides what to do about it.
+        // A product that was picked and has since been deleted, or switched to
+        // a store status, would otherwise vanish silently and save back as
+        // "none". Keep it visible and labelled so the admin decides.
         if (selected && !found) {
           options.push(
             '<option value="' + esc(selected) + '" selected>' +
-              "Previously selected product (no longer published)</option>"
+              "Previously selected product (no longer a presentation product)</option>"
+          );
+        }
+        if (!products.length) {
+          options.push(
+            '<option value="" disabled>— no presentation products exist yet —</option>'
           );
         }
         select.innerHTML = options.join("");

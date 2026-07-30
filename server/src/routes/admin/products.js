@@ -11,6 +11,36 @@ const router = express.Router();
 
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
+// The four states a product can be in. This was previously an unvalidated
+// passthrough — whatever string the form sent became the status — which was
+// survivable while every value was cosmetic, and stopped being survivable
+// the moment one of them became a visibility boundary.
+//
+//   draft        work in progress, not public, not sellable
+//   published    live in the store, sellable
+//   archived     withdrawn, not public, not sellable
+//   presentation a SHOWCASE product: exists only to be shown inside a
+//                private presentation deck. Never in the store, never in
+//                listings, never in search, never in the sitemap, never
+//                recommended, never purchasable.
+//
+// "presentation" gets that isolation for free rather than by enforcement:
+// every public read path in the app filters on status === "published"
+// (see routes/products.js, routes/pages.js, lib/recommendations.js and
+// lib/checkoutItems.js), so a status that is not "published" is invisible
+// to all of them by construction. That is the whole reason this is a
+// status value and not an `isPresentationOnly` boolean — a boolean would
+// have needed a new filter added to a dozen queries, and would be one
+// forgotten `where` clause away from putting a showcase product on the
+// shop grid.
+const PRODUCT_STATUSES = new Set(["draft", "published", "archived", "presentation"]);
+
+function invalidStatus(status) {
+  if (status === undefined) return null;
+  if (PRODUCT_STATUSES.has(status)) return null;
+  return `status must be one of: ${[...PRODUCT_STATUSES].join(", ")}`;
+}
+
 const SITE_ROOT = path.join(__dirname, "..", "..", "..", "..");
 const IMAGE_DIR = path.join(SITE_ROOT, "assets", "images", "product", "uploads");
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "..", "storage", "resources");
@@ -287,6 +317,8 @@ router.post("/", uploadFields, async (req, res) => {
   if (!SLUG_RE.test(slug)) {
     return res.status(400).json({ error: "slug must be lowercase letters, numbers, and hyphens only" });
   }
+  const statusError = invalidStatus(status);
+  if (statusError) return res.status(400).json({ error: statusError });
 
   const coverImage = req.files?.coverImage?.[0];
   const thumbnail = req.files?.thumbnail?.[0];
@@ -325,6 +357,9 @@ router.put("/:id", uploadFields, async (req, res) => {
   if (slug !== undefined && !SLUG_RE.test(slug)) {
     return res.status(400).json({ error: "slug must be lowercase letters, numbers, and hyphens only" });
   }
+  const statusError = invalidStatus(status);
+  if (statusError) return res.status(400).json({ error: statusError });
+
   const coverImage = req.files?.coverImage?.[0];
   const thumbnail = req.files?.thumbnail?.[0];
 

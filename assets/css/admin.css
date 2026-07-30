@@ -387,6 +387,15 @@ table.a-table tbody tr:last-child td { border-bottom: none; }
 .a-badge-warning { color: var(--a-warning); border-color: var(--a-warning); }
 .a-badge-danger { color: var(--a-danger); border-color: var(--a-danger); }
 .a-badge-neutral { color: var(--a-text-muted); border-color: var(--a-border); }
+/* Filled rather than outlined, and the only badge that is: it marks a
+   product that is deliberately outside the store (a presentation/showcase
+   product), which is a different KIND of fact from "draft" or "archived"
+   and should not be mistaken for a step on the way to publishing. */
+.a-badge-info {
+  color: var(--a-bg, #fff);
+  background: var(--a-text);
+  border-color: var(--a-text);
+}
 
 .a-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
 .a-toolbar input, .a-toolbar select {

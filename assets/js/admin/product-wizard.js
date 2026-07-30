@@ -339,10 +339,21 @@ window.AdminProductWizard = (function () {
         '<div class="a-form-row"><label>Featured on storefront</label><select name="featured"><option value="false"' + (!p.featured ? " selected" : "") + '>No</option><option value="true"' + (p.featured ? " selected" : "") + ">Yes</option></select></div>" +
         "</div>" +
         '<div class="a-form-row"><label>Publish Status</label><select name="status">' +
-        ["draft", "published", "archived"].map(function (s) {
-          return '<option value="' + s + '"' + (p.status === s ? " selected" : "") + '>' + s.charAt(0).toUpperCase() + s.slice(1) + "</option>";
+        // Must stay in step with PRODUCT_STATUSES in
+        // server/src/routes/admin/products.js, which rejects anything else.
+        [
+          ["draft", "Draft"],
+          ["published", "Published"],
+          ["archived", "Archived"],
+          ["presentation", "Presentation product (showcase only)"],
+        ].map(function (pair) {
+          return '<option value="' + pair[0] + '"' + (p.status === pair[0] ? " selected" : "") + ">" + pair[1] + "</option>";
         }).join("") +
-        '</select><p style="font-size:12px;color:var(--a-text-muted);margin-top:6px;">Draft programs are only visible here in Admin, never on the storefront.</p></div>' +
+        '</select><p style="font-size:12px;color:var(--a-text-muted);margin-top:6px;">' +
+        "Draft programs are only visible here in Admin, never on the storefront. " +
+        "<strong>Presentation products</strong> are for private presentation decks only: they never appear in the store, " +
+        "in listings or in search, and they cannot be bought. Price is ignored for them." +
+        "</p></div>" +
         '<label style="display:block;font-size:13px;font-weight:600;margin:20px 0 10px;">Access Type</label>' +
         '<div class="a-wizard-option-card selected">' +
         '<div class="a-wizard-option-icon"><i class="fa-solid fa-bolt"></i></div>' +

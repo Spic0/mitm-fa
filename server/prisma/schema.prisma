@@ -505,8 +505,15 @@ model PrivatePresentation {
   // which sections to show). Adding a new override must never need a
   // migration. Shape:
   //   { heroEyebrow, heroTitle, heroSubtitle, welcomeNote,
+  //     featuredProductId,
   //     ctaMeetingUrl, ctaDemoUrl, ctaPartnershipUrl,
   //     sections: { who: true, services: true, ... } }
+  // featuredProductId is a Product id, not a relation: it is one optional
+  // pointer inside a JSON blob of per-meeting overrides, and a real foreign
+  // key would mean a migration plus a decision about what deleting a
+  // product does to every deck that mentions it. It is resolved (and
+  // silently dropped if missing or unpublished) at render time in
+  // routes/presentation.js.
   content Json?
 
   createdById String?

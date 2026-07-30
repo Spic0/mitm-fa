@@ -18,9 +18,15 @@
    things that carry brand identity — hue, weight, radius, letterspacing,
    the pill button, the hairline rule — are untouched.
 
-   Mobile and desktop are authored as separate layouts, not one scaled: see
-   the wizard (§7, accordion vs. two-column rail), the comparison block
-   (§8, stacked vs. opposed columns) and the device row (§9).
+   Mobile and desktop are authored as separate layouts, not one scaled. The
+   clearest examples, in section order: the hero (§7, one column with the
+   slideshow between the copy and the buttons vs. two columns with it
+   beside them), the how-it-works wizard (§10, accordion vs. two-column
+   rail), the showcase page rail (§14c, snap-scrolling strip vs. centred
+   pills), the campaigns bento (§17b, whose spans are declared per
+   breakpoint rather than auto-placed) and the setup wizard (§19a, whose
+   live estimate is a sticky side rail on desktop and a compact bar above
+   the question on a phone).
    ======================================================================= */
 
 /* Same six faces, same paths, same font-display as style.css declares —
@@ -471,16 +477,56 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(120px, 16vh, 200px) 0 clamp(96px, 14vh, 140px);
+  /* Tighter than the one-column hero's padding was. The hero now carries a
+     headline, the slogan, a subtitle, a 5:4 slideshow and two buttons, and
+     on a 667px phone the old 16vh top inset pushed the primary action below
+     the fold — which is the one thing a hero must never do. */
+  padding: clamp(84px, 11vh, 200px) 0 clamp(64px, 9vh, 140px);
   background: var(--p-bg);
 }
 
+/* Mobile first, and authored as its own layout rather than as the desktop
+   grid with one column: single column, slideshow between the words and the
+   buttons, and the whole thing sized so the headline, the slogan, a real
+   picture of the product and the primary action all fit one phone screen. */
 .pres-hero__inner {
   width: 100%;
   max-width: var(--p-max);
   margin: 0 auto;
   padding-left: max(var(--p-shell-x), env(safe-area-inset-left));
   padding-right: max(var(--p-shell-x), env(safe-area-inset-right));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "copy"
+    "show"
+    "actions";
+  gap: clamp(26px, 5vw, 40px);
+  align-content: center;
+}
+
+.pres-hero__copy { grid-area: copy; min-width: 0; }
+.pres-hero__actions { grid-area: actions; }
+.pres-hs { grid-area: show; min-width: 0; }
+
+@media (min-width: 1024px) {
+  .pres-hero__inner {
+    /* The words get slightly less than half. The slideshow is the thing a
+       viewer looks at first and it needs the width to stay legible at the
+       scale the mock UI is drawn. */
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1fr);
+    grid-template-areas:
+      "copy    show"
+      "actions show";
+    grid-template-rows: auto auto;
+    column-gap: clamp(40px, 5vw, 84px);
+    row-gap: clamp(28px, 3vw, 40px);
+    align-items: center;
+  }
+  /* Both rows of the left column are vertically centred against the stage
+     as a pair, which is why the slideshow spans them rather than sitting in
+     a row of its own. */
+  .pres-hs { grid-row: 1 / span 2; align-self: center; }
 }
 
 /* The hero's own entrance. A deliberately short, ordered sequence on load —
@@ -492,15 +538,24 @@ textarea:focus-visible,
 .pres-hero__subtitle,
 .pres-hero__recipient,
 .pres-hero__note,
-.pres-hero__intro {
+.pres-hero__actions,
+.pres-hs {
   animation: pres-rise var(--p-dur-slow) var(--p-ease-soft) both;
 }
 .pres-hero__eyebrow { animation-delay: 60ms; }
 .pres-hero__title { animation-delay: 130ms; }
-.pres-hero__subtitle { animation-delay: 220ms; }
-.pres-hero__recipient { animation-delay: 300ms; }
-.pres-hero__note { animation-delay: 340ms; }
-.pres-hero__intro { animation-delay: 380ms; }
+/* The slogan's own two-line sequence runs at 300–520ms (see below), so the
+   subtitle and everything after it are pushed back to land afterwards —
+   the sentence should finish before the supporting copy starts arriving. */
+.pres-hero__subtitle { animation-delay: 620ms; }
+.pres-hero__recipient { animation-delay: 700ms; }
+.pres-hero__note { animation-delay: 740ms; }
+.pres-hero__actions { animation-delay: 800ms; }
+/* The stage comes in early and alongside the headline rather than last:
+   it is half the hero, and a hero that assembles its words and then pops a
+   large panel in beside them a second later reads as a layout shift even
+   though the box was reserved the whole time. */
+.pres-hs { animation-delay: 260ms; }
 
 @keyframes pres-rise {
   from { opacity: 0; transform: translate3d(0, 30px, 0); }
@@ -508,24 +563,120 @@ textarea:focus-visible,
 }
 
 .pres-hero__title {
-  font-size: var(--p-hero);
+  /* Smaller than the full --p-hero the one-column hero used: the headline
+     now shares its row with the slideshow, and at 132px it either wrapped
+     to three lines or forced the stage down to a postage stamp. This is
+     the same ratio of headline-to-measure, re-derived for half the width. */
+  font-size: clamp(40px, 7vw, 82px);
   font-weight: 700;
   /* Sub-1 leading is only safe because this string is one or two words at
      display size; it is what makes the wordmark read as a mark. */
   line-height: 0.94;
   letter-spacing: -0.045em;
   color: var(--p-ink);
-  margin-bottom: clamp(20px, 2.6vw, 34px);
+  margin-bottom: clamp(16px, 2vw, 22px);
 }
 
 .pres-hero__subtitle {
-  font-size: clamp(19px, 2.1vw, 30px);
-  line-height: 1.35;
-  letter-spacing: -0.02em;
+  font-size: clamp(17px, 1.5vw, 21px);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   font-weight: 500;
-  color: var(--p-ink);
-  max-width: 20ch;
+  color: var(--p-muted);
+  max-width: 42ch;
+  margin-top: clamp(18px, 2.2vw, 26px);
 }
+
+/* -----------------------------------------------------------------------
+   7b. THE SLOGAN
+   The company's one line, promoted out of the philosophy section near the
+   bottom of the deck to directly under the wordmark.
+
+   The brief asked for memorable and elegant without excessive movement, so
+   there is exactly one gesture: each line wipes up from behind a clipping
+   edge, 220ms apart, and then nothing moves again. No loop, no shimmer, no
+   character-by-character stagger — the sentence is the point, and anything
+   still animating while it is being read competes with it.
+
+   Weight, not colour, carries the emphasis: the palette is monochrome by
+   brand rule, so the second line steps up to 700 and full ink while the
+   first sits at 600 and muted. That is the same device the storefront's
+   own pull-quotes use.
+   -------------------------------------------------------------------- */
+.pres-slogan {
+  margin-top: clamp(14px, 1.8vw, 20px);
+  font-size: clamp(21px, 2.5vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+.pres-slogan__line {
+  display: block;
+  /* The clip is on a wrapper-free element via overflow on the block itself;
+     a translated child inside an overflow:hidden line box is what produces
+     the wipe rather than a fade. */
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--p-muted);
+}
+
+.pres-slogan__line--accent {
+  font-weight: 700;
+  color: var(--p-ink);
+}
+
+/* The moving part. ::after would not inherit the text, so the wipe is done
+   by animating the line itself inside its own clip using a mask-free
+   translate — cheap, compositor-only, and it degrades to a plain fade if
+   the animation never runs. */
+.pres-slogan__line {
+  animation: pres-slogan-wipe 720ms var(--p-ease-soft) both;
+}
+.pres-slogan__line:first-child { animation-delay: 300ms; }
+.pres-slogan__line--accent { animation-delay: 520ms; }
+
+@keyframes pres-slogan-wipe {
+  from { opacity: 0; transform: translate3d(0, 0.9em, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* -----------------------------------------------------------------------
+   7c. HERO ACTIONS
+   -------------------------------------------------------------------- */
+.pres-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--p-gap-sm);
+}
+
+/* Full width and stacked on the narrowest phones: two pills side by side
+   below ~380px leaves each of them too narrow for its own label. */
+@media (max-width: 400px) {
+  .pres-hero__actions { flex-direction: column; }
+  .pres-hero__actions .pres-btn { width: 100%; }
+}
+
+/* The View Product button. Secondary treatment plus a travelling arrow, so
+   it reads as "goes somewhere" rather than "does something here" — it is
+   the only control in the hero that leaves the deck. */
+.pres-btn--product { gap: 10px; }
+.pres-btn__arrow {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  transition: transform var(--p-dur) var(--p-ease);
+}
+.pres-btn__arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pres-btn--product:hover .pres-btn__arrow { transform: translateX(3px); }
 
 .pres-hero__recipient {
   margin-top: clamp(28px, 3.4vw, 44px);
@@ -548,15 +699,10 @@ textarea:focus-visible,
   max-width: 56ch;
 }
 
-.pres-hero__intro {
-  margin-top: clamp(28px, 3.2vw, 40px);
-  padding-top: clamp(24px, 2.8vw, 34px);
-  border-top: 1px solid var(--p-border);
-  font-size: var(--p-lead);
-  line-height: 1.62;
-  color: var(--p-muted);
-  max-width: 58ch;
-}
+/* .pres-hero__intro is gone with the paragraph it styled — the hero's
+   closing block of body copy was dropped when the slideshow took that
+   half of the section. Its content survives, unchanged, as the Who We Are
+   lead directly below the fold. */
 
 .pres-hero__cue {
   position: absolute;
@@ -585,6 +731,610 @@ textarea:focus-visible,
 @keyframes pres-cue {
   0%, 100% { transform: scaleX(0.35); opacity: 0.35; }
   50% { transform: scaleX(1); opacity: 1; }
+}
+
+/* -----------------------------------------------------------------------
+   7d. HERO SLIDESHOW
+   Ten drawn panels cross-fading inside one fixed box.
+
+   The no-layout-shift rule is structural, not careful authoring: the stage
+   declares an aspect-ratio, so its height is known before any content is
+   measured, and every slide is absolutely positioned inside it. Slides
+   therefore cannot influence each other's size or the page's, at any
+   viewport, at any point in the cycle — including the first frame, before
+   the script has run.
+
+   The 60fps rule is likewise structural: the only properties that ever
+   animate here are opacity and transform, both compositor-only. Nothing in
+   this block animates width, height, top or left.
+   -------------------------------------------------------------------- */
+.pres-hs {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.pres-hs__stage {
+  position: relative;
+  width: 100%;
+  /* Taller on a phone, where the stage is full-bleed and the drawing needs
+     vertical room; wider on desktop, where it sits beside the copy. */
+  aspect-ratio: 5 / 4;
+  border-radius: var(--p-radius-lg);
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  box-shadow: var(--p-shadow-lg);
+  overflow: hidden;
+  /* Establishes the sizing context every mock dimension below is derived
+     from, so the drawings scale with the stage rather than with the
+     viewport — the same panel is used at 320px and at 2560px. */
+  container-type: inline-size;
+  /* Promote once, here, rather than per-slide: ten promoted layers is ten
+     textures held in GPU memory for one that is visible. */
+  will-change: transform;
+}
+
+@media (min-width: 1024px) {
+  .pres-hs__stage { aspect-ratio: 16 / 11; }
+}
+
+.pres-hs__slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(14px, 2.6cqw, 30px);
+  gap: clamp(10px, 1.8cqw, 18px);
+  opacity: 0;
+  /* Leaving slides scale down a hair and outgoing ones stay put: the pair
+     reads as one panel replacing another rather than two panels dissolving
+     into each other. */
+  transform: scale(0.985);
+  transition:
+    opacity 620ms var(--p-ease-soft),
+    transform 620ms var(--p-ease-soft);
+  /* An inactive slide is not just invisible, it is unreachable: without
+     this its buttons and text stay in the tab order and in the
+     accessibility tree, and a keyboard user tabs into nine hidden panels. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.pres-hs__slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.pres-hs__caption {
+  flex: none;
+  font-size: clamp(12.5px, 1.1vw, 14px);
+  line-height: 1.45;
+  color: var(--p-muted);
+  /* Reserved so the drawing above never resizes between a one-line and a
+     two-line caption. */
+  min-height: 3.2em;
+}
+.pres-hs__caption strong {
+  display: block;
+  font-weight: 700;
+  color: var(--p-ink);
+  letter-spacing: -0.01em;
+}
+
+/* ---- Controls ---- */
+.pres-hs__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: clamp(14px, 1.6vw, 20px);
+}
+
+.pres-hs__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px: the same minimum touch target the rest of the deck holds to. */
+  width: 44px;
+  height: 44px;
+  border-radius: var(--p-radius-pill);
+  border: 1px solid var(--p-border);
+  background: transparent;
+  color: var(--p-ink);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+.pres-hs__arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pres-hs__arrow:hover {
+  background: var(--p-surface);
+  border-color: rgba(26, 26, 26, 0.28);
+}
+.pres-hs__arrow:active { transform: scale(0.94); }
+
+/* Arrows are a desktop affordance. On touch the gesture is the swipe, and
+   two 44px circles either side of the dots eat width the dots need. */
+@media (max-width: 767px) {
+  .pres-hs__arrow { display: none; }
+}
+
+.pres-hs__dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+/* Each dot is a real button with the slide's name on it. The visible mark
+   is small, but the hit area around it is not — the padding is the target. */
+.pres-hs__dot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: var(--p-radius-pill);
+}
+/* The mark is centred at a fixed size rather than inset from the button,
+   so the hit area can grow on touch (below) without the dot growing with
+   it. Ten 44px-square targets would be 440px of row on a 390px phone. */
+.pres-hs__dot::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: var(--p-radius-pill);
+  background: rgba(26, 26, 26, 0.18);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    transform var(--p-dur) var(--p-ease);
+}
+
+/* Touch: full-height targets, narrow enough that ten of them still fit
+   across the narrowest phone we support. 28x44 is the compromise — the
+   dimension a thumb actually misses on is the vertical one, and the
+   swipe is the primary gesture here regardless.
+
+   Keyed on the pointer as well as the width: a tablet is 768px+ and gets
+   the desktop arrows, but it is still a finger on the dots. */
+@media (max-width: 767px), (hover: none) {
+  .pres-hs__dot { width: 28px; height: 44px; }
+  .pres-hs__dots { gap: 0; }
+}
+.pres-hs__dot:hover::before { background: rgba(26, 26, 26, 0.34); }
+.pres-hs__dot.is-active::before {
+  background: var(--p-ink);
+  /* Grows from the centre instead of changing width, so the row of dots
+     never reflows as the active one moves along it. */
+  transform: scale(1.75);
+}
+
+/* -----------------------------------------------------------------------
+   7e. MOCK UI PRIMITIVES (.hsm)
+   The vocabulary the ten hero panels are drawn from — a frame, a sidebar,
+   cards, lines, thumbnails, a chart, a phone. Ten bespoke drawings would
+   have been ten maintenance problems; these are eight shapes recombined.
+
+   Everything is sized in cqw against the stage and coloured from the same
+   monochrome ramp as the rest of the deck, so a panel is recognisably the
+   platform without pretending to be a screenshot of it.
+   -------------------------------------------------------------------- */
+.hsm {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: clamp(8px, 1.2cqw, 14px);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-soft);
+  box-shadow: var(--p-shadow-sm);
+  overflow: hidden;
+  /* Fallback for browsers without container query units; the @supports
+     block below is what actually applies almost everywhere. */
+  font-size: 10px;
+}
+@supports (width: 1cqw) {
+  .hsm { font-size: clamp(5.5px, 1.75cqw, 12px); }
+}
+
+/* Window chrome */
+.hsm__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 1.2em;
+  padding: 0.9em 1.2em;
+  border-bottom: 1px solid var(--p-border-soft);
+  background: var(--p-surface-2);
+}
+.hsm__dots { display: inline-flex; gap: 0.45em; }
+.hsm__dots i {
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  background: rgba(26, 26, 26, 0.14);
+}
+.hsm__url {
+  flex: 1;
+  font-size: 0.92em;
+  color: var(--p-faint);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hsm__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1em;
+  padding: 1.3em;
+}
+.hsm__body--split { flex-direction: row; gap: 1.2em; }
+
+/* App shell: sidebar + main */
+.hsm__app { flex: 1; min-height: 0; display: flex; }
+.hsm__side {
+  flex: none;
+  width: 20%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+  padding: 1.2em 0.9em;
+  border-right: 1px solid var(--p-border-soft);
+  background: var(--p-surface-2);
+}
+.hsm__side-mark {
+  width: 55%;
+  height: 0.85em;
+  border-radius: 0.3em;
+  background: rgba(26, 26, 26, 0.3);
+  margin-bottom: 0.5em;
+}
+.hsm__side-item {
+  height: 0.72em;
+  border-radius: 0.3em;
+  background: rgba(26, 26, 26, 0.09);
+}
+.hsm__side-item.is-on { background: rgba(26, 26, 26, 0.26); }
+
+.hsm__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1em;
+  padding: 1.3em;
+}
+
+/* Grids and cards */
+.hsm__grid { display: grid; gap: 0.9em; }
+.hsm__grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hsm__grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* A grid that is the last thing in a panel takes the panel's remaining
+   height and divides it between its rows, so the drawing fills its frame
+   instead of clustering at the top over a band of empty white. Restricted
+   to :last-child because the grids that are followed by something else
+   (the stat row above a list, say) must keep their content height. */
+.hsm__body > .hsm__grid:last-child {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.hsm__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  padding: 0.9em;
+  border-radius: 0.7em;
+  border: 1px solid var(--p-border-soft);
+  background: var(--p-bg);
+}
+.hsm__card--person { align-items: flex-start; }
+.hsm__card--meal { flex-direction: row; align-items: center; gap: 0.8em; }
+
+/* Lines: the stand-in for text. Five widths is enough vocabulary for every
+   panel and keeps the drawings from looking like the same block repeated. */
+.hsm__line {
+  height: 0.62em;
+  border-radius: 0.31em;
+  background: rgba(26, 26, 26, 0.1);
+}
+.hsm__line--xs { width: 32%; }
+.hsm__line--sm { width: 48%; }
+.hsm__line--md { width: 66%; }
+.hsm__line--lg { width: 84%; }
+.hsm__line--strong { background: rgba(26, 26, 26, 0.24); height: 0.8em; }
+
+.hsm__col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.55em; }
+.hsm__col--pad { padding: 0.2em 0; }
+.hsm__row { display: flex; gap: 0.9em; }
+.hsm__row--card {
+  align-items: center;
+  padding: 0.9em;
+  border-radius: 0.7em;
+  border: 1px solid var(--p-border-soft);
+  background: var(--p-bg);
+}
+.hsm__row--split { align-items: flex-end; justify-content: space-between; }
+.hsm__hero-row { display: flex; align-items: center; gap: 1.1em; }
+
+.hsm__avatar {
+  flex: none;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 50%;
+  background: rgba(26, 26, 26, 0.13);
+}
+.hsm__avatar--xl { width: 3.8em; height: 3.8em; }
+
+.hsm__pills { display: flex; gap: 0.5em; }
+.hsm__pill {
+  width: 2.6em;
+  height: 0.95em;
+  border-radius: 100px;
+  background: rgba(26, 26, 26, 0.09);
+}
+
+/* Thumbnails. A soft diagonal rather than a flat fill so a grid of them
+   does not read as a wall of grey rectangles. */
+.hsm__thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.5em;
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.1), rgba(26, 26, 26, 0.045));
+  overflow: hidden;
+}
+.hsm__thumb--wide { aspect-ratio: 16 / 9; }
+.hsm__thumb--sq { width: 2.8em; aspect-ratio: 1; flex: none; }
+.hsm__thumb--feature { background: linear-gradient(135deg, rgba(26, 26, 26, 0.14), rgba(26, 26, 26, 0.06)); }
+
+/* The one piece of real photography in the hero: the selected product's
+   own artwork, dropped into the feature card of the products and library
+   panels. object-fit keeps any aspect ratio from distorting the card. */
+.hsm__shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Stats */
+.hsm__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.9em;
+  border-radius: 0.7em;
+  border: 1px solid var(--p-border-soft);
+  background: var(--p-bg);
+}
+.hsm__stat-num {
+  width: 55%;
+  height: 1.25em;
+  border-radius: 0.3em;
+  background: rgba(26, 26, 26, 0.28);
+}
+.hsm__stat-num--wide { width: 78%; height: 1.8em; }
+.hsm__stat--big { flex: 1; }
+
+/* Progress meters */
+.hsm__meter {
+  display: block;
+  width: 100%;
+  height: 0.45em;
+  border-radius: 100px;
+  background: rgba(26, 26, 26, 0.08);
+  overflow: hidden;
+}
+.hsm__meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 100px;
+  background: var(--p-ink);
+}
+/* Widths as classes, not inline styles — the platform's CSP forbids the
+   style attribute (see the header of presentation.js). */
+.hsm__meter-fill--34 { width: 34%; }
+.hsm__meter-fill--62 { width: 62%; }
+.hsm__meter-fill--88 { width: 88%; }
+
+/* Bar chart */
+.hsm__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.7em;
+  height: 5.5em;
+  padding-top: 0.5em;
+}
+.hsm__chart-col {
+  flex: 1;
+  border-radius: 0.3em 0.3em 0 0;
+  background: rgba(26, 26, 26, 0.12);
+}
+.hsm__chart-col--1 { height: 42%; }
+.hsm__chart-col--2 { height: 58%; }
+.hsm__chart-col--3 { height: 36%; }
+.hsm__chart-col--4 { height: 72%; }
+.hsm__chart-col--5 { height: 88%; }
+.hsm__chart-col--6 { height: 64%; }
+/* The current period, filled: a chart where every bar is the same grey has
+   nothing to look at. */
+.hsm__chart-col--7 { height: 100%; background: var(--p-ink); }
+
+/* Lists */
+.hsm__list { display: flex; flex-direction: column; gap: 0.6em; }
+.hsm__list-row {
+  height: 1.5em;
+  border-radius: 0.4em;
+  background: rgba(26, 26, 26, 0.06);
+  border: 1px solid var(--p-border-soft);
+}
+.hsm__list-row.is-on {
+  background: rgba(26, 26, 26, 0.13);
+  border-color: rgba(26, 26, 26, 0.16);
+}
+
+/* Video player */
+.hsm__player {
+  position: relative;
+  flex: 1.5;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.6em;
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.16), rgba(26, 26, 26, 0.07));
+}
+.hsm__play {
+  width: 3em;
+  height: 3em;
+  border-radius: 50%;
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-md);
+  position: relative;
+}
+.hsm__play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-left: 0.85em solid var(--p-ink);
+  border-top: 0.55em solid transparent;
+  border-bottom: 0.55em solid transparent;
+}
+.hsm__scrub {
+  position: absolute;
+  left: 0.9em;
+  right: 0.9em;
+  bottom: 0.9em;
+  height: 0.4em;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+}
+
+/* Macro rings */
+.hsm__macros { display: flex; gap: 1.2em; justify-content: center; }
+.hsm__ring {
+  width: 3.4em;
+  height: 3.4em;
+  border-radius: 50%;
+  /* conic-gradient is the cheapest correct donut: one paint, no SVG, no
+     extra element per ring. */
+  background: conic-gradient(var(--p-ink) var(--hsm-ring, 60%), rgba(26, 26, 26, 0.1) 0);
+  position: relative;
+}
+.hsm__ring::after {
+  content: "";
+  position: absolute;
+  inset: 0.62em;
+  border-radius: 50%;
+  background: var(--p-surface);
+}
+.hsm__ring--a { --hsm-ring: 72%; }
+.hsm__ring--b { --hsm-ring: 45%; }
+.hsm__ring--c { --hsm-ring: 88%; }
+
+/* Phone frame */
+.hsm--stage {
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.hsm__phone {
+  position: relative;
+  width: 11.5em;
+  max-width: 42%;
+  aspect-ratio: 9 / 18;
+  border-radius: 1.6em;
+  background: var(--p-surface);
+  border: 0.32em solid var(--p-ink);
+  box-shadow: var(--p-shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hsm__notch {
+  position: absolute;
+  top: 0.35em;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32%;
+  height: 0.5em;
+  border-radius: 100px;
+  background: var(--p-ink);
+}
+.hsm__phone-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 1.6em 0.9em 0.9em;
+}
+.hsm__tabbar {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-around;
+  padding-top: 0.7em;
+  border-top: 1px solid var(--p-border-soft);
+}
+.hsm__tabbar i {
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 0.25em;
+  background: rgba(26, 26, 26, 0.14);
+}
+.hsm__tabbar i:first-child { background: var(--p-ink); }
+
+/* The two-device panel: a desktop window with a phone overlapping its
+   lower-right corner, which is how the platform is actually used. */
+.hsm__combo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.hsm--flat {
+  width: 84%;
+  height: 82%;
+  flex: none;
+}
+.hsm__phone--inset {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 8.5em;
+  max-width: 34%;
 }
 
 /* -----------------------------------------------------------------------
@@ -1728,14 +2478,19 @@ textarea:focus-visible,
 
 /* Progress fills animate on scaleX rather than width — same picture, no
    layout inside a subtree that is already being scaled. */
-.mock__bar, .mockp__bar, .mockp__video-scrub {
+/* .mockp__owned-bar rather than another .mockp__bar: that class is already
+   the phone's top app bar (flex: 0 0 54px), and the two only coexist today
+   because every other progress bar using it sits in a ROW flex parent where
+   the 54px lands on width and is overridden. In a column parent — the
+   library slide — the same declaration became a 54px-tall black slab. */
+.mock__bar, .mockp__bar, .mockp__owned-bar, .mockp__video-scrub {
   display: block;
   height: 4px;
   border-radius: 2px;
   background: var(--p-surface-2);
   overflow: hidden;
 }
-.mock__bar i, .mockp__bar i, .mockp__video-scrub i {
+.mock__bar i, .mockp__bar i, .mockp__owned-bar i, .mockp__video-scrub i {
   display: block;
   width: 100%;
   height: 100%;
@@ -2105,7 +2860,7 @@ textarea:focus-visible,
 .mockp__macros li { display: grid; grid-template-columns: 44px minmax(0, 1fr) 38px; align-items: center; gap: 8px; }
 .mockp__macro-name { font-size: 10.5px; font-weight: 600; color: var(--p-muted); }
 .mockp__macro-val { font-size: 10.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.mockp__bar { height: 5px; border-radius: 3px; }
+.mockp__bar, .mockp__owned-bar { height: 5px; border-radius: 3px; }
 
 .mockp__video {
   position: relative;
@@ -2189,6 +2944,342 @@ textarea:focus-visible,
     linear-gradient(currentColor 0 0) 100% 100% / 3px 75% no-repeat;
 }
 .mockp__tabs span:nth-child(4) .mockp__tab-icon { border-radius: 50%; }
+
+/* -----------------------------------------------------------------------
+   14b. SHOWCASE — the browsable pages
+   The desktop mockup used to be one screen. It is now four, cross-faded
+   inside the laptop, with the sidebar nav lighting up in step.
+
+   The pages are absolutely positioned inside a fixed-height box, so the
+   laptop shell cannot change size when the page changes — which matters
+   more here than anywhere else on the page, because the whole mockup sits
+   inside a scale() transform whose factor was measured from that shell.
+   -------------------------------------------------------------------- */
+.mock__pages {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mock__page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  opacity: 0;
+  /* Comes in from slightly below and leaves upward — the direction a page
+     moves when you click a nav item, rather than a straight dissolve. */
+  transform: translate3d(0, 10px, 0);
+  transition:
+    opacity 420ms var(--p-ease-soft),
+    transform 420ms var(--p-ease-soft);
+  visibility: hidden;
+  pointer-events: none;
+}
+.mock__page.is-active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Two-column body shared by the workout, nutrition and progress pages:
+   the screen itself, and a narrow rail of supporting detail. Same
+   proportion as the library page's .mock__cols, so the four pages feel
+   like one application rather than four layouts. */
+.mock__viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 262px;
+  gap: 15px;
+}
+.mock__viewer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 17px;
+  border-radius: 14px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  min-height: 0;
+}
+.mock__demos {
+  display: flex;
+  flex-direction: column;
+  padding: 17px;
+  border-radius: 14px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+}
+
+.mock__stats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---- Workout page ---- */
+.mock__stagevid {
+  position: relative;
+  /* Fixed rather than flexible. Left to grow, the player ate the whole
+     panel and pushed the set list — the part that shows the product is a
+     structured program and not just a video — down out of sight. */
+  flex: 0 0 268px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(140deg, #2f2d2a, #6f6c65);
+}
+.mock__stagevid-tag {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  padding: 5px 10px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.mock__bar--scrub {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+}
+
+.mock__sets { display: flex; flex-direction: column; gap: 8px; }
+.mock__sets li,
+.mock__meals li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--p-bg);
+  border: 1px solid var(--p-border-soft);
+}
+.mock__sets li.is-live {
+  border-color: rgba(26, 26, 26, 0.3);
+  background: var(--p-surface-2);
+}
+.mock__set-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
+.mock__set-meta { font-size: 11px; color: var(--p-muted); font-variant-numeric: tabular-nums; }
+.mock__set-note { font-size: 10.5px; color: var(--p-faint); }
+
+/* Looping exercise demonstrations. Each figure is one element on a short,
+   eased, infinitely alternating transform — the visual shorthand for a
+   movement clip. Three of them run at once, which is affordable only
+   because each is a single compositor-layer transform and they pause with
+   the rest of the deck under prefers-reduced-motion (§23). */
+.mock__demo-list { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
+.mock__demo { display: flex; align-items: center; gap: 10px; }
+/* The rail's closing line is pushed to the bottom edge so the column reads
+   as a full panel rather than a short list floating in white space. */
+.mock__demos .mock__rail-meta { margin-top: auto; }
+
+.mock__demo-art {
+  position: relative;
+  flex: 0 0 64px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  overflow: hidden;
+}
+.mock__demo-figure {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 3px;
+  background: var(--p-ink);
+}
+.mock__demo-figure--squat { animation: mock-demo-squat 1.6s var(--p-ease) infinite; }
+.mock__demo-figure--hinge { animation: mock-demo-hinge 1.9s var(--p-ease) infinite; }
+.mock__demo-figure--press { animation: mock-demo-press 1.4s var(--p-ease) infinite; }
+
+@keyframes mock-demo-squat {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(6px) scaleY(0.6); }
+}
+@keyframes mock-demo-hinge {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(-32deg) translateY(3px); }
+}
+@keyframes mock-demo-press {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.mock__demo-name { font-size: 11px; font-weight: 600; color: var(--p-muted); }
+
+/* ---- Nutrition page ---- */
+.mock__meals { display: flex; flex-direction: column; gap: 8px; }
+.mock__meal-art {
+  flex: 0 0 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(140deg, #4a4844, #a3a099);
+}
+.mock__macrolist { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.mock__macrolist li { display: flex; flex-direction: column; gap: 6px; }
+.mock__macro-name { font-size: 11px; font-weight: 600; color: var(--p-muted); }
+
+/* ---- Progress page ---- */
+/* A column chart. The fills animate on scaleY from the bottom edge, the
+   vertical twin of the scaleX the horizontal bars use, so neither one ever
+   animates a height and triggers layout inside the scaled subtree. */
+.mock__bars,
+.mockp__bars {
+  flex: 1 1 auto;
+  min-height: 90px;
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+}
+.mock__bars i,
+.mockp__bars i {
+  flex: 1 1 0;
+  height: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #3a3835, #6f6c65);
+  transform: scaleY(0);
+  transform-origin: 50% 100%;
+  transition: transform 900ms var(--p-ease-soft);
+}
+.mockp__bars { min-height: 64px; gap: 5px; }
+
+.mock__milestones { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
+.mock__milestones li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--p-muted);
+}
+.mock__tickmark {
+  flex: 0 0 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--p-ink);
+  position: relative;
+}
+.mock__tickmark::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 6px;
+  height: 3px;
+  border-left: 1.5px solid #fff;
+  border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg);
+}
+
+/* ---- Phone: library + progress slides ---- */
+.mockp__owned { display: flex; flex-direction: column; gap: 10px; }
+.mockp__owned li { display: flex; align-items: center; gap: 11px; }
+.mockp__owned-art {
+  position: relative;
+  flex: 0 0 44px;
+  height: 44px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, #3e3c39, #8c8982);
+  overflow: hidden;
+}
+.mockp__owned-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mockp__owned-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+
+.mockp__figures { display: flex; gap: 8px; }
+.mockp__figures span {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-soft);
+  font-size: 9.5px;
+  color: var(--p-faint);
+  font-weight: 500;
+}
+.mockp__figures b { font-size: 16px; font-weight: 700; letter-spacing: -0.03em; color: var(--p-ink); }
+
+/* -----------------------------------------------------------------------
+   14c. PAGE RAIL + SHOWCASE CTA
+   -------------------------------------------------------------------- */
+.pres-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: var(--p-gap) auto 0;
+}
+.pres-pager__btn {
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: var(--p-radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--p-muted);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    color var(--p-dur) var(--p-ease);
+}
+.pres-pager__btn:hover { color: var(--p-ink); background: var(--p-surface); }
+.pres-pager__btn.is-active {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+  color: #ffffff;
+}
+
+.pres-stage__cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--p-gap-sm);
+  margin-top: var(--p-gap-lg);
+  padding-top: var(--p-gap);
+  border-top: 1px solid var(--p-border);
+  text-align: center;
+}
+.pres-stage__cta-label {
+  font-size: var(--p-small);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--p-faint);
+}
+.pres-stage__cta-label strong { font-weight: 700; color: var(--p-ink); }
+
+/* On a phone the rail is a horizontal scroller rather than a wrapped pile
+   of pills: four labels wrapping to two rows pushes the stage's caption
+   around and reads as a mistake. Snap points keep it feeling deliberate. */
+@media (max-width: 640px) {
+  .pres-pager {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    /* Bleed to the shell edges so the row is visibly scrollable rather
+       than looking like it was cut off. */
+    margin-left: calc(var(--p-shell-x) * -1);
+    margin-right: calc(var(--p-shell-x) * -1);
+    padding: 0 var(--p-shell-x);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pres-pager::-webkit-scrollbar { display: none; }
+  .pres-pager__btn { flex: 0 0 auto; scroll-snap-align: center; }
+  .pres-stage__cta .pres-btn { width: 100%; }
+}
 
 /* -----------------------------------------------------------------------
    15. CATALOGUE — what a customer actually receives
@@ -2388,59 +3479,345 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   17. TECHNOLOGY
+   17. WHAT IT'S WORTH — the value grid
+   Cards rather than the hairline-divided list the Technology section used.
+   A list of seven equal rows reads as a specification; six cards with a
+   figure at the top of each read as claims, which is what these are.
+
+   Mobile is one column of full cards, desktop is three — and the card
+   itself is identical in both, because unlike the comparison block or the
+   wizard there is no second way to express "a figure, a heading and a
+   paragraph" that suits a narrow screen better.
    -------------------------------------------------------------------- */
-.pres-tech {
+.pres-value {
   display: grid;
-  gap: 0;
-  border-top: 1px solid var(--p-border);
-}
-.pres-tech__item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: clamp(16px, 2.4vw, 34px);
-  align-items: baseline;
-  padding: clamp(22px, 2.6vw, 32px) 0;
-  border-bottom: 1px solid var(--p-border);
-  transition: background-color var(--p-dur) var(--p-ease);
-}
-.pres-tech__index {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--p-faint);
-  font-variant-numeric: tabular-nums;
-  grid-row: 1;
-}
-.pres-tech__name {
-  grid-row: 1;
-  font-size: clamp(19px, 1.8vw, 24px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-  color: var(--p-ink);
-}
-.pres-tech__desc {
-  grid-column: 2;
-  grid-row: 2;
-  margin-top: 8px;
-  font-size: var(--p-body);
-  line-height: 1.6;
-  color: var(--p-muted);
-  max-width: 64ch;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(12px, 1.4vw, 18px);
 }
 
-@media (min-width: 900px) {
-  .pres-tech__item {
-    grid-template-columns: auto minmax(0, 300px) minmax(0, 1fr);
-    align-items: baseline;
-    column-gap: clamp(24px, 3vw, 56px);
+@media (min-width: 700px) {
+  .pres-value { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1080px) {
+  .pres-value { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.pres-value__item {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(22px, 2.4vw, 30px);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  /* --mx/--my come from the magnetic-hover module (see §11 and the
+     pointer handler in presentation.js); composing them here rather than
+     writing transform from JS is what lets the reveal, the hover lift and
+     the magnet share one element without overwriting each other. */
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
+  transition:
+    transform var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease);
+}
+.pres-value__item:hover {
+  border-color: rgba(26, 26, 26, 0.22);
+  box-shadow: var(--p-shadow-md);
+}
+
+/* The figure. Deliberately words as often as numbers — "Day one" and
+   "Zero" are the honest version of these claims, and a made-up percentage
+   would be the fastest way to lose an investor's trust. */
+.pres-value__figure {
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--p-ink);
+  padding-bottom: clamp(14px, 1.6vw, 18px);
+  margin-bottom: clamp(14px, 1.6vw, 18px);
+  border-bottom: 1px solid var(--p-border);
+}
+
+.pres-value__name {
+  font-size: clamp(16px, 1.3vw, 18px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--p-ink);
+  margin-bottom: 10px;
+}
+
+.pres-value__desc {
+  font-size: var(--p-body);
+  line-height: 1.62;
+  color: var(--p-muted);
+}
+
+/* -----------------------------------------------------------------------
+   17b. PROMOTIONAL CAMPAIGNS — the bento
+   Six columns on desktop, one on mobile. The two wide cards take three
+   columns each on the middle breakpoint and the narrow ones take two, so
+   the grid resolves without a single orphan card at any width — which is
+   the failure mode every bento has and the reason the spans are declared
+   per breakpoint rather than left to auto-placement.
+   -------------------------------------------------------------------- */
+.pres-camp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(12px, 1.4vw, 18px);
+}
+
+/* Spans are declared per card, not per size class, and they are chosen so
+   each breakpoint's rows add up to exactly six. Auto-placement with a
+   generic "wide"/"narrow" pair looked right in the abstract and left a
+   one-column hole at the end of two rows in practice. */
+@media (min-width: 760px) {
+  .pres-camp { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  /* 6 | 3+3 | 6 | 6 */
+  .pres-camp__card--codes { grid-column: span 6; }
+  .pres-camp__card--limits { grid-column: span 3; }
+  .pres-camp__card--giveaway { grid-column: span 3; }
+  .pres-camp__card--analytics { grid-column: span 6; }
+  .pres-camp__card--partners { grid-column: span 6; }
+}
+
+@media (min-width: 1080px) {
+  /* 4+2 | 2+4 | 6 — the two cards carrying the most content get the wide
+     slot on their row, and the row of six closes the section. */
+  .pres-camp__card--codes { grid-column: span 4; }
+  .pres-camp__card--limits { grid-column: span 2; }
+  .pres-camp__card--giveaway { grid-column: span 2; }
+  .pres-camp__card--analytics { grid-column: span 4; }
+  .pres-camp__card--partners { grid-column: span 6; }
+}
+
+.pres-camp__card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(22px, 2.4vw, 32px);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
+  transition:
+    transform var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease);
+}
+.pres-camp__card:hover {
+  border-color: rgba(26, 26, 26, 0.22);
+  box-shadow: var(--p-shadow-md);
+}
+
+/* The analytics card inverts. One dark card in the grid is what makes the
+   set read as a dashboard rather than as five leaflets, and inverting the
+   card that holds the numbers is the same move the platform's own admin
+   makes with its primary metric tile. */
+.pres-camp__card--dark {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+}
+.pres-camp__card--dark .pres-camp__title { color: #ffffff; }
+.pres-camp__card--dark .pres-camp__body { color: rgba(255, 255, 255, 0.66); }
+.pres-camp__card--dark:hover {
+  border-color: var(--p-ink);
+  box-shadow: var(--p-shadow-lg);
+}
+
+.pres-camp__title {
+  font-size: clamp(17px, 1.45vw, 21px);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 10px;
+}
+.pres-camp__body {
+  font-size: var(--p-body);
+  line-height: 1.62;
+  color: var(--p-muted);
+}
+
+/* ---- Code list ---- */
+.pres-camp__codes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: var(--p-gap);
+}
+.pres-camp__codes li {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--p-radius);
+  background: var(--p-bg);
+  border: 1px solid var(--p-border-soft);
+}
+.pres-camp__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--p-ink);
+}
+.pres-camp__code-kind {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-ink);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pres-camp__code-note {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--p-muted);
+}
+
+/* ---- Limits ---- */
+.pres-camp__limits {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--p-gap);
+  border-top: 1px solid var(--p-border);
+}
+.pres-camp__limits li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--p-border);
+}
+.pres-camp__limit-key {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+.pres-camp__limit-val {
+  font-size: var(--p-body);
+  font-weight: 600;
+  color: var(--p-ink);
+  text-align: right;
+}
+
+/* ---- Giveaway tag ---- */
+.pres-camp__tag {
+  align-self: flex-start;
+  margin-top: auto;
+  padding-top: var(--p-gap);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+
+/* ---- Metrics + chart ---- */
+.pres-camp__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 26px);
+  margin-top: var(--p-gap);
+}
+@media (min-width: 1080px) {
+  .pres-camp__metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.pres-camp__metric-val {
+  display: block;
+  font-size: clamp(22px, 2.1vw, 29px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+.pres-camp__metric-key {
+  display: block;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Grows on scaleY from the baseline, like every other chart on this page,
+   so nothing here touches layout. Filled by the campaigns module in
+   presentation.js when the card first comes into view. */
+.pres-camp__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 62px;
+  margin-top: var(--p-gap);
+}
+.pres-camp__chart i {
+  flex: 1 1 0;
+  height: 100%;
+  border-radius: 3px 3px 0 0;
+  background: rgba(255, 255, 255, 0.28);
+  transform: scaleY(0);
+  transform-origin: 50% 100%;
+  transition: transform 780ms var(--p-ease-soft);
+}
+.pres-camp__chart i:last-child { background: #ffffff; }
+
+/* ---- Partner thread ---- */
+/* The partner card runs the full six columns, which is far too wide for a
+   heading, a paragraph and two chat bubbles stacked in a single column.
+   At that width it becomes two: the argument on the left, the thread it
+   describes on the right, vertically centred against it. */
+@media (min-width: 1080px) {
+  .pres-camp__card--partners {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: clamp(32px, 4vw, 72px);
+    align-content: center;
   }
-  .pres-tech__desc {
-    grid-column: 3;
-    grid-row: 1;
+  .pres-camp__card--partners .pres-camp__title { grid-column: 1; grid-row: 1; }
+  .pres-camp__card--partners .pres-camp__body { grid-column: 1; grid-row: 2; }
+  .pres-camp__card--partners .pres-camp__thread {
+    grid-column: 2;
+    grid-row: 1 / span 2;
     margin-top: 0;
+    padding-top: 0;
+    align-self: center;
   }
+}
+
+.pres-camp__thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: var(--p-gap);
+}
+.pres-camp__msg {
+  max-width: 88%;
+  padding: 11px 14px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--p-muted);
+}
+/* The reply comes from the other side: aligned right, inked, and with the
+   opposite corner squared off. */
+.pres-camp__msg--in {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+  color: #ffffff;
 }
 
 /* -----------------------------------------------------------------------
@@ -2466,6 +3843,114 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
+   18b. COMING SOON — the ambient drift
+   Two rows, opposite directions, ~70 and ~84 seconds for a full pass. That
+   is roughly 20px a second: slow enough that nothing is ever "going past",
+   which was the brief — elegant, not a carousel.
+
+   The whole loop is one CSS animation on one transform per row. No rAF, no
+   scroll listener, no JS running while it plays; the only thing JS does is
+   clone the cards once so the track holds two identical sets, which is what
+   makes -50% land on a pixel-identical frame and the seam invisible.
+   -------------------------------------------------------------------- */
+.pres-soon {
+  margin-top: var(--p-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.4vw, 18px);
+  /* Full-bleed out of .pres-container's max-width, then faded at both
+     edges so cards dissolve instead of being sliced by the viewport. */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+
+.pres-soon__row { overflow: hidden; }
+
+.pres-soon__track {
+  display: flex;
+  gap: clamp(12px, 1.4vw, 18px);
+  width: max-content;
+  animation: pres-soon-drift 70s linear infinite;
+  will-change: transform;
+}
+.pres-soon__row--reverse .pres-soon__track {
+  animation-duration: 84s;
+  animation-direction: reverse;
+}
+
+@keyframes pres-soon-drift {
+  from { transform: translate3d(0, 0, 0); }
+  /* Exactly half, because the track holds the set twice. Any other value
+     and the loop visibly jumps. */
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Paused while the section is off screen — an animation nobody can see is
+   still a composited layer being repainted every frame. The class is set
+   by the observer in presentation.js. */
+.pres-soon.is-paused .pres-soon__track { animation-play-state: paused; }
+
+/* And paused on hover, so a card that catches someone's eye can be read
+   rather than chased across the screen. */
+.pres-soon__row:hover .pres-soon__track { animation-play-state: paused; }
+
+.pres-soon__card {
+  flex: 0 0 auto;
+  width: clamp(232px, 74vw, 296px);
+  padding: clamp(20px, 2vw, 26px);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  box-shadow: var(--p-shadow-sm);
+  transition:
+    transform var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease);
+}
+.pres-soon__card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(26, 26, 26, 0.22);
+  box-shadow: var(--p-shadow-md);
+}
+
+.pres-soon__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  border-radius: var(--p-radius);
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border-soft);
+  color: var(--p-ink);
+}
+.pres-soon__icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pres-soon__name {
+  font-size: clamp(15.5px, 1.2vw, 17px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--p-ink);
+  margin-bottom: 8px;
+}
+.pres-soon__desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--p-muted);
+}
+
+/* -----------------------------------------------------------------------
    19. CTA + FORM
    -------------------------------------------------------------------- */
 .pres-section--cta {
@@ -2473,22 +3958,459 @@ textarea:focus-visible,
   border-top: 1px solid var(--p-border-soft);
 }
 
-.pres-cta__actions {
+/* -----------------------------------------------------------------------
+   19a. SETUP WIZARD
+   Mobile and desktop are two different layouts, not one reflowed.
+
+   On desktop the estimate is a sticky rail beside the questions: the
+   number has to stay on screen while they answer, because watching it
+   move is the reason they keep answering. On mobile there is no room for
+   a rail, so the estimate becomes a compact bar pinned above the step —
+   same job, a third of the height, and it does not push the question
+   itself below the fold.
+   -------------------------------------------------------------------- */
+.pres-setup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 22px);
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+  .pres-setup {
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: start;
+    gap: clamp(20px, 2.4vw, 32px);
+  }
+}
+
+/* ---- The live estimate ---- */
+.pres-setup__meter {
+  padding: clamp(18px, 2vw, 26px);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-ink);
+  color: #ffffff;
+}
+
+@media (min-width: 900px) {
+  .pres-setup__meter {
+    position: sticky;
+    /* Clear of the scroll progress bar at the top of the viewport. */
+    top: 28px;
+  }
+}
+
+.pres-setup__meter-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pres-setup__meter-value {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 10px;
+  font-size: clamp(46px, 6vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  /* Tabular figures: without them the number visibly jitters sideways as
+     it counts between 9-wide and 1-wide glyphs. */
+  font-variant-numeric: tabular-nums;
+}
+.pres-setup__meter-unit {
+  font-size: 0.46em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pres-setup__gauge {
+  height: 6px;
+  margin-top: 18px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.pres-setup__gauge-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 100px;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 420ms var(--p-ease-soft);
+}
+
+.pres-setup__meter-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.pres-setup__meter-note {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* On a phone the rail becomes a two-column bar: the number on the left,
+   its gauge and note on the right. */
+@media (max-width: 899px) {
+  .pres-setup__meter {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 18px;
+    row-gap: 4px;
+  }
+  .pres-setup__meter-label { grid-column: 1 / -1; }
+  .pres-setup__meter-value { grid-row: 2; margin-top: 4px; font-size: 42px; }
+  .pres-setup__gauge { grid-column: 2; grid-row: 2; margin-top: 0; }
+  .pres-setup__meter-scale { display: none; }
+  .pres-setup__meter-note { grid-column: 1 / -1; margin-top: 8px; }
+}
+
+/* ---- The step panel ---- */
+.pres-setup__main {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: var(--p-gap-lg);
+  padding: clamp(20px, 2.6vw, 34px);
+  border-radius: var(--p-radius-lg);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  box-shadow: var(--p-shadow-sm);
 }
-.pres-cta__actions .pres-btn { width: 100%; }
 
-@media (min-width: 680px) {
-  .pres-cta__actions {
-    flex-direction: row;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .pres-cta__actions .pres-btn { width: auto; }
+.pres-setup__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
 }
+
+.pres-setup__dots { display: flex; gap: 6px; }
+.pres-setup__dot {
+  width: 26px;
+  height: 4px;
+  border-radius: 100px;
+  background: rgba(26, 26, 26, 0.12);
+  transition: background-color var(--p-dur) var(--p-ease), opacity var(--p-dur) var(--p-ease);
+}
+.pres-setup__dot.is-done { background: rgba(26, 26, 26, 0.4); }
+.pres-setup__dot.is-active { background: var(--p-ink); }
+/* A step the current answers skip past. Still shown — the viewer should
+   be able to see that choosing "platform only" removed four questions
+   rather than wonder where the progress went. */
+.pres-setup__dot.is-skipped { opacity: 0.3; }
+
+.pres-setup__count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.pres-setup__progress {
+  height: 3px;
+  border-radius: 100px;
+  background: rgba(26, 26, 26, 0.09);
+  overflow: hidden;
+  margin-bottom: clamp(22px, 2.6vw, 32px);
+}
+.pres-setup__progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--p-ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 480ms var(--p-ease-soft);
+}
+
+/* Steps are stacked absolutely and the container is given the active
+   step's measured height by the script, with a transition on it.
+
+   Sharing one grid cell was the first attempt and it sized the panel to
+   the TALLEST step — which is the result, with its enquiry form — leaving
+   two thirds of the card empty behind every question. Animating the
+   container's height is the one place on this page that deliberately
+   touches layout; it is one element for 380ms on an explicit interaction,
+   which is the same trade the process wizard's accordion already makes.
+
+   The height is a progressive enhancement: with no JS the container is
+   auto-height and the first step simply sizes it. */
+.pres-setup__steps {
+  position: relative;
+  flex: 1 1 auto;
+  transition: height 380ms var(--p-ease-soft);
+}
+.pres-setup__step {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  opacity: 0;
+  transform: translate3d(14px, 0, 0);
+  transition:
+    opacity 340ms var(--p-ease-soft),
+    transform 340ms var(--p-ease-soft);
+  visibility: hidden;
+  pointer-events: none;
+}
+.pres-setup__step.is-active {
+  /* The active step returns to the flow, so the container still has a
+     sensible height before the script measures anything. */
+  position: relative;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.pres-setup__q {
+  display: block;
+  padding: 0;
+  font-size: clamp(20px, 2.1vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.22;
+  color: var(--p-ink);
+  text-wrap: balance;
+}
+.pres-setup__hint {
+  margin-top: 10px;
+  font-size: var(--p-body);
+  line-height: 1.6;
+  color: var(--p-muted);
+  max-width: 56ch;
+}
+
+/* ---- Options ---- */
+.pres-setup__options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: clamp(20px, 2.4vw, 28px);
+}
+@media (min-width: 640px) {
+  .pres-setup__options--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.pres-setup__opt { display: block; cursor: pointer; }
+
+/* The real input is hidden from sight but not from the accessibility tree
+   or the keyboard — it is what carries checked state, focus and the
+   space/arrow behaviour. The box below is only its appearance. */
+.pres-setup__opt input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pres-setup__opt-box {
+  position: relative;
+  display: block;
+  height: 100%;
+  padding: 16px 18px 16px 46px;
+  border-radius: var(--p-radius);
+  background: var(--p-bg);
+  border: 1px solid var(--p-border);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease),
+    box-shadow var(--p-dur) var(--p-ease);
+}
+.pres-setup__opt-box::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 17px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(26, 26, 26, 0.28);
+  background: var(--p-surface);
+  transition:
+    background-color var(--p-dur) var(--p-ease),
+    border-color var(--p-dur) var(--p-ease);
+}
+/* Radios get a circle, checkboxes a rounded square — the shape is the only
+   cue that step one is a choice between two and the rest are multi-select. */
+.pres-setup__opt input[type="radio"] + .pres-setup__opt-box::before { border-radius: 50%; }
+
+/* The tick. Drawn with two borders rotated 45°, so there is no icon font
+   and no second SVG per option. */
+.pres-setup__opt-box::after {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 22px;
+  width: 8px;
+  height: 4px;
+  border-left: 1.7px solid #ffffff;
+  border-bottom: 1.7px solid #ffffff;
+  transform: rotate(-45deg) scale(0.5);
+  opacity: 0;
+  transition: opacity var(--p-dur) var(--p-ease), transform var(--p-dur) var(--p-ease);
+}
+
+.pres-setup__opt:hover .pres-setup__opt-box {
+  border-color: rgba(26, 26, 26, 0.28);
+  background: var(--p-surface);
+}
+
+.pres-setup__opt input:checked + .pres-setup__opt-box {
+  border-color: var(--p-ink);
+  background: var(--p-surface);
+  box-shadow: inset 0 0 0 1px var(--p-ink);
+}
+.pres-setup__opt input:checked + .pres-setup__opt-box::before {
+  background: var(--p-ink);
+  border-color: var(--p-ink);
+}
+.pres-setup__opt input:checked + .pres-setup__opt-box::after {
+  opacity: 1;
+  transform: rotate(-45deg) scale(1);
+}
+
+/* Focus lands on the box, because the input it belongs to is visually
+   hidden and an invisible focus ring is the same as none. */
+.pres-setup__opt input:focus-visible + .pres-setup__opt-box {
+  outline: 2px solid var(--p-ink);
+  outline-offset: 2px;
+}
+
+.pres-setup__opt-name {
+  display: block;
+  font-size: var(--p-body);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--p-ink);
+}
+.pres-setup__opt-desc {
+  display: block;
+  margin-top: 5px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--p-muted);
+}
+
+/* ---- Result ---- */
+.pres-setup__result { text-align: center; }
+
+.pres-setup__result-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--p-faint);
+}
+.pres-setup__result-range {
+  margin-top: 12px;
+  font-size: clamp(40px, 6.4vw, 76px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  color: var(--p-ink);
+  font-variant-numeric: tabular-nums;
+}
+.pres-setup__result-summary {
+  margin-top: 14px;
+  font-size: var(--p-lead);
+  line-height: 1.55;
+  color: var(--p-muted);
+  max-width: 48ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* The disclaimer is not small print. It is the sentence that keeps an
+   estimate from reading as an offer, so it gets a real box. */
+.pres-setup__disclaimer {
+  margin: clamp(22px, 2.6vw, 30px) auto 0;
+  max-width: 62ch;
+  padding: 16px 20px;
+  border-radius: var(--p-radius);
+  background: var(--p-surface-2);
+  border: 1px solid var(--p-border);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--p-muted);
+}
+
+.pres-setup__form {
+  margin-top: clamp(26px, 3vw, 36px);
+  padding-top: clamp(24px, 2.8vw, 32px);
+  border-top: 1px solid var(--p-border);
+  text-align: left;
+}
+
+/* ---- Navigation ---- */
+.pres-setup__nav {
+  display: flex;
+  gap: 10px;
+  margin-top: clamp(24px, 2.8vw, 34px);
+  padding-top: clamp(20px, 2.4vw, 26px);
+  border-top: 1px solid var(--p-border);
+}
+.pres-setup__nav .pres-btn { flex: 1 1 0; }
+
+@media (min-width: 640px) {
+  .pres-setup__nav { justify-content: flex-end; }
+  .pres-setup__nav .pres-btn { flex: 0 0 auto; min-width: 150px; }
+}
+
+/* ---- Admin CTA links ---- */
+.pres-cta__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(14px, 2vw, 28px);
+  margin-top: var(--p-gap-lg);
+}
+.pres-cta__links:empty { display: none; }
+.pres-cta__link {
+  font-size: var(--p-body);
+  font-weight: 600;
+  color: var(--p-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--p-border);
+  transition: color var(--p-dur) var(--p-ease), text-decoration-color var(--p-dur) var(--p-ease);
+}
+.pres-cta__link:hover {
+  color: var(--p-ink);
+  text-decoration-color: var(--p-ink);
+}
+
+/* .pres-cta__actions — the three-button row — was removed with the old
+   contact section. Its one surviving idea, the selected-CTA fill, lives on
+   as .pres-btn--secondary.is-active in §5. */
 
 .pres-form {
   background: var(--p-surface);
@@ -2867,6 +4789,32 @@ textarea:focus-visible,
      is cropped. Removing the animation, not the resize. */
   .pres-stage { transition: none; }
   .pres-journey__line-fill { transition: none; }
+
+  /* Coming Soon: same problem as the belt, same answer. The rows are
+     wider than the viewport by design, so stopping the drift without
+     making them scrollable would hide two thirds of the roadmap. The
+     iteration-count override above already halts the animation; these
+     rules give the cards back. */
+  .pres-soon {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .pres-soon__row {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-inline: var(--p-shell-x);
+  }
+  .pres-soon__track { animation: none !important; transform: none !important; }
+  .pres-soon__card { scroll-snap-align: center; }
+
+  /* The hero slideshow keeps working on click, swipe and keyboard — the
+     autoplay timer is what the preference switches off (see the hero
+     module in presentation.js). The panels themselves must still be able
+     to appear, so the transition is removed rather than the visibility. */
+  .pres-hs__slide { transition: none; }
+  .pres-slogan__line { animation: none; opacity: 1; transform: none; }
+  .mock__demo-figure { animation: none; }
+  .mock__page { transition: none; }
 }
 
 /* -----------------------------------------------------------------------
@@ -2878,7 +4826,9 @@ textarea:focus-visible,
   .pres-progress,
   .pres-rail,
   .pres-hero__cue,
-  .pres-cta__actions,
+  .pres-hs__controls,
+  .pres-pager,
+  .pres-setup__nav,
   .pres-form { display: none !important; }
 
   .pres-body { background: #ffffff; }
@@ -2935,5 +4885,59 @@ textarea:focus-visible,
     opacity: 1 !important;
     visibility: visible !important;
   }
+
+  /* ---- Hero slideshow ----
+     Only the panel that was showing prints. Ten stacked drawings of a UI
+     is not information on paper, and un-stacking them would turn a
+     one-page hero into four. The caption of each carries the actual
+     content, and the reader has the live link anyway. */
+  .pres-hs__stage {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  /* ---- Showcase pages + setup wizard ----
+     Both stack their panels absolutely. On paper they return to the flow
+     so every page and every question prints, in order — a circulated PDF
+     of the deck should contain the questions somebody was asked, not just
+     whichever step the browser happened to be on. */
+  .mock__pages,
+  .pres-setup__steps {
+    position: static;
+    height: auto !important;
+  }
+  .mock__page,
+  .pres-setup__step {
+    position: static;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    break-inside: avoid;
+  }
+  .pres-setup__step + .pres-setup__step { margin-top: 22px; }
+  .pres-setup__meter { break-inside: avoid; }
+
+  /* ---- Coming Soon ----
+     The two drifting rows become a wrapped grid, exactly as the belt
+     does, and the duplicated set is dropped. */
+  .pres-soon {
+    -webkit-mask-image: none;
+    mask-image: none;
+    overflow: visible;
+  }
+  .pres-soon__row { overflow: visible; }
+  .pres-soon__track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: auto;
+    animation: none !important;
+    transform: none !important;
+  }
+  .pres-soon__card { width: auto; box-shadow: none; break-inside: avoid; }
+  .pres-soon__card[data-clone] { display: none !important; }
+
+  .pres-camp__card { break-inside: avoid; box-shadow: none; }
+  .pres-value__item { break-inside: avoid; }
+
   .pres-js [data-reveal] { opacity: 1 !important; translate: none !important; }
 }

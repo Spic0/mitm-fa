@@ -123,12 +123,23 @@ function resolveAccess(presentation, req) {
 // ---------------------------------------------------------------------
 // Content overrides
 //
-// The deck's ten sections are fixed brand content in private/presentation.html.
-// This is the per-meeting layer on top of it: whose name is in the hero, what
-// the three CTAs point at, and which sections to include for this audience.
-// Anything absent falls back to the defaults below, so a presentation created
-// with nothing but a title is still complete and on-message.
+// The deck's sections are fixed brand content in private/presentation.html.
+// This is the per-meeting layer on top of it: whose name is in the hero,
+// which product the "View Product" buttons open, what the CTA links point at,
+// and which sections to include for this audience. Anything absent falls back
+// to the defaults below, so a presentation created with nothing but a title is
+// still complete and on-message.
 // ---------------------------------------------------------------------
+// "technology" was removed deliberately: it sold infrastructure to people who
+// are buying a business outcome. "value" took its slot in the deck and says
+// the same things in revenue terms; "campaigns" and "soon" are new.
+//
+// The closing section keeps the key "cta" even though it is now the setup
+// wizard rather than the old three-button contact block. The key is stored
+// per presentation, and an admin who switched the closing section off for a
+// particular audience meant "don't ask them for anything at the end" — that
+// intent survives the redesign, and renaming the key would silently switch
+// the section back on for every deck that had it off.
 const SECTION_KEYS = [
   "who",
   "services",
@@ -138,8 +149,10 @@ const SECTION_KEYS = [
   "showcase",
   "catalogue",
   "journey",
-  "technology",
+  "value",
+  "campaigns",
   "philosophy",
+  "soon",
   "cta",
 ];
 
@@ -152,6 +165,13 @@ const DEFAULT_CONTENT = {
   ctaPartnershipUrl: "",
   ctaMeetingUrl: "",
   ctaDemoUrl: "",
+  // Which product the deck's two "View Product" buttons open, and which one
+  // the showcase is dressed with. A product id, resolved to a real row at
+  // render time — never a URL, so a product that is renamed, re-slugged or
+  // unpublished can't leave a deck pointing at a 404 in the middle of a
+  // meeting. Empty means "no product picked": the buttons don't render and
+  // the showcase falls back to its generic copy.
+  featuredProductId: "",
 };
 
 function normalizeContent(raw) {

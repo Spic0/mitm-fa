@@ -131,14 +131,104 @@ function stripHiddenSections(html, sections) {
   return out;
 }
 
-function renderDeck(html, { presentation, content, visitId }) {
+// ---------------------------------------------------------------------
+// The featured product
+//
+// The deck's two "View Product" buttons and the showcase's dressing all
+// point at one product the admin chose in the builder. It is stored as an
+// id and resolved here, on every render, for two reasons: a slug or a URL
+// frozen into the presentation record would rot the first time the product
+// was renamed, and a draft/archived product must stop being advertised the
+// moment it stops being for sale — not whenever someone remembers to edit
+// the deck.
+//
+// A miss is not an error. Returning null simply strips the buttons (see the
+// IFPRODUCT markers below), which is the same state as a deck where no
+// product was picked at all.
+// Product images are stored root-relative but WITHOUT a leading slash
+// ("assets/images/product/uploads/x.webp"), which resolves correctly from
+// "/" and from "/shop" but not from "/presentation/:slug" — a deck two path
+// segments deep would ask for /presentation/assets/... and render a broken
+// image in front of an investor. Absolutise before it reaches the template.
+function productImageSrc(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return raw.startsWith("/") ? raw : `/${raw.replace(/^\.?\//, "")}`;
+}
+
+async function loadFeaturedProduct(productId) {
+  if (!productId) return null;
+  try {
+    return await prisma.product.findFirst({
+      where: { id: String(productId), status: "published" },
+      select: {
+        slug: true,
+        name: true,
+        imageUrl: true,
+        thumbnailUrl: true,
+        priceCents: true,
+        creator: true,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to load presentation featured product:", err);
+    return null;
+  }
+}
+
+// Same paired-marker trick as stripHiddenSections, for fragments that only
+// make sense in some renders. Two conditions are in play and they are not
+// the same one: IFPRODUCT guards the "View Product" buttons (needs only a
+// product), IFPRODUCTIMAGE guards the <img> tags in the hero and showcase
+// (needs a product that actually has artwork — an <img src=""> re-requests
+// the current page, which on this route means a second visit row and a
+// second render of the whole deck).
+//
+// Unlike a section marker, these appear many times in the template, so the
+// removal loops rather than cutting once. They must NOT nest — the loop
+// pairs each open with the next close, so an inner pair would be matched
+// against the outer open and leave a stray marker in the output.
+function stripConditionalBlocks(html, name, keep) {
+  const open = `<!--${name}-->`;
+  const close = `<!--/${name}-->`;
+  if (keep) return html.split(open).join("").split(close).join("");
+  let out = html;
+  for (;;) {
+    const start = out.indexOf(open);
+    const end = out.indexOf(close, start);
+    if (start === -1 || end === -1) break;
+    out = out.slice(0, start) + out.slice(end + close.length);
+  }
+  return out;
+}
+
+function renderDeck(html, { presentation, content, visitId, product }) {
   const recipient = presentation.recipient ? presentation.recipient.trim() : "";
   const boot =
     `<div id="presBoot" class="u-hidden"` +
     ` data-slug="${escapeHtml(presentation.slug)}"` +
     ` data-visit-id="${escapeHtml(visitId || "")}"></div>`;
 
-  return stripHiddenSections(html, content.sections)
+  // The product's own image is the only photographic content in the deck, and
+  // it sits above the fold in the hero slideshow. When there is no product,
+  // every slot below resolves to neutral copy and the slideshow's own drawn
+  // panels carry the section on their own.
+  const productUrl = product ? `/program/${encodeURIComponent(product.slug)}` : "";
+  const productImage = product ? productImageSrc(product.imageUrl || product.thumbnailUrl) : "";
+  const productMeta = product
+    ? [product.creator, `$${(product.priceCents / 100).toFixed(2)}`].filter(Boolean).join(" · ")
+    : "";
+
+  let out = stripHiddenSections(html, content.sections);
+  out = stripConditionalBlocks(out, "IFPRODUCT", !!product);
+  out = stripConditionalBlocks(out, "IFPRODUCTIMAGE", !!productImage);
+
+  return out
+    .replace(/<!--PRES_PRODUCT_URL-->/g, escapeHtml(productUrl))
+    .replace(/<!--PRES_PRODUCT_NAME-->/g, escapeHtml(product ? product.name : "Your product"))
+    .replace(/<!--PRES_PRODUCT_META-->/g, escapeHtml(productMeta))
+    .replace(/<!--PRES_PRODUCT_IMAGE-->/g, escapeHtml(safeUrl(productImage)))
     .replace(/<!--PRES_TITLE-->/g, escapeHtml(presentation.title))
     .replace(/<!--PRES_EYEBROW-->/g, escapeHtml(content.heroEyebrow))
     .replace(/<!--PRES_HERO_TITLE-->/g, escapeHtml(content.heroTitle))
@@ -244,6 +334,7 @@ pageRouter.get("/presentation/:slug", async (req, res) => {
   if (html == null) return notFound(req, res);
 
   const content = normalizeContent(presentation.content);
+  const product = await loadFeaturedProduct(content.featuredProductId);
 
   // One visit row per page load, created before the HTML goes out so its id
   // can ride along in the boot element — the client never has to round-trip
@@ -267,7 +358,7 @@ pageRouter.get("/presentation/:slug", async (req, res) => {
     console.error("Failed to record presentation visit:", err);
   }
 
-  res.type("html").send(renderDeck(html, { presentation, content, visitId }));
+  res.type("html").send(renderDeck(html, { presentation, content, visitId, product }));
 });
 
 // ---------------------------------------------------------------------

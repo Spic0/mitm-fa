@@ -429,6 +429,230 @@
   }
 
   // -------------------------------------------------------------------
+  // Hero slideshow
+  //
+  // Ten panels, one visible, advancing on a timer and wrapping forever.
+  // The whole thing is a single index and a class swap: the cross-fade
+  // itself is a CSS transition on opacity and transform (see §7d), so the
+  // work per slide change is one class add, one class remove, and nothing
+  // that touches layout. That is what holds the frame rate — there is no
+  // per-frame JavaScript in this module at all, only timers.
+  //
+  // Autoplay stops whenever continuing to run would be either wasteful or
+  // rude: off screen, tab hidden, pointer hovering, keyboard focus inside,
+  // or a finger currently on the stage. Every one of those is a case where
+  // the viewer is either not looking or is trying to control it themselves.
+  // -------------------------------------------------------------------
+  (function () {
+    var root = document.getElementById("presHeroShow");
+    var stage = document.getElementById("presHeroStage");
+    var dotsWrap = document.getElementById("presHeroDots");
+    if (!root || !stage) return;
+
+    var slides = slice(stage.querySelectorAll("[data-hs-slide]"));
+    if (slides.length < 2) return;
+
+    var DELAY = 4600; // ms a panel holds before the next one takes over
+    var index = 0;
+    var timer = null;
+    var dots = [];
+
+    // Reasons autoplay is currently suspended. A set rather than a boolean
+    // because they overlap constantly — a pointer leaving the stage must
+    // not restart the timer if the section has meanwhile scrolled away.
+    var holds = {};
+
+    function hold(reason, on) {
+      if (on) holds[reason] = true;
+      else delete holds[reason];
+      var blocked = false;
+      for (var key in holds) {
+        if (Object.prototype.hasOwnProperty.call(holds, key)) blocked = true;
+      }
+      if (blocked) stop();
+      else start();
+    }
+
+    function stop() {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    }
+
+    function start() {
+      stop();
+      if (prefersReducedMotion) return;
+      timer = window.setTimeout(function () {
+        go(index + 1);
+      }, DELAY);
+    }
+
+    function go(next) {
+      // Modulo both ways so a "previous" from slide 0 lands on the last
+      // panel rather than on NaN.
+      var target = ((next % slides.length) + slides.length) % slides.length;
+      if (target === index) return;
+
+      slides[index].classList.remove("is-active");
+      slides[target].classList.add("is-active");
+      if (dots[index]) {
+        dots[index].classList.remove("is-active");
+        dots[index].setAttribute("aria-selected", "false");
+        dots[index].tabIndex = -1;
+      }
+      if (dots[target]) {
+        dots[target].classList.add("is-active");
+        dots[target].setAttribute("aria-selected", "true");
+        dots[target].tabIndex = 0;
+      }
+      index = target;
+      start();
+    }
+
+    // ---- Dots, built from the slides rather than authored twice ----
+    if (dotsWrap) {
+      slides.forEach(function (slide, i) {
+        var dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "pres-hs__dot" + (i === 0 ? " is-active" : "");
+        dot.setAttribute("role", "tab");
+        dot.setAttribute("aria-selected", i === 0 ? "true" : "false");
+        dot.setAttribute("aria-label", slide.getAttribute("data-hs-label") || "Slide " + (i + 1));
+        dot.tabIndex = i === 0 ? 0 : -1;
+        dot.addEventListener("click", function () {
+          go(i);
+        });
+        dotsWrap.appendChild(dot);
+        dots.push(dot);
+      });
+    }
+
+    slice(root.querySelectorAll("[data-hs-prev]")).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        go(index - 1);
+      });
+    });
+    slice(root.querySelectorAll("[data-hs-next]")).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        go(index + 1);
+      });
+    });
+
+    // ---- Keyboard. Arrow keys work anywhere inside the slideshow, which
+    // is the convention a tablist sets up and the dots advertise. ----
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") {
+        go(index - 1);
+        e.preventDefault();
+      } else if (e.key === "ArrowRight") {
+        go(index + 1);
+        e.preventDefault();
+      }
+    });
+
+    // ---- Swipe ----
+    //
+    // Pointer events rather than touch events, so a trackpad drag and a
+    // stylus behave like a finger. The gesture is only claimed once it is
+    // unambiguously horizontal: a vertical-first drag is the viewer
+    // scrolling the page THROUGH the stage, and stealing that would make
+    // the hero a scroll trap on a phone — which is exactly the bug most
+    // hero carousels ship with.
+    var startX = 0;
+    var startY = 0;
+    var tracking = false;
+    var decided = false;
+    var horizontal = false;
+    var THRESHOLD = 44; // px of travel that counts as a swipe
+
+    stage.addEventListener(
+      "pointerdown",
+      function (e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        tracking = true;
+        decided = false;
+        horizontal = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        hold("drag", true);
+      },
+      { passive: true }
+    );
+
+    stage.addEventListener(
+      "pointermove",
+      function (e) {
+        if (!tracking) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+        if (!decided) {
+          // Wait for 8px of movement before deciding which axis this is;
+          // below that the numbers are noise from the finger settling.
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          decided = true;
+          horizontal = Math.abs(dx) > Math.abs(dy);
+          if (!horizontal) tracking = false;
+        }
+      },
+      { passive: true }
+    );
+
+    function endDrag(e) {
+      if (!tracking) {
+        hold("drag", false);
+        return;
+      }
+      tracking = false;
+      var dx = (e.clientX || startX) - startX;
+      if (horizontal && Math.abs(dx) > THRESHOLD) {
+        go(dx < 0 ? index + 1 : index - 1);
+      }
+      hold("drag", false);
+    }
+
+    stage.addEventListener("pointerup", endDrag, { passive: true });
+    stage.addEventListener("pointercancel", endDrag, { passive: true });
+    stage.addEventListener("pointerleave", endDrag, { passive: true });
+
+    // ---- Suspension ----
+    root.addEventListener("pointerenter", function (e) {
+      // Only a real hovering pointer. A touch "enters" on tap and would
+      // otherwise leave autoplay held off for the rest of the visit.
+      if (e.pointerType === "mouse") hold("hover", true);
+    });
+    root.addEventListener("pointerleave", function (e) {
+      if (e.pointerType === "mouse") hold("hover", false);
+    });
+    root.addEventListener("focusin", function () {
+      hold("focus", true);
+    });
+    root.addEventListener("focusout", function () {
+      hold("focus", false);
+    });
+    document.addEventListener("visibilitychange", function () {
+      hold("hidden", document.visibilityState !== "visible");
+    });
+
+    whileVisible(
+      root,
+      function () {
+        hold("offscreen", false);
+      },
+      function () {
+        hold("offscreen", true);
+      },
+      "80px 0px"
+    );
+
+    // Under a reduced-motion preference the panels still change on click,
+    // swipe and keyboard — they simply never change on their own. Removing
+    // the slideshow entirely would take nine tenths of the hero's content
+    // away from the people who asked for less movement, not less content.
+    if (!prefersReducedMotion) start();
+  })();
+
+  // -------------------------------------------------------------------
   // Benefit belt — the infinite carousel
   //
   // One transform on one track, advanced by rAF. The cards are cloned
@@ -706,9 +930,14 @@
       desktop:
         "The member area on a laptop. Everything they own, one click from the front page.",
       phone:
-        "The same account on a phone. Swipe between the workout, the plan and the lesson.",
+        "The same account on a phone. Swipe between the library, the workout, the plan, the lesson and their progress.",
     };
     var current = "desktop";
+    // Set by the phone deck below once it initialises, and read by the page
+    // rail after it, so one control can drive both devices. Null until then
+    // and null forever if the phone markup is absent — every read is
+    // guarded rather than assuming the two always ship together.
+    var phoneDeck = null;
 
     // ---- Scale each mockup to its frame ----
     function fit() {
@@ -826,7 +1055,12 @@
         var value = parseFloat(el.getAttribute("data-fill"));
         if (!isFinite(value)) return;
         var ratio = Math.max(0, Math.min(100, value)) / 100;
-        el.style.transform = "scaleX(" + ratio + ")";
+        // Column charts grow upward, progress bars rightward. Both are a
+        // scale on an already-composited element rather than a height or a
+        // width, which is what keeps them off the layout path inside a
+        // subtree that is itself being scaled.
+        var vertical = el.parentNode && /(mock|mockp)__bars/.test(el.parentNode.className || "");
+        el.style.transform = vertical ? "scaleY(" + ratio + ")" : "scaleX(" + ratio + ")";
       });
     }
 
@@ -958,6 +1192,205 @@
 
       go(0);
       autoplay();
+
+      // Exposed so the page rail below can drive the phone as well as the
+      // desktop — one control, whichever device happens to be on stage.
+      phoneDeck = { go: go, count: panels.length };
+    })();
+
+    // -----------------------------------------------------------------
+    // The desktop deck + the shared page rail
+    //
+    // Four pages inside the laptop, advancing on their own and steerable
+    // from the rail under the stage. The rail is the single source of
+    // truth for "which page are we on": it moves the desktop pages, the
+    // sidebar highlight and — when the phone is the visible device — the
+    // equivalent phone slide, so switching device mid-demo keeps the
+    // viewer on the subject they were looking at instead of resetting.
+    //
+    // Page order matches the phone's slide order deliberately; PHONE_FOR
+    // maps between them rather than assuming they are the same index,
+    // because the phone has an extra video slide the desktop folds into
+    // its workout page.
+    // -----------------------------------------------------------------
+    (function () {
+      var pagesHost = document.getElementById("presDeskPages");
+      var pager = document.getElementById("presPager");
+      if (!pagesHost && !pager) return;
+
+      var pages = slice(pagesHost ? pagesHost.querySelectorAll("[data-desk-page]") : []);
+      var tabs = slice(pager ? pager.querySelectorAll("[data-page]") : []);
+      var navRows = slice(stage.querySelectorAll("[data-desk-nav]"));
+      if (!pages.length && !tabs.length) return;
+
+      var ORDER = ["library", "workout", "nutrition", "progress"];
+      // library -> phone slide 0, workout -> 1 (the session), nutrition -> 2,
+      // progress -> 4 (slide 3 is the video lesson, which has no desktop
+      // page of its own).
+      var PHONE_FOR = { library: 0, workout: 1, nutrition: 2, progress: 4 };
+
+      // The address bar moves with the page. It is a small thing, but a
+      // browser chrome that says /my-library while the nutrition planner is
+      // on screen is the detail that gives away that nobody is really
+      // clicking anything.
+      var URLS = {
+        library: "yourbrand.com/my-library",
+        workout: "yourbrand.com/train/week-3",
+        nutrition: "yourbrand.com/nutrition/day-12",
+        progress: "yourbrand.com/progress",
+      };
+      var urlEl = stage.querySelector(".mock--desktop .mock__url");
+
+      var current = "library";
+      var timer = null;
+      var paused = false;
+
+      function show(key) {
+        if (!key || key === current) return;
+        current = key;
+
+        if (urlEl && URLS[key]) urlEl.textContent = URLS[key];
+
+        pages.forEach(function (page) {
+          page.classList.toggle("is-active", page.getAttribute("data-desk-page") === key);
+        });
+        navRows.forEach(function (row) {
+          row.classList.toggle("is-active", row.getAttribute("data-desk-nav") === key);
+        });
+        tabs.forEach(function (tab) {
+          var on = tab.getAttribute("data-page") === key;
+          tab.classList.toggle("is-active", on);
+          tab.setAttribute("aria-selected", on ? "true" : "false");
+          tab.tabIndex = on ? 0 : -1;
+        });
+
+        // Keep the phone in step even while it is off stage, so switching
+        // to it shows the page the viewer just asked for.
+        if (phoneDeck && PHONE_FOR[key] != null && PHONE_FOR[key] < phoneDeck.count) {
+          phoneDeck.go(PHONE_FOR[key]);
+        }
+      }
+
+      function advance() {
+        var next = (ORDER.indexOf(current) + 1) % ORDER.length;
+        show(ORDER[next]);
+      }
+
+      function start() {
+        stop();
+        if (prefersReducedMotion || paused) return;
+        // Slower than the hero: these panels carry real detail and a
+        // viewer is expected to actually read one before it moves on.
+        timer = window.setInterval(function () {
+          if (document.visibilityState !== "visible") return;
+          if (stage.getAttribute("data-device") !== "desktop") return;
+          advance();
+        }, 5200);
+      }
+      function stop() {
+        if (timer) window.clearInterval(timer);
+        timer = null;
+      }
+
+      tabs.forEach(function (tab, i) {
+        tab.addEventListener("click", function () {
+          // A deliberate choice pauses the rotation for good. Continuing to
+          // auto-advance off a page somebody just asked for is the single
+          // most irritating thing a demo carousel can do.
+          paused = true;
+          stop();
+          show(tab.getAttribute("data-page"));
+        });
+        tab.addEventListener("keydown", function (e) {
+          var next = null;
+          if (e.key === "ArrowRight") next = i + 1;
+          else if (e.key === "ArrowLeft") next = i - 1;
+          else if (e.key === "Home") next = 0;
+          else if (e.key === "End") next = tabs.length - 1;
+          if (next === null || next < 0 || next >= tabs.length) return;
+          e.preventDefault();
+          paused = true;
+          stop();
+          show(tabs[next].getAttribute("data-page"));
+          tabs[next].focus();
+        });
+      });
+
+      // Clicking a row in the mock sidebar navigates too. It looks
+      // clickable, so it had better be.
+      navRows.forEach(function (row) {
+        row.addEventListener("click", function () {
+          paused = true;
+          stop();
+          show(row.getAttribute("data-desk-nav"));
+        });
+      });
+
+      // Swipe across the laptop, same gesture as the phone deck and the
+      // hero. Horizontal-only for the same reason: the page must still
+      // scroll through it.
+      if (pagesHost) {
+        var sx = 0;
+        var sy = 0;
+        var live = false;
+        var axis = null;
+
+        pagesHost.addEventListener(
+          "pointerdown",
+          function (e) {
+            if (e.pointerType === "mouse" && e.button !== 0) return;
+            live = true;
+            axis = null;
+            sx = e.clientX;
+            sy = e.clientY;
+          },
+          { passive: true }
+        );
+        pagesHost.addEventListener(
+          "pointermove",
+          function (e) {
+            if (!live || axis) return;
+            var dx = e.clientX - sx;
+            var dy = e.clientY - sy;
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            if (axis === "y") live = false;
+          },
+          { passive: true }
+        );
+        pagesHost.addEventListener(
+          "pointerup",
+          function (e) {
+            if (!live) return;
+            live = false;
+            var dx = e.clientX - sx;
+            if (axis !== "x" || Math.abs(dx) < 44) return;
+            paused = true;
+            stop();
+            var at = ORDER.indexOf(current);
+            var to = dx < 0 ? at + 1 : at - 1;
+            show(ORDER[(to + ORDER.length) % ORDER.length]);
+          },
+          { passive: true }
+        );
+      }
+
+      if (pagesHost) {
+        pagesHost.addEventListener("mouseenter", stop);
+        pagesHost.addEventListener("mouseleave", start);
+      }
+
+      // Only runs while the showcase is actually on screen.
+      whileVisible(
+        stage,
+        function () {
+          start();
+        },
+        function () {
+          stop();
+        },
+        "100px 0px"
+      );
     })();
   })();
 
@@ -1022,6 +1455,105 @@
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update, { passive: true });
     update();
+  })();
+
+  // -------------------------------------------------------------------
+  // Coming soon — the ambient drift
+  //
+  // The animation itself is entirely CSS (see §18b). This does two things
+  // and then gets out of the way: duplicates each row's cards so the
+  // -50% loop is seamless, and pauses the whole section while it is off
+  // screen.
+  //
+  // The clone is aria-hidden. Without that, a screen reader reads all
+  // thirteen features twice, which is the usual cost of the marquee
+  // duplication trick and the usual thing people forget.
+  // -------------------------------------------------------------------
+  (function () {
+    var soon = document.getElementById("presSoon");
+    if (!soon) return;
+
+    var tracks = slice(soon.querySelectorAll("[data-soon-track]"));
+    if (!tracks.length) return;
+
+    tracks.forEach(function (track) {
+      var originals = slice(track.children);
+      if (!originals.length) return;
+      originals.forEach(function (card) {
+        var copy = card.cloneNode(true);
+        copy.setAttribute("aria-hidden", "true");
+        // Same marker the benefit belt's clones carry, and for the same
+        // reason: §24 drops them when printing, so a printed deck lists
+        // each feature once instead of twice.
+        copy.setAttribute("data-clone", "");
+        track.appendChild(copy);
+      });
+    });
+
+    // Reduced motion: the stylesheet stops the animation (§23) and the
+    // rows become ordinary horizontal scrollers, so there is nothing to
+    // pause and no reason to keep an observer alive for it.
+    if (prefersReducedMotion) return;
+
+    whileVisible(
+      soon,
+      function () {
+        soon.classList.remove("is-paused");
+      },
+      function () {
+        soon.classList.add("is-paused");
+      },
+      "120px 0px"
+    );
+  })();
+
+  // -------------------------------------------------------------------
+  // Campaign chart
+  //
+  // Ten bars that grow once, when the card first reaches the viewport.
+  // Same scaleY-from-the-baseline approach as the showcase's charts, and
+  // the same reason: a height animation on ten elements is ten layout
+  // passes a frame, a scale is none.
+  // -------------------------------------------------------------------
+  (function () {
+    var chart = document.querySelector(".pres-camp__chart");
+    if (!chart) return;
+
+    var bars = slice(chart.querySelectorAll("[data-camp-bar]"));
+    if (!bars.length) return;
+
+    function fill() {
+      bars.forEach(function (bar, i) {
+        var value = parseFloat(bar.getAttribute("data-camp-bar"));
+        if (!isFinite(value)) return;
+        var ratio = Math.max(0, Math.min(100, value)) / 100;
+        if (prefersReducedMotion) {
+          bar.style.transform = "scaleY(" + ratio + ")";
+          return;
+        }
+        // A short stagger left to right, so the chart draws itself rather
+        // than snapping to its final state all at once.
+        window.setTimeout(function () {
+          bar.style.transform = "scaleY(" + ratio + ")";
+        }, i * 55);
+      });
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      fill();
+      return;
+    }
+    var seen = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          fill();
+          seen.unobserve(entry.target);
+        });
+      },
+      { rootMargin: "0px 0px -12% 0px", threshold: 0.01 }
+    );
+    seen.observe(chart);
   })();
 
   // -------------------------------------------------------------------
@@ -1119,60 +1651,316 @@
   })();
 
   // -------------------------------------------------------------------
-  // CTA buttons + enquiry form
+  // Setup wizard — the partnership estimator
+  //
+  // Five steps and a result. The number it produces is a REVENUE SHARE,
+  // not a price: 10% for the platform on its own, rising to 30% when
+  // every service is selected.
+  //
+  // The arithmetic is deliberately simple and lives in the markup. Each
+  // service carries a data-weight, the weights of the twelve services sum
+  // to exactly 20, and the estimate is 10 + (selected weight). That means
+  // the floor and the ceiling are structural rather than clamped after
+  // the fact — you cannot get 9% or 31% out of this, and adding a service
+  // to the HTML without rebalancing the others is a visible arithmetic
+  // error rather than a silent drift past 30.
+  //
+  // Nothing here submits or reloads. The estimate is visible without an
+  // email address, on purpose: gating the number behind a form is what
+  // made the old contact section the weakest part of the deck.
+  // -------------------------------------------------------------------
+
+  // Written by the wizard, read by the enquiry form below it.
+  var setupState = { scope: "platform", pct: 10, low: 10, high: 12, services: [] };
+
+  function setupSummaryLine() {
+    var parts = [
+      "Estimated partnership range: " + setupState.low + "% – " + setupState.high + "%",
+      "Scope: " + (setupState.scope === "platform" ? "Platform only" : "Platform and services"),
+    ];
+    if (setupState.services.length) {
+      parts.push("Services selected: " + setupState.services.join(", "));
+    }
+    parts.push("(Visitor's own wizard estimate — not a quoted rate.)");
+    return parts.join("\n");
+  }
+
+  (function () {
+    var root = document.getElementById("presSetup");
+    if (!root) return;
+
+    var steps = slice(root.querySelectorAll("[data-setup-step]"));
+    var dotsHost = document.getElementById("presSetupDots");
+    var progress = document.getElementById("presSetupProgress");
+    var pctEl = document.getElementById("presSetupPct");
+    var gauge = document.getElementById("presSetupGauge");
+    var noteEl = document.getElementById("presSetupNote");
+    var rangeEl = document.getElementById("presSetupRange");
+    var summaryEl = document.getElementById("presSetupSummary");
+    var stepNumEl = document.getElementById("presSetupStepNum");
+    var backBtn = document.getElementById("presSetupBack");
+    var nextBtn = document.getElementById("presSetupNext");
+    var nextLabel = document.getElementById("presSetupNextLabel");
+    if (steps.length < 2 || !nextBtn) return;
+
+    var BASE = 10;
+    var CEILING = 30;
+    var RESULT = steps.length - 1; // the result panel is the last step
+    var QUESTIONS = RESULT; // 5 question steps
+    var index = 0;
+
+    var stepsHost = document.getElementById("presSetupSteps");
+    var boxes = slice(root.querySelectorAll("[data-service]"));
+    var scopeInputs = slice(root.querySelectorAll('input[name="setupScope"]'));
+
+    // Keeps the panel exactly as tall as whichever step is showing. Read
+    // after the class swap, so the measured element is the one that is
+    // about to be visible.
+    function sizeToStep() {
+      if (!stepsHost) return;
+      var active = steps[index];
+      if (!active) return;
+      stepsHost.style.height = active.offsetHeight + "px";
+    }
+
+    // Built below, but declared and filled before anything can call go().
+    var dots = [];
+    if (dotsHost) {
+      steps.forEach(function (step, i) {
+        var li = document.createElement("li");
+        li.className = "pres-setup__dot" + (i === 0 ? " is-active" : "");
+        dotsHost.appendChild(li);
+        dots.push(li);
+      });
+    }
+
+    function scope() {
+      var picked = scopeInputs.filter(function (i) {
+        return i.checked;
+      })[0];
+      return picked ? picked.value : "platform";
+    }
+
+    function platformOnly() {
+      return scope() === "platform";
+    }
+
+    // ---- The estimate ----
+    function compute() {
+      if (platformOnly()) {
+        return { pct: BASE, services: [] };
+      }
+      var total = BASE;
+      var chosen = [];
+      boxes.forEach(function (box) {
+        if (!box.checked) return;
+        var w = parseFloat(box.getAttribute("data-weight"));
+        if (isFinite(w)) total += w;
+        chosen.push(box.getAttribute("data-service") || "");
+      });
+      return { pct: Math.min(total, CEILING), services: chosen.filter(Boolean) };
+    }
+
+    function paint() {
+      var out = compute();
+      // Half-points are real (a 1.5-weight service on its own gives 11.5)
+      // but a fractional percentage reads as false precision on an
+      // estimate. Round for display, keep the exact figure for the range.
+      var shown = Math.round(out.pct);
+
+      // The range widens with scope: a platform-only answer is something we
+      // can be nearly exact about, a twelve-service one genuinely is not.
+      var spread = platformOnly() ? 2 : out.services.length > 6 ? 4 : 3;
+      var low = Math.max(BASE, Math.round(out.pct - spread / 2));
+      var high = Math.min(CEILING, low + spread);
+
+      setupState.scope = scope();
+      setupState.pct = shown;
+      setupState.low = low;
+      setupState.high = high;
+      setupState.services = out.services;
+
+      if (pctEl) pctEl.textContent = String(shown);
+      if (gauge) {
+        // A scale, not a width: the gauge is 100% wide and squashed from
+        // the left edge, so it never triggers layout as it moves.
+        var ratio = (out.pct - BASE) / (CEILING - BASE);
+        gauge.style.transform = "scaleX(" + Math.max(0, Math.min(1, ratio)).toFixed(4) + ")";
+      }
+      if (noteEl) {
+        noteEl.textContent = platformOnly()
+          ? "Platform only. Add services and this moves."
+          : out.services.length
+          ? out.services.length + (out.services.length === 1 ? " service selected." : " services selected.")
+          : "No services selected yet.";
+      }
+      if (rangeEl) rangeEl.textContent = low + "% – " + high + "%";
+      if (summaryEl) {
+        summaryEl.textContent = platformOnly()
+          ? "The platform on its own, with no additional services."
+          : out.services.length
+          ? "Platform, plus " + out.services.join(", ").toLowerCase() + "."
+          : "Platform and services, with nothing selected yet.";
+      }
+    }
+
+    // ---- Step machinery ----
+    //
+    // "Platform only" skips the four service steps entirely. next()/prev()
+    // ask for the next REACHABLE step rather than index ± 1, so the skip
+    // works identically in both directions and the progress bar stays
+    // honest about how much is left.
+    function reachable(i) {
+      if (i <= 0 || i >= RESULT) return true;
+      return !platformOnly();
+    }
+
+    function seek(from, dir) {
+      var i = from + dir;
+      while (i > 0 && i < RESULT && !reachable(i)) i += dir;
+      return Math.max(0, Math.min(RESULT, i));
+    }
+
+    function go(target) {
+      index = Math.max(0, Math.min(RESULT, target));
+
+      steps.forEach(function (step, i) {
+        var on = i === index;
+        step.classList.toggle("is-active", on);
+        // Disabling the fieldset takes every control inside it out of the
+        // tab order in one attribute — without it a keyboard user tabs
+        // straight off the visible step into the hidden ones.
+        if (step.tagName === "FIELDSET") step.disabled = !on;
+      });
+
+      if (backBtn) backBtn.disabled = index === 0;
+      if (nextBtn) nextBtn.classList.toggle("u-hidden", index === RESULT);
+      if (nextLabel) {
+        nextLabel.textContent = seek(index, 1) === RESULT ? "See my estimate" : "Continue";
+      }
+      if (stepNumEl) stepNumEl.textContent = String(Math.min(index + 1, QUESTIONS));
+      if (progress) {
+        var ratio = index / RESULT;
+        progress.style.transform = "scaleX(" + ratio.toFixed(4) + ")";
+      }
+      dots.forEach(function (dot, i) {
+        dot.classList.toggle("is-active", i === index);
+        dot.classList.toggle("is-done", i < index);
+        dot.classList.toggle("is-skipped", !reachable(i));
+      });
+
+      sizeToStep();
+
+      if (index === RESULT) {
+        paint();
+        track.bump({ wizardCompleted: true });
+        track.event("setup_wizard", setupState.low + "-" + setupState.high + "%");
+      }
+    }
+
+    nextBtn.addEventListener("click", function () {
+      go(seek(index, 1));
+    });
+    if (backBtn) {
+      backBtn.addEventListener("click", function () {
+        go(seek(index, -1));
+      });
+    }
+
+    // Every input repaints the estimate immediately — that live number is
+    // the reason to keep answering.
+    boxes.forEach(function (box) {
+      box.addEventListener("change", paint);
+    });
+    scopeInputs.forEach(function (input) {
+      input.addEventListener("change", function () {
+        // Switching back to platform-only must not leave a dozen ticked
+        // boxes silently contributing to a later answer.
+        if (platformOnly()) {
+          boxes.forEach(function (box) {
+            box.checked = false;
+          });
+        }
+        if (nextLabel) {
+          nextLabel.textContent = seek(index, 1) === RESULT ? "See my estimate" : "Continue";
+        }
+        dots.forEach(function (dot, i) {
+          dot.classList.toggle("is-skipped", !reachable(i));
+        });
+        paint();
+      });
+    });
+
+    // Enter anywhere in the wizard advances it, the way a real form would.
+    root.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      // Except inside the enquiry form, which has its own submit.
+      if (e.target && e.target.closest && e.target.closest("#presContactForm")) return;
+      e.preventDefault();
+      if (index < RESULT) go(seek(index, 1));
+    });
+
+    // Re-measure when the step's own height changes underneath us: a
+    // reflow at a new viewport width, a font finally loading, or the
+    // enquiry form being replaced by its confirmation panel — that last
+    // one happens inside the result step long after any navigation.
+    if (window.ResizeObserver && stepsHost) {
+      var sizer = new ResizeObserver(rafThrottle(sizeToStep));
+      steps.forEach(function (step) {
+        sizer.observe(step);
+      });
+    } else {
+      window.addEventListener("resize", rafThrottle(sizeToStep), { passive: true });
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(sizeToStep).catch(function () {});
+    }
+
+    paint();
+    go(0);
+  })();
+
+  // -------------------------------------------------------------------
+  // Admin CTA links + enquiry form
+  //
+  // The three CTA BUTTONS are gone — the setup wizard is the closing
+  // action now. The three admin-configured DESTINATIONS are not: a deck
+  // cut for a partner mid-negotiation still wants its booking link. They
+  // render here as a quiet row of links under the wizard, and only the
+  // ones the admin actually filled in appear at all.
   // -------------------------------------------------------------------
   (function () {
     var form = document.getElementById("presContactForm");
     var intentEl = document.getElementById("presFormIntent");
     var statusEl = document.getElementById("presFormStatus");
     var submitBtn = document.getElementById("presFormSubmit");
-    var ctaButtons = Array.prototype.slice.call(document.querySelectorAll("[data-cta]"));
     var links = document.getElementById("presCtaLinks");
 
-    var intent = "Continue Partnership";
+    var intent = "Partnership estimate";
 
-    // Per-CTA destination overrides, set by the admin per presentation. When
-    // one is present the button becomes a real navigation (a booking link, a
-    // calendar, a demo environment) instead of scrolling to the form.
-    var overrides = {};
     if (links) {
-      overrides["Continue Partnership"] = links.dataset.partnership || "";
-      overrides["Schedule Meeting"] = links.dataset.meeting || "";
-      overrides["Request Demo"] = links.dataset.demo || "";
-    }
-
-    ctaButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var label = btn.getAttribute("data-cta") || "";
-        track.event("cta_click", label);
-
-        var href = overrides[label];
-        if (href) {
-          // rel on a programmatic open: without noopener the destination
-          // gets a window.opener handle back into this page.
-          window.open(href, "_blank", "noopener,noreferrer");
-          return;
-        }
-
-        intent = label;
-        if (intentEl) intentEl.textContent = label;
-        ctaButtons.forEach(function (other) {
-          other.classList.toggle("is-active", other === btn);
+      [
+        ["Continue partnership", links.dataset.partnership],
+        ["Schedule a meeting", links.dataset.meeting],
+        ["Request a demo", links.dataset.demo],
+      ].forEach(function (pair) {
+        var label = pair[0];
+        var href = pair[1] || "";
+        if (!href) return;
+        var a = document.createElement("a");
+        a.className = "pres-cta__link";
+        a.href = href;
+        a.target = "_blank";
+        // Without noopener the destination gets a window.opener handle
+        // back into this page.
+        a.rel = "noopener noreferrer";
+        a.textContent = label;
+        a.addEventListener("click", function () {
+          track.event("cta_click", label);
         });
-        if (form) {
-          var nameField = document.getElementById("presName");
-          form.scrollIntoView({
-            behavior: prefersReducedMotion ? "auto" : "smooth",
-            block: "center",
-          });
-          // Focus after the scroll settles, not during — focusing mid-scroll
-          // makes the browser jump to the field and cancels the animation.
-          window.setTimeout(function () {
-            if (nameField) nameField.focus({ preventScroll: true });
-          }, prefersReducedMotion ? 0 : 420);
-        }
+        links.appendChild(a);
       });
-    });
+    }
 
     if (!form) return;
 
@@ -1213,7 +2001,6 @@
 
       var nameInput = document.getElementById("presName");
       var emailInput = document.getElementById("presEmail");
-      var companyInput = document.getElementById("presCompany");
       var messageInput = document.getElementById("presMessage");
 
       var name = nameInput.value.trim();
@@ -1249,8 +2036,14 @@
           intent: intent,
           name: name,
           email: email,
-          company: companyInput ? companyInput.value.trim() : "",
-          message: messageInput ? messageInput.value.trim() : "",
+          company: "",
+          // The estimate and the exact services they chose are prepended to
+          // whatever they typed. Without it the notification email says
+          // somebody wants to talk, but not about what — and the whole
+          // point of the wizard is that the first reply can be specific.
+          message: [setupSummaryLine(), messageInput ? messageInput.value.trim() : ""]
+            .filter(Boolean)
+            .join("\n\n"),
         }),
       })
         .then(function (res) {

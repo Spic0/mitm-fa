@@ -223,6 +223,8 @@ window.AdminPanels.presentations = (function () {
   // Analytics is fetched only when an existing deck is opened, never on the
   // list's load(), matching how promotion-drawer.js defers the same work.
   // -------------------------------------------------------------------
+  // Mirrors SECTION_KEYS in server/src/lib/presentations.js — same order as
+  // the deck itself, so the checkbox list reads like a table of contents.
   var SECTION_FIELDS = [
     { key: "who", label: "Who We Are" },
     { key: "services", label: "Everything We Handle" },
@@ -232,9 +234,11 @@ window.AdminPanels.presentations = (function () {
     { key: "showcase", label: "Product Showcase" },
     { key: "catalogue", label: "What You Sell" },
     { key: "journey", label: "Customer Journey" },
-    { key: "technology", label: "Technology" },
+    { key: "value", label: "What It's Worth" },
+    { key: "campaigns", label: "Promotional Campaigns" },
     { key: "philosophy", label: "Our Philosophy" },
-    { key: "cta", label: "Schedule Next Meeting" },
+    { key: "soon", label: "Coming Soon" },
+    { key: "cta", label: "Setup Wizard" },
   ];
 
   function fieldRow(id, label, value, hint, type) {
@@ -363,11 +367,21 @@ window.AdminPanels.presentations = (function () {
 
     // ---- Content tab ----
     backdrop.querySelector('[data-panel="content"]').innerHTML =
-      '<p class="pres-form-hint u-mb-16">The ten sections are fixed brand content. These override the hero copy and the three call-to-action destinations for this presentation only.</p>' +
+      '<p class="pres-form-hint u-mb-16">The deck\'s sections are fixed brand content. These override the hero copy, the featured product and the call-to-action destinations for this presentation only.</p>' +
       fieldRow("presHeroEyebrow", "Hero eyebrow", content.heroEyebrow, "") +
       fieldRow("presHeroTitle", "Hero headline", content.heroTitle, "") +
       fieldRow("presHeroSubtitle", "Hero subheadline", content.heroSubtitle, "", "textarea") +
       fieldRow("presWelcomeNote", "Personal note (optional)", content.welcomeNote, "One line addressed to this specific viewer.", "textarea") +
+      '<h6 class="pres-form-heading">Featured product</h6>' +
+      '<p class="pres-form-hint u-mb-16">Drives both "View Product" buttons and dresses the Product Showcase. ' +
+      "Only published products are listed — the buttons disappear from the deck if the product is later unpublished.</p>" +
+      '<div class="pres-form-row">' +
+      '<label for="presFeaturedProduct">Product</label>' +
+      '<select id="presFeaturedProduct" data-selected="' + esc(content.featuredProductId || "") + '">' +
+      '<option value="">Loading products…</option>' +
+      "</select>" +
+      '<p class="pres-form-hint">Leave as "No product" to hide the View Product buttons entirely.</p>' +
+      "</div>" +
       '<h6 class="pres-form-heading">Call-to-action links</h6>' +
       '<p class="pres-form-hint u-mb-16">Leave a field empty and that button scrolls to the enquiry form instead of opening a link.</p>' +
       fieldRow("presCtaPartnershipUrl", "Continue Partnership", content.ctaPartnershipUrl, "", "url") +
@@ -386,6 +400,8 @@ window.AdminPanels.presentations = (function () {
       "</div>";
 
     // ---- Wiring ----
+    populateProductPicker(backdrop);
+
     backdrop.querySelectorAll("[data-drawer-action]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var action = btn.dataset.drawerAction;
@@ -395,6 +411,47 @@ window.AdminPanels.presentations = (function () {
         if (action === "save") return save(backdrop, p, btn);
       });
     });
+  }
+
+  // Fills the featured-product select after the drawer is already on screen.
+  // The saved id lives in data-selected rather than in the option list, so a
+  // failed or slow request can never quietly reset a deck's chosen product to
+  // "none" — on failure the select keeps the stored id and says so.
+  function populateProductPicker(backdrop) {
+    var select = backdrop.querySelector("#presFeaturedProduct");
+    if (!select) return;
+    var selected = select.dataset.selected || "";
+
+    window.AdminAPI.listProducts({ status: "published" })
+      .then(function (data) {
+        var products = (data && data.products) || [];
+        var options = ['<option value="">No product — hide the buttons</option>'];
+        var found = false;
+        products.forEach(function (product) {
+          if (product.id === selected) found = true;
+          options.push(
+            '<option value="' + esc(product.id) + '"' +
+              (product.id === selected ? " selected" : "") +
+              ">" + esc(product.name) + "</option>"
+          );
+        });
+        // A product that was picked and has since been unpublished or deleted
+        // would otherwise vanish silently and save back as "none". Keep it
+        // visible and labelled so the admin decides what to do about it.
+        if (selected && !found) {
+          options.push(
+            '<option value="' + esc(selected) + '" selected>' +
+              "Previously selected product (no longer published)</option>"
+          );
+        }
+        select.innerHTML = options.join("");
+      })
+      .catch(function () {
+        select.innerHTML =
+          '<option value="' + esc(selected) + '" selected>' +
+          (selected ? "Keeping the saved product" : "No product") +
+          " — could not load the catalogue</option>";
+      });
   }
 
   function regenerate(backdrop, p) {
@@ -457,6 +514,7 @@ window.AdminPanels.presentations = (function () {
         heroTitle: val("presHeroTitle"),
         heroSubtitle: val("presHeroSubtitle"),
         welcomeNote: val("presWelcomeNote"),
+        featuredProductId: val("presFeaturedProduct"),
         ctaPartnershipUrl: val("presCtaPartnershipUrl"),
         ctaMeetingUrl: val("presCtaMeetingUrl"),
         ctaDemoUrl: val("presCtaDemoUrl"),

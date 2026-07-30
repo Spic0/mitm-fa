@@ -356,7 +356,9 @@ h1, h2, h3, h4, h5 {
 .pg-boot__line { animation: pgPulse 1.5s var(--pg-ease) infinite; }
 @keyframes pgPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-@media (min-width: 768px) { .pg-boot__cover { aspect-ratio: 21 / 9; } }
+/* Roughly the shape the loaded hero settles into at each breakpoint, so
+   the skeleton doesn't collapse when the real thing replaces it. */
+@media (min-width: 768px) { .pg-boot__cover { aspect-ratio: 5 / 2; } }
 
 .pg-locked { display: flex; align-items: center; justify-content: center; min-height: 70vh; padding: var(--pg-gap-lg) var(--pg-shell-x); }
 .pg-locked__inner { max-width: 460px; text-align: center; }
@@ -501,20 +503,53 @@ h1, h2, h3, h4, h5 {
   position: relative;
   isolation: isolate;
   /* Full-bleed on a phone: cancel the shell's side padding so the art
-     touches both edges, while the copy inside keeps its own inset. */
+     touches both edges, while the copy inside keeps its own inset. Height
+     is content-driven rather than a fixed ratio — a cover is never cropped
+     to fit a frame here, so there is no ratio to enforce. */
   margin: 0 calc(var(--pg-shell-x) * -1);
-  aspect-ratio: 4 / 5;
-  max-height: 78vh;
   overflow: hidden;
   border-radius: var(--pg-radius-xl);
   background: var(--pg-surface-2);
   box-shadow: var(--pg-shadow-lg);
 }
 
-/* The art layer is taller than its frame so it has room to travel under
-   the parallax transform program.js applies on scroll. */
-.pg-hero__art { position: absolute; inset: -8% 0; will-change: transform; }
-.pg-hero__art img { width: 100%; height: 100%; object-fit: cover; }
+/* Backdrop. Inset beyond the frame on all sides so the blur has real
+   pixels to sample at the edges (a blurred layer flush to its frame
+   feathers to transparent and shows a pale rim), and so it has room to
+   travel under the parallax transform program.js applies on scroll. */
+.pg-hero__backdrop { position: absolute; inset: -12%; will-change: transform; }
+.pg-hero__backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* scale() past the blur radius keeps the softened edge outside the frame. */
+  transform: scale(1.15);
+  filter: blur(38px) saturate(1.3) brightness(0.66);
+}
+
+/* The poster: the cover shown properly — sharp, whole, and lifted off the
+   backdrop, the way a physical product would sit on a shelf. */
+.pg-hero__poster {
+  flex: 0 0 auto;
+  width: clamp(148px, 44vw, 200px);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--pg-radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--pg-shadow-xl);
+}
+.pg-hero__poster img { width: 100%; height: 100%; object-fit: cover; }
+
+.pg-hero__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pg-gap);
+  padding: clamp(26px, 6.5vw, 40px) clamp(20px, 5vw, 34px) clamp(24px, 6vw, 36px);
+  text-align: center;
+}
 
 /* Two gradients rather than one linear fade: the upper stop keeps the
    eyebrow legible over a bright cover, the lower one carries the whole
@@ -527,28 +562,23 @@ h1, h2, h3, h4, h5 {
    different renderings of the same words, overlapping. Committing to a
    dark lower half suppresses whatever is behind it, so the cover reads as
    art and the copy reads as copy, on posters and clean photography alike. */
+/* A flat wash plus a bottom weight. The backdrop is already blurred and
+   darkened, so this only has to guarantee a contrast floor for the white
+   copy over a pale or high-key cover — it is no longer doing the work of
+   hiding artwork detail. */
 .pg-hero__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(12, 12, 11, 0.45) 0%, rgba(12, 12, 11, 0) 30%),
-    linear-gradient(to top,
-      rgba(12, 12, 11, 0.95) 0%,
-      rgba(12, 12, 11, 0.86) 24%,
-      rgba(12, 12, 11, 0.6) 48%,
-      rgba(12, 12, 11, 0.24) 68%,
-      rgba(12, 12, 11, 0) 88%);
+    linear-gradient(to top, rgba(12, 12, 11, 0.62) 0%, rgba(12, 12, 11, 0.26) 55%, rgba(12, 12, 11, 0.3) 100%);
 }
 
-.pg-hero__body {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: var(--pg-gap) clamp(20px, 5vw, 34px) clamp(22px, 5vw, 32px);
-  color: #ffffff;
-}
+.pg-hero__body { min-width: 0; color: #ffffff; }
 .pg-hero__eyebrow {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
   font-size: var(--pg-micro);
@@ -573,7 +603,7 @@ h1, h2, h3, h4, h5 {
 }
 .pg-hero__creator strong { color: #ffffff; font-weight: 700; }
 
-.pg-hero__chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.pg-hero__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 16px; }
 .pg-hero__chips li {
   display: inline-flex;
   align-items: center;
@@ -646,9 +676,21 @@ h1, h2, h3, h4, h5 {
 .pg-stat--wide .pg-meter { margin-top: 10px; }
 
 @media (min-width: 768px) {
-  .pg-hero__stage { margin: 0; aspect-ratio: 21 / 9; max-height: 62vh; }
-  .pg-hero__art { inset: -12% 0; }
-  .pg-hero__body { padding: var(--pg-gap-lg) clamp(30px, 4vw, 52px) clamp(28px, 3.4vw, 44px); max-width: 76%; }
+  /* Poster beside the copy rather than under it — the cinematic version of
+     the same two layers, with the artwork given its own column instead of
+     being cropped to a letterbox. */
+  .pg-hero__stage { margin: 0; }
+  .pg-hero__inner {
+    flex-direction: row;
+    align-items: center;
+    gap: clamp(26px, 3vw, 44px);
+    padding: clamp(32px, 3.4vw, 52px);
+    text-align: left;
+  }
+  .pg-hero__poster { width: clamp(176px, 15vw, 224px); }
+  .pg-hero__body { flex: 1 1 auto; }
+  .pg-hero__eyebrow { justify-content: flex-start; }
+  .pg-hero__chips { justify-content: flex-start; }
   .pg-hero__deck { display: flex; align-items: center; gap: var(--pg-gap); }
   .pg-hero__resume { flex: 0 0 auto; width: 300px; }
   .pg-hero__stats { flex: 1 1 auto; margin-top: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }

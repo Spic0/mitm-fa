@@ -472,9 +472,13 @@
     $("pgRailTitle").textContent = product.name;
     $("pgRailCreator").textContent = product.creator || "";
 
+    // One image, three roles: the sharp poster, the blurred backdrop behind
+    // it, and the rail thumbnail. The backdrop is decorative (aria-hidden in
+    // the markup) so it carries no alt text of its own.
     var cover = product.imageUrl || "/assets/images/product/product-image1.png";
     $("pgHeroImage").src = cover;
     $("pgHeroImage").alt = product.name + " cover";
+    $("pgHeroBackdrop").src = cover;
     $("pgRailThumb").src = cover;
     $("pgRailThumb").alt = "";
 

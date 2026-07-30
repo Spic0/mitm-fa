@@ -21,7 +21,7 @@
          it. See the header comment in program.css for the mapping. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-400-normal.woff2" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-600-normal.woff2" crossorigin>
-    <link rel="stylesheet" href="/assets/css/program.css?v=20260730b">
+    <link rel="stylesheet" href="/assets/css/program.css?v=20260730c">
     <link rel="stylesheet" href="/assets/css/program-media.css?v=20260730">
     <link rel="stylesheet" href="/assets/css/program-viewer.css?v=20260730">
 
@@ -139,22 +139,44 @@
             <!-- =====================================================
                  HERO
                  The cover is the page's first statement, not a
-                 thumbnail beside a text block: full-bleed on a phone,
-                 a cinematic 21:9 stage on desktop, with the copy laid
-                 over a scrim rather than beside it.
+                 thumbnail beside a text block. Two layers of the same
+                 image: a blurred backdrop for atmosphere, and the cover
+                 itself shown sharp and whole as a poster — stacked above
+                 the copy on a phone, beside it from 768px. See the
+                 comment on the backdrop below for why the artwork is
+                 never cropped behind live type.
                  ===================================================== -->
             <section class="pg-hero" id="pgHero">
                 <div class="pg-hero__stage">
-                    <div class="pg-hero__art" id="pgHeroArt">
-                        <img id="pgHeroImage" alt="" decoding="async" fetchpriority="high">
+                    <!-- The cover appears twice, doing two different jobs.
+                         Blurred and pushed back it is atmosphere — it gives
+                         the hero the program's own colour without competing
+                         with anything. Sharp, in the poster card below, it
+                         is the artwork itself, shown whole and uncropped.
+
+                         This is deliberate, and it is what makes the hero
+                         safe for real covers: much of this catalogue is
+                         portrait marketing posters with the program name
+                         already set into the image. Laying live type over
+                         one of those renders the same words twice, and no
+                         gradient fixes it because the baked-in title sits
+                         exactly where an overlaid title wants to be. Out of
+                         focus, artwork type reads as texture. -->
+                    <div class="pg-hero__backdrop" id="pgHeroArt" aria-hidden="true">
+                        <img id="pgHeroBackdrop" alt="" decoding="async">
                     </div>
                     <div class="pg-hero__scrim" aria-hidden="true"></div>
 
-                    <div class="pg-hero__body">
-                        <p class="pg-hero__eyebrow" id="pgHeroEyebrow"></p>
-                        <h1 class="pg-hero__title" id="pgHeroTitle"></h1>
-                        <p class="pg-hero__creator u-hidden" id="pgHeroCreator"></p>
-                        <ul class="pg-hero__chips" id="pgHeroChips"></ul>
+                    <div class="pg-hero__inner">
+                        <div class="pg-hero__poster">
+                            <img id="pgHeroImage" alt="" decoding="async" fetchpriority="high">
+                        </div>
+                        <div class="pg-hero__body">
+                            <p class="pg-hero__eyebrow" id="pgHeroEyebrow"></p>
+                            <h1 class="pg-hero__title" id="pgHeroTitle"></h1>
+                            <p class="pg-hero__creator u-hidden" id="pgHeroCreator"></p>
+                            <ul class="pg-hero__chips" id="pgHeroChips"></ul>
+                        </div>
                     </div>
                 </div>
 
@@ -290,7 +312,7 @@
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/program-media.js?v=20260730" defer></script>
     <script src="/assets/js/program-viewer.js?v=20260730" defer></script>
-    <script src="/assets/js/program.js?v=20260730" defer></script>
+    <script src="/assets/js/program.js?v=20260730c" defer></script>
 </body>
 
 </html>

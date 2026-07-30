@@ -1,6 +1,6 @@
 const express = require("express");
 const { requireAuth, requireAdmin } = require("../../middleware/auth");
-const { apiLimiter } = require("../../middleware/rateLimit");
+const { adminLimiter } = require("../../middleware/rateLimit");
 
 const dashboardRoutes = require("./dashboard");
 const ordersRoutes = require("./orders");
@@ -16,6 +16,7 @@ const promotionsRoutes = require("./promotions");
 const influencersRoutes = require("./influencers");
 const promotionNotificationsRoutes = require("./promotionNotifications");
 const presentationsRoutes = require("./presentations");
+const builderRoutes = require("./builder");
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ const router = express.Router();
 // influencers.js/promotionNotifications.js do their own finer-grained
 // requirePromotionView/requirePromotionManage gating per route. Every other
 // section's access is unchanged: still admin-only.
-router.use(requireAuth, apiLimiter);
+router.use(requireAuth, adminLimiter);
 
 router.use("/dashboard", requireAdmin, dashboardRoutes);
 router.use("/orders", requireAdmin, ordersRoutes);
@@ -39,6 +40,10 @@ router.use("/system-logs", requireAdmin, systemLogsRoutes);
 router.use("/settings", requireAdmin, settingsRoutes);
 router.use("/taxonomy", requireAdmin, taxonomyRoutes);
 router.use("/presentations", requireAdmin, presentationsRoutes);
+// Product Builder support (template library, media library). Mounted under its
+// own prefix rather than folded into /products so the builder's cross-product
+// concerns don't have to pretend to belong to one product id.
+router.use("/builder", requireAdmin, builderRoutes);
 router.use("/promotions", promotionsRoutes);
 router.use("/influencers", influencersRoutes);
 router.use("/promotion-notifications", promotionNotificationsRoutes);

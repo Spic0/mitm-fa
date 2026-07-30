@@ -7,7 +7,10 @@ window.AdminPanels.products = {
     var searchDebounce;
 
     function statusBadge(status) {
-      var map = { published: "success", draft: "warning", archived: "neutral", presentation: "info" };
+      var map = {
+        published: "success", draft: "warning", archived: "neutral", presentation: "info",
+        private: "warning", scheduled: "info",
+      };
       // "presentation" is spelled out, because the distinction that matters
       // about these rows is not their state but that they are not for sale
       // and never reach the store.
@@ -120,13 +123,16 @@ window.AdminPanels.products = {
 
     function wireRowActions(tr, p) {
       tr.querySelector("[data-edit]").addEventListener("click", function () {
-        window.AdminProductWizard.open(p.id, function (updated) {
+        window.AdminProductBuilder.open(p.id, function (updated) {
           if (updated) syncRowLocally(updated, { flash: true });
         });
       });
       tr.querySelector("[data-duplicate]").addEventListener("click", function () {
+        // A full clone now copies gallery files and every exercise demo, so it
+        // is no longer instant — say so rather than looking hung.
+        window.AdminUI.toast("Cloning — copying media, one moment…", "success");
         window.AdminAPI.duplicateProduct(p.id).then(function (data) {
-          window.AdminUI.toast("Product duplicated", "success");
+          window.AdminUI.toast("Product cloned", "success");
           syncRowLocally(data.product, { enter: true });
         }).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
       });
@@ -185,7 +191,7 @@ window.AdminPanels.products = {
     }
 
     root.querySelector("#createProductBtn").addEventListener("click", function () {
-      window.AdminProductWizard.open(null, function (product) {
+      window.AdminProductBuilder.open(null, function (product) {
         if (product) syncRowLocally(product, { enter: true });
       });
     });

@@ -54,8 +54,12 @@ model Product {
   imageUrl   String?
   thumbnailUrl String?
   description  String? // short description shown on shop grid/cards
-  status       String   @default("published") // "draft" | "published" | "archived"
+  status       String   @default("published") // "draft" | "private" | "scheduled" | "published" | "archived" | "presentation"
   featured     Boolean  @default(false)
+  // When status is "scheduled", the moment it should flip to "published".
+  // A timer sweep in src/index.js does the flip; until then "scheduled" is a
+  // non-public status like any other, so nothing leaks early.
+  publishAt    DateTime?
   createdAt    DateTime @default(now())
 
   // Platform program content — what the customer actually consumes after

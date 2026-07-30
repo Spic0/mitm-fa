@@ -17,6 +17,10 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // the moment one of them became a visibility boundary.
 //
 //   draft        work in progress, not public, not sellable
+//   private      finished, but deliberately unlisted — not public, not
+//                sellable, reachable only by someone who already has a link
+//   scheduled    finished and queued to go live at publishAt; a timer sweep in
+//                src/index.js flips it to "published" when that moment passes
 //   published    live in the store, sellable
 //   archived     withdrawn, not public, not sellable
 //   presentation a SHOWCASE product: exists only to be shown inside a
@@ -24,7 +28,8 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 //                listings, never in search, never in the sitemap, never
 //                recommended, never purchasable.
 //
-// "presentation" gets that isolation for free rather than by enforcement:
+// "presentation", "private" and "scheduled" all get that isolation for free
+// rather than by enforcement:
 // every public read path in the app filters on status === "published"
 // (see routes/products.js, routes/pages.js, lib/recommendations.js and
 // lib/checkoutItems.js), so a status that is not "published" is invisible
@@ -32,8 +37,9 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // status value and not an `isPresentationOnly` boolean — a boolean would
 // have needed a new filter added to a dozen queries, and would be one
 // forgotten `where` clause away from putting a showcase product on the
-// shop grid.
-const PRODUCT_STATUSES = new Set(["draft", "published", "archived", "presentation"]);
+// shop grid. The same reasoning is why "private" and "scheduled" are values
+// here and not two more booleans.
+const PRODUCT_STATUSES = new Set(["draft", "private", "scheduled", "published", "archived", "presentation"]);
 
 function invalidStatus(status) {
   if (status === undefined) return null;
@@ -260,6 +266,7 @@ function serialize(product) {
     thumbnailUrl: product.thumbnailUrl,
     description: product.description,
     status: product.status,
+    publishAt: product.publishAt,
     featured: product.featured,
     createdAt: product.createdAt,
     creator: product.creator,
@@ -352,13 +359,35 @@ router.put("/:id", uploadFields, async (req, res) => {
 
   const {
     name, slug, description, priceCents, status, featured,
-    creator, difficulty, durationWeeks,
+    creator, difficulty, durationWeeks, publishAt,
   } = req.body;
   if (slug !== undefined && !SLUG_RE.test(slug)) {
     return res.status(400).json({ error: "slug must be lowercase letters, numbers, and hyphens only" });
   }
   const statusError = invalidStatus(status);
   if (statusError) return res.status(400).json({ error: statusError });
+
+  // "Scheduled" without a future timestamp is a product that would sit
+  // invisible forever, which reads to the admin as "I published it and nothing
+  // happened" — so it's rejected rather than silently accepted.
+  let publishAtValue;
+  if (publishAt !== undefined) {
+    if (publishAt === "" || publishAt === null) {
+      publishAtValue = null;
+    } else {
+      const parsed = new Date(publishAt);
+      if (Number.isNaN(parsed.getTime())) return res.status(400).json({ error: "publishAt must be a valid date" });
+      publishAtValue = parsed;
+    }
+  }
+  const effectiveStatus = status !== undefined ? status : existing.status;
+  const effectivePublishAt = publishAt !== undefined ? publishAtValue : existing.publishAt;
+  if (effectiveStatus === "scheduled") {
+    if (!effectivePublishAt) return res.status(400).json({ error: "Pick a date and time to schedule this program for" });
+    if (effectivePublishAt.getTime() <= Date.now()) {
+      return res.status(400).json({ error: "The scheduled time has to be in the future" });
+    }
+  }
 
   const coverImage = req.files?.coverImage?.[0];
   const thumbnail = req.files?.thumbnail?.[0];
@@ -371,6 +400,7 @@ router.put("/:id", uploadFields, async (req, res) => {
       ...(description !== undefined ? { description } : {}),
       ...(priceCents !== undefined ? { priceCents: parseInt(priceCents, 10) } : {}),
       ...(status !== undefined ? { status } : {}),
+      ...(publishAt !== undefined ? { publishAt: publishAtValue } : {}),
       ...(featured !== undefined ? { featured: featured === "true" || featured === true } : {}),
       ...(creator !== undefined ? { creator } : {}),
       ...(difficulty !== undefined ? { difficulty } : {}),
@@ -602,22 +632,42 @@ router.post("/:id/archive", async (req, res) => {
   res.json({ product: serialize(product) });
 });
 
+// Clone Product — the whole thing, not just the scalar columns.
+//
+// This is how a "Women's version" / "Advanced version" / "Coach Edition" gets
+// made, so a clone that quietly dropped the FAQs, the bonus PDFs, the carousel
+// and every exercise demo GIF would leave the admin re-doing exactly the work
+// the feature exists to save. What is deliberately NOT copied is anything
+// earned rather than authored: orders, order items, and customer progress. The
+// clone is always a draft and never featured — it is a starting point, not a
+// second live product.
+//
+// `name` in the body lets the caller name the clone up front ("Iron Path —
+// Women's Edition") instead of renaming "… (Copy)" afterwards.
 router.post("/:id/duplicate", async (req, res) => {
   const original = await prisma.product.findUnique({
     where: { id: req.params.id },
-    include: { taxonomies: true },
+    include: { taxonomies: true, faqs: true, resources: true, media: true },
   });
   if (!original) return res.status(404).json({ error: "Product not found" });
 
-  let slug = `${original.slug}-copy`;
+  const requestedName = (req.body && typeof req.body.name === "string" && req.body.name.trim()) || null;
+  const name = requestedName || `${original.name} (Copy)`;
+
+  // Slug is derived from whatever the clone is actually called, so a named
+  // clone gets a readable URL rather than "original-slug-copy-3".
+  const slugBase = requestedName
+    ? requestedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `${original.slug}-copy`
+    : `${original.slug}-copy`;
+  let slug = slugBase;
   let suffix = 2;
   while (await prisma.product.findUnique({ where: { slug } })) {
-    slug = `${original.slug}-copy-${suffix++}`;
+    slug = `${slugBase}-${suffix++}`;
   }
 
   const duplicate = await prisma.product.create({
     data: {
-      name: `${original.name} (Copy)`,
+      name,
       slug,
       description: original.description,
       priceCents: original.priceCents,
@@ -627,7 +677,6 @@ router.post("/:id/duplicate", async (req, res) => {
       difficulty: original.difficulty,
       durationWeeks: original.durationWeeks,
       overview: original.overview,
-      trainingContent: original.trainingContent,
       nutritionContent: original.nutritionContent,
       bonusNotes: original.bonusNotes,
       seoTags: original.seoTags,
@@ -636,17 +685,110 @@ router.post("/:id/duplicate", async (req, res) => {
       taxonomies: {
         create: original.taxonomies.map((t) => ({ taxonomyNodeId: t.taxonomyNodeId })),
       },
+      faqs: {
+        create: original.faqs.map((f) => ({ question: f.question, answer: f.answer, order: f.order })),
+      },
+      // Link resources carry over by reference; file resources share the
+      // already-uploaded blob, since RESOURCE_DIR is flat and not keyed by
+      // product — two rows pointing at one file is the existing model, and
+      // DELETE /resources/:id only unlinks the file for the row being deleted.
+      resources: {
+        create: original.resources.map((r) => ({
+          title: r.title,
+          description: r.description,
+          type: r.type,
+          fileName: r.fileName,
+          url: r.url,
+          order: r.order,
+        })),
+      },
     },
+    include: withRelations,
+  });
+
+  // Gallery and exercise-demo media are per-product *directories*, so unlike
+  // resources these have to be physically copied — the gallery URL embeds the
+  // product id, and /api/library/media authorizes on the product id in the
+  // path, so a shared file would 403 for anyone who bought only the clone.
+  const trainingContent = await cloneProductMedia(original, duplicate.id);
+  const withMedia = await prisma.product.update({
+    where: { id: duplicate.id },
+    data: { trainingContent },
     include: withRelations,
   });
 
   await logEvent({
     category: "product",
-    message: `Duplicated product "${original.name}" as "${duplicate.name}"`,
+    message: `Cloned product "${original.name}" as "${withMedia.name}"`,
     actorId: req.user.id,
   });
-  res.status(201).json({ product: serialize(duplicate) });
+  res.status(201).json({ product: serialize(withMedia) });
 });
+
+// Copies both media pipelines into the new product and returns a
+// trainingContent blob whose exercise mediaUrls point at the copies. A file
+// that has gone missing on disk is skipped rather than failing the clone: an
+// exercise losing its demo GIF is a visible, fixable gap, whereas a 500 loses
+// the entire clone.
+async function cloneProductMedia(original, newProductId) {
+  // --- gallery (public) ---
+  if (original.media.length) {
+    const destDir = galleryDirFor(newProductId);
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const m of original.media) {
+      const sourcePath = path.join(SITE_ROOT, m.url.replace(/^\//, ""));
+      if (!sourcePath.startsWith(GALLERY_DIR + path.sep) || !fs.existsSync(sourcePath)) continue;
+      const ext = path.extname(sourcePath).replace(/[^.a-z0-9]/gi, "") || ".bin";
+      const destName = `${crypto.randomUUID()}${ext}`;
+      await fs.promises.copyFile(sourcePath, path.join(destDir, destName));
+      await prisma.productMedia.create({
+        data: {
+          productId: newProductId,
+          url: galleryUrlFor(newProductId, destName),
+          type: m.type,
+          alt: m.alt,
+          order: m.order,
+        },
+      });
+    }
+  }
+
+  // --- exercise demo media (gated) ---
+  const training = original.trainingContent;
+  if (!training || !Array.isArray(training.weeks)) return training ?? null;
+
+  const copied = new Map(); // old url -> new url, so one GIF used on ten days is copied once
+  const sourceDir = path.join(MEDIA_DIR, original.id);
+  const destDir = path.join(MEDIA_DIR, newProductId);
+
+  for (const week of training.weeks) {
+    for (const day of week.days || []) {
+      for (const ex of day.exercises || []) {
+        if (!ex.mediaUrl || copied.has(ex.mediaUrl)) continue;
+        const fileName = path.basename(ex.mediaUrl);
+        const sourcePath = path.join(sourceDir, fileName);
+        if (!sourcePath.startsWith(MEDIA_DIR + path.sep) || !fs.existsSync(sourcePath)) continue;
+        fs.mkdirSync(destDir, { recursive: true });
+        const ext = path.extname(fileName).replace(/[^.a-z0-9]/gi, "") || ".bin";
+        const destName = `${crypto.randomUUID()}${ext}`;
+        await fs.promises.copyFile(sourcePath, path.join(destDir, destName));
+        copied.set(ex.mediaUrl, `/api/library/media/${newProductId}/${destName}`);
+      }
+    }
+  }
+
+  if (!copied.size) return training;
+
+  const rewritten = JSON.parse(JSON.stringify(training));
+  for (const week of rewritten.weeks) {
+    for (const day of week.days || []) {
+      for (const ex of day.exercises || []) {
+        if (ex.mediaUrl && copied.has(ex.mediaUrl)) ex.mediaUrl = copied.get(ex.mediaUrl);
+      }
+    }
+  }
+  return rewritten;
+}
 
 // ---- FAQ (wizard step 6) ----
 

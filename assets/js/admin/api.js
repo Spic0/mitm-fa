@@ -77,7 +77,10 @@ window.AdminAPI = (function () {
     updateProductContent: function (id, body) { return put("/api/admin/products/" + id + "/content", body); },
     deleteProduct: function (id) { return del("/api/admin/products/" + id); },
     archiveProduct: function (id) { return post("/api/admin/products/" + id + "/archive"); },
-    duplicateProduct: function (id) { return post("/api/admin/products/" + id + "/duplicate"); },
+    // Full clone — content, FAQs, bonus resources, gallery and every exercise
+    // demo file. `name` optionally names the clone up front ("… Women's
+    // Edition") so it doesn't land as "(Copy)".
+    duplicateProduct: function (id, name) { return post("/api/admin/products/" + id + "/duplicate", name ? { name: name } : {}); },
 
     uploadProductMedia: function (id, formData) { return postForm("/api/admin/products/" + id + "/media", formData); },
 
@@ -89,6 +92,20 @@ window.AdminAPI = (function () {
     reorderProductGallery: function (id, ids) { return put("/api/admin/products/" + id + "/gallery/order", { ids: ids }); },
     deleteProductGallery: function (id, mediaId) { return del("/api/admin/products/" + id + "/gallery/" + mediaId); },
     updateProductTaxonomy: function (id, nodeIds) { return put("/api/admin/products/" + id + "/taxonomy", { nodeIds: nodeIds }); },
+
+    // ---- Product Builder ----
+    listBuilderTemplates: function () { return get("/api/admin/builder/templates"); },
+    createBuilderTemplate: function (body) { return post("/api/admin/builder/templates", body); },
+    updateBuilderTemplate: function (id, body) { return put("/api/admin/builder/templates/" + id, body); },
+    deleteBuilderTemplate: function (id) { return del("/api/admin/builder/templates/" + id); },
+    listMediaLibrary: function (params) { return get("/api/admin/builder/media-library?" + new URLSearchParams(params || {})); },
+    // Reusing a gated demo file in another product copies it server-side —
+    // the gated URL authorizes on the product id it embeds, so sharing one
+    // would 403 for anyone who only bought the second product.
+    reuseProductMedia: function (id, body) { return post("/api/admin/builder/products/" + id + "/media/reuse", body); },
+    reuseGalleryMedia: function (id, url, opts) {
+      return post("/api/admin/builder/products/" + id + "/gallery/reuse", { url: url, asSlide: !(opts && opts.asSlide === false) });
+    },
 
     getTaxonomy: function () { return get("/api/admin/taxonomy"); },
     createTaxonomyNode: function (taxonomyId, body) { return post("/api/admin/taxonomy/" + taxonomyId + "/nodes", body); },

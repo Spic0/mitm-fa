@@ -285,6 +285,37 @@ function runNotificationSweep() {
 runNotificationSweep();
 setInterval(runNotificationSweep, NOTIFICATION_CHECK_INTERVAL_MS);
 
+// Scheduled publishing, same reasoning as the sweep above: one process, no job
+// scheduler, so a timer is the honest implementation. Runs every minute
+// because "scheduled for 09:00" landing at 09:29 would be a bug from the
+// admin's point of view, and the query is a single indexed-ish scan over a
+// handful of rows. Runs at boot too, so anything whose moment passed while the
+// process was down goes live immediately on restart rather than never.
+//
+// Note this only ever moves scheduled -> published. It never un-publishes,
+// so an admin who manually publishes early, or flips a scheduled product back
+// to draft, is not fought by the timer on its next tick.
+const { prisma: schedulerPrisma } = require("./db");
+const { logEvent: logSchedulerEvent } = require("./lib/adminLog");
+const PUBLISH_CHECK_INTERVAL_MS = 60 * 1000;
+async function runScheduledPublishSweep() {
+  const due = await schedulerPrisma.product.findMany({
+    where: { status: "scheduled", publishAt: { lte: new Date() } },
+    select: { id: true, name: true },
+  });
+  for (const product of due) {
+    await schedulerPrisma.product.update({ where: { id: product.id }, data: { status: "published" } });
+    await logSchedulerEvent({
+      category: "product",
+      message: `Scheduled publish: "${product.name}" is now live`,
+    });
+  }
+}
+runScheduledPublishSweep().catch((err) => console.error("Scheduled publish sweep failed:", err));
+setInterval(() => {
+  runScheduledPublishSweep().catch((err) => console.error("Scheduled publish sweep failed:", err));
+}, PUBLISH_CHECK_INTERVAL_MS);
+
 // Defense against slow-request/slowloris-style abuse: a client that never
 // finishes sending headers or a body ties up a connection indefinitely
 // otherwise. headersTimeout must stay above requestTimeout (Node

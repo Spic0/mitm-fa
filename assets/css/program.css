@@ -516,15 +516,28 @@ h1, h2, h3, h4, h5 {
 .pg-hero__art { position: absolute; inset: -8% 0; will-change: transform; }
 .pg-hero__art img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Two stops rather than a single linear fade: the upper one keeps the
-   eyebrow legible over a bright cover, the lower one carries the title
-   block. Both are the brand's near-black, never a blue-black. */
+/* Two gradients rather than one linear fade: the upper stop keeps the
+   eyebrow legible over a bright cover, the lower one carries the whole
+   title block. Both are the brand's near-black, never a blue-black.
+
+   The lower stop is deliberately heavy and reaches ~88% of the way up.
+   Several covers in this catalogue are marketing posters with the program
+   name already set into the artwork, and a light gradient let that baked-in
+   type read straight through the hero's own title and date line — two
+   different renderings of the same words, overlapping. Committing to a
+   dark lower half suppresses whatever is behind it, so the cover reads as
+   art and the copy reads as copy, on posters and clean photography alike. */
 .pg-hero__scrim {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(12, 12, 11, 0.42) 0%, rgba(12, 12, 11, 0) 34%),
-    linear-gradient(to top, rgba(12, 12, 11, 0.88) 0%, rgba(12, 12, 11, 0.55) 26%, rgba(12, 12, 11, 0) 62%);
+    linear-gradient(to bottom, rgba(12, 12, 11, 0.45) 0%, rgba(12, 12, 11, 0) 30%),
+    linear-gradient(to top,
+      rgba(12, 12, 11, 0.95) 0%,
+      rgba(12, 12, 11, 0.86) 24%,
+      rgba(12, 12, 11, 0.6) 48%,
+      rgba(12, 12, 11, 0.24) 68%,
+      rgba(12, 12, 11, 0) 88%);
 }
 
 .pg-hero__body {

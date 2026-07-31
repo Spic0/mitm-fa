@@ -8,6 +8,14 @@ const { logEvent } = require("../../lib/adminLog");
 const { verifyUploadedFile } = require("../../lib/uploadVerify");
 const { optimizeImageInPlace, describeOptimization } = require("../../lib/imageOptimize");
 const { generateDerivatives, invalidate: invalidateMedia, describeForAdmin } = require("../../lib/mediaDerivatives");
+const {
+  generateAnimatedDerivatives,
+  invalidate: invalidateAnimated,
+  posterPathFor,
+  animPathFor,
+  manifestPathFor: animManifestPathFor,
+} = require("../../lib/animatedMedia");
+const { enqueue: enqueueMediaJob } = require("../../lib/mediaJobs");
 
 const router = express.Router();
 
@@ -561,6 +569,18 @@ router.post("/:id/media", (req, res) => {
       message: `Uploaded exercise media "${req.file.filename}" for "${product.name}"${describeOptimization(req.file.optimization)}`,
       actorId: req.user.id,
     });
+
+    // Poster + animated-WebP derivatives, QUEUED rather than awaited. Deriving
+    // one 15MB demo GIF costs ~1.5s of CPU, and the upload response needs
+    // none of it — the handbook falls back to the original until the job
+    // lands. Doing this inline is what made a batch of demo uploads stall the
+    // whole single-process server. See lib/mediaJobs.js.
+    const mediaPath = req.file.path;
+    enqueueMediaJob(`derive ${req.file.filename}`, async () => {
+      await generateAnimatedDerivatives(mediaPath, verified.mime);
+      invalidateAnimated(mediaPath);
+    });
+
     res.json({
       fileName: req.file.filename,
       mediaType: verified.mime.startsWith("video/") ? "video" : "image",
@@ -829,6 +849,24 @@ async function cloneProductMedia(original, newProductId) {
     }
   }
 
+  // Copies whatever derivatives exist alongside one media file to sit
+  // alongside its copy. Best-effort: a missing derivative just means the
+  // clone falls back to the original, exactly as an un-derived upload does.
+  async function copyDerivatives(sourcePath, destPath) {
+    const variants = [
+      [posterPathFor(sourcePath), posterPathFor(destPath)],
+      [animPathFor(sourcePath), animPathFor(destPath)],
+      [animManifestPathFor(sourcePath), animManifestPathFor(destPath)],
+    ];
+    for (const [from, to] of variants) {
+      try {
+        if (fs.existsSync(from)) await fs.promises.copyFile(from, to);
+      } catch (err) {
+        /* the original is copied and serveable; a derivative is an optimisation */
+      }
+    }
+  }
+
   // --- exercise demo media (gated) ---
   const training = original.trainingContent;
   if (!training || !Array.isArray(training.weeks)) return training ?? null;
@@ -847,7 +885,17 @@ async function cloneProductMedia(original, newProductId) {
         fs.mkdirSync(destDir, { recursive: true });
         const ext = path.extname(fileName).replace(/[^.a-z0-9]/gi, "") || ".bin";
         const destName = `${crypto.randomUUID()}${ext}`;
-        await fs.promises.copyFile(sourcePath, path.join(destDir, destName));
+        const destPath = path.join(destDir, destName);
+        await fs.promises.copyFile(sourcePath, destPath);
+
+        // Carry the poster/animated derivatives across too. They are named by
+        // suffix off the original's basename, so a copy under a fresh UUID
+        // would otherwise leave the clone with no derivatives at all and every
+        // demo falling back to the multi-megabyte original. Copying is exact
+        // and instant; re-deriving would cost ~1.5s of CPU per file to
+        // reproduce bytes we already have.
+        await copyDerivatives(sourcePath, destPath);
+
         copied.set(ex.mediaUrl, `/api/library/media/${newProductId}/${destName}`);
       }
     }

@@ -56,6 +56,84 @@
     });
   }
 
+  /* ------------------------------------------------------------- demo media ---
+     Gated program media is addressed by ?variant= against its stored URL. The
+     stored URL is the permanent reference (it lives inside trainingContent and
+     is never rewritten), so a derivative is asked for rather than looked up,
+     and the server falls back to the original whenever one doesn't exist. */
+
+  function variantUrl(url, variant) {
+    if (!url) return url;
+    return url + (url.indexOf("?") === -1 ? "?" : "&") + "variant=" + variant;
+  }
+
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // One observer for the whole viewer. A demo swaps from its poster to the
+  // animated derivative only once it is actually on screen — pages are
+  // hydrated one either side of the current one, so "built" is a long way
+  // from "being looked at", and pre-fetching every animation would put the
+  // bytes back that the poster just saved.
+  var animObserver = null;
+  function ensureAnimObserver() {
+    if (animObserver || reduceMotion || typeof IntersectionObserver !== "function") return animObserver;
+    animObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var img = entry.target;
+        animObserver.unobserve(img);
+        var anim = img.getAttribute("data-anim");
+        if (!anim) return;
+        // Decode into cache first, then swap. Assigning src directly would
+        // blank the tile for as long as the animation takes to arrive, which
+        // on a slow connection is exactly the flash of nothing the poster
+        // exists to prevent.
+        var loader = new Image();
+        loader.onload = function () { img.src = anim; };
+        loader.onerror = function () { /* poster stays; nothing to recover */ };
+        loader.src = anim;
+      });
+    }, { rootMargin: "200px" });
+    return animObserver;
+  }
+
+  // Every demo on a page becomes one lightbox gallery, so a reader can swipe
+  // between the day's exercises once they've opened one. The viewer
+  // (program-media.js) already provides zoom, pan, keyboard nav and native
+  // fullscreen — the handbook simply never called it.
+  function wireExerciseMedia(pageEl) {
+    var obs = ensureAnimObserver();
+    var btns = Array.prototype.slice.call(pageEl.querySelectorAll("[data-pv-media]"));
+    if (!btns.length) return;
+
+    if (obs) {
+      btns.forEach(function (btn) {
+        var img = btn.querySelector("img[data-anim]");
+        if (img) obs.observe(img);
+      });
+    }
+
+    var items = btns.map(function (btn) {
+      var kind = btn.getAttribute("data-pv-kind");
+      var url = btn.getAttribute("data-pv-url");
+      return {
+        type: kind === "video" ? "video" : "image",
+        // Fullscreen gets the animated derivative, not the 15MB original: it
+        // is capped at 640px wide, which is still more than the viewer can
+        // show on any phone, and the zoom is on the rendered frame either way.
+        url: kind === "video" ? url : variantUrl(url, "anim"),
+        poster: kind === "video" ? undefined : variantUrl(url, "poster"),
+        title: btn.getAttribute("data-pv-title") || "",
+      };
+    });
+
+    btns.forEach(function (btn, i) {
+      btn.addEventListener("click", function () {
+        if (window.ProgramMedia && window.ProgramMedia.open) window.ProgramMedia.open(items, i);
+      });
+    });
+  }
+
   /* ---------------------------------------------------------------- pages ---
      Each page is { section, title, render() } — render is deferred so the HTML
      string for a page is only ever built if the reader actually reaches it. */
@@ -124,12 +202,31 @@
               // Exercise demo GIFs/videos ride the gated /api/library/media
               // endpoint. preload="none" keeps a day of clips off the wire
               // until the page is actually reached.
+              //
+              // A demo GIF is loaded as its still poster (~19KB) rather than
+              // the original (~15MB, 1920x1080, painted into a ~400px box).
+              // wireExerciseMedia() below swaps in the animated derivative
+              // (~226KB) once the tile is genuinely on screen. Both are
+              // resolved by ?variant= against the SAME stored URL, and both
+              // fall back to the original server-side when a derivative
+              // hasn't been generated, so a program uploaded before the
+              // pipeline existed renders exactly as it always did.
               var media = "";
               if (ex.mediaUrl) {
-                media = '<div class="pv-ex__media">' + (ex.mediaType === "video"
-                  ? '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>'
-                  : '<img src="' + esc(ex.mediaUrl) + '" alt="' + esc(ex.name || "Exercise") + '" loading="lazy" decoding="async">') +
-                  "</div>";
+                var mediaLabel = esc(ex.name || "Exercise");
+                media = '<div class="pv-ex__media">' +
+                  '<button type="button" class="pv-ex__media-btn" data-pv-media' +
+                  ' data-pv-url="' + esc(ex.mediaUrl) + '"' +
+                  ' data-pv-kind="' + (ex.mediaType === "video" ? "video" : "image") + '"' +
+                  ' data-pv-title="' + mediaLabel + '"' +
+                  ' aria-label="Open ' + mediaLabel + ' demo full screen">' +
+                  (ex.mediaType === "video"
+                    ? '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>'
+                    : '<img src="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
+                      ' data-anim="' + esc(variantUrl(ex.mediaUrl, "anim")) + '"' +
+                      ' alt="' + mediaLabel + '" loading="lazy" decoding="async">') +
+                  '<span class="pv-ex__media-expand" aria-hidden="true"></span>' +
+                  "</button></div>";
               }
               return (
                 '<div class="pv-ex">' + media +
@@ -312,6 +409,9 @@
       if (i < 0 || i >= pages.length || built[i]) return;
       pageEls[i].firstChild.innerHTML = pages[i].render();
       built[i] = true;
+      // Demo tiles only exist once their page has been built, so observation
+      // and the lightbox wiring have to happen here rather than once up front.
+      wireExerciseMedia(pageEls[i].firstChild);
     }
 
     function setTransform(offsetPx, animate) {
@@ -354,6 +454,17 @@
 
     function onDown(e) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      // Never claim the pointer for something that owns its own tap.
+      //
+      // setPointerCapture retargets the whole interaction — INCLUDING the
+      // click that follows — to the capturing element, so with the stage
+      // capturing every pointerdown, the click on a button inside a page was
+      // delivered to .pv__stage and the button's own handler never ran. That
+      // made every button, link, video control and iframe inside a program
+      // page dead to real pointer input; only synthetic .click() worked.
+      // onUp's isInteractive() check already keeps these from turning the
+      // page, but that runs far too late to save the click.
+      if (isInteractive(e.target)) { dragging = false; return; }
       dragging = true; locked = false; axis = null;
       startX = e.clientX; startY = e.clientY; startT = Date.now();
       track.classList.remove("is-animating");

@@ -100,6 +100,44 @@ each icon legitimately belongs to and never demands a brand icon from
 Still worth a visual pass on `/`, `/shop`, `/about`, `/contact` and
 `/admin/manage/dashboard` after a FontAwesome upgrade.
 
+## Handbook demo media (gated program GIFs)
+
+Exercise demos live in `server/storage/media/<productId>/` and were served as
+the raw upload: one real demo was a **1920x1080, 27-frame, 15.5MB GIF painted
+into an 88px tile**, six of them on a page, ~75MB per handbook. A GIF cannot be
+progressively decoded and has no poster frame, so `loading="lazy"` only
+deferred *when* that arrived, never *how much*.
+
+`server/src/lib/animatedMedia.js` derives two things with sharp (no ffmpeg
+needed, and animation survives):
+
+| | size | vs original |
+|---|---|---|
+| original | 15.5 MB | — |
+| `-poster.webp` (still first frame) | 19 KB | **815x** |
+| `-anim.webp` (640px, animated) | 226 KB | **70x** |
+
+Measured across the six real handbook GIFs: **72.3MB -> 108KB** for first
+paint, with 1.1MB more only if every demo is actually looked at.
+
+Both are addressed by `?variant=poster` / `?variant=anim` against the file's
+existing gated URL, resolved in `routes/library.js`. That URL is baked into
+`Product.trainingContent` at upload time and is never rewritten, so a variant
+is *asked for* rather than stored — no migration, no backfill of content JSON,
+and an ungenerated variant falls back to the original server-side.
+
+Derivatives are generated in a background queue (`lib/mediaJobs.js`), never in
+the upload request: one conversion is ~1.5s of CPU, and six inline was ~9s of a
+single-process server answering nothing else.
+
+```sh
+node tools/backfill-animated-media.js [--force] [--dry]   # existing uploads
+cd tools && npm run test:handbook-media                   # browser test
+```
+
+Run the backfill **on the machine that holds the media** — `server/storage/` is
+gitignored and per-checkout, so deploying the code does not move derivatives.
+
 ## Critical CSS
 
 `bootstrap.min.css` (33KB gz) and `style.css` (52KB gz) were the last thing

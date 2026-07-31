@@ -1,6 +1,8 @@
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
 const { prisma } = require("../db");
+const { variantFileName } = require("../lib/animatedMedia");
 const { requireAuth } = require("../middleware/auth");
 const { hasEntitlement } = require("../lib/entitlements");
 const { mintDownloadToken, verifyDownloadToken } = require("../lib/signedDownload");
@@ -262,6 +264,18 @@ router.put("/program/:productId/progress", async (req, res) => {
 // link to *this* URL still requires a live, valid session to do anything;
 // a leaked link to the *signed* URL it redirects to stops working shortly
 // after it's issued even with a valid session.
+// ?variant=poster asks for the still first frame (~19KB for a 15.5MB demo
+// GIF), ?variant=anim for the width-capped animated WebP (~226KB). Anything
+// else, including no variant at all, serves the original.
+//
+// Resolving by naming convention rather than by a stored URL is deliberate:
+// the URL baked into Product.trainingContent at upload time is the stable,
+// permanent reference and is never rewritten, so there is nowhere to put a
+// second URL without a migration and a backfill of every existing program.
+// A variant that hasn't been generated yet — an upload whose background job
+// is still queued, or a program that predates this — falls back to the
+// original, so the handbook degrades to exactly its old behaviour instead of
+// showing a broken image.
 router.get("/media/:productId/:fileName", async (req, res) => {
   const { productId, fileName } = req.params;
   // The upload endpoint only ever writes sanitized basenames, so anything
@@ -274,7 +288,19 @@ router.get("/media/:productId/:fileName", async (req, res) => {
     return res.status(403).json({ error: "You don't have access to this media" });
   }
 
-  const token = mintDownloadToken("media", `${productId}/${fileName}`, req.user.id);
+  let served = fileName;
+  const variant = String(req.query.variant || "");
+  if (variant === "poster" || variant === "anim") {
+    const candidate = variantFileName(fileName, variant);
+    // basename() again: variantFileName only ever appends a suffix, but this
+    // is the value that becomes a filesystem path, so it is re-checked rather
+    // than trusted to have stayed clean.
+    if (path.basename(candidate) === candidate && fs.existsSync(path.join(MEDIA_DIR, productId, candidate))) {
+      served = candidate;
+    }
+  }
+
+  const token = mintDownloadToken("media", `${productId}/${served}`, req.user.id);
   res.redirect(`/api/library/download/media/${token}`);
 });
 

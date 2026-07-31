@@ -138,6 +138,57 @@ cd tools && npm run test:handbook-media                   # browser test
 Run the backfill **on the machine that holds the media** — `server/storage/` is
 gitignored and per-checkout, so deploying the code does not move derivatives.
 
+## Presentation product picker
+
+The picker was a `<select>` filled with `listProducts({ status: "presentation" })`,
+so a real catalogue product could not be found in it — reported as "the
+selector doesn't load all products", and in fact a deliberate filter. The same
+rule then lived in two more places that disagreed with it:
+
+| | before |
+|---|---|
+| picker | hid everything that wasn't a presentation product |
+| save | accepted **any** id, no validation |
+| deck render | resolved a non-presentation id back to `null` |
+
+So a deck could hold a valid product id and show no product, with nothing to
+say why — and the picker's "Previously selected product (no longer a
+presentation product)" option existed to paper over exactly that drift. The
+rule also forced a duplicate showcase product to exist for anything real you
+wanted to pitch.
+
+Now: **every product is listed, whatever its status.** What the deck does with
+it depends on what the visitor may open, decided in one place
+(`productUrl` in `routes/presentation.js`) and shown in the picker as you
+choose:
+
+| product status | View Product button |
+|---|---|
+| `published` | links to `/program/:slug` — already public |
+| `presentation` | links to `/showcase/:slug` — the unlisted showcase |
+| anything else | shown in the deck, **no outbound link** |
+
+That last row is a boundary, not a nicety: `/showcase/:slug` is a **public**
+route that deliberately 404s for non-presentation products ("not an
+alternative way to view the shop"), so pointing it at a draft would have made
+it a way to read unreleased products by guessing a slug. It is unchanged.
+
+Search is server-side over **name, creator, id and slug**, debounced, and asks
+for `compact=1` — the full serialization carries every product's
+`trainingContent` (83KB for one real program), so filling a dropdown cost
+151KB where 4.5KB does. Measured at 10,016 products: **24ms to open, 36ms to
+search**. The list renders a capped window and the meta line always states the
+true total, so a product is never hidden — only un-scrolled-to.
+
+```sh
+cd tools && npm run test:presentation-picker    # 15 assertions
+```
+
+Next step if the catalogue reaches six figures: `name`/`creator` use
+`contains` + `mode: "insensitive"`, which is `ILIKE '%term%'` and cannot use a
+btree index. A `pg_trgm` GIN index is the fix, and would need a migration
+applied to every schema (see the deploy notes).
+
 ## Admin API resilience
 
 `assets/js/admin/api.js` used to do `res.json().catch(() => ({}))` and only

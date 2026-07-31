@@ -374,16 +374,23 @@ window.AdminPanels.presentations = (function () {
       fieldRow("presWelcomeNote", "Personal note (optional)", content.welcomeNote, "One line addressed to this specific viewer.", "textarea") +
       '<h6 class="pres-form-heading">Presentation product</h6>' +
       '<p class="pres-form-hint u-mb-16">Drives both "View Product" buttons, the Product Showcase and both device previews. ' +
-      "Only <strong>presentation products</strong> are listed — products with the store statuses (published, draft, archived) " +
-      "are deliberately not selectable, so a deck can never send a visitor to a page they could buy from. " +
-      "Create one under Products with the status <em>Presentation product</em>.</p>" +
+      "<strong>Every product is listed</strong>, whatever its status — search by name, creator or ID. " +
+      "Where the buttons link depends on what the visitor is allowed to open: a published product links to its " +
+      "storefront page, a presentation product to its unlisted showcase, and anything still unreleased is shown " +
+      "in the deck without an outbound link.</p>" +
       '<div class="pres-form-row">' +
-      '<label for="presFeaturedProduct">Product</label>' +
-      '<select id="presFeaturedProduct" data-selected="' + esc(content.featuredProductId || "") + '">' +
-      '<option value="">Loading presentation products…</option>' +
-      "</select>" +
+      '<label for="presProductSearch">Product</label>' +
+      '<div class="pres-picker" data-product-picker>' +
+      '<input type="hidden" id="presFeaturedProduct" value="' + esc(content.featuredProductId || "") + '">' +
+      '<div class="pres-picker__current" data-picker-current>Loading…</div>' +
+      '<input type="text" id="presProductSearch" class="pres-picker__search" autocomplete="off" spellcheck="false"' +
+      ' placeholder="Search by name, creator or ID…" role="combobox" aria-expanded="false"' +
+      ' aria-controls="presProductList" aria-autocomplete="list">' +
+      '<ul class="pres-picker__list" id="presProductList" role="listbox" aria-label="Products" hidden></ul>' +
+      '<p class="pres-picker__meta" data-picker-meta></p>' +
+      "</div>" +
       '<p class="pres-form-hint">Swap this at any time — the deck picks the new product up on its next load, with nothing to rebuild. ' +
-      'Leave as "No product" to hide the View Product buttons entirely.</p>' +
+      'Choose "No product" to hide the View Product buttons entirely.</p>' +
       "</div>" +
       '<h6 class="pres-form-heading">Call-to-action links</h6>' +
       '<p class="pres-form-hint u-mb-16">Leave a field empty and that button scrolls to the enquiry form instead of opening a link.</p>' +
@@ -416,54 +423,190 @@ window.AdminPanels.presentations = (function () {
     });
   }
 
-  // Fills the presentation-product select after the drawer is already on
-  // screen. The saved id lives in data-selected rather than in the option
-  // list, so a failed or slow request can never quietly reset a deck's chosen
-  // product to "none" — on failure the select keeps the stored id and says so.
-  //
-  // Filtered to status "presentation" on purpose: store products must not be
-  // selectable here at all. Offering them and then rejecting them later would
-  // be a worse version of the same rule.
-  function populateProductPicker(backdrop) {
-    var select = backdrop.querySelector("#presFeaturedProduct");
-    if (!select) return;
-    var selected = select.dataset.selected || "";
+  // How many rows the list shows at once. Search is server-side, so this caps
+  // what is RENDERED, never what is reachable — the meta line always states
+  // the true total, and any product is one search away. That distinction is
+  // the whole point: this picker previously filtered to status "presentation"
+  // and a real catalogue product simply could not be found in it.
+  var PICKER_PAGE = 50;
+  var PICKER_DEBOUNCE_MS = 250;
 
-    window.AdminAPI.listProducts({ status: "presentation" })
-      .then(function (data) {
-        var products = (data && data.products) || [];
-        var options = ['<option value="">No product — hide the buttons</option>'];
-        var found = false;
-        products.forEach(function (product) {
-          if (product.id === selected) found = true;
-          options.push(
-            '<option value="' + esc(product.id) + '"' +
-              (product.id === selected ? " selected" : "") +
-              ">" + esc(product.name) + "</option>"
-          );
-        });
-        // A product that was picked and has since been deleted, or switched to
-        // a store status, would otherwise vanish silently and save back as
-        // "none". Keep it visible and labelled so the admin decides.
-        if (selected && !found) {
-          options.push(
-            '<option value="' + esc(selected) + '" selected>' +
-              "Previously selected product (no longer a presentation product)</option>"
-          );
-        }
-        if (!products.length) {
-          options.push(
-            '<option value="" disabled>— no presentation products exist yet —</option>'
-          );
-        }
-        select.innerHTML = options.join("");
-      })
-      .catch(function () {
-        select.innerHTML =
-          '<option value="' + esc(selected) + '" selected>' +
-          (selected ? "Keeping the saved product" : "No product") +
-          " — could not load the catalogue</option>";
+  function statusLabel(status) {
+    if (status === "presentation") return "showcase only";
+    return status || "unknown";
+  }
+
+  // What the deck will do with this product, said plainly at the moment of
+  // choosing rather than discovered later by loading the deck. Mirrors the
+  // productUrl logic in server/src/routes/presentation.js.
+  function linkNote(status) {
+    if (status === "published") return "links to its storefront page";
+    if (status === "presentation") return "links to its unlisted showcase";
+    return "shown in the deck, no outbound link";
+  }
+
+  // Fills the presentation-product picker after the drawer is already on
+  // screen. The saved id lives in the hidden input rather than in the rendered
+  // list, so a failed or slow request can never quietly reset a deck's chosen
+  // product to "none" — on failure the picker keeps the stored id and says so.
+  function populateProductPicker(backdrop) {
+    var root = backdrop.querySelector("[data-product-picker]");
+    if (!root) return;
+    var hidden = root.querySelector("#presFeaturedProduct");
+    var searchInput = root.querySelector("#presProductSearch");
+    var list = root.querySelector("#presProductList");
+    var current = root.querySelector("[data-picker-current]");
+    var meta = root.querySelector("[data-picker-meta]");
+
+    var debounce = null;
+    var requestSeq = 0;
+    var rows = [];
+    var activeIndex = -1;
+
+    function renderCurrent(product) {
+      var id = hidden.value;
+      if (!id) {
+        current.innerHTML = '<span class="pres-picker__none">No product — the View Product buttons are hidden</span>';
+        return;
+      }
+      if (!product) {
+        // Selected, but we could not resolve it — deleted, or the lookup
+        // failed. Never silently clear it: show the raw id so the admin can
+        // decide, exactly as before.
+        current.innerHTML =
+          '<span class="pres-picker__warn">Saved product <code>' + esc(id) + "</code> could not be loaded — it may have been deleted. " +
+          "It stays selected until you change it.</span>";
+        return;
+      }
+      current.innerHTML =
+        '<span class="pres-picker__name">' + esc(product.name) + "</span>" +
+        ' <span class="pres-badge pres-badge--' + esc(product.status || "unknown") + '">' + esc(statusLabel(product.status)) + "</span>" +
+        (product.creator ? ' <span class="pres-picker__by">' + esc(product.creator) + "</span>" : "") +
+        ' <span class="pres-picker__link-note">' + esc(linkNote(product.status)) + "</span>";
+    }
+
+    function closeList() {
+      list.hidden = true;
+      searchInput.setAttribute("aria-expanded", "false");
+      activeIndex = -1;
+    }
+
+    function choose(product) {
+      hidden.value = product ? product.id : "";
+      renderCurrent(product);
+      searchInput.value = "";
+      closeList();
+      render([], null, false);
+    }
+
+    function setActive(next) {
+      var items = list.querySelectorAll("[data-idx]");
+      if (!items.length) return;
+      activeIndex = (next + items.length) % items.length;
+      items.forEach(function (el, i) {
+        el.classList.toggle("is-active", i === activeIndex);
+        if (i === activeIndex) {
+          el.setAttribute("aria-selected", "true");
+          if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+        } else el.removeAttribute("aria-selected");
       });
+    }
+
+    // rows[0] is always the explicit "No product" choice, so clearing the
+    // product is a normal selection rather than a special gesture.
+    function render(products, total, truncated) {
+      rows = [{ id: "", name: "No product — hide the buttons", none: true }].concat(products);
+      list.innerHTML = rows
+        .map(function (p, i) {
+          if (p.none) {
+            return '<li class="pres-picker__opt pres-picker__opt--none" role="option" data-idx="' + i + '">' + esc(p.name) + "</li>";
+          }
+          return (
+            '<li class="pres-picker__opt" role="option" data-idx="' + i + '" title="' + esc(p.id) + '">' +
+            '<span class="pres-picker__name">' + esc(p.name) + "</span>" +
+            ' <span class="pres-badge pres-badge--' + esc(p.status || "unknown") + '">' + esc(statusLabel(p.status)) + "</span>" +
+            (p.creator ? '<span class="pres-picker__by">' + esc(p.creator) + "</span>" : "") +
+            "</li>"
+          );
+        })
+        .join("");
+
+      if (total == null) { meta.textContent = ""; return; }
+      meta.textContent = truncated
+        ? "Showing " + products.length + " of " + total + " products — keep typing to narrow it down."
+        : products.length + " of " + total + " products";
+    }
+
+    function search(term) {
+      var seq = ++requestSeq;
+      // compact: the picker shows a name, a status and a creator — it has no
+      // use for 80KB of exercise JSON per row.
+      var params = { limit: PICKER_PAGE, compact: 1 };
+      if (term) params.search = term;
+      return window.AdminAPI.listProducts(params)
+        .then(function (data) {
+          // A slower earlier request must never overwrite a newer one's
+          // results — the classic out-of-order autocomplete bug.
+          if (seq !== requestSeq) return;
+          var products = window.AdminAPI.rows(data, "products");
+          render(products, data.total != null ? data.total : products.length, !!data.truncated);
+          list.hidden = false;
+          searchInput.setAttribute("aria-expanded", "true");
+          setActive(0);
+        })
+        .catch(function (err) {
+          if (seq !== requestSeq) return;
+          list.innerHTML = '<li class="pres-picker__opt pres-picker__opt--error">' + esc(err.message) + "</li>";
+          list.hidden = false;
+          meta.textContent = "";
+        });
+    }
+
+    searchInput.addEventListener("input", function () {
+      clearTimeout(debounce);
+      var term = searchInput.value.trim();
+      debounce = setTimeout(function () { search(term); }, PICKER_DEBOUNCE_MS);
+    });
+    searchInput.addEventListener("focus", function () {
+      if (!list.hidden) return;
+      search(searchInput.value.trim());
+    });
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) search(searchInput.value.trim()); else setActive(activeIndex + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+      else if (e.key === "Enter") {
+        if (list.hidden || activeIndex < 0) return;
+        // Enter inside the drawer would otherwise submit/save; this key press
+        // belongs to the open listbox.
+        e.preventDefault();
+        choose(rows[activeIndex].none ? null : rows[activeIndex]);
+      } else if (e.key === "Escape") {
+        if (list.hidden) return;
+        e.stopPropagation();   // don't let it close the whole drawer
+        closeList();
+      }
+    });
+    list.addEventListener("mousedown", function (e) {
+      // mousedown, not click: blur would close the list first and the click
+      // would land on nothing.
+      var li = e.target.closest("[data-idx]");
+      if (!li) return;
+      e.preventDefault();
+      var row = rows[parseInt(li.dataset.idx, 10)];
+      choose(row && row.none ? null : row);
+    });
+    document.addEventListener("mousedown", function (e) {
+      if (!root.contains(e.target)) closeList();
+    });
+
+    // Resolve whatever is already saved, so the drawer opens showing the real
+    // product rather than a bare id — including a product whose status means
+    // it would never have appeared in the old, filtered list.
+    var savedId = hidden.value;
+    if (!savedId) { renderCurrent(null); return; }
+    window.AdminAPI.getProduct(savedId)
+      .then(function (data) { renderCurrent(data && data.product); })
+      .catch(function () { renderCurrent(null); });
   }
 
   function regenerate(backdrop, p) {
@@ -622,5 +765,9 @@ window.AdminPanels.presentations = (function () {
       visitsTable;
   }
 
-  return { mount: mount };
+  // _populateProductPicker is exposed for tools/test-presentation-picker.js,
+  // which mounts the picker on its own against a stub catalogue rather than
+  // booting the whole admin shell. Underscored because nothing in the app
+  // should call it directly — openDrawer already does.
+  return { mount: mount, _populateProductPicker: populateProductPicker };
 })();

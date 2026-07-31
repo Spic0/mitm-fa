@@ -1,11 +1,13 @@
 {
   "name": "fitness-agency-tools",
   "private": true,
-  "description": "Build-time asset tooling and browser tests. Not part of serving a request \u2014 see tools/README.md. Kept separate from server/package.json so a tool dependency can never end up in the production dependency tree.",
+  "description": "Build-time asset tooling and browser tests. Not part of serving a request — see tools/README.md. Kept separate from server/package.json so a tool dependency can never end up in the production dependency tree.",
   "scripts": {
     "fontawesome": "node subset-fontawesome-css.js && node subset-fontawesome-fonts.js && node verify-fontawesome.js",
     "test:handbook-media": "node test-handbook-media.js",
-    "test:admin-api": "node test-admin-api-resilience.js"
+    "test:admin-api": "node test-admin-api-resilience.js",
+    "test:presentation-picker": "node test-presentation-picker.js",
+    "test": "node test-admin-api-resilience.js && node test-presentation-picker.js && node test-handbook-media.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.43.1",

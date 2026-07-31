@@ -373,17 +373,76 @@ const withRelations = {
   taxonomies: { include: { taxonomyNode: { include: { taxonomy: true, parent: { include: { parent: true } } } } } },
 };
 
+// Search matches NAME, CREATOR or ID. Name alone was not enough for the
+// presentation picker, where an admin reasonably looks for "Sam Sulek" (the
+// creator) or pastes an id straight out of a URL and expects a hit.
+//
+// The id match is exact rather than a `contains`: a cuid is not something
+// anyone types a fragment of, and a substring match over an indexed unique
+// column is wasted work at every scale.
+function productSearchFilter(search) {
+  const term = String(search).trim();
+  if (!term) return {};
+  return {
+    OR: [
+      { name: { contains: term, mode: "insensitive" } },
+      { creator: { contains: term, mode: "insensitive" } },
+      { id: term },
+      { slug: { contains: term, mode: "insensitive" } },
+    ],
+  };
+}
+
+// `limit` is OPT-IN and never defaulted. The Products table asks for the whole
+// catalogue and must keep getting it — a default page size here would silently
+// truncate that, which is the exact class of bug this endpoint is being fixed
+// for. Callers that do pass one (the presentation picker) also get `total`, so
+// a capped result can always say how many it is capping, and a product can
+// never go missing without the UI knowing it did.
+// The four fields a chooser needs, and nothing else.
+//
+// The full serialization carries every product's trainingContent and
+// nutritionContent — one real program here is 83KB of exercise JSON on its
+// own, so filling a dropdown with 50 of them meant moving megabytes to render
+// a list of names. `compact` exists so a picker pays for what it displays;
+// it also skips `withRelations` entirely, which drops four joins per row.
+const COMPACT_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  status: true,
+  creator: true,
+  priceCents: true,
+  createdAt: true,
+};
+
 router.get("/", async (req, res) => {
-  const { search, status, taxonomyNodeId } = req.query;
+  const { search, status, taxonomyNodeId, limit, compact } = req.query;
   const where = {
     AND: [
       status ? { status } : {},
       taxonomyNodeId ? { taxonomies: { some: { taxonomyNodeId: String(taxonomyNodeId) } } } : {},
-      search ? { name: { contains: String(search), mode: "insensitive" } } : {},
+      search ? productSearchFilter(search) : {},
     ],
   };
-  const products = await prisma.product.findMany({ where, include: withRelations, orderBy: { createdAt: "desc" } });
-  res.json({ products: products.map(serialize) });
+
+  const isCompact = compact === "1" || compact === "true";
+  const take = Math.min(Math.max(parseInt(limit, 10) || 0, 0), 200) || undefined;
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take,
+      ...(isCompact ? { select: COMPACT_SELECT } : { include: withRelations }),
+    }),
+    take ? prisma.product.count({ where }) : Promise.resolve(null),
+  ]);
+
+  res.json({
+    products: isCompact ? products : products.map(serialize),
+    ...(take ? { total, truncated: total > products.length } : {}),
+  });
 });
 
 router.get("/:id", async (req, res) => {

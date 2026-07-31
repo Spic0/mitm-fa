@@ -165,11 +165,33 @@ function productImageSrc(value) {
   return raw.startsWith("/") ? raw : `/${raw.replace(/^\.?\//, "")}`;
 }
 
+// Loads whatever product the deck was pointed at, whatever its status.
+//
+// This used to filter on status === PRESENTATION_STATUS, which made the same
+// rule live in three places that disagreed with each other:
+//
+//   the picker   hid every product that wasn't a "presentation product"
+//   the save     accepted ANY id, with no validation at all
+//   this render  silently resolved a non-presentation id back to null
+//
+// So a deck could hold a perfectly valid product id and show no product,
+// with nothing anywhere to say why — and the picker's own "Previously
+// selected product (no longer a presentation product)" option existed
+// precisely to paper over that drift. Worse, the rule forced a duplicate
+// showcase product to exist for anything real you wanted to pitch, which is
+// how a live catalogue product ends up unpitchable.
+//
+// The choice of what a private deck shows now belongs to the admin who builds
+// it, made explicitly per deck with the product's status shown at the point of
+// choosing (see populateProductPicker in assets/js/admin/presentations.js).
+// A deck is link-only and usually password-gated, so featuring an unreleased
+// product is a legitimate thing to want deliberately — and is no longer
+// something that can happen by accident, because the picker labels it.
 async function loadFeaturedProduct(productId) {
   if (!productId) return null;
   try {
     return await prisma.product.findFirst({
-      where: { id: String(productId), status: PRESENTATION_STATUS },
+      where: { id: String(productId) },
       select: {
         slug: true,
         name: true,
@@ -177,6 +199,7 @@ async function loadFeaturedProduct(productId) {
         thumbnailUrl: true,
         priceCents: true,
         creator: true,
+        status: true,
       },
     });
   } catch (err) {
@@ -222,19 +245,41 @@ function renderDeck(html, { presentation, content, visitId, product }) {
   // it sits above the fold in the hero slideshow. When there is no product,
   // every slot below resolves to neutral copy and the slideshow's own drawn
   // panels carry the section on their own.
-  // /showcase, never /program. The latter is the paid storefront page and
-  // would 404 for a presentation product anyway (it filters on "published"),
-  // but the point is that this button is not a route to a checkout.
-  const productUrl = product ? `/showcase/${encodeURIComponent(product.slug)}` : "";
+  // Where "View Product" goes depends on what the visitor is actually allowed
+  // to open, which is NOT the same question as what the deck may show.
+  //
+  //   presentation  /showcase/:slug — the unlisted showcase page
+  //   published     /program/:slug  — its real storefront page, which is
+  //                                   already public to everyone
+  //   anything else no link at all
+  //
+  // That last case is the important one. /showcase deliberately 404s for any
+  // product that isn't a presentation product ("not an alternative way to view
+  // the shop"), and it is a PUBLIC route — so pointing it at a draft would
+  // have turned it into a way to read unreleased products by guessing a slug.
+  // A draft or archived product therefore still appears inside the deck, which
+  // is gated and usually password-protected, but the deck offers no outbound
+  // link to a page that would 404 or that the visitor may not see.
+  const productUrl = !product
+    ? ""
+    : product.status === PRESENTATION_STATUS
+      ? `/showcase/${encodeURIComponent(product.slug)}`
+      : product.status === "published"
+        ? `/program/${encodeURIComponent(product.slug)}`
+        : "";
   const productImage = product ? productImageSrc(product.imageUrl || product.thumbnailUrl) : "";
-  // No price. A showcase product is not for sale, and printing a dollar
-  // figure next to it in the deck would imply it is.
+  // No price. The deck presents a product as material, not as a line item, and
+  // printing a dollar figure next to it would imply it is being sold here —
+  // which stays true now that a real storefront product can be featured.
   const productMeta = product
     ? [product.creator, "Presentation material"].filter(Boolean).join(" · ")
     : "";
 
   let out = stripHiddenSections(html, content.sections);
-  out = stripConditionalBlocks(out, "IFPRODUCT", !!product);
+  // Keyed on the URL, not on the product: the buttons exist to go somewhere,
+  // and a product with nowhere public to send the visitor renders without them
+  // rather than with a link into a 404 mid-meeting.
+  out = stripConditionalBlocks(out, "IFPRODUCT", !!productUrl);
   out = stripConditionalBlocks(out, "IFPRODUCTIMAGE", !!productImage);
 
   return out

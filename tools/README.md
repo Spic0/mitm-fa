@@ -67,10 +67,73 @@ Two subtleties it handles, both of which silently no-op'd earlier versions:
    used icons in all 4 styles from both the original and subset fonts and
    comparing them pixel for pixel (340/340 identical).
 
-## Dependencies
+## Critical CSS
 
-`subset-font` is required by the font script only, and only at build time:
+`bootstrap.min.css` (33KB gz) and `style.css` (52KB gz) were the last thing
+gating first paint — they finished at 2029ms and 2193ms on a Fast-3G profile,
+and FCP fired at 2292ms. They are now fronted by `assets/css/critical.css`
+(14KB gz), with the originals loading deferred.
+
+| | render-blocking CSS | FCP (Fast-3G + 4x CPU) |
+|---|---|---|
+| before | 82 KB gz | 2292 ms |
+| after | 14 KB gz | **904–976 ms** |
 
 ```sh
-npm install --no-save subset-font
+node tools/build-critical-css.js [baseUrl]   # writes assets/css/critical.css
+node tools/split-critical-css.js             # patches the HTML
+node tools/split-critical-css.js --revert    # undoes the patch cleanly
+```
+
+`build-critical-css.js` needs the site running (default `http://localhost:3200`).
+Re-run **both** after changing either source stylesheet, or after adding a page
+whose fold differs from the ones already listed in its `PAGES` array.
+
+### Not inlined, on purpose
+
+The CSP is `style-src 'self'` with no `'unsafe-inline'`, and the site ships
+zero inline styles. Inlining would need either `'unsafe-inline'` (weakens a
+real XSS mitigation on every page of a site that takes payments) or a
+per-build `sha256` in the CSP header (couples the header to build output, and
+blanks the page if they ever drift). A separate stylesheet costs one round
+trip and neither risk.
+
+### Two traps this tool already fell into
+
+Both produced a **completely unstyled first paint** while looking fine by
+every other measure, so re-check the rendering — not just the file size — if
+you change the extraction:
+
+1. **`CSS.startRuleUsageTracking` is reset by navigation.** Starting it before
+   `goto()` measures the `about:blank` document and reports almost nothing.
+   Use `page.coverage.startCSSCoverage({ resetOnNavigation: false })`.
+2. **Coverage byte ranges cannot be sliced and concatenated.** A rule inside
+   `@media (...) { … }` comes back without its enclosing at-rule, so the braces
+   stop balancing. That produced a 79KB file Chrome parsed into **9 rules**.
+   The extraction goes through a PostCSS AST so kept rules stay inside their
+   parent at-rule.
+
+### Verifying a rebuild
+
+The screenshot harness must be deterministic first: the hero slideshow rotates
+on a 6000ms `setTimeout`, so a variable settle time captures a different slide
+each run and every diff is noise. Capture on a fixed delay from
+`domcontentloaded`, clear all pending timers, then shoot — and confirm a
+control run (same state twice) diffs at 0.000% before trusting any result.
+
+Then check both states:
+
+- **final render** — pixel-diff every page at desktop and mobile against the
+  pre-split state. Expect 0.000%.
+- **first paint** — screenshot at FCP under throttling with the deferred sheets
+  still pending. It should show the site's normal preloader, not raw HTML with
+  bulleted lists and blue underlined links.
+
+## Dependencies
+
+`subset-font` (font subsetting) and `postcss` (critical CSS) are build-time
+only:
+
+```sh
+npm install --no-save subset-font postcss
 ```

@@ -37,11 +37,91 @@ window.AdminAPI = (function () {
   function del(path) {
     return request(path, { method: "DELETE" });
   }
-  function postForm(path, formData) {
-    return request(path, { method: "POST", body: formData, isFormData: true });
+  // File uploads go through XMLHttpRequest rather than fetch, for one reason:
+  // fetch has no upload-progress event. There is no way to observe how much of
+  // a request body has been sent with it, so a 100MB video upload through
+  // fetch is an indistinguishable hang. XHR's upload.onprogress is still the
+  // only way to drive a real progress bar in a browser.
+  //
+  // onProgress is called with a 0-100 percentage, or null when the body length
+  // isn't computable (rare, but don't fake a number in that case — the caller
+  // shows an indeterminate state instead).
+  function formRequest(method, path, formData, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, path, true);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader("X-CSRF-Token", readCookie("profit_csrf"));
+      // Never set Content-Type for FormData — the browser has to add the
+      // multipart boundary itself.
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = function (e) {
+          onProgress(e.lengthComputable ? Math.round((e.loaded / e.total) * 100) : null, e.loaded, e.total);
+        };
+      }
+
+      xhr.onload = function () {
+        var data = {};
+        try {
+          data = JSON.parse(xhr.responseText || "{}");
+        } catch (e) {
+          // Not JSON. The important case: nginx rejects an over-limit body
+          // itself, before the request ever reaches the app, and answers with
+          // its own HTML error page. Parsing that as JSON gives nothing, so
+          // without this branch the user sees "Request failed" for what is
+          // actually a specific, explainable condition.
+          data = {};
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+
+        var message = data.error;
+        if (!message) {
+          if (xhr.status === 413) {
+            message = "That file is too large to upload. The limit is 100MB per file.";
+          } else if (xhr.status === 401 || xhr.status === 403) {
+            message = "Your session expired. Reload the page and sign in again.";
+          } else if (xhr.status === 0) {
+            message = "The connection dropped during the upload. Check your connection and try again.";
+          } else if (xhr.status >= 500) {
+            message = "The server couldn't process that file. Try again, or use a different file.";
+          } else {
+            message = "Upload failed (HTTP " + xhr.status + ").";
+          }
+        }
+        var err = new Error(message);
+        err.status = xhr.status;
+        reject(err);
+      };
+
+      xhr.onerror = function () {
+        var err = new Error("The upload failed to reach the server. Check your connection and try again.");
+        err.status = 0;
+        reject(err);
+      };
+      xhr.ontimeout = function () {
+        var err = new Error("The upload timed out. A large file on a slow connection can take a while — try again.");
+        err.status = 0;
+        reject(err);
+      };
+      xhr.onabort = function () {
+        var err = new Error("Upload cancelled.");
+        err.status = 0;
+        err.aborted = true;
+        reject(err);
+      };
+
+      xhr.send(formData);
+      if (onProgress) onProgress(0, 0, 0);
+    });
   }
-  function putForm(path, formData) {
-    return request(path, { method: "PUT", body: formData, isFormData: true });
+
+  function postForm(path, formData, onProgress) {
+    return formRequest("POST", path, formData, onProgress);
+  }
+  function putForm(path, formData, onProgress) {
+    return formRequest("PUT", path, formData, onProgress);
   }
 
   return {
@@ -62,7 +142,7 @@ window.AdminAPI = (function () {
 
     getSettings: function () { return get("/api/admin/settings"); },
     updateSettings: function (body) { return put("/api/admin/settings", body); },
-    uploadLogo: function (formData) { return postForm("/api/admin/settings/logo", formData); },
+    uploadLogo: function (formData, onProgress) { return postForm("/api/admin/settings/logo", formData, onProgress); },
 
     listOrders: function (params) { return get("/api/admin/orders?" + new URLSearchParams(params || {})); },
     getOrder: function (id) { return get("/api/admin/orders/" + id); },
@@ -72,8 +152,8 @@ window.AdminAPI = (function () {
 
     listProducts: function (params) { return get("/api/admin/products?" + new URLSearchParams(params || {})); },
     getProduct: function (id) { return get("/api/admin/products/" + id); },
-    createProduct: function (formData) { return postForm("/api/admin/products", formData); },
-    updateProduct: function (id, formData) { return putForm("/api/admin/products/" + id, formData); },
+    createProduct: function (formData, onProgress) { return postForm("/api/admin/products", formData, onProgress); },
+    updateProduct: function (id, formData, onProgress) { return putForm("/api/admin/products/" + id, formData, onProgress); },
     updateProductContent: function (id, body) { return put("/api/admin/products/" + id + "/content", body); },
     deleteProduct: function (id) { return del("/api/admin/products/" + id); },
     archiveProduct: function (id) { return post("/api/admin/products/" + id + "/archive"); },
@@ -82,13 +162,13 @@ window.AdminAPI = (function () {
     // Edition") so it doesn't land as "(Copy)".
     duplicateProduct: function (id, name) { return post("/api/admin/products/" + id + "/duplicate", name ? { name: name } : {}); },
 
-    uploadProductMedia: function (id, formData) { return postForm("/api/admin/products/" + id + "/media", formData); },
+    uploadProductMedia: function (id, formData, onProgress) { return postForm("/api/admin/products/" + id + "/media", formData, onProgress); },
 
     // Public product-page gallery (the sales-page carousel). Distinct from
     // uploadProductMedia above, which is paid program content served through
     // the entitlement-gated /api/library/media.
     listProductGallery: function (id) { return get("/api/admin/products/" + id + "/gallery"); },
-    uploadProductGallery: function (id, formData) { return postForm("/api/admin/products/" + id + "/gallery", formData); },
+    uploadProductGallery: function (id, formData, onProgress) { return postForm("/api/admin/products/" + id + "/gallery", formData, onProgress); },
     reorderProductGallery: function (id, ids) { return put("/api/admin/products/" + id + "/gallery/order", { ids: ids }); },
     deleteProductGallery: function (id, mediaId) { return del("/api/admin/products/" + id + "/gallery/" + mediaId); },
     updateProductTaxonomy: function (id, nodeIds) { return put("/api/admin/products/" + id + "/taxonomy", { nodeIds: nodeIds }); },
@@ -116,7 +196,7 @@ window.AdminAPI = (function () {
     updateProductFaq: function (id, faqId, body) { return put("/api/admin/products/" + id + "/faqs/" + faqId, body); },
     deleteProductFaq: function (id, faqId) { return del("/api/admin/products/" + id + "/faqs/" + faqId); },
 
-    createProductResource: function (id, formData) { return postForm("/api/admin/products/" + id + "/resources", formData); },
+    createProductResource: function (id, formData, onProgress) { return postForm("/api/admin/products/" + id + "/resources", formData, onProgress); },
     deleteProductResource: function (id, resourceId) { return del("/api/admin/products/" + id + "/resources/" + resourceId); },
 
     createCustomer: function (body) { return post("/api/admin/customers", body); },

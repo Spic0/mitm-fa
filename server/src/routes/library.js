@@ -300,6 +300,15 @@ router.get("/download/media/:token", async (req, res) => {
   // shared/intermediate cache, since the URL itself is single-use-ish and
   // scoped to one viewer; the browser may still cache it locally per fetch.
   res.set("Cache-Control", "private, max-age=60");
+  // Program media may now include SVG, which unlike every other allowed type
+  // is a scriptable document. Same defence as the public static handler in
+  // src/index.js — see the comment there for why the sanitizer alone isn't
+  // relied on. Applied here too because this route bypasses that handler
+  // entirely.
+  if (path.extname(fileName).toLowerCase() === ".svg") {
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    res.set("X-Content-Type-Options", "nosniff");
+  }
   res.sendFile(path.join(MEDIA_DIR, productId, fileName), (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: "Media not found" });
   });

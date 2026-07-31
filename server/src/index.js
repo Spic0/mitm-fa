@@ -210,7 +210,27 @@ app.use(
         // is not a trade worth making for CSS and JS specifically; media
         // below is UUID-named and immutable, so it keeps its long cache.
         res.setHeader("Cache-Control", "no-cache");
-      } else if (/\.(?:png|jpe?g|svg|webp|gif|ico|woff2?|ttf|mp4|webm)$/.test(filePath)) {
+      } else if (/\.svg$/.test(filePath)) {
+        // Uploaded SVG is the one static asset that is user-supplied AND a
+        // scriptable document format. lib/svgSanitize.js strips executable
+        // constructs at upload time and fails closed, but a sanitizer should
+        // never be the only thing standing between an upload and script
+        // execution on this origin. These two headers are the layer that does
+        // not depend on the sanitizer being perfect:
+        //   sandbox          — drops the response into an opaque origin, so
+        //                      even a script that survived cannot touch
+        //                      cookies, session, or the DOM of fitness.agency
+        //   script-src 'none'— nothing executes even when the file is opened
+        //                      directly as a top-level document (the only
+        //                      context where SVG script runs at all; via
+        //                      <img>, which is how the site renders these,
+        //                      browsers already refuse)
+        //   nosniff          — a mislabelled upload can't be re-interpreted
+        //                      as text/html
+        res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+      } else if (/\.(?:png|jpe?g|webp|gif|ico|woff2?|ttf|mp4|mov|webm)$/.test(filePath)) {
         // Gallery video shares the image bucket: uploaded media is stored
         // under a fresh UUID filename and never rewritten in place, so a
         // repeat visitor re-downloading an autoplaying loop on every page
@@ -245,8 +265,21 @@ app.use((err, req, res, next) => {
   let message = "Something went wrong. Please try again.";
 
   if (err instanceof multer.MulterError) {
-    status = 400;
-    message = err.code === "LIMIT_FILE_SIZE" ? "That file is too large." : err.message;
+    if (err.code === "LIMIT_FILE_SIZE") {
+      // 413, not 400 — this is the same condition nginx reports with a 413
+      // when the body exceeds ITS client_max_body_size, and the admin UI keys
+      // off the status to explain the size limit. Keeping the two layers on
+      // the same status is what makes that message correct wherever the
+      // request was actually stopped.
+      status = 413;
+      message = "That file is too large. The limit is 100MB per file.";
+    } else if (err.code === "LIMIT_FILE_COUNT" || err.code === "LIMIT_UNEXPECTED_FILE") {
+      status = 400;
+      message = "Too many files in one upload.";
+    } else {
+      status = 400;
+      message = err.message;
+    }
   } else if (err.code === "P2002") {
     status = 409;
     message = `That ${err.meta?.target?.[0] || "value"} is already in use.`;

@@ -518,6 +518,9 @@
     </template>
 
     <script src="/assets/js/admin/api.js"></script>
+    <!-- Must load before anything that uploads: product-wizard.js and the
+         builder dialogs both call AdminUpload.maybeCompressImage on pick. -->
+    <script src="/assets/js/admin/upload-compress.js"></script>
     <script src="/assets/js/admin/ui.js"></script>
     <script src="/assets/js/admin/wizard-shell.js"></script>
     <script src="/assets/js/admin/dashboard.js"></script>

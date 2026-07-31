@@ -42,13 +42,38 @@ window.AdminPanels.settings = {
 
     logoForm.addEventListener("submit", function (e) {
       e.preventDefault();
-      var fd = new FormData();
-      fd.append("logo", e.target.logo.files[0]);
-      window.AdminAPI.uploadLogo(fd).then(function (res) {
-        logoPreview.src = "/" + res.logoUrl;
+      var picked = e.target.logo.files[0];
+      if (!picked) return window.AdminUI.toast("Choose a logo file first", "warning");
+
+      var submitBtn = logoForm.querySelector('button[type="submit"], input[type="submit"]');
+      function setBusy(label) {
+        if (!submitBtn) return;
+        submitBtn.disabled = !!label;
+        if (label) {
+          if (!submitBtn.dataset.idleLabel) submitBtn.dataset.idleLabel = submitBtn.textContent;
+          submitBtn.textContent = label;
+        } else if (submitBtn.dataset.idleLabel) {
+          submitBtn.textContent = submitBtn.dataset.idleLabel;
+        }
+      }
+
+      setBusy("Preparing…");
+      window.AdminUpload.maybeCompressImage(picked).then(function (toSend) {
+        var fd = new FormData();
+        fd.append("logo", toSend);
+        return window.AdminAPI.uploadLogo(fd, function (pct) {
+          setBusy(pct === null ? "Uploading…" : pct === 100 ? "Processing…" : "Uploading " + pct + "%");
+        });
+      }).then(function (res) {
+        // Cache-bust: the logo URL is stable across replacements, so without
+        // this the browser keeps showing the previous logo from cache and the
+        // upload looks like it silently did nothing.
+        logoPreview.src = "/" + res.logoUrl + "?t=" + Date.now();
         logoPreview.style.display = "block";
+        setBusy("");
         window.AdminUI.toast("Logo updated", "success");
       }).catch(function (err) {
+        setBusy("");
         window.AdminUI.toast(err.message, "error");
       });
     });

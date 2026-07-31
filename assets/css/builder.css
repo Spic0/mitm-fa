@@ -647,6 +647,42 @@ body.fab-open .a-modal-closing { pointer-events: none; }
 .fab-media-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .fab-media-tools .fab-input { flex: 1; min-width: 160px; border-color: var(--a-border); }
 .fab-upload { cursor: pointer; }
+
+/* Upload progress. Driven by real XHR upload events (AdminAPI.formRequest),
+   so the width is bytes actually sent, never a timer. */
+.fab-upload-progress { padding: 22px 4px; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.fab-upload-name { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--a-text); word-break: break-all; }
+.fab-progress-track {
+  width: 100%;
+  max-width: 320px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--a-border);
+  overflow: hidden;
+}
+.fab-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--a-primary);
+  transition: width 0.18s ease-out;
+}
+/* Used only when the body length isn't computable, so the bar shows motion
+   instead of a number the browser can't actually justify. */
+.fab-progress-bar.is-indeterminate {
+  width: 35% !important;
+  animation: fab-progress-slide 1.1s ease-in-out infinite;
+}
+@keyframes fab-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.fab-progress-pct { margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .fab-progress-bar { transition: none; }
+  .fab-progress-bar.is-indeterminate { animation: none; width: 100% !important; opacity: 0.55; }
+}
+
 .fab-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 9px; }
 .fab-media-tile {
   border: 1px solid var(--a-border);

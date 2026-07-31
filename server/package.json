@@ -23,6 +23,7 @@
     "helmet": "^8.2.0",
     "multer": "^2.2.0",
     "resend": "^4.0.1",
+    "sharp": "^0.35.3",
     "stripe": "^17.5.0"
   },
   "devDependencies": {

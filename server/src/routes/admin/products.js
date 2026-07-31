@@ -6,6 +6,7 @@ const multer = require("multer");
 const { prisma } = require("../../db");
 const { logEvent } = require("../../lib/adminLog");
 const { verifyUploadedFile } = require("../../lib/uploadVerify");
+const { optimizeImageInPlace, describeOptimization } = require("../../lib/imageOptimize");
 
 const router = express.Router();
 
@@ -47,6 +48,13 @@ function invalidStatus(status) {
   return `status must be one of: ${[...PRODUCT_STATUSES].join(", ")}`;
 }
 
+// One ceiling for every media upload route below. This MUST stay <= the
+// `client_max_body_size` in /etc/nginx/conf.d/mitm-fa.conf — nginx sees the
+// request first and answers 413 on its own, so a limit raised here alone
+// changes nothing. (That mismatch, with nginx left on its 1m default, is
+// exactly what made 12MB uploads fail with no server-side log line.)
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
 const SITE_ROOT = path.join(__dirname, "..", "..", "..", "..");
 const IMAGE_DIR = path.join(SITE_ROOT, "assets", "images", "product", "uploads");
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "..", "storage", "resources");
@@ -60,8 +68,46 @@ fs.mkdirSync(RESOURCE_DIR, { recursive: true });
 // below corrects it to match the file's real, sniffed content type before
 // anything is allowed to be referenced by a product or served.
 function provisionalName(declaredMime) {
-  const ext = (declaredMime.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-  return `${crypto.randomUUID()}.${ext}`;
+  const ext = ((declaredMime || "").split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+  return `${crypto.randomUUID()}.${ext || "bin"}`;
+}
+
+// Browsers do not reliably know what they are sending. A .mov picked on
+// Windows, and plenty of files dragged from cloud-sync folders, arrive
+// declared as application/octet-stream — and rejecting those in fileFilter
+// means a perfectly valid MOV is refused before anything has looked at its
+// actual bytes.
+//
+// So a generic/absent declared type is allowed THROUGH the filter, not
+// accepted: verifyAndRename still sniffs the real magic bytes immediately
+// afterwards and deletes anything that isn't on the allowlist. That is the
+// actual security boundary either way — this filter only exists to fail fast
+// on an obviously wrong pick, so it should never be the reason a legitimate
+// upload is refused.
+const GENERIC_DECLARED_TYPES = new Set(["", "application/octet-stream", "binary/octet-stream", "application/x-empty"]);
+
+function declaredTypePlausible(declaredMime, allowedMimes) {
+  const mime = (declaredMime || "").toLowerCase().trim();
+  return allowedMimes.has(mime) || GENERIC_DECLARED_TYPES.has(mime);
+}
+
+// The upload routes below invoke multer manually (so they can do their own
+// verification in the callback) rather than as route middleware, which means
+// a multer error never reaches the central handler in src/index.js — it has
+// to be translated here instead.
+//
+// Getting the status right matters beyond tidiness: an over-limit body is a
+// 413 whether nginx stopped it or multer did, and the admin UI keys off that
+// status to explain the size limit. Reporting multer's version as a bare 400
+// "File too large" is what made an over-limit upload look like a different
+// class of failure from the identical one a layer earlier.
+function respondUploadError(res, err) {
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({
+      error: `That file is too large. The limit is ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB per file.`,
+    });
+  }
+  return res.status(err.status || 400).json({ error: err.message || "Upload failed" });
 }
 
 // Runs after multer has already written the file to disk. Sniffs the actual
@@ -78,10 +124,17 @@ async function verifyAndRename(file, allowedMimes) {
   await fs.promises.rename(file.path, finalPath);
   file.filename = finalName;
   file.path = finalPath;
+
+  // Automatic optimization runs here, at the single choke point every image
+  // upload route already funnels through, and only AFTER the content has been
+  // verified — never re-encode bytes that haven't been proven to be an image.
+  // It is best-effort by design: a failure leaves the verified original in
+  // place rather than failing the upload.
+  file.optimization = await optimizeImageInPlace(finalPath, result.mime);
   return result;
 }
 
-const IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]);
 const imageStorage = multer.diskStorage({
   destination(req, file, cb) {
     cb(null, IMAGE_DIR);
@@ -92,10 +145,10 @@ const imageStorage = multer.diskStorage({
 });
 const upload = multer({
   storage: imageStorage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter(req, file, cb) {
-    if (!IMAGE_MIME.has(file.mimetype)) {
-      const err = new Error("Cover image and thumbnail must be PNG, JPG, WebP, or GIF");
+    if (!declaredTypePlausible(file.mimetype, IMAGE_MIME)) {
+      const err = new Error("Cover image and thumbnail must be PNG, JPG, WebP, GIF, or SVG");
       err.status = 400;
       return cb(err);
     }
@@ -144,13 +197,13 @@ const resourceStorage = multer.diskStorage({
     cb(null, `${crypto.randomUUID()}.bin`);
   },
 });
-const uploadResource = multer({ storage: resourceStorage, limits: { fileSize: 50 * 1024 * 1024 } });
+const uploadResource = multer({ storage: resourceStorage, limits: { fileSize: MAX_UPLOAD_BYTES } });
 
 // Exercise demo media (GIF / short video / image). Stored per-product under
 // server/storage/media/<productId>/ — NOT in public assets — and served to
 // entitled customers via the gated GET /api/library/media/:productId/:file.
 const MEDIA_DIR = path.join(__dirname, "..", "..", "..", "storage", "media");
-const MEDIA_MIME = new Set(["image/gif", "image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"]);
+const MEDIA_MIME = new Set(["image/gif", "image/png", "image/jpeg", "image/webp", "image/svg+xml", "video/mp4", "video/webm", "video/quicktime"]);
 const mediaStorage = multer.diskStorage({
   destination(req, file, cb) {
     const dir = path.join(MEDIA_DIR, req.params.id);
@@ -163,9 +216,9 @@ const mediaStorage = multer.diskStorage({
 });
 const uploadMedia = multer({
   storage: mediaStorage,
-  limits: { fileSize: 30 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter(req, file, cb) {
-    if (!MEDIA_MIME.has(file.mimetype)) return cb(new Error("Use a GIF, image (PNG/JPG/WebP), or short MP4/WebM video"));
+    if (!declaredTypePlausible(file.mimetype, MEDIA_MIME)) return cb(new Error("Use a GIF, image (PNG/JPG/WebP/SVG), or short MP4/MOV/WebM video"));
     cb(null, true);
   },
 });
@@ -177,7 +230,7 @@ const uploadMedia = multer({
 // definition have not bought the product yet, so its files must be publicly
 // served, exactly like the existing cover image in IMAGE_DIR.
 const GALLERY_DIR = path.join(SITE_ROOT, "assets", "images", "product", "gallery");
-const GALLERY_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm"]);
+const GALLERY_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml", "video/mp4", "video/webm", "video/quicktime"]);
 
 function galleryDirFor(productId) {
   return path.join(GALLERY_DIR, productId);
@@ -201,10 +254,10 @@ const galleryStorage = multer.diskStorage({
 });
 const uploadGallery = multer({
   storage: galleryStorage,
-  limits: { fileSize: 30 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter(req, file, cb) {
-    if (!GALLERY_MIME.has(file.mimetype)) {
-      const err = new Error("Gallery media must be PNG, JPG, WebP, GIF, MP4, or WebM");
+    if (!declaredTypePlausible(file.mimetype, GALLERY_MIME)) {
+      const err = new Error("Gallery media must be PNG, JPG, WebP, GIF, SVG, MP4, MOV, or WebM");
       err.status = 400;
       return cb(err);
     }
@@ -468,7 +521,7 @@ router.put("/:id/content", async (req, res) => {
 // media is never publicly downloadable.
 router.post("/:id/media", (req, res) => {
   uploadMedia.single("media")(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || "Upload failed" });
+    if (err) return respondUploadError(res, err);
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const verified = await verifyAndRename(req.file, MEDIA_MIME);
@@ -482,7 +535,7 @@ router.post("/:id/media", (req, res) => {
 
     await logEvent({
       category: "product",
-      message: `Uploaded exercise media "${req.file.filename}" for "${product.name}"`,
+      message: `Uploaded exercise media "${req.file.filename}" for "${product.name}"${describeOptimization(req.file.optimization)}`,
       actorId: req.user.id,
     });
     res.json({
@@ -512,7 +565,7 @@ router.get("/:id/gallery", async (req, res) => {
 // collide with a surviving row's position.
 router.post("/:id/gallery", (req, res) => {
   uploadGallery.single("media")(req, res, async (err) => {
-    if (err) return res.status(err.status || 400).json({ error: err.message || "Upload failed" });
+    if (err) return respondUploadError(res, err);
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const verified = await verifyAndRename(req.file, GALLERY_MIME);
@@ -544,7 +597,7 @@ router.post("/:id/gallery", (req, res) => {
 
     await logEvent({
       category: "product",
-      message: `Added gallery media to "${product.name}"`,
+      message: `Added gallery media to "${product.name}"${describeOptimization(req.file.optimization)}`,
       actorId: req.user.id,
     });
     res.json({ media: created });

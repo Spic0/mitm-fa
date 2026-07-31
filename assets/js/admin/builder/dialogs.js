@@ -15,6 +15,25 @@ window.AdminBuilderDialogs = (function () {
   function esc(s) { return window.AdminUI.escapeHtml(s == null ? "" : String(s)); }
   function toast(m, t) { window.AdminUI.toast(m, t || "success"); }
 
+  // The accept= list for anything that takes program/gallery media. Kept in
+  // one place because it has to stay in step with MEDIA_MIME / GALLERY_MIME in
+  // server/src/routes/admin/products.js — a type accepted here but not there
+  // is a file the user can pick and then watch fail.
+  var MEDIA_ACCEPT =
+    "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,video/mp4,video/quicktime,video/webm,.mov";
+
+  // Progress panel shown in place of whatever the upload replaced. The bar is
+  // driven by real XHR upload events, not a timer — see AdminAPI.formRequest.
+  function uploadProgressMarkup(fileName, status) {
+    return (
+      '<div class="fab-upload-progress">' +
+      '<p class="fab-upload-name">' + esc(fileName) + "</p>" +
+      '<div class="fab-progress-track"><div class="fab-progress-bar" style="width:0%"></div></div>' +
+      '<p class="fab-hint fab-progress-pct">' + esc(status || "Uploading…") + "</p>" +
+      "</div>"
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Dialog shell
   // ---------------------------------------------------------------------------
@@ -449,7 +468,7 @@ window.AdminBuilderDialogs = (function () {
         '<option value="">All types</option><option value="image">Images</option><option value="video">Videos</option><option value="file">Files</option>' +
         "</select>" +
         '<label class="fab-btn fab-btn-sm fab-upload"><i class="fa-solid fa-upload"></i> Upload new' +
-        '<input type="file" hidden id="mediaUpload" accept="image/gif,image/png,image/jpeg,image/webp,video/mp4,video/webm"></label>' +
+        '<input type="file" hidden id="mediaUpload" accept="' + MEDIA_ACCEPT + '"></label>' +
         "</div>" +
         '<div id="mediaGrid"><p class="fab-hint">Loading…</p></div>',
       cancelLabel: "Close",
@@ -502,10 +521,41 @@ window.AdminBuilderDialogs = (function () {
           var file = e.target.files[0];
           if (!file) return;
           e.target.value = "";
-          var fd = new FormData();
-          fd.append("media", file);
-          grid.innerHTML = '<p class="fab-hint">Uploading…</p>';
-          window.AdminAPI.uploadProductMedia(ws.product.id, fd).then(function (data) {
+
+          // Compress first (large stills only — see upload-compress.js for what
+          // it refuses to touch), then upload the result. The progress bar is
+          // driven by real bytes-sent from XHR, so it reflects the compressed
+          // size, which is what is actually being transferred.
+          grid.innerHTML = uploadProgressMarkup(file.name, "Preparing…");
+          window.AdminUpload.maybeCompressImage(file).then(function (toSend) {
+            var note = window.AdminUpload.compressionNote(toSend);
+            grid.innerHTML = uploadProgressMarkup(file.name, note || "Uploading…");
+            var bar = grid.querySelector(".fab-progress-bar");
+            var label = grid.querySelector(".fab-progress-pct");
+
+            var fd = new FormData();
+            fd.append("media", toSend);
+
+            return window.AdminAPI.uploadProductMedia(ws.product.id, fd, function (pct, loaded, total) {
+              if (!bar) return;
+              if (pct === null) {
+                // Length wasn't computable — show motion, not a fake number.
+                bar.classList.add("is-indeterminate");
+                if (label) label.textContent = "Uploading…";
+                return;
+              }
+              bar.style.width = pct + "%";
+              if (label) {
+                label.textContent =
+                  pct + "%" +
+                  (total ? " · " + window.AdminUpload.formatBytes(loaded) + " of " + window.AdminUpload.formatBytes(total) : "") +
+                  // Past 100% sent, the server is still verifying, optimizing
+                  // and writing the file. Saying "Uploading 100%" for several
+                  // seconds reads as a hang.
+                  (pct === 100 ? " · processing…" : "");
+              }
+            });
+          }).then(function (data) {
             toast("Uploaded");
             if (onPick) {
               // Already in this product's own directory, so no reuse-copy needed.
@@ -748,8 +798,8 @@ window.AdminBuilderDialogs = (function () {
       '<div class="fab-field"><label>Program overview</label><textarea class="fab-input" rows="5" id="fOverview">' + esc(p.overview) + "</textarea>" +
       '<p class="fab-hint">The long-form intro at the top of the customer\'s program page.</p></div>' +
       '<div class="fab-grid2">' +
-      '<div class="fab-field"><label>Cover image</label><input type="file" id="fCover" accept="image/*">' + (p.imageUrl ? '<p class="fab-hint">Leave empty to keep the current one.</p>' : "") + "</div>" +
-      '<div class="fab-field"><label>Thumbnail</label><input type="file" id="fThumb" accept="image/*">' + (p.thumbnailUrl ? '<p class="fab-hint">Leave empty to keep the current one.</p>' : "") + "</div>" +
+      '<div class="fab-field"><label>Cover image</label><input type="file" id="fCover" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">' + (p.imageUrl ? '<p class="fab-hint">Leave empty to keep the current one.</p>' : "") + "</div>" +
+      '<div class="fab-field"><label>Thumbnail</label><input type="file" id="fThumb" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">' + (p.thumbnailUrl ? '<p class="fab-hint">Leave empty to keep the current one.</p>' : "") + "</div>" +
       "</div>";
 
     autoSaveField(ws, host.querySelector("#fName"), function (v) { var fd = new FormData(); fd.append("name", v); return fd; }, refresh);
@@ -815,7 +865,7 @@ window.AdminBuilderDialogs = (function () {
     host.innerHTML =
       "<h5>Product gallery</h5>" +
       '<p class="fab-hint">The carousel at the top of the sales page — shown to shoppers before they buy. Drag to reorder; the first item is what they see first.</p>' +
-      '<div class="fab-field"><input type="file" id="galFile" multiple accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm">' +
+      '<div class="fab-field"><input type="file" id="galFile" multiple accept="' + MEDIA_ACCEPT + '">' +
       '<button type="button" class="fab-btn fab-btn-sm" id="galLibrary" style="margin-top:8px;"><i class="fa-solid fa-photo-film"></i> Add from media library</button></div>' +
       '<div id="galStatus" class="fab-hint"></div><div id="galList"></div>';
 
@@ -889,13 +939,24 @@ window.AdminBuilderDialogs = (function () {
       // One at a time, matching the old wizard: each response carries the row
       // the server actually created, and a mid-batch failure leaves the earlier
       // successes saved rather than rolling everything back.
+      var total = files.length;
       (function next() {
         if (!files.length) { setStatus(""); return; }
         var file = files.shift();
-        setStatus("Uploading " + file.name + "…");
-        var fd = new FormData();
-        fd.append("media", file);
-        window.AdminAPI.uploadProductGallery(ws.product.id, fd).then(function (data) {
+        var position = total > 1 ? " (" + (total - files.length) + " of " + total + ")" : "";
+        setStatus("Preparing " + file.name + "…" + position);
+
+        window.AdminUpload.maybeCompressImage(file).then(function (toSend) {
+          var fd = new FormData();
+          fd.append("media", toSend);
+          return window.AdminAPI.uploadProductGallery(ws.product.id, fd, function (pct) {
+            setStatus(
+              pct === null
+                ? "Uploading " + file.name + "…" + position
+                : "Uploading " + file.name + " — " + pct + "%" + (pct === 100 ? " · processing…" : "") + position
+            );
+          });
+        }).then(function (data) {
           items.push(data.media);
           render();
           next();

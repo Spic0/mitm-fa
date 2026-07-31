@@ -160,7 +160,7 @@
         <div class="a-card">
             <div class="a-card-pad u-pb-0">
                 <div class="a-toolbar">
-                    <input type="text" id="productSearch" placeholder="Search by name…" class="u-minw-240">
+                    <input type="text" id="productSearch" placeholder="Search by name, creator or ID…" class="u-minw-240">
                     <select id="statusFilter">
                         <option value="">All statuses</option>
                         <option value="published">Published</option>
@@ -189,6 +189,29 @@
                     </thead>
                     <tbody id="productsTableBody"></tbody>
                 </table>
+            </div>
+            <!-- Rendered by assets/js/admin/products.js. Hidden entirely while
+                 the whole result set fits on one page, so a small catalogue
+                 never grows controls it has no use for. -->
+            <div class="a-pager u-hidden" id="productsPager">
+                <span class="a-pager__count" id="productsPagerCount"></span>
+                <div class="a-pager__controls">
+                    <label class="a-pager__size">
+                        Per page
+                        <select id="productsPageSize">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                    <button class="a-btn a-btn-secondary a-btn-sm" id="productsPrev" type="button">
+                        <i class="fa-solid fa-chevron-left"></i> Prev
+                    </button>
+                    <span class="a-pager__page" id="productsPagerPage"></span>
+                    <button class="a-btn a-btn-secondary a-btn-sm" id="productsNext" type="button">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </template>

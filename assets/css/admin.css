@@ -1367,3 +1367,56 @@ body.a-modal-body-lock { overflow: hidden; }
     .pres-badge--draft,
     .pres-badge--private { color: #fbbf24; }
 }
+
+/* ---------------------------------------------------------------------------
+   Table pager
+
+   Shared shell for paged admin tables (Products first). Hidden entirely while
+   everything fits on one page, so a small catalogue never grows controls it
+   has no use for — the class is toggled in JS, not by CSS.
+   --------------------------------------------------------------------------- */
+.a-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-top: 1px solid var(--a-border);
+}
+.a-pager__count { font-size: 13px; color: var(--a-text-muted); }
+.a-pager__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.a-pager__size {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--a-text-muted);
+}
+.a-pager__size select {
+    padding: 5px 8px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+    color: var(--a-text);
+    font-size: 13px;
+}
+.a-pager__page {
+    font-size: 13px;
+    color: var(--a-text);
+    /* Fixed minimum so the Prev/Next buttons don't shuffle sideways as the
+       page number gains a digit. */
+    min-width: 104px;
+    text-align: center;
+}
+.a-pager .a-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+    .a-pager { justify-content: center; }
+    .a-pager__count { width: 100%; text-align: center; }
+}

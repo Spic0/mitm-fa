@@ -41,7 +41,7 @@ const server=http.createServer((req,res)=>{const u=req.url.split("?")[0];
     res.writeHead(200,{"Content-Type":"image/gif"});return res.end(PIXEL);}
   const l=path.join(ROOT,u);
   if(u!=="/"&&fs.existsSync(l)){const e=path.extname(l);
-    res.writeHead(200,{"Content-Type":e===".js"?"text/javascript":e===".css"?"text/css":"text/html"});
+    res.writeHead(200,{"Content-Type":e===".js"?"text/javascript; charset=utf-8":e===".css"?"text/css; charset=utf-8":"text/html; charset=utf-8"});
     return res.end(fs.readFileSync(l));}
   res.writeHead(200,{"Content-Type":"text/html"});res.end(HARNESS);});
 const results=[];

@@ -7,7 +7,8 @@
     "test:handbook-media": "node test-handbook-media.js",
     "test:admin-api": "node test-admin-api-resilience.js",
     "test:presentation-picker": "node test-presentation-picker.js",
-    "test": "node test-admin-api-resilience.js && node test-presentation-picker.js && node test-handbook-media.js"
+    "test": "node test-admin-api-resilience.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js",
+    "test:products-pagination": "node test-products-pagination.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.43.1",

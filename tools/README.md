@@ -138,6 +138,42 @@ cd tools && npm run test:handbook-media                   # browser test
 Run the backfill **on the machine that holds the media** — `server/storage/` is
 gitignored and per-checkout, so deploying the code does not move derivatives.
 
+## Products table pagination
+
+The table fetched the whole catalogue on every load and rendered every row.
+Worse, the list response carried each product's `trainingContent` — 83KB for
+one real program — so drawing 23 rows moved **151KB**, and none of it was
+read: the table uses nine fields, the promotion wizard and customer drawer use
+`id` and `name`, and the Product Builder fetches its own copy via `GET /:id`.
+`wizardProgress` and `taxonomyNodeIds` had no client-side reader at all.
+
+| | before | after |
+|---|---|---|
+| list response (23 products) | 151,724 B | **6,794 B** |
+| rows rendered | all of them | one page (25/50/100) |
+
+`limit`/`offset` stay **opt-in and never defaulted** — a default page size on a
+shared list endpoint silently truncates every caller that didn't know to ask,
+which is how a product goes missing from a picker. Paged callers get `total`,
+so the UI can always say what it is showing out of what.
+
+The wiring is the easy part; what paging actually breaks is the table's local
+single-row mutations:
+
+- **delete** leaves the page one row short, and the row that should replace it
+  was never fetched — so it refetches the page rather than leaving a gap;
+- **create / duplicate** produce the newest product, which sorts to the top of
+  page 1, not to wherever the admin is standing;
+- **archive** can drop a row out of the active filter, which is a delete as
+  far as the page is concerned.
+
+```sh
+cd tools && npm run test:products-pagination   # 25 assertions
+```
+
+That suite asserts the pages tile the catalogue exactly — no repeats, nothing
+skipped — and that no request ever asks for an unbounded list.
+
 ## Presentation product picker
 
 The picker was a `<select>` filled with `listProducts({ status: "presentation" })`,

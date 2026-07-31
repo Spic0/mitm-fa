@@ -59,21 +59,21 @@ const server = http.createServer((req, res) => {
     const products = limit ? all.slice(0, limit) : all;
     const body = JSON.stringify({ products: products, total: all.length, truncated: all.length > products.length });
     const wait = delayNext; delayNext = 0;
-    return setTimeout(() => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(body); }, wait);
+    return setTimeout(() => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(body); }, wait);
   }
   if (url.pathname.startsWith("/api/admin/products/")) {
     const id = url.pathname.split("/").pop();
     const found = CATALOGUE.find((p) => p.id === id);
-    res.writeHead(found ? 200 : 404, { "Content-Type": "application/json" });
+    res.writeHead(found ? 200 : 404, { "Content-Type": "application/json; charset=utf-8" });
     return res.end(JSON.stringify(found ? { product: found } : { error: "Not found" }));
   }
   const local = path.join(ROOT, url.pathname);
   if (url.pathname !== "/" && fs.existsSync(local)) {
     const ext = path.extname(local);
-    res.writeHead(200, { "Content-Type": ext === ".css" ? "text/css" : "text/javascript" });
+    res.writeHead(200, { "Content-Type": ext === ".css" ? "text/css; charset=utf-8" : "text/javascript; charset=utf-8" });
     return res.end(fs.readFileSync(local));
   }
-  res.writeHead(200, { "Content-Type": "text/html" });
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(PAGE);
 });
 

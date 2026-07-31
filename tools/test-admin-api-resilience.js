@@ -40,45 +40,45 @@ function product(id, name, status) {
 // end up showing. "rows" asserts a rendered row count instead.
 const SCENARIOS = [
   { name: "truncated mid-JSON (connection cut after headers)",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" });
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.write('{"products":[{"id":"a","name":"A"'); res.destroy(); },
     // The browser itself rejects this one before any of our code sees it.
     expect: "Failed to fetch" },
 
   { name: "empty body with 200",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(""); },
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(""); },
     expect: "incomplete response" },
 
   { name: "HTML error page served as 200",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "text/html" });
+    serve: (res) => { res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end("<html><body>502 Bad Gateway</body></html>"); },
     expect: "incomplete response" },
 
   { name: "valid JSON but the products key is missing",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" }); res.end('{"ok":true}'); },
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end('{"ok":true}'); },
     expect: "unexpected response" },
 
   { name: "products is not an array",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" }); res.end('{"products":{}}'); },
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end('{"products":{}}'); },
     expect: "unexpected response" },
 
   { name: "401 reads as an expired session, not a parse failure",
-    serve: (res) => { res.writeHead(401, { "Content-Type": "application/json" });
+    serve: (res) => { res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
       res.end('{"error":"Unauthorized"}'); },
     expect: "Unauthorized" },
 
   { name: "500 with a non-JSON body still names the status",
-    serve: (res) => { res.writeHead(500, { "Content-Type": "text/html" }); res.end("<html>oops</html>"); },
+    serve: (res) => { res.writeHead(500, { "Content-Type": "text/html; charset=utf-8" }); res.end("<html>oops</html>"); },
     expect: "HTTP 500" },
 
   { name: "HAPPY PATH: a normal response renders its rows",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" });
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ products: [product("p1", "Strength Program", "published"),
                                           product("p2", "Hypertrophy Block", "draft")] })); },
     rows: 2 },
 
   { name: "HAPPY PATH: an empty list is an empty state, not an error",
-    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json" });
+    serve: (res) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ products: [] })); },
     expect: "No products match your filters" },
 ];
@@ -90,6 +90,15 @@ const PAGE = `<!doctype html><html><body>
   <input id="productSearch"><select id="statusFilter"><option value=""></option></select>
   <button id="createProductBtn"></button>
   <table><tbody id="productsTableBody"></tbody></table>
+  <!-- Mirrors the pager markup in admin/manage.html; products.js treats it as
+       optional, but the point of this harness is to exercise what ships. -->
+  <div class="a-pager u-hidden" id="productsPager">
+    <span id="productsPagerCount"></span>
+    <select id="productsPageSize"><option value="25">25</option><option value="50">50</option></select>
+    <button id="productsPrev" type="button">Prev</button>
+    <span id="productsPagerPage"></span>
+    <button id="productsNext" type="button">Next</button>
+  </div>
 </div>
 <script>
   // Enough of AdminUI for the Products panel to render; this test is about
@@ -120,10 +129,10 @@ const server = http.createServer((req, res) => {
   if (u.startsWith("/api/admin/products")) return current.serve(res);
   const local = path.join(ROOT, u);
   if (u !== "/" && fs.existsSync(local)) {
-    res.writeHead(200, { "Content-Type": "text/javascript" });
+    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
     return res.end(fs.readFileSync(local));
   }
-  res.writeHead(200, { "Content-Type": "text/html" });
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(PAGE);
 });
 

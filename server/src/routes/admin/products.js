@@ -373,6 +373,44 @@ const withRelations = {
   taxonomies: { include: { taxonomyNode: { include: { taxonomy: true, parent: { include: { parent: true } } } } } },
 };
 
+// ---------------------------------------------------------------------------
+// The LIST shape.
+//
+// The list used to hand back the full serialization above — every product's
+// trainingContent and nutritionContent included. One real program here is 83KB
+// of exercise JSON on its own, so the Products table was moving ~150KB to draw
+// 23 rows that read nine fields, and would have moved tens of megabytes at a
+// few hundred products.
+//
+// None of it was used. The table renders name, slug, taxonomy chips, price,
+// status, featured and createdAt; the promotion wizard and the customer drawer
+// read id and name; the Product Builder fetches its own copy through
+// GET /:id, which still returns everything. `wizardProgress` and
+// `taxonomyNodeIds` had no client-side reader at all — the public storefront's
+// taxonomyNodeIds comes from routes/products.js, a different endpoint.
+//
+// Skipping the blobs also drops two joins per row: faqs and resources were
+// only ever fetched to compute wizardProgress.
+// ---------------------------------------------------------------------------
+const LIST_RELATIONS = {
+  taxonomies: { include: { taxonomyNode: { include: { taxonomy: true, parent: { include: { parent: true } } } } } },
+};
+
+function serializeListRow(product) {
+  return {
+    id: product.id,
+    slug: product.slug,
+    name: product.name,
+    priceCents: product.priceCents,
+    status: product.status,
+    featured: product.featured,
+    createdAt: product.createdAt,
+    publishAt: product.publishAt,
+    creator: product.creator,
+    taxonomyPaths: (product.taxonomies || []).map(taxonomyPath),
+  };
+}
+
 // Search matches NAME, CREATOR or ID. Name alone was not enough for the
 // presentation picker, where an admin reasonably looks for "Sam Sulek" (the
 // creator) or pastes an id straight out of a URL and expects a hit.
@@ -393,19 +431,9 @@ function productSearchFilter(search) {
   };
 }
 
-// `limit` is OPT-IN and never defaulted. The Products table asks for the whole
-// catalogue and must keep getting it — a default page size here would silently
-// truncate that, which is the exact class of bug this endpoint is being fixed
-// for. Callers that do pass one (the presentation picker) also get `total`, so
-// a capped result can always say how many it is capping, and a product can
-// never go missing without the UI knowing it did.
-// The four fields a chooser needs, and nothing else.
-//
-// The full serialization carries every product's trainingContent and
-// nutritionContent — one real program here is 83KB of exercise JSON on its
-// own, so filling a dropdown with 50 of them meant moving megabytes to render
-// a list of names. `compact` exists so a picker pays for what it displays;
-// it also skips `withRelations` entirely, which drops four joins per row.
+// The handful of fields a chooser needs, and nothing else. Skips the taxonomy
+// join too, which the list shape still pays for — a dropdown shows a name, a
+// status and a creator, never a breadcrumb.
 const COMPACT_SELECT = {
   id: true,
   slug: true,
@@ -416,8 +444,22 @@ const COMPACT_SELECT = {
   createdAt: true,
 };
 
+// `limit` and `offset` are OPT-IN and never defaulted.
+//
+// That is deliberate and worth keeping: a default page size on a shared list
+// endpoint silently truncates every caller that didn't know to ask for more,
+// which is exactly how a product goes missing from a picker. A caller that
+// wants a page says so, and gets `total` back so it can always tell the user
+// what it is showing out of what.
+//
+// `offset` is the right trade for an admin table. Postgres still walks the
+// skipped rows, so deep paging is O(offset) — but `createdAt DESC` over a few
+// hundred pages costs far less than the complexity of the alternative, and an
+// admin does not page to row 200,000. Keyset pagination is the answer if that
+// ever stops being true; it changes this endpoint's contract, so it belongs in
+// the day it is actually needed rather than today.
 router.get("/", async (req, res) => {
-  const { search, status, taxonomyNodeId, limit, compact } = req.query;
+  const { search, status, taxonomyNodeId, limit, offset, compact } = req.query;
   const where = {
     AND: [
       status ? { status } : {},
@@ -428,20 +470,26 @@ router.get("/", async (req, res) => {
 
   const isCompact = compact === "1" || compact === "true";
   const take = Math.min(Math.max(parseInt(limit, 10) || 0, 0), 200) || undefined;
+  const skip = Math.max(parseInt(offset, 10) || 0, 0) || undefined;
 
   const [products, total] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take,
-      ...(isCompact ? { select: COMPACT_SELECT } : { include: withRelations }),
+      skip,
+      ...(isCompact ? { select: COMPACT_SELECT } : { include: LIST_RELATIONS }),
     }),
+    // A second query is only worth it when the caller is paging — an unpaged
+    // list already knows its own total from products.length.
     take ? prisma.product.count({ where }) : Promise.resolve(null),
   ]);
 
   res.json({
-    products: isCompact ? products : products.map(serialize),
-    ...(take ? { total, truncated: total > products.length } : {}),
+    products: isCompact ? products : products.map(serializeListRow),
+    ...(take
+      ? { total, offset: skip || 0, truncated: total > (skip || 0) + products.length }
+      : {}),
   });
 });
 

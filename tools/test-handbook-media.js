@@ -85,16 +85,20 @@ check("click opens fullscreen viewer",lb.open,lb);
 check("viewer holds the whole day as a gallery",lb.slides===2,lb);
 check("body scroll locked while open",lb.bodyLocked,lb);
 
-const esc=await p.evaluate(()=>{document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));return true;});
-await new Promise(r=>setTimeout(r,400));
-check("Escape closes it",!(await p.evaluate(()=>!!document.querySelector(".pm"))),esc);
+// Arrows must drive the media gallery, NOT the handbook page behind it.
+const pageBefore=await p.evaluate(()=>document.querySelector("[data-pv-count]").textContent);
+await p.keyboard.press("ArrowRight"); await new Promise(r=>setTimeout(r,350));
+const afterArrow=await p.evaluate(()=>({page:document.querySelector("[data-pv-count]").textContent,
+  pmOpen:!!document.querySelector(".pm")}));
+check("arrows don't turn the page behind the viewer",afterArrow.page===pageBefore,{pageBefore,afterArrow});
+
+await p.keyboard.press("Escape"); await new Promise(r=>setTimeout(r,450));
+const afterEsc=await p.evaluate(()=>({pm:!!document.querySelector(".pm"),pv:!!document.querySelector(".pv")}));
+check("Escape closes the media viewer",!afterEsc.pm,afterEsc);
+check("Escape leaves the handbook open underneath",afterEsc.pv,afterEsc);
 
 // --- regression: the page-turn gesture itself must still work ---
-// Escape above closes the whole viewer, so re-open it for this section.
-await p.evaluate(()=>{document.querySelectorAll(".pm,.pv").forEach(e=>e.remove());
-  document.body.className="";
-  window.ProgramViewer.open(window.__P,{});});
-await new Promise(r=>setTimeout(r,600));
+await new Promise(r=>setTimeout(r,300));
 for(let i=0;i<8;i++){
   const on=await p.evaluate(()=>{const b=document.querySelector("[data-pv-media]");if(!b)return false;
     const r=b.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=window.innerWidth;});

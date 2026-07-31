@@ -550,6 +550,13 @@
     }
 
     function onKey(e) {
+      // The fullscreen media viewer layers on top of the handbook and owns the
+      // keyboard while it is open. Both bind keydown on document and neither
+      // stops propagation, so without this one Escape would close the media
+      // viewer AND the handbook underneath it, and Arrow keys would turn the
+      // page behind the image being looked at. program-media.js sets this
+      // class on <body> for exactly the length of its own lifetime.
+      if (document.body.classList.contains("pm-open")) return;
       if (e.key === "Escape") { close(); return; }
       if (e.key === "ArrowRight") { goTo(index + 1); return; }
       if (e.key === "ArrowLeft") { goTo(index - 1); return; }

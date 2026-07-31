@@ -40,7 +40,7 @@ for (const file of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"))) {
   if (REVERT) {
     for (const href of DEFER) {
       html = html.replace(
-        new RegExp(`<link rel="preload" as="style" href="${href}" data-preload-style>`, "g"),
+        new RegExp(`<link rel="preload" as="style"(?: fetchpriority="low")? href="${href}" data-preload-style>`, "g"),
         `<link rel="stylesheet" href="${href}">`
       );
     }
@@ -81,7 +81,14 @@ for (const file of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"))) {
   for (const href of DEFER) {
     html = html.replace(
       `<link rel="stylesheet" href="${href}">`,
-      `<link rel="preload" as="style" href="${href}" data-preload-style>`
+      // fetchpriority="low": rel=preload fetches at HIGH priority by default,
+      // so these two were competing with critical.css for a constrained link
+      // and delaying the very paint they were moved out of the way for
+      // (measured on production: critical.css needed 1400ms for 15KB while
+      // 86KB of deferred CSS downloaded alongside it). They are explicitly
+      // not needed for first paint, so they should yield to everything that
+      // is.
+      `<link rel="preload" as="style" fetchpriority="low" href="${href}" data-preload-style>`
     );
   }
 

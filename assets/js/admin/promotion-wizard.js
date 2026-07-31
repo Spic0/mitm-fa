@@ -1,6 +1,7 @@
-// Step-by-step Setup Wizard for creating/editing a promotion. Architecturally
-// identical to AdminProductWizard (assets/js/admin/product-wizard.js) and
-// built on the same shared chrome (assets/js/admin/wizard-shell.js): a real
+// Step-by-step Setup Wizard for creating/editing a promotion. Built on the
+// shared wizard chrome (assets/js/admin/wizard-shell.js) — which it is now the
+// only remaining user of, since products moved to the Product Builder and the
+// old AdminProductWizard this was modelled on has been deleted: a real
 // draft is created on the server the instant the wizard opens (even before
 // any field is filled in), and every step persists its own slice of data via
 // PATCH the moment the admin leaves it. That's what makes free navigation,
@@ -110,8 +111,8 @@ window.AdminPromotionWizard = (function () {
     });
 
     // Non-blocking reminder shown above a step's fields when it isn't
-    // complete yet — mirrors AdminProductWizard's renderMissingBanner
-    // exactly, since both wizards must read as one system.
+    // complete yet — non-blocking by design: it guides toward Publish
+    // without ever preventing navigation between steps.
     function renderMissingBanner(host, key) {
       if (getStatus(key) !== "missing") { host.innerHTML = ""; return; }
       host.innerHTML = alertHtml("warning", "fa-triangle-exclamation",
@@ -527,7 +528,7 @@ window.AdminPromotionWizard = (function () {
     // ---- Boot: create (or load) the draft, plus lookups ----
     // A draft is created the instant the wizard opens (even before any
     // field is filled in) so every sidebar step is clickable from frame
-    // one — same contract as AdminProductWizard. It starts disabled, so an
+    // one. It starts disabled, so an
     // abandoned "New Promotion" click never becomes redeemable at checkout.
     function createPlaceholder(retry) {
       var suffix = Math.random().toString(36).slice(2, 8).toUpperCase() + (retry ? Date.now().toString(36).toUpperCase() : "");

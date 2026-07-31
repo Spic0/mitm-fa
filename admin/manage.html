@@ -518,15 +518,14 @@
     </template>
 
     <script src="/assets/js/admin/api.js"></script>
-    <!-- Must load before anything that uploads: product-wizard.js and the
-         builder dialogs both call AdminUpload.maybeCompressImage on pick. -->
+    <!-- Must load before anything that uploads: the builder dialogs and the
+         settings panel both call AdminUpload.maybeCompressImage on pick. -->
     <script src="/assets/js/admin/upload-compress.js"></script>
     <script src="/assets/js/admin/ui.js"></script>
     <script src="/assets/js/admin/wizard-shell.js"></script>
     <script src="/assets/js/admin/dashboard.js"></script>
     <script src="/assets/js/admin/orders.js"></script>
     <script src="/assets/js/admin/products.js"></script>
-    <script src="/assets/js/admin/product-wizard.js"></script>
     <!-- Product Builder. core.js is the DOM-free engine and must load before
          the two view layers, which both call into it at definition time. -->
     <script src="/assets/js/admin/builder/core.js"></script>

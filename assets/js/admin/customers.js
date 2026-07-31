@@ -64,13 +64,14 @@ window.AdminPanels.customers = {
       if (searchInput.value.trim()) params.search = searchInput.value.trim();
 
       window.AdminAPI.listCustomers(params).then(function (data) {
-        if (!data.customers.length) {
+        var customers = window.AdminAPI.rows(data, "customers");
+        if (!customers.length) {
           tbody.innerHTML = '<tr><td colspan="8">' + window.AdminUI.emptyState("fa-users", "No customers match your search.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           return;
         }
         var frag = document.createDocumentFragment();
-        data.customers.forEach(function (c) {
+        customers.forEach(function (c) {
           var tr = document.createElement("tr");
           tr.dataset.rowKey = c.id;
           tr.innerHTML = rowInnerHtml(c);
@@ -199,9 +200,13 @@ window.AdminPanels.customers = {
 
       var productSelect = backdrop.querySelector('select[name="grantProductId"]');
       window.AdminAPI.listProducts({ status: "published" }).then(function (data) {
-        productSelect.innerHTML = '<option value="">None</option>' + data.products.map(function (p) {
+        productSelect.innerHTML = '<option value="">None</option>' + window.AdminAPI.rows(data, "products").map(function (p) {
           return '<option value="' + p.id + '">' + window.AdminUI.escapeHtml(p.name) + "</option>";
         }).join("");
+        // Deliberately swallowed: this only populates an OPTIONAL "grant a
+        // product" dropdown on the create-customer form. Failing to fill it
+        // must not take down the form around it — the admin can still create
+        // the customer and grant access afterwards.
       }).catch(function () {});
 
       backdrop.querySelector("#createCustomerForm").addEventListener("submit", function (e) {

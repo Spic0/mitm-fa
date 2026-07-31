@@ -481,12 +481,13 @@ window.AdminBuilderDialogs = (function () {
         function load() {
           grid.innerHTML = '<p class="fab-hint">Loading…</p>';
           window.AdminAPI.listMediaLibrary({ search: search.value.trim(), type: typeSel.value }).then(function (data) {
-            if (!data.media.length) {
+            var media = window.AdminAPI.rows(data, "media");
+            if (!media.length) {
               grid.innerHTML = '<p class="fab-dialog-empty">Nothing matches. Upload a file to start the library.</p>';
               return;
             }
             grid.innerHTML =
-              '<div class="fab-media-grid">' + data.media.map(function (m, i) {
+              '<div class="fab-media-grid">' + media.map(function (m, i) {
                 var thumb = m.type === "video"
                   ? '<video src="' + esc(m.url) + '" muted playsinline preload="metadata"></video>'
                   : m.type === "file"
@@ -500,7 +501,7 @@ window.AdminBuilderDialogs = (function () {
                   "</button>"
                 );
               }).join("") + "</div>" +
-              (data.total > data.media.length ? '<p class="fab-hint">Showing ' + data.media.length + " of " + data.total + " — narrow the search to see the rest.</p>" : "");
+              (data.total > media.length ? '<p class="fab-hint">Showing ' + media.length + " of " + data.total + " — narrow the search to see the rest.</p>" : "");
 
             if (!onPick) return;
             grid.querySelectorAll("[data-index]").forEach(function (tile) {

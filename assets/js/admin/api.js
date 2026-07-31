@@ -17,9 +17,60 @@ window.AdminAPI = (function () {
       ...options,
       headers: headers,
     });
-    const data = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error(data.error || "Request failed");
+
+    // 204/205 are the only responses that are MEANT to have no body. Nothing
+    // behind AdminAPI returns one today, but treating them as an empty object
+    // is correct rather than an error if one ever does.
+    if (res.status === 204 || res.status === 205) {
+      if (!res.ok) throw new Error("Request failed");
+      return {};
+    }
+
+    const raw = await res.text();
+    let data = null;
+    let parsed = false;
+    if (raw) {
+      try { data = JSON.parse(raw); parsed = true; } catch (err) { /* handled below */ }
+    }
+
+    if (!res.ok) {
+      // An error response is allowed to be unparseable — nginx answers some
+      // conditions (413 in particular) with its own HTML page, which is why
+      // this falls back to a status-shaped message rather than insisting on
+      // an { error } field.
+      throw new Error(
+        (parsed && data && data.error) ||
+        (res.status === 401 || res.status === 403
+          ? "Your session has expired. Reload the page and sign in again."
+          : "Request failed (HTTP " + res.status + ").")
+      );
+    }
+
+    // A 2xx whose body is empty or is not JSON is a BROKEN response, not a
+    // successful one — a truncated reply, or an intermediary answering in
+    // place of the app. This used to be swallowed into `{}` and returned as
+    // success, so the caller went on to read a field off it and died with
+    // "Cannot read properties of undefined (reading 'length')" — a message
+    // that says nothing about what actually went wrong, on a page that had
+    // already sat on a loading skeleton until the request gave up.
+    if (!parsed || data === null || typeof data !== "object") {
+      throw new Error("The server sent an incomplete response. Check your connection and reload the page.");
+    }
     return data;
+  }
+
+  // Reads a list off a response, insisting it really is a list.
+  //
+  // Every admin table did `data.<key>.length` and `data.<key>.forEach` on the
+  // raw response. That is correct exactly while the server sends the shape the
+  // caller assumed, and an unguarded TypeError the moment it doesn't. request()
+  // above now rejects malformed responses, so this only fires on a genuine
+  // contract mismatch (a renamed field, an endpoint returning `{ ok: true }`),
+  // where a clear message beats a stack trace about `undefined`.
+  function rows(data, key) {
+    const value = data ? data[key] : undefined;
+    if (Array.isArray(value)) return value;
+    throw new Error("The server sent an unexpected response for " + key + ". Reload the page and try again.");
   }
 
   function get(path) {
@@ -125,6 +176,7 @@ window.AdminAPI = (function () {
   }
 
   return {
+    rows: rows,
     me: function () { return get("/api/auth/me"); },
     getConfig: function () { return get("/api/config"); },
     requestMagicLink: function (email) { return post("/api/auth/magic-link", { email: email }); },

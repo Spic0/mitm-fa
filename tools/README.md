@@ -138,6 +138,32 @@ cd tools && npm run test:handbook-media                   # browser test
 Run the backfill **on the machine that holds the media** — `server/storage/` is
 gitignored and per-checkout, so deploying the code does not move derivatives.
 
+## Admin API resilience
+
+`assets/js/admin/api.js` used to do `res.json().catch(() => ({}))` and only
+throw when `!res.ok`. A 2xx whose body was empty, truncated or not JSON was
+therefore handed to the caller **as a successful empty object**, and all nine
+admin tables then did `data.<key>.length` on it — which is where
+`Cannot read properties of undefined (reading 'length')` came from on the
+Products page. The message named neither the request nor the reason, so a
+transport problem looked like a bug in whatever page was open.
+
+Two layers now:
+
+- `request()` rejects a 2xx it cannot parse ("The server sent an incomplete
+  response"), and gives error responses a status-shaped message when they have
+  no `{ error }` field — nginx answers 413 with its own HTML page.
+- `AdminAPI.rows(data, key)` returns the list or throws naming the key. Used by
+  every admin table, so a contract mismatch is a sentence rather than a stack
+  trace.
+
+```sh
+cd tools && npm run test:admin-api      # 9 scenarios, headless Chrome
+```
+
+The happy-path cases in that suite matter as much as the failures: a guard that
+also breaks the normal render is not a fix.
+
 ## Critical CSS
 
 `bootstrap.min.css` (33KB gz) and `style.css` (52KB gz) were the last thing

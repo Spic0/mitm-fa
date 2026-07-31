@@ -72,14 +72,15 @@ window.AdminPanels.orders = {
       Object.keys(params).forEach(function (k) { if (!params[k]) delete params[k]; });
 
       window.AdminAPI.listOrders(params).then(function (data) {
-        if (!data.orders.length) {
+        var orders = window.AdminAPI.rows(data, "orders");
+        if (!orders.length) {
           tbody.innerHTML = '<tr><td colspan="10">' + window.AdminUI.emptyState("fa-receipt", "No orders match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           pagination.innerHTML = "";
           return;
         }
         var frag = document.createDocumentFragment();
-        data.orders.forEach(function (o) {
+        orders.forEach(function (o) {
           var tr = document.createElement("tr");
           tr.dataset.rowKey = o.id;
           tr.innerHTML = rowInnerHtml(o);

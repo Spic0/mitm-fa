@@ -168,13 +168,14 @@ window.AdminPanels.products = {
       if (statusFilter.value) params.status = statusFilter.value;
 
       window.AdminAPI.listProducts(params).then(function (data) {
-        if (!data.products.length) {
+        var products = window.AdminAPI.rows(data, "products");
+        if (!products.length) {
           tbody.innerHTML = '<tr><td colspan="7">' + window.AdminUI.emptyState("fa-box-open", "No products match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           return;
         }
         var frag = document.createDocumentFragment();
-        data.products.forEach(function (p) {
+        products.forEach(function (p) {
           var tr = document.createElement("tr");
           tr.dataset.rowKey = p.id;
           tr.innerHTML = rowInnerHtml(p);

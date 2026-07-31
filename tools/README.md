@@ -74,10 +74,20 @@ gating first paint — they finished at 2029ms and 2193ms on a Fast-3G profile,
 and FCP fired at 2292ms. They are now fronted by `assets/css/critical.css`
 (14KB gz), with the originals loading deferred.
 
-| | render-blocking CSS | FCP (Fast-3G + 4x CPU) |
-|---|---|---|
-| before | 82 KB gz | 2292 ms |
-| after | 14 KB gz | **904–976 ms** |
+| | render-blocking CSS | FCP (Fast-3G + 4x CPU) | FCP (broadband) |
+|---|---|---|---|
+| before | 82 KB gz | 2292 ms | 368 ms |
+| after | 14 KB gz | **~1790 ms** | **~344 ms** |
+
+The deferred sheets carry `fetchpriority="low"`, on the theory that
+`rel=preload` fetching at high priority was starving critical.css. **It made no
+measurable difference** (FCP 1788ms before, 1788ms after) — the attribute is
+kept because it is semantically correct, not because it bought anything.
+
+On Fast-3G, FCP is now gated by critical.css itself finishing at ~1714ms, and
+the page pulls ~500KB in total on a ~200KB/s link. Getting meaningfully below
+this would mean inlining (blocked by CSP, see above) or cutting total bytes
+further — not more prioritisation tweaking.
 
 ```sh
 node tools/build-critical-css.js [baseUrl]   # writes assets/css/critical.css

@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
-const { normalizeImageUrl } = require("../lib/media");
+const { normalizeImageUrl, coverMedia } = require("../lib/media");
 
 const router = express.Router();
 
@@ -17,6 +17,10 @@ function serialize(product) {
     priceCents: product.priceCents,
     featured: product.featured,
     imageUrl: normalizeImageUrl(product.imageUrl),
+    // Responsive/fit metadata for the card's media container. Null for
+    // images that predate the derivative pipeline — the card falls back to
+    // imageUrl exactly as before, so nothing needs backfilling to ship.
+    cover: coverMedia(product.imageUrl),
     description: product.description,
     creator: product.creator,
     difficulty: product.difficulty,

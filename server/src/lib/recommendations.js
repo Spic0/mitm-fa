@@ -1,5 +1,5 @@
 const { prisma } = require("../db");
-const { normalizeImageUrl } = require("./media");
+const { normalizeImageUrl, coverMedia } = require("./media");
 
 // Same classification rule the admin wizard's wizardProgress() check uses
 // (server/src/routes/admin/products.js) — a product is "training" or
@@ -27,6 +27,7 @@ function serializeCard(product) {
     name: product.name,
     priceCents: product.priceCents,
     imageUrl: normalizeImageUrl(product.imageUrl),
+    cover: coverMedia(product.imageUrl),
     creator: product.creator,
   };
 }

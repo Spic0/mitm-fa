@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
     img.className = "hero-slideshow__bg-img";
     img.alt = "";
     img.loading = "lazy";
-    img.src = product.imageUrl || "";
+    window.MediaContainer.applyResponsive(img, product, "100vw");
     slide.appendChild(img);
     slide.dataset.productId = product.id;
     return slide;
@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function preload(product) {
     if (!product || !product.imageUrl) return;
     var img = new Image();
-    img.src = product.imageUrl;
+    window.MediaContainer.applyResponsive(img, product, "100vw");
   }
 
   Promise.all([
@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
       updateContent(slides[0], taxIndex);
       if (ssrSlideEl) {
         var freshImg = ssrSlideEl.querySelector("img");
-        if (freshImg) freshImg.src = slides[0].imageUrl || "";
+        if (freshImg) window.MediaContainer.applyResponsive(freshImg, slides[0], "100vw");
       }
       startIndex = 0;
     }

@@ -7,6 +7,7 @@ const { prisma } = require("../../db");
 const { logEvent } = require("../../lib/adminLog");
 const { verifyUploadedFile } = require("../../lib/uploadVerify");
 const { optimizeImageInPlace, describeOptimization } = require("../../lib/imageOptimize");
+const { generateDerivatives, invalidate: invalidateMedia, describeForAdmin } = require("../../lib/mediaDerivatives");
 
 const router = express.Router();
 
@@ -57,6 +58,7 @@ const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const SITE_ROOT = path.join(__dirname, "..", "..", "..", "..");
 const IMAGE_DIR = path.join(SITE_ROOT, "assets", "images", "product", "uploads");
+const IMAGE_URL_BASE = "/assets/images/product/uploads";
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "..", "storage", "resources");
 fs.mkdirSync(IMAGE_DIR, { recursive: true });
 fs.mkdirSync(RESOURCE_DIR, { recursive: true });
@@ -115,7 +117,7 @@ function respondUploadError(res, err) {
 // is trivially spoofed) and renames the file to match its real type. Deletes
 // and rejects anything that doesn't match the allowlist — this is the actual
 // security boundary; multer's fileFilter is only a fast-fail UX nicety.
-async function verifyAndRename(file, allowedMimes) {
+async function verifyAndRename(file, allowedMimes, publicUrlBase) {
   const result = await verifyUploadedFile(file.path, allowedMimes);
   if (!result.ok) return result;
 
@@ -131,6 +133,17 @@ async function verifyAndRename(file, allowedMimes) {
   // It is best-effort by design: a failure leaves the verified original in
   // place rather than failing the upload.
   file.optimization = await optimizeImageInPlace(finalPath, result.mime);
+
+  // Responsive derivatives + the sidecar manifest that tells the storefront
+  // how to fit this image. Runs after optimization so the derivatives are cut
+  // from the already-corrected (rotated, downscaled, metadata-stripped)
+  // image rather than the raw upload. Best-effort, like the optimizer: the
+  // original is complete and serveable on its own, and coverMedia() falls
+  // back to plain imageUrl when no manifest exists.
+  if (publicUrlBase) {
+    file.media = await generateDerivatives(finalPath, result.mime, publicUrlBase);
+    invalidateMedia(finalPath);
+  }
   return result;
 }
 
@@ -163,14 +176,22 @@ const uploadFields = upload.fields([
 // Verifies every file multer attached to req.files (an { fieldName: [file] }
 // map, as produced by .fields()) against allowedMimes, deleting and
 // collecting an error for any that fail real-content sniffing.
-async function verifyReqFiles(files, allowedMimes) {
+async function verifyReqFiles(files, allowedMimes, publicUrlBase) {
   const errors = [];
+  const notices = [];
   for (const fieldFiles of Object.values(files || {})) {
     for (const file of fieldFiles) {
-      const result = await verifyAndRename(file, allowedMimes);
+      const result = await verifyAndRename(file, allowedMimes, publicUrlBase);
       if (!result.ok) errors.push(`${file.fieldname}: ${result.reason}`);
+      const note = describeForAdmin(file.media);
+      if (note) notices.push({ field: file.fieldname, ...note });
     }
   }
+  // Errors block the upload; notices never do — they are guidance about how
+  // an accepted image will be rendered. verifyReqFiles keeps returning an
+  // array so existing `if (errors.length)` callers are unaffected, with the
+  // notices hung off it.
+  errors.notices = notices;
   return errors;
 }
 
@@ -367,8 +388,9 @@ router.get("/:id", async (req, res) => {
 // Step 1 — every later step is a partial PUT against this same id, which is
 // what makes "save draft between steps" work without a separate draft model.
 router.post("/", uploadFields, async (req, res) => {
-  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME);
+  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME, IMAGE_URL_BASE);
   if (uploadErrors.length) return res.status(400).json({ error: uploadErrors.join("; ") });
+  const mediaNotices = uploadErrors.notices || [];
 
   const { name, slug, description, priceCents, status, featured, creator } = req.body;
   if (!name || !slug) {
@@ -404,8 +426,9 @@ router.post("/", uploadFields, async (req, res) => {
 
 // Step 1/2/3 scalar fields — partial update, same pattern the old PUT used.
 router.put("/:id", uploadFields, async (req, res) => {
-  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME);
+  const uploadErrors = await verifyReqFiles(req.files, IMAGE_MIME, IMAGE_URL_BASE);
   if (uploadErrors.length) return res.status(400).json({ error: uploadErrors.join("; ") });
+  const mediaNotices = uploadErrors.notices || [];
 
   const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: "Product not found" });
@@ -465,7 +488,7 @@ router.put("/:id", uploadFields, async (req, res) => {
   });
 
   await logEvent({ category: "product", message: `Updated product "${product.name}"`, actorId: req.user.id });
-  res.json({ product: serialize(product) });
+  res.json({ product: serialize(product), mediaNotices });
 });
 
 // Replaces the product's full taxonomy assignment set in one go — the wizard
@@ -489,7 +512,7 @@ router.put("/:id/taxonomy", async (req, res) => {
 
   const product = await prisma.product.findUnique({ where: { id: existing.id }, include: withRelations });
   await logEvent({ category: "product", message: `Updated navigation placement for "${product.name}"`, actorId: req.user.id });
-  res.json({ product: serialize(product) });
+  res.json({ product: serialize(product), mediaNotices });
 });
 
 // Steps 3-5: the actual program content (overview, training, nutrition,
@@ -568,7 +591,7 @@ router.post("/:id/gallery", (req, res) => {
     if (err) return respondUploadError(res, err);
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const verified = await verifyAndRename(req.file, GALLERY_MIME);
+    const verified = await verifyAndRename(req.file, GALLERY_MIME, `/assets/images/product/gallery/${req.params.id}`);
     if (!verified.ok) return res.status(400).json({ error: verified.reason });
 
     const product = await prisma.product.findUnique({ where: { id: req.params.id } });

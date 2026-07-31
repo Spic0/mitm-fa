@@ -21,6 +21,15 @@ document.addEventListener("DOMContentLoaded", function () {
     return { colClass: grid ? grid.dataset.colClass : undefined };
   }
 
+  // Reserve the grid's space before the request goes out, so the page below
+  // doesn't jump when products arrive. Counts match what each grid typically
+  // renders, so the swap is close to a no-op geometrically.
+  // The three tab grids carry static skeleton markup in the HTML (see
+  // tools/inject-grid-skeletons.js) so their space is reserved before any
+  // script runs — re-rendering them here would be pure churn. The hero row
+  // has no static equivalent, so it still gets one.
+  window.ProductCard.renderSkeleton(heroRow, 3, { cardClass: "product__slider-item", colClass: "" });
+
   window.ProFitAPI.listProducts().then(function (data) {
     var products = data.products;
     var featured = products.filter(function (p) { return p.featured; });

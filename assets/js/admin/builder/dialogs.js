@@ -824,11 +824,20 @@ window.AdminBuilderDialogs = (function () {
       host.querySelector(pair[0]).addEventListener("change", function (e) {
         var file = e.target.files[0];
         if (!file) return;
-        var fd = new FormData();
-        fd.append(pair[1], file);
-        window.AdminAPI.updateProduct(ws.product.id, fd).then(function (data) {
+        window.AdminUpload.maybeCompressImage(file).then(function (toSend) {
+          var fd = new FormData();
+          fd.append(pair[1], toSend);
+          return window.AdminAPI.updateProduct(ws.product.id, fd);
+        }).then(function (data) {
           ws.product = data.product;
           toast("Image updated");
+          // The upload always succeeds and always renders correctly — the
+          // media container guarantees that. These notices only explain HOW an
+          // unusual image will be shown (letterboxed on a blurred backdrop, or
+          // kept small rather than upscaled) so the result isn't a surprise.
+          (data.mediaNotices || []).forEach(function (n) {
+            toast(n.message, n.level === "warning" ? "warning" : "info");
+          });
         }).catch(function (err) { toast(err.message, "error"); });
       });
     });

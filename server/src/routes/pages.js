@@ -14,7 +14,7 @@ const fs = require("fs");
 const express = require("express");
 const { prisma } = require("../db");
 const { getAllTaxonomyTrees } = require("../lib/taxonomy");
-const { normalizeImageUrl } = require("../lib/media");
+const { normalizeImageUrl, coverMedia } = require("../lib/media");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -485,7 +485,20 @@ async function applyHeroContext(html) {
   const description = escapeHtml(product.description || "");
   const price = escapeHtml(`$${(product.priceCents / 100).toFixed(2)}`);
   const ctaHref = `/program/${encodeURIComponent(product.slug)}`;
-  const bgSrc = escapeHtml(normalizeImageUrl(product.imageUrl) || "");
+  // The hero backdrop is this page's LCP element, so it is preloaded below.
+  // Preloading the ORIGINAL upload made that actively counterproductive: on
+  // one real product that meant fetching a 636KB PNG at the highest priority,
+  // and the same bytes again for the card's blurred backdrop. Point both the
+  // tag and the preload at responsive derivatives instead, and let the browser
+  // pick by viewport via imagesrcset.
+  const heroMedia = coverMedia(product.imageUrl);
+  const heroWebp = heroMedia && (heroMedia.sources || []).find((s) => s.type === "image/webp");
+  // Widest derivative for src (the hero is full-bleed), srcset for the choice.
+  const heroFallback = heroWebp
+    ? String(heroWebp.srcset).split(",").map((x) => x.trim().split(/\s+/)[0]).pop()
+    : null;
+  const bgSrc = escapeHtml(heroFallback || normalizeImageUrl(product.imageUrl) || "");
+  const heroSrcset = heroWebp ? escapeHtml(heroWebp.srcset) : "";
 
   // Replaces one attribute's value within whichever single tag matches
   // tagPattern, regardless of where that attribute falls in the tag's
@@ -508,8 +521,18 @@ async function applyHeroContext(html) {
   result = replaceAttrInTag(result, /<a\b[^>]*data-hero-cta[^>]*>/, "href", ctaHref);
   result = replaceAttrInTag(result, /<img\b[^>]*data-hero-bg-img[^>]*>/, "src", bgSrc);
 
+  if (heroSrcset) {
+    result = replaceAttrInTag(result, /<img\b[^>]*data-hero-bg-img[^>]*>/, "srcset", heroSrcset);
+  }
+
   if (bgSrc) {
-    result = result.replace("<!--HERO_PRELOAD-->", `<link rel="preload" as="image" href="${bgSrc}">`);
+    // imagesrcset/imagesizes make the preload agree with what the <img> will
+    // actually choose — without them the browser preloads one URL and then
+    // downloads a different one, doubling the cost of the LCP image.
+    const attrs = heroSrcset
+      ? ` imagesrcset="${heroSrcset}" imagesizes="100vw"`
+      : "";
+    result = result.replace("<!--HERO_PRELOAD-->", `<link rel="preload" as="image" href="${bgSrc}"${attrs} fetchpriority="high">`);
   }
   return result;
 }

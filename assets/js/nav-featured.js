@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var img = document.createElement("img");
     img.className = "mega-menu-card__thumb";
-    img.src = p.imageUrl || "";
+    window.MediaContainer.applyResponsive(img, p, "(min-width: 992px) 220px, 50vw");
     img.alt = "";
 
     var body = document.createElement("span");

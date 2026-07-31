@@ -156,7 +156,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var imageWrap = document.createElement("span");
     imageWrap.className = "deal-card__image";
     var img = document.createElement("img");
-    img.src = p.imageUrl || "";
+    window.MediaContainer.applyResponsive(img, p, "(min-width: 768px) 320px, 82vw");
     img.alt = p.name;
     img.loading = "lazy";
     imageWrap.appendChild(img);

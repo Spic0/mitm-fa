@@ -294,7 +294,12 @@
                              directly above it, so it belongs at the end of the payment
                              section rather than three sections earlier. -->
                         <p class="co-privacy">
-                            <i class="fa-solid fa-shield-halved me-1"></i>
+                            <!-- fa-shield-alt, not fa-shield-halved: the bundled FontAwesome 6 Pro
+                                 stylesheet predates that alias, so fa-shield-halved matches no rule
+                                 and rendered as nothing at all — an invisible trust badge on the
+                                 payment step since launch. tools/verify-fontawesome.js now fails
+                                 the build on an icon name the stylesheet doesn't define. -->
+                            <i class="fa-solid fa-shield-alt me-1"></i>
                             Payments are encrypted &amp; secure. We never store your card details.
                         </p>
 

@@ -1,0 +1,11 @@
+{
+  "name": "fitness-agency-tools",
+  "private": true,
+  "description": "Build-time asset tooling. Not part of serving a request — see tools/README.md. Kept separate from server/package.json so a tool dependency can never end up in the production dependency tree.",
+  "scripts": {
+    "fontawesome": "node subset-fontawesome-css.js && node subset-fontawesome-fonts.js && node verify-fontawesome.js"
+  },
+  "devDependencies": {
+    "subset-font": "^2.5.0"
+  }
+}

@@ -10,35 +10,60 @@ The site ships FontAwesome 6 Pro, which is enormous relative to what it uses:
 
 | | before | after |
 |---|---|---|
-| `assets/webfonts/*.woff2` (7 files) | 1,945 KB | 42 KB |
+| `assets/webfonts/*.woff2` (7 files) | 1,945 KB | 67 KB |
 | `assets/css/all.min.css` (gzipped) | 77 KB | 5 KB |
 
 The landing page was downloading **1,133 KB of icon fonts to draw 8 icons**,
 which was the single largest contributor to its load time — more than all its
 CSS, JS and images combined.
 
-Both scripts derive the icon inventory the same way: scan every `.html` and
-`.js` file in the repo for `fa-*` tokens, keep anything that matches a real
-FontAwesome icon name, discard the rest. The inventory is deliberately
-over-inclusive (a missed icon renders as a blank box, so the bias must be
-toward keeping too much).
+The pristine vendor files live in `tools/fontawesome-src/` and are **never
+written to**. Both scripts read from there and write into `assets/`, so a
+rebuild is idempotent and the full icon set is always one re-run away.
 
 ```sh
-node tools/subset-fontawesome-fonts.js   # rewrites assets/webfonts/*.woff2
-node tools/subset-fontawesome-css.js     # rewrites assets/css/all.min.css
+cd tools && npm install     # once — installs subset-font
+npm run fontawesome         # css + fonts + verify, in order
 ```
 
-### Both are destructive and NOT idempotent-safe against an upgrade
+or individually, from the repo root:
 
-They rewrite the asset in place. Re-running them on already-subset files is
-harmless (nothing left to remove), but there is no way to *recover* the full
-icon set from a subset file.
+```sh
+node tools/subset-fontawesome-css.js     # -> assets/css/all.min.css
+node tools/subset-fontawesome-fonts.js   # -> assets/webfonts/*.woff2
+node tools/verify-fontawesome.js         # exits non-zero if anything is invisible
+```
 
-**When you upgrade FontAwesome, or add an icon that isn't currently used
-anywhere:** restore the full `all.min.css` and `assets/webfonts/` from the
-vendor download first, then re-run both scripts. Running them against
-already-subset files after adding a new icon will NOT bring that icon back —
-its glyph is already gone from the font.
+Both derive the icon inventory from one shared module,
+`tools/fontawesome-inventory.js`, so they cannot disagree: scan every `.html`
+and `.js` file for `fa-*` tokens, keep anything matching a real FontAwesome
+icon name in the **pristine** stylesheet, discard the rest. The inventory is
+deliberately over-inclusive (a missed icon renders as nothing, so the bias must
+be toward keeping too much).
+
+### The regression this structure exists to prevent
+
+The first version of these scripts read and wrote the *same* files, which made
+the served font the only surviving copy of the source. Running them a second
+time — after the icon inventory had changed — subset an already-subset font,
+and glyphs that had been dropped could never come back.
+
+That shipped. `assets/webfonts/*.woff2` reached production carrying 79 icon
+glyphs while `all.min.css` still mapped 106 icons, so **24 icons resolved to a
+codepoint with no glyph**: the admin sidebar's dashboard, analytics and logout
+icons, the mobile menu bars, the cart, and every warning/error triangle.
+
+A missing glyph produces no console error and no failed request. The `<i>` is
+still there, still the right size, and renders *nothing*. That is why it
+survived review — and why `verify-fontawesome.js` now exists and gates the
+build.
+
+### Icons built at runtime
+
+A static scan cannot see `"fa-chevron-" + (open ? "down" : "right")`; it only
+leaves the useless token `fa-chevron`. Any such icon must be listed in
+`tools/fontawesome-extra-icons.txt` or it will be stripped. The verifier prints
+unrecognised `fa-*` tokens precisely so these are easy to spot.
 
 ### Why the CSS script is safe
 
@@ -59,13 +84,21 @@ Two subtleties it handles, both of which silently no-op'd earlier versions:
 
 ### Verifying a re-subset
 
-`tools/` has no test runner, so verify by hand after re-running:
+`node tools/verify-fontawesome.js` is the check, and it is mechanical rather
+than visual. For every icon referenced in markup it asserts all three of:
 
-1. Every used icon still has a rule — the CSS script prints kept/removed counts.
-2. Icons still render: load `/`, `/shop`, `/about`, `/contact` and confirm no
-   blank boxes. The font subset was originally validated by rasterising all 85
-   used icons in all 4 styles from both the original and subset fonts and
-   comparing them pixel for pixel (340/340 identical).
+1. the class is referenced somewhere (`.html` / `.js`, comments excluded);
+2. `assets/css/all.min.css` maps that class to a codepoint;
+3. `assets/webfonts/<family>.woff2` actually contains a glyph for it.
+
+Step 3 is the one nothing checked before. It reads the real `cmap` table out of
+each built WOFF2 (`tools/woff2-cmap.js` — brotli via Node's `zlib`, no
+dependency) and compares it against the pristine font, so it knows which family
+each icon legitimately belongs to and never demands a brand icon from
+`fa-solid`. It exits non-zero on any miss, so it can gate a deploy.
+
+Still worth a visual pass on `/`, `/shop`, `/about`, `/contact` and
+`/admin/manage/dashboard` after a FontAwesome upgrade.
 
 ## Critical CSS
 
@@ -141,9 +174,18 @@ Then check both states:
 
 ## Dependencies
 
-`subset-font` (font subsetting) and `postcss` (critical CSS) are build-time
-only:
+Build-time only, and deliberately kept out of `server/package.json` so a tool
+dependency can never reach the production dependency tree (`server/node_modules`
+is a symlink to the production checkout's — see the deploy notes).
+
+`subset-font` is declared in `tools/package.json`:
 
 ```sh
-npm install --no-save subset-font postcss
+cd tools && npm install
+```
+
+`postcss` (critical CSS) is still ad-hoc:
+
+```sh
+npm install --no-save postcss
 ```

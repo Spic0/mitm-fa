@@ -60,15 +60,28 @@ async function ensureFixtures() {
 const VID = "/api/library/media/pipeline-test/demo.gif";
 const OLD = "/api/library/media/pipeline-test/legacy.gif";
 const DAYS = 6, PER_DAY = 3;
+// Shaped exactly as resolveTrainingMedia() in server/src/routes/library.js
+// emits it: mediaUrl is already the POSTER, and `media` carries finished urls.
+// Nothing here is a raw .gif — that is the contract being tested.
+const v = (u) => u + "?variant=";
+const videoMedia = {
+  kind: "video", src: v(VID) + "poster", poster: v(VID) + "poster",
+  thumb: v(VID) + "thumb", mp4: v(VID) + "mp4", webm: v(VID) + "webm",
+  animated: true, aspectRatio: 1.778,
+};
+const legacyMedia = {
+  kind: "animated-image", src: v(OLD) + "poster", poster: v(OLD) + "poster",
+  anim: v(OLD) + "anim", animated: true, aspectRatio: 1.778,
+};
 const product = {
   name: "Video Handbook",
-  mediaManifest: { [VID]: { video: true, animated: true, aspectRatio: 1.778 } },
   trainingContent: { weeks: [{ title: "Block 1", days: Array.from({ length: DAYS }, (_, d) => ({
     title: "Day " + (d + 1),
-    exercises: Array.from({ length: PER_DAY }, (_, e) => ({
-      name: `Ex ${d + 1}.${e + 1}`, sets: "4", reps: "8",
-      mediaUrl: d === 4 ? OLD : VID, mediaType: "image",
-    })),
+    exercises: Array.from({ length: PER_DAY }, (_, e) => {
+      const m = d === 4 ? legacyMedia : videoMedia;
+      return { name: `Ex ${d + 1}.${e + 1}`, sets: "4", reps: "8",
+               mediaUrl: m.src, mediaType: "image", media: m };
+    }),
   })) }] },
 };
 
@@ -159,7 +172,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   check("transcoded demos render <video>, not <img>", shape.videos === PER_DAY && shape.imgs === 0, shape);
   check('preload="metadata", never auto', shape.preload === "metadata", shape.preload);
   check("muted + loop + playsinline (GIF-like behaviour)", shape.muted && shape.loop && shape.playsinline === true, shape);
-  check("poster set so the tile is never blank", /variant=poster/.test(shape.poster || ""), shape.poster);
+  // The poster attribute is the 320px THUMB — a <video> poster is not lazy, so
+  // it is the cheapest tier that still fills the tile.
+  check("poster set so the tile is never blank",
+    /variant=(thumb|poster)/.test(shape.poster || ""), shape.poster);
 
   // The original GIF is the thing this whole architecture exists to avoid.
   check("original GIF never requested", !hits.some((h) => !/variant=/.test(h)), hits.filter((h) => !/variant=/.test(h)));

@@ -7,9 +7,10 @@
     "test:handbook-media": "node test-handbook-media.js",
     "test:media-x-accel": "node test-media-x-accel.js",
     "test:handbook-video": "node test-handbook-video.js",
+    "test:program-page-media": "node test-program-page-media.js",
     "test:admin-api": "node test-admin-api-resilience.js",
     "test:presentation-picker": "node test-presentation-picker.js",
-    "test": "node test-admin-api-resilience.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js",
+    "test": "node test-admin-api-resilience.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js && node test-program-page-media.js",
     "test:products-pagination": "node test-products-pagination.js"
   },
   "devDependencies": {

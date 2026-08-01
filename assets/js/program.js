@@ -793,15 +793,47 @@
     var prescription = [ex.sets, ex.reps].filter(Boolean).join(" × ");
     var media = "";
     if (ex.mediaUrl) {
-      // Exercise demo GIFs/videos ride the gated /api/library/media
-      // endpoint. preload="none"/loading="lazy" keeps a whole day of clips
-      // off the wire until the week is actually expanded.
+      // `ex.media` is resolved server-side (see resolveTrainingMedia in
+      // routes/library.js) and carries finished urls — this renderer does not
+      // build variant urls and must not start. It previously put the RAW
+      // stored url into <img src>, which is the original upload: 12.9MB of
+      // source GIF where a 19KB poster was sitting on disk beside it.
+      //
+      // ex.mediaUrl is now the poster too, so the fallback branch below is
+      // safe even for a payload that predates `media`.
+      var m = ex.media || null;
+      var label = esc(ex.name || "Exercise") + " demonstration";
+      var box = m && m.aspectRatio ? ' style="aspect-ratio:' + m.aspectRatio + '"' : "";
+      var inner;
+
+      if (m && m.kind === "video") {
+        // Sources are attached by the observer below, never in markup:
+        // markup-level <source> starts downloading as soon as the week is
+        // expanded, whether or not the exercise is anywhere near the screen.
+        // poster is the 320px THUMB, not the 640px poster. A <video>'s poster
+        // is not lazy — the browser fetches it as soon as the element exists,
+        // even inside a section the customer has not opened. At 70 demos that
+        // is the single largest cost on the page, and 320px is ample for a
+        // still that is replaced by 640px video the moment the tile is seen.
+        inner = '<video class="pg-ex__video" data-demo-vid' +
+          ' data-webm="' + esc(m.webm) + '" data-mp4="' + esc(m.mp4) + '"' +
+          ' poster="' + esc(m.thumb || m.poster) + '"' +
+          ' muted loop playsinline preload="metadata" aria-label="' + label + '"></video>';
+      } else if (m && m.kind === "animated-image") {
+        inner = '<img src="' + esc(m.poster) + '" data-anim="' + esc(m.anim) + '"' +
+          ' alt="' + label + '" loading="lazy" decoding="async">';
+      } else if (ex.mediaType === "video") {
+        inner = '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>';
+      } else {
+        // Static image (the 42-byte placeholders, and anything with no
+        // derivatives). Legacy path, deliberately kept — there is nothing
+        // lighter to serve.
+        inner = '<img src="' + esc(ex.mediaUrl) + '" alt="' + label + '" loading="lazy" decoding="async">';
+      }
+
       media =
-        '<span class="pg-ex__media" data-demo="' + esc(dayKey) + ":" + exIndex + '">' +
-        (ex.mediaType === "video"
-          ? '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>'
-          : '<img src="' + esc(ex.mediaUrl) + '" alt="' + esc(ex.name || "Exercise") + ' demonstration" loading="lazy" decoding="async">') +
-        "</span>";
+        '<span class="pg-ex__media" data-demo="' + esc(dayKey) + ":" + exIndex + '"' + box + ">" +
+        inner + "</span>";
     }
     return (
       '<div class="pg-ex">' + media +
@@ -928,21 +960,117 @@
     });
 
     host.querySelectorAll("[data-demo]").forEach(function (node) {
+      var vid = node.querySelector("video[data-demo-vid]");
+      if (vid) observeDemoVideo(vid);
+      else {
+        var animImg = node.querySelector("img[data-anim]");
+        if (animImg) observeDemoAnim(animImg);
+      }
+
       node.addEventListener("click", function () {
         var media = node.querySelector("video, img");
         if (!media) return;
-        var isVideo = node.querySelector("video");
         var card = node.closest("[data-item-key]");
         var name = card ? card.querySelector(".pg-timeline__title") : null;
-        openMedia([{
-          type: isVideo ? "video" : "image",
-          url: media.getAttribute("src"),
+        // The lightbox needs the PLAYABLE url, not whatever is currently in
+        // src — for a demo video that is the poster, and for a poster/anim
+        // tile it may still be the poster if the swap hasn't happened yet.
+        var isVid = media.tagName === "VIDEO" && media.hasAttribute("data-demo-vid");
+        var item = {
           alt: media.getAttribute("alt") || "",
           title: node.parentNode.querySelector(".pg-ex__name").textContent,
           subtitle: name ? name.textContent : product.name,
-        }], 0);
+        };
+        if (isVid) {
+          item.type = "video";
+          item.url = media.getAttribute("data-mp4");
+          item.poster = media.getAttribute("poster");
+          item.sources = [
+            { src: media.getAttribute("data-webm"), label: "WebM" },
+            { src: media.getAttribute("data-mp4"), label: "MP4" },
+          ];
+        } else {
+          item.type = media.tagName === "VIDEO" ? "video" : "image";
+          item.url = media.getAttribute("data-anim") || media.getAttribute("src");
+          item.poster = media.getAttribute("data-anim") ? media.getAttribute("src") : undefined;
+        }
+        openMedia([item], 0);
       });
     });
+  }
+
+  /* --------------------------------------------------- demo media lifecycle ---
+     Same contract as the handbook viewer (assets/js/program-viewer.js): a demo
+     is attached only as it approaches the viewport, and RELEASED when it
+     leaves. Removing the <source> nodes and calling load() is what frees the
+     decoder — pause() alone leaves the buffer allocated, and this page can
+     hold a whole 12-week program's worth of expanded weeks at once. */
+
+  var demoVideoObserver = null;
+  var demoAnimObserver = null;
+
+  function attachDemoVideo(v) {
+    if (v.getAttribute("data-attached") === "1") return;
+    v.setAttribute("data-attached", "1");
+    var webm = v.getAttribute("data-webm");
+    var mp4 = v.getAttribute("data-mp4");
+    // WebM first — VP9 is roughly half the size of the openh264 MP4 at the
+    // same quality. Safari ignores it and takes the MP4.
+    if (webm) v.appendChild(demoSource(webm, "video/webm"));
+    if (mp4) v.appendChild(demoSource(mp4, "video/mp4"));
+    v.load();
+    var p = v.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+
+  function demoSource(src, type) {
+    var s = document.createElement("source");
+    s.src = src; s.type = type;
+    return s;
+  }
+
+  function releaseDemoVideo(v) {
+    if (v.getAttribute("data-attached") !== "1") return;
+    v.removeAttribute("data-attached");
+    try {
+      v.pause();
+      while (v.firstChild) v.removeChild(v.firstChild);
+      v.removeAttribute("src");
+      v.load();
+    } catch (err) { /* a tile that won't release is not worth throwing over */ }
+  }
+
+  function observeDemoVideo(v) {
+    if (typeof IntersectionObserver !== "function") return attachDemoVideo(v);
+    if (!demoVideoObserver) {
+      demoVideoObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) attachDemoVideo(e.target);
+          else releaseDemoVideo(e.target);
+        });
+      }, { rootMargin: "300px" });
+    }
+    demoVideoObserver.observe(v);
+  }
+
+  // Poster -> animated-WebP swap, for demos that have no video renditions.
+  function observeDemoAnim(img) {
+    if (typeof IntersectionObserver !== "function") return;
+    if (!demoAnimObserver) {
+      demoAnimObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var img = e.target;
+          demoAnimObserver.unobserve(img);
+          var anim = img.getAttribute("data-anim");
+          if (!anim) return;
+          var loader = new Image();
+          loader.onload = function () { img.src = anim; };
+          loader.src = anim;
+        });
+      }, { rootMargin: "200px" });
+    }
+    demoAnimObserver.observe(img);
   }
 
   /* -------------------------------------------------------- section: videos */

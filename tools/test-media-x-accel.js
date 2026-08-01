@@ -101,7 +101,10 @@ const check = (name, pass, detail) => results.push({ name, pass, detail });
   check("flag on -> Node sends NO media bytes", on.body.length === 0 && !on.body.includes("original"),
     { bodyLength: on.body.length });
   check("flag on -> no redirect hop at all", !on.headers.location, on.headers);
-  check("flag on -> still privately cached", on.headers["cache-control"] === "private, max-age=60",
+  // UUID-named, never rewritten in place -> cacheable for a year. `private`
+  // still matters: access is entitlement-checked, so no shared cache may hold it.
+  check("flag on -> privately cached, immutable",
+    on.headers["cache-control"] === "private, max-age=31536000, immutable",
     on.headers["cache-control"]);
 
   // Variant resolution has to survive the offload: the poster is the entire

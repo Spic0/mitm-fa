@@ -42,48 +42,112 @@ const ACCEL_MEDIA_PREFIX = "/internal-media/";
 
 const KNOWN_VARIANTS = new Set(["poster", "thumb", "anim", "mp4", "webm"]);
 
-// Tells the handbook which demos it may render as <video>.
+// Resolves every exercise's media to FINISHED urls, server-side, at
+// serialization time.
 //
-// The client cannot work this out for itself. The stored mediaUrl inside
-// trainingContent is a permanent reference that is never rewritten, so there
-// is nothing in it to say whether a transcode ever happened, and probing with
-// a request per demo would be 70 speculative round trips to answer a question
-// the server can answer for free. Feature-detection in the browser doesn't
-// help either: canPlayType() reports what the BROWSER supports, not what this
-// particular upload actually has on disk.
+// This used to be a `mediaManifest` map that the client looked demos up in and
+// then built variant urls from. That design put the resolution step in the
+// browser, and it failed exactly the way an optional step fails: one of the two
+// renderers (assets/js/program.js) never performed the lookup at all and shipped
+// the raw stored url straight into <img src>. The stored url is the ORIGINAL —
+// so a page that should have cost 61,983 bytes of posters cost 28,581,172 bytes
+// of source GIFs, a 461x overshoot, and nothing anywhere reported a problem
+// because every request succeeded.
 //
-// So: walk the handbook once, read the sidecar manifests (cached in-process
-// after the first read, misses included), and return a flat url -> facts map.
-// Anything absent means "no video derivative" and the handbook renders the
-// poster/anim <img> path for it. Aspect ratio rides along so the tile can
-// reserve its box and avoid a layout shift when the poster arrives.
+// The fix is structural rather than careful: a client that receives finished
+// urls cannot forget to resolve them. Each exercise now carries a `media`
+// object with every url pre-built, and `mediaUrl` itself is rewritten to the
+// POSTER whenever derivatives exist, so even a renderer that ignores `media`
+// entirely and does the naive thing gets a 19KB still instead of a 12.9MB GIF.
+//
+// trainingContent on disk is untouched. The stored url remains the permanent
+// reference; this rewrite happens on the way out and nowhere else.
 const MEDIA_URL_RE = /^\/api\/library\/media\/([^/]+)\/([^/?"]+)/;
 
-function buildMediaManifest(trainingContent) {
-  const out = {};
-  const weeks = (trainingContent && trainingContent.weeks) || [];
-  for (const week of weeks) {
-    for (const day of week.days || []) {
-      for (const ex of day.exercises || []) {
-        const url = ex && ex.mediaUrl;
-        if (!url || out[url]) continue;
-        const m = MEDIA_URL_RE.exec(url);
-        if (!m) continue;
-        const [, productId, fileName] = m;
-        // Same containment rule as the media route: never let a crafted
-        // trainingContent value turn into a path outside the media dir.
-        if (path.basename(fileName) !== fileName || path.basename(productId) !== productId) continue;
-        const manifest = readManifest(path.join(MEDIA_DIR, productId, fileName));
-        if (!manifest) continue;
-        out[url] = {
-          video: !!manifest.video,
-          animated: !!manifest.animated,
-          aspectRatio: manifest.aspectRatio || null,
-        };
-      }
-    }
+function withVariant(url, variant) {
+  return url + (url.indexOf("?") === -1 ? "?" : "&") + "variant=" + variant;
+}
+
+// null when the url is not gated program media (an external link, a malformed
+// value, or a path trying to escape the media directory) — those are passed
+// through untouched rather than guessed at.
+function resolveMedia(url) {
+  if (!url) return null;
+  const m = MEDIA_URL_RE.exec(url);
+  if (!m) return null;
+  const [, productId, fileName] = m;
+  // Same containment rule as the media route: never let a crafted
+  // trainingContent value turn into a path outside the media dir.
+  if (path.basename(fileName) !== fileName || path.basename(productId) !== productId) return null;
+
+  const manifest = readManifest(path.join(MEDIA_DIR, productId, fileName));
+  // No manifest at all means nothing was ever derived from this file (a PNG, or
+  // an upload predating the pipeline). It stays exactly as it is — for a still
+  // image that is already the right answer.
+  if (!manifest) return { kind: "image", src: url, animated: false, aspectRatio: null };
+
+  const aspectRatio = manifest.aspectRatio || null;
+
+  // Static source: one frame, nothing to animate, no derivative worth serving.
+  // These are the 42-byte placeholders — the legacy <img> path is correct here
+  // and deliberately kept.
+  if (!manifest.animated) {
+    return { kind: "image", src: manifest.poster ? withVariant(url, "poster") : url, animated: false, aspectRatio };
   }
-  return out;
+
+  // Animated WITH both renditions: the <video> path.
+  if (manifest.video) {
+    return {
+      kind: "video",
+      src: withVariant(url, "poster"),
+      poster: withVariant(url, "poster"),
+      thumb: manifest.thumb ? withVariant(url, "thumb") : null,
+      mp4: withVariant(url, "mp4"),
+      webm: withVariant(url, "webm"),
+      animated: true,
+      aspectRatio,
+    };
+  }
+
+  // Animated but not transcoded (ffmpeg absent, or the job failed). The
+  // poster/anim <img> path — still never the original.
+  return {
+    kind: "animated-image",
+    src: withVariant(url, "poster"),
+    poster: withVariant(url, "poster"),
+    anim: manifest.anim ? withVariant(url, "anim") : url,
+    animated: true,
+    aspectRatio,
+  };
+}
+
+// Rewrites trainingContent for the response. Returns a new structure; the
+// Prisma result is not mutated.
+function resolveTrainingMedia(trainingContent) {
+  if (!trainingContent || !Array.isArray(trainingContent.weeks)) return trainingContent;
+  const cache = new Map();
+  const resolve = (url) => {
+    if (!cache.has(url)) cache.set(url, resolveMedia(url));
+    return cache.get(url);
+  };
+
+  return {
+    ...trainingContent,
+    weeks: trainingContent.weeks.map((week) => ({
+      ...week,
+      days: (week.days || []).map((day) => ({
+        ...day,
+        exercises: (day.exercises || []).map((ex) => {
+          const media = ex && ex.mediaUrl ? resolve(ex.mediaUrl) : null;
+          if (!media) return ex;
+          // mediaUrl becomes the poster (or the original when there is nothing
+          // better). A renderer that only reads mediaUrl still cannot download
+          // a multi-megabyte source file.
+          return { ...ex, mediaUrl: media.src, media };
+        }),
+      })),
+    })),
+  };
 }
 
 router.use(requireAuth);
@@ -239,9 +303,9 @@ router.get("/program/:productId", async (req, res) => {
       difficulty: product.difficulty,
       durationWeeks: product.durationWeeks,
       overview: product.overview,
-      trainingContent: product.trainingContent,
-      // Which demos have MP4+WebM on disk. See buildMediaManifest above.
-      mediaManifest: buildMediaManifest(product.trainingContent),
+      // Media urls are resolved to finished variant urls here, on the way out.
+      // See resolveTrainingMedia above for why this is not left to the client.
+      trainingContent: resolveTrainingMedia(product.trainingContent),
       nutritionContent: product.nutritionContent,
       bonusNotes: product.bonusNotes,
       faqs: product.faqs,
@@ -383,21 +447,56 @@ router.get("/media/:productId/:fileName", async (req, res) => {
     }
   }
 
+  warnIfServingRedundantOriginal(productId, fileName, served);
+
   if (USE_X_ACCEL) return sendMediaViaAccel(res, productId, served);
 
   const token = mintDownloadToken("media", `${productId}/${served}`, req.user.id);
   res.redirect(`/api/library/download/media/${token}`);
 });
 
+// The alarm for the failure that started all this.
+//
+// Serving an original is legitimate when nothing was ever derived from it.
+// Serving an original for a file that HAS derivatives sitting next to it means
+// a caller asked for the source when a 19KB poster or a 110KB WebM was
+// available — which is not an error anyone would notice, because the request
+// succeeds and the image renders. It just costs 461x the bytes. That is
+// precisely how this went unnoticed in production, so it gets logged loudly
+// with everything needed to find the caller.
+function warnIfServingRedundantOriginal(productId, fileName, served) {
+  if (served !== fileName) return;               // a derivative was resolved; fine
+  const manifest = readManifest(path.join(MEDIA_DIR, productId, fileName));
+  if (!manifest) return;                          // nothing was ever derived; fine
+  if (!manifest.poster && !manifest.anim && !manifest.video) return;
+
+  const available = ["poster", "thumb", "anim", "mp4", "webm"].filter((k) => manifest[k]);
+  console.error(
+    `[media] SERVED ORIGINAL despite derivatives — productId=${productId} file=${fileName} ` +
+    `available=[${available.join(",")}] animated=${!!manifest.animated} video=${!!manifest.video}. ` +
+    `A caller requested the source file; it should have asked for a variant.`
+  );
+}
+
 // Hands the file off to nginx. Every header that matters for safety is set
 // here rather than in the nginx config, so the two cannot drift apart: the
 // route that authorizes the file is the one that decides how it may be
 // cached and what it is allowed to execute.
 function sendMediaViaAccel(res, productId, fileName) {
-  // Same private, short cache as the token path — the URL is scoped to one
-  // viewer and must never land in a shared cache. nginx forwards what we set
-  // here in place of its own expires/add_header directives.
-  res.set("Cache-Control", "private, max-age=60");
+  // `private` because access is entitlement-checked: the browser may keep it,
+  // no shared/intermediate cache may. `immutable` because every one of these
+  // filenames is a UUID (or a suffixed derivative of one) whose bytes never
+  // change — an upload is never rewritten in place, it becomes a new UUID.
+  //
+  // This was max-age=60, which for immutable UUID-named content meant every
+  // reload past the first minute re-downloaded the entire day's media.
+  //
+  // The cost of `immutable`: re-running the backfill with DIFFERENT encoder
+  // settings regenerates derivatives under the SAME filename, and browsers
+  // holding a cached copy will not see the new bytes for a year. If encoder
+  // settings ever change materially, the derivative suffix has to change with
+  // them (`-vid.mp4` -> `-vid2.mp4`) rather than relying on cache expiry.
+  res.set("Cache-Control", "private, max-age=31536000, immutable");
 
   // SVG is the one gated media type that is both user-supplied and a
   // scriptable document, and the token path defends it explicitly. nginx

@@ -27,9 +27,16 @@ const CHROME=process.env.CHROME_PATH||(function(){
   return path.join(base,dirs[dirs.length-1],"chrome-linux64","chrome");})();
 const PIXEL=Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7","base64");
 const reqs=[];
+// Shaped as resolveTrainingMedia() in server/src/routes/library.js emits it:
+// urls arrive FINISHED. These two demos are `animated-image` (animated, but
+// with no MP4/WebM), which is the poster->animation path this file guards.
+// mediaUrl is already the poster — the raw .gif never reaches the client.
+const M=(u)=>({kind:"animated-image",src:u+"?variant=poster",poster:u+"?variant=poster",
+ anim:u+"?variant=anim",animated:true,aspectRatio:1.778});
+const A=M("/api/library/media/p1/demo-a.gif"), B=M("/api/library/media/p1/demo-b.gif");
 const PAYLOAD={name:"T",trainingContent:{weeks:[{title:"W1",days:[{title:"D1",exercises:[
- {name:"Goblet Squat",mediaUrl:"/api/library/media/p1/demo-a.gif",mediaType:"image"},
- {name:"Deadlift",mediaUrl:"/api/library/media/p1/demo-b.gif",mediaType:"image"}]}]}]}};
+ {name:"Goblet Squat",mediaUrl:A.src,mediaType:"image",media:A},
+ {name:"Deadlift",mediaUrl:B.src,mediaType:"image",media:B}]}]}]}};
 const HARNESS=`<!doctype html><html><head>
 <link rel="stylesheet" href="/assets/css/program-viewer.css">
 <link rel="stylesheet" href="/assets/css/program-media.css"></head><body>

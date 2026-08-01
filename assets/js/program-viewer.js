@@ -64,15 +64,13 @@
   }
 
   /* ------------------------------------------------------------- demo media ---
-     Gated program media is addressed by ?variant= against its stored URL. The
-     stored URL is the permanent reference (it lives inside trainingContent and
-     is never rewritten), so a derivative is asked for rather than looked up,
-     and the server falls back to the original whenever one doesn't exist. */
-
-  function variantUrl(url, variant) {
-    if (!url) return url;
-    return url + (url.indexOf("?") === -1 ? "?" : "&") + "variant=" + variant;
-  }
+     Every media url arrives from the server already resolved, on `ex.media`
+     (see resolveTrainingMedia in server/src/routes/library.js). There is
+     deliberately no variantUrl() helper here any more: building variant urls
+     in the client is what allowed one of the two renderers to skip the step
+     entirely and ship the raw 12.9MB original into <img src>. If a url is
+     needed, it comes from the payload or from a data-* attribute that came
+     from the payload — it is never constructed. */
 
   var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -223,31 +221,40 @@
       });
     }
 
+    // Every url the lightbox needs is already in the DOM, put there from the
+    // server-resolved payload. Nothing is derived from data-pv-url — that is
+    // now the poster, and appending a second ?variant= to it would produce a
+    // url that resolves to nothing.
     var items = btns.map(function (btn) {
-      var kind = btn.getAttribute("data-pv-kind");
-      var url = btn.getAttribute("data-pv-url");
-      var hasVideo = !!btn.querySelector("video[data-pv-vid]");
-      // Fullscreen gets a capped derivative, never the 15MB original: 640px is
-      // already more than the viewer can show on any phone, and the zoom works
-      // on the rendered frame either way. A transcoded demo opens as real
-      // video (seekable, pausable); everything else opens as the animated WebP.
-      if (hasVideo) {
+      var title = btn.getAttribute("data-pv-title") || "";
+      var vid = btn.querySelector("video[data-pv-vid]");
+      // Fullscreen gets a capped derivative, never the multi-megabyte original:
+      // 640px is already more than the viewer can show on any phone, and the
+      // zoom works on the rendered frame either way. A transcoded demo opens as
+      // real video (seekable, pausable).
+      if (vid) {
         return {
           type: "video",
-          url: variantUrl(url, "mp4"),
+          url: vid.getAttribute("data-mp4"),
           sources: [
-            { src: variantUrl(url, "webm"), label: "WebM" },
-            { src: variantUrl(url, "mp4"), label: "MP4" },
+            { src: vid.getAttribute("data-webm"), label: "WebM" },
+            { src: vid.getAttribute("data-mp4"), label: "MP4" },
           ],
-          poster: variantUrl(url, "poster"),
-          title: btn.getAttribute("data-pv-title") || "",
+          poster: vid.getAttribute("poster"),
+          title: title,
         };
       }
+      var plainVid = btn.querySelector("video");
+      if (plainVid) {
+        return { type: "video", url: plainVid.getAttribute("src"), title: title };
+      }
+      var img = btn.querySelector("img");
+      var anim = img && img.getAttribute("data-anim");
       return {
-        type: kind === "video" ? "video" : "image",
-        url: kind === "video" ? url : variantUrl(url, "anim"),
-        poster: kind === "video" ? undefined : variantUrl(url, "poster"),
-        title: btn.getAttribute("data-pv-title") || "",
+        type: "image",
+        url: anim || (img && img.getAttribute("src")) || btn.getAttribute("data-pv-url"),
+        poster: anim ? img.getAttribute("src") : undefined,
+        title: title,
       };
     });
 
@@ -264,10 +271,6 @@
 
   function buildPages(p) {
     var pages = [];
-    // url -> { video, animated, aspectRatio }, from the server. Absent for a
-    // program whose media predates the transcode pipeline, in which case every
-    // demo renders the <img> poster/anim path exactly as it did before.
-    var mediaManifest = (p && p.mediaManifest) || {};
 
     pages.push({
       key: "chapter:cover",
@@ -342,14 +345,18 @@
               var media = "";
               if (ex.mediaUrl) {
                 var mediaLabel = esc(ex.name || "Exercise");
-                var facts = mediaManifest[ex.mediaUrl] || null;
-                // Reserve the tile's box from the manifest's aspect ratio so
-                // the poster arriving never shifts the text beside it.
+                // Resolved server-side (resolveTrainingMedia in
+                // routes/library.js). This renderer no longer builds variant
+                // urls or looks anything up: it is handed finished urls, which
+                // is what makes it impossible for a renderer to forget.
+                var facts = ex.media || null;
+                // Reserve the tile's box from the aspect ratio so the poster
+                // arriving never shifts the text beside it.
                 var ratioStyle = facts && facts.aspectRatio
                   ? ' style="aspect-ratio:' + facts.aspectRatio + '"' : "";
 
                 var inner;
-                if (facts && facts.video) {
+                if (facts && facts.kind === "video") {
                   // Transcoded demo. Sources are deliberately NOT set here —
                   // markup carries them as data-* and the lifecycle observer
                   // below attaches them when the tile nears the viewport and
@@ -358,19 +365,25 @@
                   // which for a pre-built neighbouring page is exactly the
                   // speculative download this whole design exists to avoid.
                   inner = '<video class="pv-ex__video" data-pv-vid' +
-                    ' data-mp4="' + esc(variantUrl(ex.mediaUrl, "mp4")) + '"' +
-                    ' data-webm="' + esc(variantUrl(ex.mediaUrl, "webm")) + '"' +
-                    ' poster="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
+                    ' data-mp4="' + esc(facts.mp4) + '"' +
+                    ' data-webm="' + esc(facts.webm) + '"' +
+                    ' poster="' + esc(facts.thumb || facts.poster) + '"' +
                     ' muted loop playsinline preload="metadata"' +
                     ' aria-label="' + mediaLabel + ' demonstration"></video>';
-                } else if (ex.mediaType === "video") {
+                } else if (ex.mediaType === "video" && !facts) {
                   inner = '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>';
+                } else if (facts && facts.kind === "animated-image") {
+                  // Animated but not transcoded (ffmpeg absent, or the job
+                  // failed). Poster now, animation when it is looked at.
+                  inner = '<img src="' + esc(facts.poster) + '"' +
+                    ' data-anim="' + esc(facts.anim) + '"' +
+                    ' alt="' + mediaLabel + '" loading="lazy" decoding="async">';
                 } else {
-                  // No transcode (uploaded before the pipeline, or ffmpeg
-                  // absent, or the job failed). The poster/anim path this
-                  // replaced still works and is still correct.
-                  inner = '<img src="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
-                    ' data-anim="' + esc(variantUrl(ex.mediaUrl, "anim")) + '"' +
+                  // Static image — nothing moves, so there is nothing lighter
+                  // to serve than the (already resolved) still. ex.mediaUrl is
+                  // the poster where one exists and the original otherwise,
+                  // which for these is a few KB at most.
+                  inner = '<img src="' + esc(ex.mediaUrl) + '"' +
                     ' alt="' + mediaLabel + '" loading="lazy" decoding="async">';
                 }
 

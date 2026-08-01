@@ -28,7 +28,12 @@ const DRY = process.argv.includes("--dry");
 const MEDIA_ROOT = path.join(ROOT, "server/storage/media");
 
 const MIME_BY_EXT = { ".gif": "image/gif", ".webp": "image/webp" };
-const GENERATED = /-(?:poster|anim)\.webp$/;
+// Anything this pipeline emits. `-thumb.webp` matters as much as the others:
+// it is a WebP, so without it here a re-run would treat a generated thumbnail
+// as a fresh source and derive a thumbnail OF the thumbnail. The video
+// renditions can't be sources (their extensions aren't in MIME_BY_EXT) but are
+// listed anyway so this stays the one place that knows what we generate.
+const GENERATED = /-(?:poster|thumb|anim)\.webp$|-vid\.(?:mp4|webm)$/;
 
 async function main() {
   if (!fs.existsSync(MEDIA_ROOT)) {
@@ -38,6 +43,7 @@ async function main() {
 
   let considered = 0, skipped = 0, done = 0, failed = 0;
   let bytesBefore = 0, bytesPoster = 0, bytesAnim = 0;
+  let bytesMp4 = 0, bytesWebm = 0, withVideo = 0;
 
   for (const d of fs.readdirSync(MEDIA_ROOT, { withFileTypes: true })) {
     if (!d.isDirectory()) continue;
@@ -75,10 +81,14 @@ async function main() {
       bytesBefore += size;
       bytesPoster += manifest.poster ? manifest.poster.bytes : 0;
       bytesAnim += manifest.anim ? manifest.anim.bytes : 0;
+      bytesMp4 += manifest.mp4 ? manifest.mp4.bytes : 0;
+      bytesWebm += manifest.webm ? manifest.webm.bytes : 0;
+      if (manifest.video) withVideo++;
+      const kb = (v) => (v ? (v.bytes / 1024).toFixed(0) + "KB" : "-");
       console.log(
         `  ${d.name}/${f}  ${(size / 1048576).toFixed(1)}MB` +
-        `  -> poster ${manifest.poster ? (manifest.poster.bytes / 1024).toFixed(0) + "KB" : "-"}` +
-        `, anim ${manifest.anim ? (manifest.anim.bytes / 1024).toFixed(0) + "KB" : "-"}` +
+        `  -> poster ${kb(manifest.poster)}, thumb ${kb(manifest.thumb)}` +
+        `, anim ${kb(manifest.anim)}, mp4 ${kb(manifest.mp4)}, webm ${kb(manifest.webm)}` +
         `  (${manifest.frames} frames, ${Date.now() - started}ms)`
       );
     }
@@ -89,6 +99,11 @@ async function main() {
     console.log(`originals            ${(bytesBefore / 1048576).toFixed(1)}MB`);
     console.log(`posters (first load) ${(bytesPoster / 1024).toFixed(0)}KB   ${(bytesBefore / bytesPoster).toFixed(0)}x smaller`);
     if (bytesAnim) console.log(`animations (on view) ${(bytesAnim / 1024).toFixed(0)}KB   ${(bytesBefore / bytesAnim).toFixed(0)}x smaller`);
+    // What a customer ACTUALLY downloads is one of these two, never both:
+    // Safari takes the MP4, everything else takes the smaller WebM.
+    if (bytesWebm) console.log(`webm  (Chrome/FF/Android) ${(bytesWebm / 1024).toFixed(0)}KB   ${(bytesBefore / bytesWebm).toFixed(0)}x smaller`);
+    if (bytesMp4) console.log(`mp4   (Safari/iOS)        ${(bytesMp4 / 1024).toFixed(0)}KB   ${(bytesBefore / bytesMp4).toFixed(0)}x smaller`);
+    console.log(`${withVideo}/${done} have BOTH renditions and will render as <video>`);
   }
 }
 

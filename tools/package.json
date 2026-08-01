@@ -6,9 +6,10 @@
     "fontawesome": "node subset-fontawesome-css.js && node subset-fontawesome-fonts.js && node verify-fontawesome.js",
     "test:handbook-media": "node test-handbook-media.js",
     "test:media-x-accel": "node test-media-x-accel.js",
+    "test:handbook-video": "node test-handbook-video.js",
     "test:admin-api": "node test-admin-api-resilience.js",
     "test:presentation-picker": "node test-presentation-picker.js",
-    "test": "node test-admin-api-resilience.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js",
+    "test": "node test-admin-api-resilience.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js",
     "test:products-pagination": "node test-products-pagination.js"
   },
   "devDependencies": {

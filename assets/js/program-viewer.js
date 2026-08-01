@@ -33,6 +33,13 @@
   "use strict";
 
   var HYDRATE_RADIUS = 1;      // pages built either side of the current one
+  // Pages kept built behind/ahead of the current one before being torn down
+  // again. Deliberately wider than HYDRATE_RADIUS so a page-turn and its
+  // immediate reversal never re-render anything — the reader flicking back and
+  // forth between two days should cost nothing. Beyond this the page's markup
+  // (and every video element in it) is discarded and rebuilt on return, which
+  // is what stops a 70-demo handbook ending the session with 70 live tiles.
+  var KEEP_RADIUS = 2;
   var SWIPE_RATIO = 0.18;      // fraction of width that commits a turn
   var SWIPE_VELOCITY = 0.45;   // px/ms that commits a turn regardless of distance
   var AXIS_LOCK_SLOP = 10;     // px before deciding the gesture is horizontal
@@ -97,6 +104,93 @@
     return animObserver;
   }
 
+  /* ------------------------------------------------------- video lifecycle ---
+     The reason the handbook renders <video> instead of an animated <img>: a
+     video can be turned OFF. An <img> playing an animated WebP has no pause,
+     no way to drop its decoded frames, and no preload control, so a handbook
+     with 70-100 demos accumulates animation buffers that nothing can reclaim.
+
+     Each tile therefore has two states, and this observer moves it between
+     them as it approaches and leaves the viewport:
+
+       attached  — <source> elements present, metadata (or more) loaded, playing
+       released  — sources REMOVED and load() called, which is what actually
+                   makes the browser free the decoder and the buffered data.
+                   Dropping .src alone does not; the element keeps its media
+                   resource until it is told to reload from nothing.
+
+     Only the poster survives a release, so a released tile still looks right —
+     it just isn't moving and isn't costing anything. */
+
+  var VIDEO_MARGIN = "300px";   // ~one tile of runway before it's on screen
+  var videoObserver = null;
+
+  function attachVideo(v) {
+    if (v.getAttribute("data-attached") === "1") return;
+    v.setAttribute("data-attached", "1");
+    var webm = v.getAttribute("data-webm");
+    var mp4 = v.getAttribute("data-mp4");
+    // WebM first: VP9 is ~40% smaller than the openh264 MP4 at the same
+    // quality, so every browser that can take it should. Safari can't, and
+    // falls through to the MP4.
+    if (webm) v.appendChild(sourceEl(webm, "video/webm"));
+    if (mp4) v.appendChild(sourceEl(mp4, "video/mp4"));
+    v.load();
+    if (!reduceMotion) {
+      // play() rejects on some browsers if the gesture/autoplay rules aren't
+      // met. A demo that sits on its poster is a fine outcome; an unhandled
+      // rejection in the console is not.
+      var p = v.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    }
+  }
+
+  function sourceEl(src, type) {
+    var s = document.createElement("source");
+    s.src = src;
+    s.type = type;
+    return s;
+  }
+
+  function releaseVideo(v) {
+    if (v.getAttribute("data-attached") !== "1") return;
+    v.removeAttribute("data-attached");
+    try {
+      v.pause();
+      while (v.firstChild) v.removeChild(v.firstChild);
+      v.removeAttribute("src");
+      // The load() is the part that actually frees anything. Without it the
+      // element holds its buffer and decoder for as long as it exists.
+      v.load();
+    } catch (err) { /* a tile that won't release is not worth throwing over */ }
+  }
+
+  function ensureVideoObserver() {
+    if (videoObserver || typeof IntersectionObserver !== "function") return videoObserver;
+    videoObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) attachVideo(entry.target);
+        else releaseVideo(entry.target);
+      });
+    }, { rootMargin: VIDEO_MARGIN });
+    return videoObserver;
+  }
+
+  // Used when a page is torn down: the observer callback never fires for an
+  // element that has already left the document, so release has to be explicit.
+  function releaseMediaIn(el) {
+    if (!el) return;
+    var vids = el.querySelectorAll("video[data-pv-vid]");
+    for (var i = 0; i < vids.length; i++) {
+      if (videoObserver) videoObserver.unobserve(vids[i]);
+      releaseVideo(vids[i]);
+    }
+    if (animObserver) {
+      var imgs = el.querySelectorAll("img[data-anim]");
+      for (var j = 0; j < imgs.length; j++) animObserver.unobserve(imgs[j]);
+    }
+  }
+
   // Every demo on a page becomes one lightbox gallery, so a reader can swipe
   // between the day's exercises once they've opened one. The viewer
   // (program-media.js) already provides zoom, pan, keyboard nav and native
@@ -113,14 +207,44 @@
       });
     }
 
+    var vobs = ensureVideoObserver();
+    if (vobs) {
+      btns.forEach(function (btn) {
+        var vid = btn.querySelector("video[data-pv-vid]");
+        if (vid) vobs.observe(vid);
+      });
+    } else {
+      // No IntersectionObserver (very old browser): attach everything on this
+      // page rather than leaving dead posters. A hydrated page is at most one
+      // day of demos, which is the same handful the old <img> path loaded.
+      btns.forEach(function (btn) {
+        var vid = btn.querySelector("video[data-pv-vid]");
+        if (vid) attachVideo(vid);
+      });
+    }
+
     var items = btns.map(function (btn) {
       var kind = btn.getAttribute("data-pv-kind");
       var url = btn.getAttribute("data-pv-url");
+      var hasVideo = !!btn.querySelector("video[data-pv-vid]");
+      // Fullscreen gets a capped derivative, never the 15MB original: 640px is
+      // already more than the viewer can show on any phone, and the zoom works
+      // on the rendered frame either way. A transcoded demo opens as real
+      // video (seekable, pausable); everything else opens as the animated WebP.
+      if (hasVideo) {
+        return {
+          type: "video",
+          url: variantUrl(url, "mp4"),
+          sources: [
+            { src: variantUrl(url, "webm"), label: "WebM" },
+            { src: variantUrl(url, "mp4"), label: "MP4" },
+          ],
+          poster: variantUrl(url, "poster"),
+          title: btn.getAttribute("data-pv-title") || "",
+        };
+      }
       return {
         type: kind === "video" ? "video" : "image",
-        // Fullscreen gets the animated derivative, not the 15MB original: it
-        // is capped at 640px wide, which is still more than the viewer can
-        // show on any phone, and the zoom is on the rendered frame either way.
         url: kind === "video" ? url : variantUrl(url, "anim"),
         poster: kind === "video" ? undefined : variantUrl(url, "poster"),
         title: btn.getAttribute("data-pv-title") || "",
@@ -140,6 +264,10 @@
 
   function buildPages(p) {
     var pages = [];
+    // url -> { video, animated, aspectRatio }, from the server. Absent for a
+    // program whose media predates the transcode pipeline, in which case every
+    // demo renders the <img> poster/anim path exactly as it did before.
+    var mediaManifest = (p && p.mediaManifest) || {};
 
     pages.push({
       key: "chapter:cover",
@@ -214,17 +342,45 @@
               var media = "";
               if (ex.mediaUrl) {
                 var mediaLabel = esc(ex.name || "Exercise");
-                media = '<div class="pv-ex__media">' +
+                var facts = mediaManifest[ex.mediaUrl] || null;
+                // Reserve the tile's box from the manifest's aspect ratio so
+                // the poster arriving never shifts the text beside it.
+                var ratioStyle = facts && facts.aspectRatio
+                  ? ' style="aspect-ratio:' + facts.aspectRatio + '"' : "";
+
+                var inner;
+                if (facts && facts.video) {
+                  // Transcoded demo. Sources are deliberately NOT set here —
+                  // markup carries them as data-* and the lifecycle observer
+                  // below attaches them when the tile nears the viewport and
+                  // strips them again when it leaves. A <source> in the markup
+                  // would start fetching the moment the page is hydrated,
+                  // which for a pre-built neighbouring page is exactly the
+                  // speculative download this whole design exists to avoid.
+                  inner = '<video class="pv-ex__video" data-pv-vid' +
+                    ' data-mp4="' + esc(variantUrl(ex.mediaUrl, "mp4")) + '"' +
+                    ' data-webm="' + esc(variantUrl(ex.mediaUrl, "webm")) + '"' +
+                    ' poster="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
+                    ' muted loop playsinline preload="metadata"' +
+                    ' aria-label="' + mediaLabel + ' demonstration"></video>';
+                } else if (ex.mediaType === "video") {
+                  inner = '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>';
+                } else {
+                  // No transcode (uploaded before the pipeline, or ffmpeg
+                  // absent, or the job failed). The poster/anim path this
+                  // replaced still works and is still correct.
+                  inner = '<img src="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
+                    ' data-anim="' + esc(variantUrl(ex.mediaUrl, "anim")) + '"' +
+                    ' alt="' + mediaLabel + '" loading="lazy" decoding="async">';
+                }
+
+                media = '<div class="pv-ex__media"' + ratioStyle + '>' +
                   '<button type="button" class="pv-ex__media-btn" data-pv-media' +
                   ' data-pv-url="' + esc(ex.mediaUrl) + '"' +
                   ' data-pv-kind="' + (ex.mediaType === "video" ? "video" : "image") + '"' +
                   ' data-pv-title="' + mediaLabel + '"' +
                   ' aria-label="Open ' + mediaLabel + ' demo full screen">' +
-                  (ex.mediaType === "video"
-                    ? '<video src="' + esc(ex.mediaUrl) + '" muted loop playsinline preload="none" autoplay></video>'
-                    : '<img src="' + esc(variantUrl(ex.mediaUrl, "poster")) + '"' +
-                      ' data-anim="' + esc(variantUrl(ex.mediaUrl, "anim")) + '"' +
-                      ' alt="' + mediaLabel + '" loading="lazy" decoding="async">') +
+                  inner +
                   '<span class="pv-ex__media-expand" aria-hidden="true"></span>' +
                   "</button></div>";
               }
@@ -414,6 +570,18 @@
       wireExerciseMedia(pageEls[i].firstChild);
     }
 
+    // The other half of hydrate(). Discarding the markup is what releases the
+    // video elements; releaseMediaIn() first because an element removed from
+    // the document never gets another observer callback, so it would otherwise
+    // keep its buffer until GC decided otherwise.
+    function dehydrate(i) {
+      if (i < 0 || i >= pages.length || !built[i]) return;
+      var inner = pageEls[i].firstChild;
+      releaseMediaIn(inner);
+      inner.innerHTML = "";
+      built[i] = false;
+    }
+
     function setTransform(offsetPx, animate) {
       track.classList.toggle("is-animating", !!animate);
       track.style.transform = "translate3d(calc(" + (-index * 100) + "% + " + (offsetPx || 0) + "px), 0, 0)";
@@ -421,6 +589,12 @@
 
     function update(animate) {
       for (var i = index - HYDRATE_RADIUS; i <= index + HYDRATE_RADIUS; i++) hydrate(i);
+      // Virtualization: anything further away than KEEP_RADIUS goes back to an
+      // empty shell. The shells themselves always stay — the track's width is
+      // what the swipe transform is measured against.
+      for (var d = 0; d < pages.length; d++) {
+        if (d < index - KEEP_RADIUS || d > index + KEEP_RADIUS) dehydrate(d);
+      }
       setTransform(0, animate);
       fill.style.width = ((index + 1) / pages.length) * 100 + "%";
       countEl.textContent = index + 1 + " of " + pages.length;
@@ -543,6 +717,10 @@
       root.classList.remove("is-open");
       document.body.classList.remove("pv-open");
       document.removeEventListener("keydown", onKey);
+      // Stop and free every demo before the fade-out starts. Waiting for the
+      // node removal would leave videos decoding through the transition, and
+      // a closed handbook has no business still playing anything.
+      releaseMediaIn(track);
       var done = function () { if (root.parentNode) root.parentNode.removeChild(root); };
       root.addEventListener("transitionend", done, { once: true });
       setTimeout(done, 600);   // guarantee teardown if the transition is skipped

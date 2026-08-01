@@ -25,6 +25,7 @@
 // derivative is missing. A program uploaded before this existed keeps working.
 const fs = require("fs");
 const path = require("path");
+const { generateVideoDerivatives } = require("./videoDerivatives");
 
 let sharp;
 let sharpState = "unloaded";
@@ -56,6 +57,10 @@ const ANIM_QUALITY = 50;
 const ANIM_EFFORT = 4;
 const POSTER_QUALITY = 72;
 
+// List/grid tile width. A quarter of the poster's area, for indexes and
+// anywhere a demo is shown small.
+const THUMB_WIDTH = 320;
+
 const ANIMATABLE = new Set(["image/gif", "image/webp"]);
 
 function posterPathFor(filePath) {
@@ -63,6 +68,11 @@ function posterPathFor(filePath) {
 }
 function animPathFor(filePath) {
   return filePath.replace(/\.[^.]+$/, "") + "-anim.webp";
+}
+// A list/grid still, a quarter the area of the poster. The poster is sized for
+// the demo box; this is for anywhere a demo appears as a small tile.
+function thumbPathFor(filePath) {
+  return filePath.replace(/\.[^.]+$/, "") + "-thumb.webp";
 }
 function manifestPathFor(filePath) {
   return filePath.replace(/\.[^.]+$/, "") + ".gmedia.json";
@@ -75,9 +85,22 @@ function manifestPathFor(filePath) {
 function variantFileName(fileName, variant) {
   const base = fileName.replace(/\.[^.]+$/, "");
   if (variant === "poster") return `${base}-poster.webp`;
+  if (variant === "thumb") return `${base}-thumb.webp`;
   if (variant === "anim") return `${base}-anim.webp`;
+  if (variant === "mp4") return `${base}-vid.mp4`;
+  if (variant === "webm") return `${base}-vid.webm`;
   return fileName;
 }
+
+// Which variants must NEVER silently fall back to the original.
+//
+// The still variants can: a missing poster serving the original GIF is just
+// the old, heavier behaviour, and it still renders. A missing VIDEO variant
+// must not, because the fallback would be handed to a <video> element that
+// cannot decode a GIF — the customer would get a dead player AND pay the full
+// 15MB for the privilege. These 404 instead, which is the signal the handbook
+// uses to render the <img> path.
+const STRICT_VARIANTS = new Set(["mp4", "webm"]);
 
 // Generates poster + animated derivatives for one already-verified upload.
 // Never throws: a failure leaves the original in place and returns what it got.
@@ -122,6 +145,19 @@ async function generateAnimatedDerivatives(filePath, mime) {
     console.error("[animatedMedia] poster failed:", err.message);
   }
 
+  // List/grid still. Cheap next to the poster (same decode, smaller resize)
+  // and it keeps a 70-tile index off the poster tier.
+  try {
+    const buf = await lib(filePath)
+      .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+      .webp({ quality: POSTER_QUALITY })
+      .toBuffer();
+    await fs.promises.writeFile(thumbPathFor(filePath), buf);
+    manifest.thumb = { bytes: buf.length };
+  } catch (err) {
+    console.error("[animatedMedia] thumbnail failed:", err.message);
+  }
+
   // Animated derivative: only meaningful for something that actually moves.
   if (frames > 1) {
     try {
@@ -138,6 +174,25 @@ async function generateAnimatedDerivatives(filePath, mime) {
       }
     } catch (err) {
       console.error("[animatedMedia] animated derivative failed:", err.message);
+    }
+  }
+
+  // MP4 + WebM, for anything that actually moves. This is what the handbook
+  // prefers to render — see lib/videoDerivatives.js for why an <img> playing
+  // an animated WebP stops being viable somewhere around 70 demos. The
+  // animated WebP above is still generated, and is still what a program falls
+  // back to when ffmpeg is absent or a transcode fails.
+  if (frames > 1) {
+    try {
+      const video = await generateVideoDerivatives(filePath, mime);
+      if (video.mp4) manifest.mp4 = video.mp4;
+      if (video.webm) manifest.webm = video.webm;
+      // The single flag the client keys off. Requires BOTH formats: one alone
+      // means some real browser silently gets nothing, and a demo that plays
+      // everywhere except iPhones is worse than one that is a GIF everywhere.
+      manifest.video = !!(video.mp4 && video.webm);
+    } catch (err) {
+      console.error("[animatedMedia] video derivatives failed:", err.message);
     }
   }
 
@@ -178,8 +233,10 @@ function invalidate(absPath) {
 module.exports = {
   generateAnimatedDerivatives,
   variantFileName,
+  STRICT_VARIANTS,
   posterPathFor,
   animPathFor,
+  thumbPathFor,
   manifestPathFor,
   readManifest,
   invalidate,

@@ -677,11 +677,13 @@ router.post("/:id/media", (req, res) => {
       actorId: req.user.id,
     });
 
-    // Poster + animated-WebP derivatives, QUEUED rather than awaited. Deriving
-    // one 15MB demo GIF costs ~1.5s of CPU, and the upload response needs
-    // none of it — the handbook falls back to the original until the job
-    // lands. Doing this inline is what made a batch of demo uploads stall the
-    // whole single-process server. See lib/mediaJobs.js.
+    // Poster + thumbnail + animated-WebP + MP4/WebM derivatives, QUEUED rather
+    // than awaited. Deriving one 15MB demo GIF costs ~1.5s of CPU in sharp and
+    // ~1.8s more in ffmpeg for the two video renditions, and the upload
+    // response needs none of it — the handbook falls back to the original, and
+    // to the <img> path, until the job lands. Doing this inline is what made a
+    // batch of demo uploads stall the whole single-process server. See
+    // lib/mediaJobs.js.
     const mediaPath = req.file.path;
     enqueueMediaJob(`derive ${req.file.filename}`, async () => {
       await generateAnimatedDerivatives(mediaPath, verified.mime);

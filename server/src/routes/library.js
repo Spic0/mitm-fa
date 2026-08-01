@@ -2,7 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const { prisma } = require("../db");
-const { variantFileName } = require("../lib/animatedMedia");
+const { variantFileName, STRICT_VARIANTS, readManifest } = require("../lib/animatedMedia");
 const { requireAuth } = require("../middleware/auth");
 const { hasEntitlement } = require("../lib/entitlements");
 const { mintDownloadToken, verifyDownloadToken } = require("../lib/signedDownload");
@@ -39,6 +39,52 @@ const MEDIA_DIR = path.join(__dirname, "..", "..", "storage", "media");
 // while seeking must not start 404ing mid-scrub.
 const USE_X_ACCEL = process.env.MEDIA_X_ACCEL === "true";
 const ACCEL_MEDIA_PREFIX = "/internal-media/";
+
+const KNOWN_VARIANTS = new Set(["poster", "thumb", "anim", "mp4", "webm"]);
+
+// Tells the handbook which demos it may render as <video>.
+//
+// The client cannot work this out for itself. The stored mediaUrl inside
+// trainingContent is a permanent reference that is never rewritten, so there
+// is nothing in it to say whether a transcode ever happened, and probing with
+// a request per demo would be 70 speculative round trips to answer a question
+// the server can answer for free. Feature-detection in the browser doesn't
+// help either: canPlayType() reports what the BROWSER supports, not what this
+// particular upload actually has on disk.
+//
+// So: walk the handbook once, read the sidecar manifests (cached in-process
+// after the first read, misses included), and return a flat url -> facts map.
+// Anything absent means "no video derivative" and the handbook renders the
+// poster/anim <img> path for it. Aspect ratio rides along so the tile can
+// reserve its box and avoid a layout shift when the poster arrives.
+const MEDIA_URL_RE = /^\/api\/library\/media\/([^/]+)\/([^/?"]+)/;
+
+function buildMediaManifest(trainingContent) {
+  const out = {};
+  const weeks = (trainingContent && trainingContent.weeks) || [];
+  for (const week of weeks) {
+    for (const day of week.days || []) {
+      for (const ex of day.exercises || []) {
+        const url = ex && ex.mediaUrl;
+        if (!url || out[url]) continue;
+        const m = MEDIA_URL_RE.exec(url);
+        if (!m) continue;
+        const [, productId, fileName] = m;
+        // Same containment rule as the media route: never let a crafted
+        // trainingContent value turn into a path outside the media dir.
+        if (path.basename(fileName) !== fileName || path.basename(productId) !== productId) continue;
+        const manifest = readManifest(path.join(MEDIA_DIR, productId, fileName));
+        if (!manifest) continue;
+        out[url] = {
+          video: !!manifest.video,
+          animated: !!manifest.animated,
+          aspectRatio: manifest.aspectRatio || null,
+        };
+      }
+    }
+  }
+  return out;
+}
 
 router.use(requireAuth);
 router.use(apiLimiter);
@@ -194,6 +240,8 @@ router.get("/program/:productId", async (req, res) => {
       durationWeeks: product.durationWeeks,
       overview: product.overview,
       trainingContent: product.trainingContent,
+      // Which demos have MP4+WebM on disk. See buildMediaManifest above.
+      mediaManifest: buildMediaManifest(product.trainingContent),
       nutritionContent: product.nutritionContent,
       bonusNotes: product.bonusNotes,
       faqs: product.faqs,
@@ -316,13 +364,22 @@ router.get("/media/:productId/:fileName", async (req, res) => {
 
   let served = fileName;
   const variant = String(req.query.variant || "");
-  if (variant === "poster" || variant === "anim") {
+  if (KNOWN_VARIANTS.has(variant)) {
     const candidate = variantFileName(fileName, variant);
     // basename() again: variantFileName only ever appends a suffix, but this
     // is the value that becomes a filesystem path, so it is re-checked rather
     // than trusted to have stayed clean.
-    if (path.basename(candidate) === candidate && fs.existsSync(path.join(MEDIA_DIR, productId, candidate))) {
+    const ok = path.basename(candidate) === candidate &&
+      fs.existsSync(path.join(MEDIA_DIR, productId, candidate));
+    if (ok) {
       served = candidate;
+    } else if (STRICT_VARIANTS.has(variant)) {
+      // A still variant may fall back to the original — that is just the old,
+      // heavier behaviour and it still renders. A video variant may NOT: the
+      // caller is a <video> element, which cannot decode a GIF, so falling
+      // back would hand it 15MB it can't play. 404 is the signal the handbook
+      // uses to drop to the <img> poster/anim path.
+      return res.status(404).json({ error: "No video derivative for this media" });
     }
   }
 

@@ -1,6 +1,6 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
 const { prisma } = require("../db");
+const { hashPassword, verifyPassword, passwordPolicyError } = require("../lib/password");
 const { requireAuth } = require("../middleware/auth");
 const { createMagicLinkToken, buildMagicLinkUrl, consumeMagicLinkToken } = require("../lib/magicLink");
 const { sendMagicLinkEmail, sendWelcomeEmail } = require("../lib/email");
@@ -93,16 +93,17 @@ router.get("/me", (req, res) => {
 // signs out or their session expires.
 router.post("/set-password", requireAuth, async (req, res) => {
   const password = String(req.body.password || "");
-  if (password.length < 8) {
-    return res.status(400).json({ error: "Password must be at least 8 characters" });
+  const policyError = passwordPolicyError(password);
+  if (policyError) {
+    return res.status(400).json({ error: policyError });
   }
   if (req.user.passwordHash) {
     const currentPassword = String(req.body.currentPassword || "");
-    if (!(await bcrypt.compare(currentPassword, req.user.passwordHash))) {
+    if (!(await verifyPassword(currentPassword, req.user.passwordHash))) {
       return res.status(401).json({ error: "Current password is incorrect" });
     }
   }
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
   await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash } });
   await logEvent({ category: "auth", message: `Password changed: ${req.user.email}`, actorId: req.user.id });
   res.json({ ok: true });
@@ -118,7 +119,7 @@ router.post("/login-password", authLimiter, async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     loginAttempts.recordFailure(email);
     await logEvent({ category: "auth", message: `Failed login attempt: ${email}` });
     return res.status(401).json({ error: "Invalid email or password" });

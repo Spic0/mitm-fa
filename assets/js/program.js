@@ -803,7 +803,12 @@
       // safe even for a payload that predates `media`.
       var m = ex.media || null;
       var label = esc(ex.name || "Exercise") + " demonstration";
-      var box = m && m.aspectRatio ? ' style="aspect-ratio:' + m.aspectRatio + '"' : "";
+      // data-ar, NOT style="aspect-ratio:…": the site sends
+      // `style-src-attr 'self'`, which blocks inline style attributes, so a
+      // style written into this markup is dropped and the box is never
+      // reserved — the very layout shift this line exists to prevent. It is
+      // applied through the CSSOM in the wiring pass below.
+      var box = m && m.aspectRatio ? ' data-ar="' + esc(m.aspectRatio) + '"' : "";
       var inner;
 
       if (m && m.kind === "video") {
@@ -972,6 +977,10 @@
     });
 
     host.querySelectorAll("[data-demo]").forEach(function (node) {
+      // Reserve the box before any media loads. CSP forbids doing this in
+      // markup (see the data-ar comment above), so it happens here.
+      var ar = node.getAttribute("data-ar");
+      if (ar) node.style.setProperty("aspect-ratio", ar);
       var vid = node.querySelector("video[data-demo-vid]");
       if (vid) observeDemoVideo(vid);
       else {

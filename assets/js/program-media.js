@@ -169,9 +169,16 @@
         // Without a ratio the frame simply fills the stage; the video's own
         // box is metadata-independent either way, and object-fit keeps the
         // picture honest.
+        // The ratio is applied through the CSSOM below, NOT as a style
+        // attribute in this markup. The site sends `style-src-attr 'self'`,
+        // which blocks inline style attributes outright — a style="" written
+        // here is silently dropped, --pm-ratio never lands, the min() that
+        // depends on it becomes invalid, and the frame falls back to width
+        // auto: a 320x180 stamp of the poster's intrinsic size. CSP does not
+        // restrict CSSOM writes, so el.style.setProperty is the way in.
         var ratio = Number(item.aspectRatio) > 0 ? Number(item.aspectRatio) : 0;
         var frameAttrs = ratio
-          ? ' class="pm-video__frame pm-video__frame--ratio" style="--pm-ratio:' + ratio + '"'
+          ? ' class="pm-video__frame pm-video__frame--ratio"'
           : ' class="pm-video__frame"';
         slide.innerHTML =
           '<div class="pm-video">' +
@@ -185,6 +192,10 @@
           '<button type="button" class="pm-video__big" aria-label="Play">' + ICON.play + "</button>" +
           "</div>" +
           "</div>";
+        if (ratio) {
+          var frameEl = slide.querySelector(".pm-video__frame");
+          if (frameEl) frameEl.style.setProperty("--pm-ratio", String(ratio));
+        }
         wireVideoLoad(slide, item);
       } else {
         slide.innerHTML =

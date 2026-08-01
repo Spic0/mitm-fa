@@ -103,6 +103,21 @@ function buildResolvedPayload() {
   };
 }
 
+// PRODUCTION'S CSP, on the fixture server.
+//
+// Without it this harness is more permissive than the real site and will
+// happily pass code the site refuses to run. That is not hypothetical: the
+// viewer reserved its box with a style="" attribute, which passed here and was
+// silently dropped in production by `style-src-attr 'self'` — the frame
+// collapsed to the video's intrinsic 320x180 and every geometry assertion in
+// this file still said PASS. A harness that is laxer than production tests a
+// site that does not exist.
+const CSP = {
+  "Content-Security-Policy":
+    "default-src 'self';script-src 'self';style-src 'self';img-src 'self' data:;" +
+    "media-src 'self';object-src 'none';base-uri 'self';style-src-attr 'self';script-src-attr 'none'",
+};
+
 const hits = [];
 function makeServer(payload) {
   return http.createServer((req, res) => {
@@ -131,10 +146,13 @@ function makeServer(payload) {
     const local = path.join(ROOT, u === "/" ? "program.html" : u);
     if (fs.existsSync(local) && fs.statSync(local).isFile()) {
       const e = path.extname(local);
-      res.writeHead(200, { "Content-Type": e === ".js" ? "text/javascript" : e === ".css" ? "text/css" : "text/html" });
+      res.writeHead(200, {
+        "Content-Type": e === ".js" ? "text/javascript" : e === ".css" ? "text/css" : "text/html",
+        ...CSP,
+      });
       return res.end(fs.readFileSync(local));
     }
-    res.writeHead(200, { "Content-Type": "text/html" });
+    res.writeHead(200, { "Content-Type": "text/html", ...CSP });
     res.end(fs.readFileSync(path.join(ROOT, "program.html")));
   });
 }
@@ -316,7 +334,10 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
     if (!f || !v) return null;
     const fr = f.getBoundingClientRect(), vr = v.getBoundingClientRect();
     const br = big ? big.getBoundingClientRect() : null;
+    const stageEl = document.querySelector(".pm-video");
+    const sr = stageEl.getBoundingClientRect();
     return {
+      stage: { w: Math.round(sr.width), h: Math.round(sr.height) },
       frame: { w: Math.round(fr.width), h: Math.round(fr.height) },
       video: { w: Math.round(vr.width), h: Math.round(vr.height) },
       fit: getComputedStyle(v).objectFit,
@@ -328,6 +349,15 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   });
   check("viewer video FILLS its frame (not intrinsically sized)",
     !!geom && geom.video.w === geom.frame.w && geom.video.h === geom.frame.h, geom);
+  // ABSOLUTE, not relative. "The video fills its frame" stays true when the
+  // FRAME collapses too — which is exactly what happened when CSP dropped the
+  // inline style that carried --pm-ratio: frame and video were both 320x180
+  // inside a 1084x610 stage and every relative assertion still passed. A box
+  // that is correctly contain-fitted to the stage touches it on at least one
+  // axis; a collapsed one touches neither.
+  check("viewer frame is contain-fitted to the stage (touches one axis)",
+    !!geom && (Math.abs(geom.frame.w - geom.stage.w) <= 1 || Math.abs(geom.frame.h - geom.stage.h) <= 1),
+    geom && { stage: geom.stage, frame: geom.frame });
   check("viewer video uses object-fit: contain", !!geom && geom.fit === "contain",
     geom && geom.fit);
   check("centre play button is centred on the picture",

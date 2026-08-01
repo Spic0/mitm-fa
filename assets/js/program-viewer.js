@@ -195,6 +195,15 @@
   // fullscreen — the handbook simply never called it.
   function wireExerciseMedia(pageEl) {
     var obs = ensureAnimObserver();
+    // Reserve each tile's box from the ratio the payload already carried.
+    // This cannot be done in markup: `style-src-attr 'self'` drops inline
+    // style attributes, so the reservation silently never happened and the
+    // poster's arrival shifted the text beside it — the exact thing it was
+    // written to prevent. CSSOM writes are not restricted by CSP.
+    var boxes = pageEl.querySelectorAll(".pv-ex__media[data-ar]");
+    for (var b = 0; b < boxes.length; b++) {
+      boxes[b].style.setProperty("aspect-ratio", boxes[b].getAttribute("data-ar"));
+    }
     var btns = Array.prototype.slice.call(pageEl.querySelectorAll("[data-pv-media]"));
     if (!btns.length) return;
 
@@ -356,8 +365,12 @@
                 var facts = ex.media || null;
                 // Reserve the tile's box from the aspect ratio so the poster
                 // arriving never shifts the text beside it.
+                // data-ar rather than an inline style: `style-src-attr
+                // 'self'` blocks style attributes, so a style here is dropped
+                // and the box is never reserved. Applied via the CSSOM in the
+                // pass that wires these tiles up.
                 var ratioStyle = facts && facts.aspectRatio
-                  ? ' style="aspect-ratio:' + facts.aspectRatio + '"' : "";
+                  ? ' data-ar="' + esc(facts.aspectRatio) + '"' : "";
 
                 var inner;
                 if (facts && facts.kind === "video") {

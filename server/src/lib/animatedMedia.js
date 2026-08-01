@@ -89,6 +89,11 @@ function variantFileName(fileName, variant) {
   if (variant === "anim") return `${base}-anim.webp`;
   if (variant === "mp4") return `${base}-vid.mp4`;
   if (variant === "webm") return `${base}-vid.webm`;
+  // The fullscreen pair. Separate files rather than a bigger -vid, because the
+  // inline tile and the fullscreen viewer want genuinely different things and
+  // the tile's budget is the one 70 demos share.
+  if (variant === "hdmp4") return `${base}-hd.mp4`;
+  if (variant === "hdwebm") return `${base}-hd.webm`;
   return fileName;
 }
 
@@ -100,7 +105,7 @@ function variantFileName(fileName, variant) {
 // cannot decode a GIF — the customer would get a dead player AND pay the full
 // 15MB for the privilege. These 404 instead, which is the signal the handbook
 // uses to render the <img> path.
-const STRICT_VARIANTS = new Set(["mp4", "webm"]);
+const STRICT_VARIANTS = new Set(["mp4", "webm", "hdmp4", "hdwebm"]);
 
 // Generates poster + animated derivatives for one already-verified upload.
 // Never throws: a failure leaves the original in place and returns what it got.
@@ -184,13 +189,14 @@ async function generateAnimatedDerivatives(filePath, mime) {
   // back to when ffmpeg is absent or a transcode fails.
   if (frames > 1) {
     try {
-      const video = await generateVideoDerivatives(filePath, mime);
+      const video = await generateVideoDerivatives(filePath, mime, { width, height });
       if (video.mp4) manifest.mp4 = video.mp4;
       if (video.webm) manifest.webm = video.webm;
       // The single flag the client keys off. Requires BOTH formats: one alone
       // means some real browser silently gets nothing, and a demo that plays
       // everywhere except iPhones is worse than one that is a GIF everywhere.
       manifest.video = !!(video.mp4 && video.webm);
+      applyHd(manifest, video);
     } catch (err) {
       console.error("[animatedMedia] video derivatives failed:", err.message);
     }
@@ -201,6 +207,51 @@ async function generateAnimatedDerivatives(filePath, mime) {
   } catch (err) {
     /* the derivatives are on disk and discoverable by name regardless */
   }
+  return manifest;
+}
+
+// Same all-or-nothing rule as `video`, for the same reason: a fullscreen
+// rendition that exists in WebM only would look sharp on Android and stay soft
+// on every iPhone, and nobody would be able to tell you why.
+function applyHd(manifest, video) {
+  if (video.hdmp4) manifest.hdmp4 = video.hdmp4;
+  if (video.hdwebm) manifest.hdwebm = video.hdwebm;
+  manifest.hdVideo = !!(video.hdmp4 && video.hdwebm);
+  return manifest;
+}
+
+// Adds the fullscreen pair to media that already has everything else.
+//
+// Kept separate from generateAnimatedDerivatives because the existing
+// derivatives are served `immutable` for a year: re-deriving them to pick up a
+// new rendition would leave every browser that already cached them showing the
+// old bytes until 2027, and would burn the encoder time to do it. This touches
+// nothing that is already on disk — it writes two new files and merges two
+// keys into the manifest.
+//
+// Returns { skipped } or the merged manifest.
+async function generateHdRendition(filePath, mime) {
+  const manifest = readManifest(filePath);
+  if (!manifest) return { skipped: "no-manifest" };
+  if (!manifest.animated) return { skipped: "not-animated" };
+  if (!manifest.width || !manifest.height) return { skipped: "no-dimensions" };
+
+  const video = await generateVideoDerivatives(filePath, mime, {
+    width: manifest.width,
+    height: manifest.height,
+    only: "hd",
+  });
+  if (video.skipped) return { skipped: video.skipped };
+
+  applyHd(manifest, video);
+  try {
+    await fs.promises.writeFile(manifestPathFor(filePath), JSON.stringify(manifest, null, 2));
+  } catch (err) {
+    return { skipped: "manifest-write-failed" };
+  }
+  // The manifest cache holds misses AND hits for the process lifetime, so the
+  // copy this process is holding is now stale by exactly the keys we added.
+  invalidate(filePath);
   return manifest;
 }
 
@@ -232,6 +283,7 @@ function invalidate(absPath) {
 
 module.exports = {
   generateAnimatedDerivatives,
+  generateHdRendition,
   variantFileName,
   STRICT_VARIANTS,
   posterPathFor,

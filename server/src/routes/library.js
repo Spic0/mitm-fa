@@ -40,7 +40,7 @@ const MEDIA_DIR = path.join(__dirname, "..", "..", "storage", "media");
 const USE_X_ACCEL = process.env.MEDIA_X_ACCEL === "true";
 const ACCEL_MEDIA_PREFIX = "/internal-media/";
 
-const KNOWN_VARIANTS = new Set(["poster", "thumb", "anim", "mp4", "webm"]);
+const KNOWN_VARIANTS = new Set(["poster", "thumb", "anim", "mp4", "webm", "hdmp4", "hdwebm"]);
 
 // Resolves every exercise's media to FINISHED urls, server-side, at
 // serialization time.
@@ -96,6 +96,13 @@ function resolveMedia(url) {
   }
 
   // Animated WITH both renditions: the <video> path.
+  //
+  // hdMp4/hdWebm are the FULLSCREEN pair and are null whenever they do not
+  // exist — a source too small to have one, or media derived before they did.
+  // The client treats null as "use the tile rendition", so a missing HD file
+  // degrades to the old behaviour instead of breaking the viewer. They are
+  // urls in the payload and nothing more: nothing fetches them until someone
+  // taps a demo.
   if (manifest.video) {
     return {
       kind: "video",
@@ -104,6 +111,8 @@ function resolveMedia(url) {
       thumb: manifest.thumb ? withVariant(url, "thumb") : null,
       mp4: withVariant(url, "mp4"),
       webm: withVariant(url, "webm"),
+      hdMp4: manifest.hdVideo ? withVariant(url, "hdmp4") : null,
+      hdWebm: manifest.hdVideo ? withVariant(url, "hdwebm") : null,
       animated: true,
       aspectRatio,
     };
@@ -470,7 +479,7 @@ function warnIfServingRedundantOriginal(productId, fileName, served) {
   if (!manifest) return;                          // nothing was ever derived; fine
   if (!manifest.poster && !manifest.anim && !manifest.video) return;
 
-  const available = ["poster", "thumb", "anim", "mp4", "webm"].filter((k) => manifest[k]);
+  const available = ["poster", "thumb", "anim", "mp4", "webm", "hdmp4", "hdwebm"].filter((k) => manifest[k]);
   console.error(
     `[media] SERVED ORIGINAL despite derivatives — productId=${productId} file=${fileName} ` +
     `available=[${available.join(",")}] animated=${!!manifest.animated} video=${!!manifest.video}. ` +
@@ -595,3 +604,8 @@ router.get("/download/resource/:token", async (req, res) => {
 });
 
 module.exports = router;
+// Exported for tools/test-program-page-media.js, which used to re-implement
+// this shape and therefore could not fail when the real one drifted. The test
+// that guards the 461x regression should exercise the function that caused it.
+module.exports.resolveTrainingMedia = resolveTrainingMedia;
+module.exports.resolveMedia = resolveMedia;

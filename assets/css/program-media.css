@@ -156,6 +156,23 @@ body.pm-open { overflow: hidden; }
 .pm-video { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .pm-video video { max-width: 100%; max-height: 100%; width: auto; height: auto; background: #000; }
 
+/* Hold frame: the tile's already-cached still, painted over the video until it
+   has a frame of its own. `object-fit: contain` inside the same box makes it
+   land on the same rectangle the letterboxed video will occupy, so the swap is
+   a sharpening rather than a jump. Removed from the DOM on `loadeddata` —
+   see wireVideoLoad() in assets/js/program-media.js. */
+.pm-video__hold {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 /* The big centre play target — the only thing on the stage before a video
    has been started, and it disappears once it has. */
 .pm-video__big {

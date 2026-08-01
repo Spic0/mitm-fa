@@ -34,18 +34,39 @@ const CHROME = process.env.CHROME_PATH || (function () {
 const DAYS = 10, PER_DAY = 7;          // 70 exercises, the target scale
 const N_SOURCES = 6;                    // distinct demo files
 
+// REAL_MEDIA_DIR=<a product's storage/media dir> uses real demo GIFs instead of
+// synthetic ones. It matters for anything about the FULLSCREEN rendition: the
+// synthetic sources below are 640x360, so an -hd encode of them is correctly
+// refused as an upscale and the HD path never runs. Real demos are 1920x1080.
+// Without it this test still guards the byte budgets and the gif regression,
+// which is what it exists for; with it the numbers are the ones a customer
+// actually pays.
+const REAL = process.env.REAL_MEDIA_DIR || "";
+
 async function ensureFixtures() {
   if (fs.existsSync(path.join(FIX, "demo0-vid.mp4"))) return;
   const { execFileSync } = require("child_process");
   fs.mkdirSync(FIX, { recursive: true });
   const { generateAnimatedDerivatives } = require(path.join(SERVER, "src/lib/animatedMedia"));
+
+  const real = REAL
+    ? fs.readdirSync(REAL).filter((f) => /\.gif$/i.test(f) && fs.statSync(path.join(REAL, f)).size > 1024).sort()
+    : [];
+  if (REAL && real.length < N_SOURCES) {
+    throw new Error(`REAL_MEDIA_DIR has ${real.length} animated GIFs, need ${N_SOURCES}`);
+  }
+
   for (let i = 0; i < N_SOURCES; i++) {
     const src = path.join(FIX, `demo${i}.gif`);
-    // Distinct content per file so the encoders can't dedupe and the byte
-    // totals are honest.
-    execFileSync(process.env.FFMPEG_PATH || "ffmpeg",
-      ["-y", "-v", "error", "-f", "lavfi", "-i", `testsrc=duration=2:size=640x360:rate=12,hue=h=${i * 60}`, src],
-      { stdio: "ignore" });
+    if (real.length) {
+      fs.copyFileSync(path.join(REAL, real[i]), src);
+    } else {
+      // Distinct content per file so the encoders can't dedupe and the byte
+      // totals are honest.
+      execFileSync(process.env.FFMPEG_PATH || "ffmpeg",
+        ["-y", "-v", "error", "-f", "lavfi", "-i", `testsrc=duration=2:size=640x360:rate=12,hue=h=${i * 60}`, src],
+        { stdio: "ignore" });
+    }
     const m = await generateAnimatedDerivatives(src, "image/gif");
     if (!m.video) throw new Error("fixture " + i + " produced no video derivatives — is ffmpeg installed?");
   }
@@ -64,23 +85,11 @@ function buildResolvedPayload() {
     }),
   })) }] };
 
-  // Stub only what the resolver's module graph needs to load.
-  const resolveMod = require(path.join(SERVER, "src/routes/library.js"));
-  // library.js does not export the resolver, so re-derive it the way the route
-  // does: read each manifest and build the same shape. Keeping this in step is
-  // what the byte assertions below actually police.
-  const { readManifest } = require(path.join(SERVER, "src/lib/animatedMedia"));
-  const v = (u, x) => u + (u.indexOf("?") === -1 ? "?" : "&") + "variant=" + x;
-  for (const w of trainingContent.weeks) for (const d of w.days) for (const ex of d.exercises) {
-    const file = ex.mediaUrl.split("/").pop();
-    const man = readManifest(path.join(FIX, file));
-    if (man && man.video) {
-      ex.media = { kind: "video", src: v(ex.mediaUrl, "poster"), poster: v(ex.mediaUrl, "poster"),
-                   thumb: v(ex.mediaUrl, "thumb"), mp4: v(ex.mediaUrl, "mp4"), webm: v(ex.mediaUrl, "webm"),
-                   animated: true, aspectRatio: man.aspectRatio || null };
-      ex.mediaUrl = ex.media.src;
-    }
-  }
+  // The REAL resolver, not a copy of it. This used to re-derive the shape by
+  // hand, which meant the test could keep passing while the thing it guards
+  // drifted underneath it.
+  const { resolveTrainingMedia } = require(path.join(SERVER, "src/routes/library.js"));
+  const resolved = resolveTrainingMedia(trainingContent);
   return {
     preview: true, productStatus: "published", purchasedAt: null,
     progress: { completedKeys: [], lastKey: null, lastSection: null, lastOpenedAt: null },
@@ -88,7 +97,7 @@ function buildResolvedPayload() {
       id: FIX_ID, slug: FIX_ID, name: "Program Page Media Test",
       createdAt: new Date().toISOString(), creator: "Test", categories: [],
       difficulty: "intermediate", durationWeeks: 10, overview: "Overview.",
-      trainingContent, nutritionContent: null, bonusNotes: null,
+      trainingContent: resolved, nutritionContent: null, bonusNotes: null,
       faqs: [], media: [], resources: [],
     },
   };
@@ -105,7 +114,9 @@ function makeServer(payload) {
     if (u.startsWith("/api/library/media/")) {
       const name = decodeURIComponent(u.split("/").pop());
       const m = /variant=(\w+)/.exec(req.url.split("?")[1] || "");
-      const suffix = { poster: "-poster.webp", thumb: "-thumb.webp", anim: "-anim.webp", mp4: "-vid.mp4", webm: "-vid.webm" }[m && m[1]];
+      const suffix = { poster: "-poster.webp", thumb: "-thumb.webp", anim: "-anim.webp",
+                       mp4: "-vid.mp4", webm: "-vid.webm",
+                       hdmp4: "-hd.mp4", hdwebm: "-hd.webm" }[m && m[1]];
       const f = suffix ? name.replace(/\.[^.]+$/, "") + suffix : name;
       const p = path.join(FIX, f);
       if (!fs.existsSync(p)) { res.writeHead(404); return res.end(); }
@@ -130,6 +141,12 @@ function makeServer(payload) {
 
 const results = [];
 const check = (n, pass, d) => results.push({ name: n, pass, detail: d });
+// A skipped check is NOT a passing one, and must never read as green. The HD
+// assertions below need a source big enough to have a fullscreen rendition;
+// the synthetic 640x360 fixtures are correctly refused as an upscale, so
+// without REAL_MEDIA_DIR there is nothing to assert against and saying so is
+// the honest result. Everything else in this file runs either way.
+const skip = (n, why) => results.push({ name: n, pass: true, skipped: why });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KB = (b) => (b / 1024).toFixed(1) + " KB";
 
@@ -209,6 +226,56 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   console.log(`  [budget] full day ${KB(totalBytes)} vs 500 KB target — ` +
     (totalBytes < 500 * 1024 ? "within" : `OVER by ${KB(totalBytes - 500 * 1024)}`));
 
+  // ---- the fullscreen rendition must cost NOTHING until it is asked for ----
+  //
+  // This is the whole bargain of a second rendition: the tile budget above is
+  // only intact if a 1280px file that no one opened was never fetched. An -hd
+  // <source> in markup, a preload, a prefetch hint, or a lightbox that
+  // hydrates eagerly would each break it silently and none would fail any
+  // other assertion here.
+  const hdBefore = all.filter((h) => /variant=hd/.test(h.url));
+  check("ZERO -hd requests on a day page with no taps", hdBefore.length === 0,
+    hdBefore.slice(0, 3).map((h) => h.url));
+
+  // ---- now tap one demo and measure what fullscreen actually costs ----
+  const beforeTap = hits.length;
+  const opened = await p.evaluate(() => {
+    const tile = document.querySelector("[data-demo] video[data-demo-vid]");
+    if (!tile) return null;
+    const hd = { webm: tile.getAttribute("data-hd-webm"), mp4: tile.getAttribute("data-hd-mp4") };
+    tile.parentNode.click();
+    return hd;
+  });
+  await sleep(2500);
+  const tapHits = hits.slice(beforeTap);
+  const tapBytes = tapHits.reduce((s, h) => s + h.bytes, 0);
+  const hdHits = tapHits.filter((h) => /variant=hd/.test(h.url));
+
+  // Whether these three can mean anything is decided by the fixtures, not by
+  // the code under test: ask the manifest the pipeline actually wrote.
+  const { readManifest } = require(path.join(SERVER, "src/lib/animatedMedia"));
+  const hdFixture = !!(readManifest(path.join(FIX, "demo0.gif")) || {}).hdVideo;
+
+  if (!hdFixture) {
+    const why = "fixtures have no -hd rendition; set REAL_MEDIA_DIR to exercise fullscreen";
+    skip("tile markup carries both -hd urls", why);
+    skip("opening a demo fetches the -hd rendition", why);
+    skip("one -hd file per tap, not both formats", why);
+  } else {
+    check("tile markup carries both -hd urls", !!(opened && opened.webm && opened.mp4), opened);
+    check("opening a demo fetches the -hd rendition", hdHits.length > 0,
+      tapHits.map((h) => h.url));
+    // Chrome takes the WebM and ignores the MP4 — if BOTH arrive, the viewer is
+    // downloading a rendition it will never decode.
+    check("one -hd file per tap, not both formats", hdHits.length === 1,
+      hdHits.map((h) => h.url));
+  }
+  // The poster the viewer holds is the tile's, which is already in cache; a
+  // request for it here would mean the hold frame costs bytes it shouldn't.
+  check("tap fetches nothing but the -hd file", tapHits.length === hdHits.length,
+    tapHits.filter((h) => !/variant=hd/.test(h.url)).map((h) => h.url));
+  console.log(`  [fullscreen] one tap = ${KB(tapBytes)} (${tapHits.length} request(s))`);
+
   // Live element count must stay bounded, not one per exercise.
   const live = await p.evaluate(() => document.querySelectorAll('video[data-attached="1"]').length);
   const dom = await p.evaluate(() => ({
@@ -226,16 +293,21 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   console.log(`  full day    : ${KB(totalBytes).padStart(10)}  (${all.length} media requests)`);
   console.log(`  gif responses: ${gifResponses.length}`);
   console.log(`  largest response: ${KB(Math.max(0, ...all.map((h) => h.bytes)))}`);
-  console.log(`  live videos : ${live} of ${DAYS * PER_DAY} exercises\n`);
+  console.log(`  live videos : ${live} of ${DAYS * PER_DAY} exercises`);
+  console.log(`  -hd before tap: ${hdBefore.length}`);
+  console.log(`  one fullscreen tap: ${KB(tapBytes)}\n`);
 
   await b.close(); server.close();
 
-  let failed = 0;
+  let failed = 0, skipped = 0;
   for (const r of results) {
     if (!r.pass) failed++;
-    console.log(`  ${r.pass ? "PASS" : "FAIL"}  ${r.name}`);
+    if (r.skipped) skipped++;
+    console.log(`  ${r.skipped ? "SKIP" : r.pass ? "PASS" : "FAIL"}  ${r.name}`);
+    if (r.skipped) console.log("        ", r.skipped);
     if (!r.pass) console.log("        ", JSON.stringify(r.detail));
   }
-  console.log(failed ? `\n${failed} FAILED` : "\nALL PASSED");
+  const tail = skipped ? ` (${skipped} skipped)` : "";
+  console.log(failed ? `\n${failed} FAILED${tail}` : `\nALL PASSED${tail}`);
   process.exit(failed ? 1 : 0);
 })();

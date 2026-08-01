@@ -26,7 +26,8 @@
      items[] = {
        type: "image" | "video" | "embed",
        url, poster?, title?, subtitle?, key?,
-       sources?: [{ src, label }]      // renders the source selector
+       sources?: [{ src, label }],        // renders the source selector
+       fallbackSources?: [{ src, label }] // used if every `sources` entry fails
      }
 
    `onView(item, index)` fires when an item is actually looked at — for
@@ -151,20 +152,73 @@
         var sources = item.sources && item.sources.length
           ? item.sources.map(function (s) { return '<source src="' + esc(s.src) + '">'; }).join("")
           : "";
+        // The hold frame. `.pm-video video` has a black background and the
+        // viewer's source may be a rendition the tile never fetched, so
+        // between opening and the first decoded frame there is a window where
+        // the stage is just black. The poster here is the still the tile was
+        // already showing — in cache, decoded, free — painted over the video
+        // until it has a frame of its own. `poster=` alone is not enough: it
+        // is dropped the moment load() is called on a source swap.
+        var hold = item.poster
+          ? '<img class="pm-video__hold" src="' + esc(item.poster) + '" alt="" aria-hidden="true" decoding="async">'
+          : "";
         slide.innerHTML =
           '<div class="pm-video">' +
           "<video playsinline preload=\"metadata\"" +
           (item.poster ? ' poster="' + esc(item.poster) + '"' : "") +
           (sources ? "" : ' src="' + esc(item.url) + '"') +
-          ">" + sources + "</video>" +
+          ">" + sources + "</video>" + hold +
           '<button type="button" class="pm-video__big" aria-label="Play">' + ICON.play + "</button>" +
           "</div>";
+        wireVideoLoad(slide, item);
       } else {
         slide.innerHTML =
           '<div class="pm-image"><img src="' + esc(item.url) + '" alt="' + esc(item.alt || item.title || "") +
           '" decoding="async" draggable="false"></div>';
       }
       built[i] = true;
+    }
+
+    // Two things that only matter for the fullscreen rendition, both of them
+    // about never showing the customer a failure:
+    //
+    //   1. The hold frame comes off on `loadeddata` — the first moment the
+    //      element has a real frame to paint — and not before.
+    //   2. If every source fails, drop to `fallbackSources` once. The HD pair
+    //      is only offered when the manifest says both files exist, so this
+    //      covers the case where the manifest and the disk disagree (a file
+    //      removed, a transcode deleted, a half-finished backfill). The tile
+    //      rendition is already proven to load: it is what the tile played.
+    function wireVideoLoad(slide, item) {
+      var v = slide.querySelector("video");
+      if (!v) return;
+      var holdEl = slide.querySelector(".pm-video__hold");
+      var released = false;
+      function release() {
+        if (released) return;
+        released = true;
+        if (holdEl && holdEl.parentNode) holdEl.parentNode.removeChild(holdEl);
+      }
+      v.addEventListener("loadeddata", release);
+      // A frame can also arrive without loadeddata firing where we can see it
+      // (a cached response decoded before this listener attached).
+      if (v.readyState >= 2) release();
+
+      var fellBack = false;
+      v.addEventListener("error", function () {
+        var alt = item.fallbackSources;
+        if (fellBack || !alt || !alt.length) return release();
+        fellBack = true;
+        while (v.firstChild) v.removeChild(v.firstChild);
+        alt.forEach(function (s) {
+          var el = document.createElement("source");
+          el.src = s.src;
+          v.appendChild(el);
+        });
+        // Keep the hold frame up across the swap — this is precisely the
+        // moment the stage would otherwise go black.
+        v.load();
+      });
     }
 
     /* ------------------------------------------------------------ zoom --- */

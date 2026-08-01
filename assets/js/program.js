@@ -815,8 +815,15 @@
         // even inside a section the customer has not opened. At 70 demos that
         // is the single largest cost on the page, and 320px is ample for a
         // still that is replaced by 640px video the moment the tile is seen.
+        // data-hd-* are the FULLSCREEN renditions. They are attributes and
+        // nothing else — no <source>, no preload, no prefetch — so the tile
+        // costs exactly what it cost before and the 1280px file is not
+        // touched unless someone taps this demo. They may be absent; the
+        // click handler falls back to the tile rendition when they are.
+        var hd = (m.hdWebm ? ' data-hd-webm="' + esc(m.hdWebm) + '"' : "") +
+          (m.hdMp4 ? ' data-hd-mp4="' + esc(m.hdMp4) + '"' : "");
         inner = '<video class="pg-ex__video" data-demo-vid' +
-          ' data-webm="' + esc(m.webm) + '" data-mp4="' + esc(m.mp4) + '"' +
+          ' data-webm="' + esc(m.webm) + '" data-mp4="' + esc(m.mp4) + '"' + hd +
           ' poster="' + esc(m.thumb || m.poster) + '"' +
           ' muted loop playsinline preload="metadata" aria-label="' + label + '"></video>';
       } else if (m && m.kind === "animated-image") {
@@ -982,13 +989,36 @@
           subtitle: name ? name.textContent : product.name,
         };
         if (isVid) {
+          // Fullscreen gets the 1280px pair when it exists. This is the ONLY
+          // place an -hd url is ever handed to something that fetches it, and
+          // it runs on tap — which is what keeps the day page's byte budget
+          // the tile rendition's budget and not this one's.
+          //
+          // Falling back per-format rather than all-or-nothing would be a
+          // mistake: mixing a 1280 WebM with a 640 MP4 means Android and iOS
+          // see different demos. The pair is generated together and used
+          // together, so one missing url drops both back to the tile.
+          var hdWebm = media.getAttribute("data-hd-webm");
+          var hdMp4 = media.getAttribute("data-hd-mp4");
+          var useHd = !!(hdWebm && hdMp4);
+          var webm = useHd ? hdWebm : media.getAttribute("data-webm");
+          var mp4 = useHd ? hdMp4 : media.getAttribute("data-mp4");
           item.type = "video";
-          item.url = media.getAttribute("data-mp4");
+          item.url = mp4;
+          // The tile's poster, which is already decoded and in cache by the
+          // time anyone can tap it. Costs nothing and gives the viewer
+          // something real to hold on screen while the HD file loads.
           item.poster = media.getAttribute("poster");
           item.sources = [
-            { src: media.getAttribute("data-webm"), label: "WebM" },
-            { src: media.getAttribute("data-mp4"), label: "MP4" },
+            { src: webm, label: "WebM" },
+            { src: mp4, label: "MP4" },
           ];
+          if (useHd) {
+            item.fallbackSources = [
+              { src: media.getAttribute("data-webm"), label: "WebM" },
+              { src: media.getAttribute("data-mp4"), label: "MP4" },
+            ];
+          }
         } else {
           item.type = media.tagName === "VIDEO" ? "video" : "image";
           item.url = media.getAttribute("data-anim") || media.getAttribute("src");

@@ -523,9 +523,34 @@ router.get("/media/:productId/:fileName", async (req, res) => {
 
   if (USE_X_ACCEL) return sendMediaViaAccel(res, productId, served);
 
+  // LEGACY PATH (MEDIA_X_ACCEL off). It mints a token scoped to a USER and
+  // redirects to /download/media/:token, which re-checks req.user.id — so a
+  // guest has nothing to mint against and nothing that would pass at the far
+  // end. Production runs with the accel flag on, which is why this stayed
+  // invisible to curl and to the server-side test: neither reached this line.
+  //
+  // A guest is served straight from disk here instead, with the same headers
+  // the token route sets. The signed token path is left exactly as it was —
+  // still user-scoped, still re-verified at serve time — rather than taught to
+  // accept anonymous callers.
+  if (!req.user) return sendMediaFromDisk(res, productId, served);
+
   const token = mintDownloadToken("media", `${productId}/${served}`, req.user.id);
   res.redirect(`/api/library/download/media/${token}`);
 });
+
+// The bytes, with the token route's headers. Access has already been decided
+// by hasEntitlement above; this only knows how to send.
+function sendMediaFromDisk(res, productId, fileName) {
+  res.set("Cache-Control", "private, max-age=31536000, immutable");
+  if (path.extname(fileName).toLowerCase() === ".svg") {
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    res.set("X-Content-Type-Options", "nosniff");
+  }
+  res.sendFile(path.join(MEDIA_DIR, productId, fileName), (err) => {
+    if (err && !res.headersSent) res.status(404).json({ error: "Media not found" });
+  });
+}
 
 // The alarm for the failure that started all this.
 //

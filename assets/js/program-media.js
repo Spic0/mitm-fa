@@ -555,6 +555,52 @@
     var pointers = {};
     var pinchStart = 0, pinchScale = 1;
     var lastTap = 0;
+    // The element genuinely under the finger when the gesture started.
+    //
+    // It has to be recorded here because pointerup CANNOT be trusted to say:
+    // the pointerdown handler calls stage.setPointerCapture (so a drag that
+    // leaves the stage still tracks), and pointer capture RETARGETS every
+    // later pointer event for that pointer to the capturing element. Measured
+    // on one real click of the centre play button:
+    //
+    //   pointerdown  target=path            (the icon inside the button)
+    //   pointerup    target=div.pm__stage   (retargeted by the capture)
+    //
+    // The dismiss test below compares against the stage, so with e.target it
+    // was true for a tap ANYWHERE in the viewer — including on the play
+    // button, whose own click handler then never ran because close() had
+    // already torn the element out of the DOM.
+    var downTarget = null;
+
+    // A tap dismisses only when it started on the backdrop ITSELF, never on a
+    // descendant. `.pm-video` is included because it is the letterboxing
+    // around a contain-fitted frame — genuine empty space beside the picture —
+    // while `.pm-video__frame`, the <video> and every control are not.
+    function isBackdrop(el) {
+      if (!el || el.nodeType !== 1) return false;
+      return el === stage || el === track ||
+        (el.classList && (el.classList.contains("pm-slide") || el.classList.contains("pm-video")));
+    }
+
+    // Pointer capture is taken ONLY once a gesture is genuinely a drag — never
+    // on pointerdown.
+    //
+    // While a pointer is captured, the compatibility mouse events are
+    // retargeted to the capture element, and that includes `click`. Measured
+    // with capture taken on pointerdown: clicking the centre play button gave
+    // clickTargets ["div.pm__stage"] and the button's own handler ran 0 times,
+    // so the control was unreachable even once the dismiss bug was fixed.
+    //
+    // A drag still needs capture — it is what keeps a swipe tracking after the
+    // finger leaves the stage — so it is taken at the moment the movement
+    // threshold is crossed. Below that threshold the gesture is a tap, and a
+    // tap must reach whatever it was aimed at.
+    var captured = false;
+    function capturePointer(e) {
+      if (captured || e.pointerId == null || !stage.setPointerCapture) return;
+      captured = true;
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
+    }
 
     function distance(a, b) {
       return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
@@ -579,15 +625,14 @@
       dragging = true;
       locked = false;
       axis = null;
+      downTarget = e.target;
       startX = e.clientX;
       startY = e.clientY;
       startT = Date.now();
       panning = zoomState[index].scale > 1.01;
       panStart = { x: zoomState[index].x, y: zoomState[index].y };
+      captured = false;
       track.classList.remove("is-animating");
-      if (e.pointerId != null && stage.setPointerCapture) {
-        try { stage.setPointerCapture(e.pointerId); } catch (err) { /* not fatal */ }
-      }
     }, { passive: true });
 
     // Non-passive: a horizontal swipe (or a pinch) must be able to
@@ -611,6 +656,8 @@
 
       // Zoomed in: the drag pans the picture instead of turning the page.
       if (panning) {
+        if (Math.abs(dx) < AXIS_LOCK_SLOP && Math.abs(dy) < AXIS_LOCK_SLOP) return;
+        capturePointer(e);
         if (e.cancelable) e.preventDefault();
         zoomState[index].x = panStart.x + dx;
         zoomState[index].y = panStart.y + dy;
@@ -627,6 +674,9 @@
         if (axis === "y") { dragging = false; return; }
       }
       if (axis !== "x" || items.length < 2) return;
+      // Past the threshold and committed to a horizontal swipe: now take the
+      // pointer, so the drag survives leaving the stage.
+      capturePointer(e);
       if (e.cancelable) e.preventDefault();
       if ((index === 0 && dx > 0) || (index === items.length - 1 && dx < 0)) dx *= 0.32;
       setTransform(dx, false);
@@ -637,9 +687,10 @@
       if (pointerList().length < 2) pinchStart = 0;
       if (!dragging) return;
       dragging = false;
-      if (e.pointerId != null && stage.releasePointerCapture) {
+      if (captured && e.pointerId != null && stage.releasePointerCapture) {
         try { stage.releasePointerCapture(e.pointerId); } catch (err) { /* already released */ }
       }
+      captured = false;
       if (panning) { panning = false; return; }
 
       if (!locked) {
@@ -653,7 +704,8 @@
           return;
         }
         lastTap = now;
-        if (e.target === stage || e.target === track || (e.target.classList && e.target.classList.contains("pm-slide"))) close();
+        // downTarget, not e.target — see the note where it is declared.
+        if (isBackdrop(downTarget)) close();
         return;
       }
 

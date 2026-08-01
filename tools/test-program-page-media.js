@@ -378,6 +378,175 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   const usesFsApi = await p.evaluate(() => !!document.fullscreenElement);
   check("viewer never enters the Fullscreen API (single overlay model)", !usesFsApi);
 
+  // ---- the controls must WORK, not just be in the right place ----
+  //
+  // stage.setPointerCapture() retargets every pointer event after pointerdown
+  // to the stage, so at pointerup e.target reads "the backdrop" no matter what
+  // was actually pressed. The tap-to-dismiss test compared e.target to the
+  // stage, so a tap on the centre play button closed the viewer before the
+  // button's own click handler could run. Geometry assertions cannot see this:
+  // the button was exactly where it should be, and pressing it destroyed the
+  // player.
+  const pt = async (sel) => p.evaluate((s) => {
+    const el = document.querySelector(s);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  }, sel);
+
+  // Record where the click actually lands, so a failure here says WHY rather
+  // than only that playback did not start.
+  await p.evaluate(() => {
+    const d = (el) => !el || el.nodeType !== 1 ? String(el && el.nodeName) :
+      el.tagName.toLowerCase() + (el.className && typeof el.className === "string" && el.className.trim()
+        ? "." + el.className.trim().split(/\s+/).join(".") : "");
+    window.__clickTargets = [];
+    document.addEventListener("click", (e) => window.__clickTargets.push(d(e.target)), true);
+    window.__bigFired = 0;
+    const big = document.querySelector(".pm-video__big");
+    if (big) big.addEventListener("click", () => window.__bigFired++);
+  });
+
+  const playAt = await pt(".pm-video__big");
+  if (playAt) await p.mouse.click(playAt.x, playAt.y);
+  await sleep(1200);
+  const afterPlay = await p.evaluate(() => {
+    const root = document.querySelector(".pm");
+    const v = document.querySelector(".pm-video video");
+    return { open: !!root && root.classList.contains("is-open"),
+      paused: v ? v.paused : null, t: v ? +v.currentTime.toFixed(2) : null,
+      clickTargets: window.__clickTargets, bigButtonHandlerRuns: window.__bigFired };
+  });
+  check("clicking PLAY keeps the viewer open", afterPlay.open === true, afterPlay);
+  check("clicking PLAY actually starts playback", afterPlay.paused === false, afterPlay);
+
+  // Pause via the transport, still open.
+  const pauseAt = await pt("[data-pm-play]");
+  if (pauseAt) await p.mouse.click(pauseAt.x, pauseAt.y);
+  await sleep(600);
+  const afterPause = await p.evaluate(() => {
+    const root = document.querySelector(".pm");
+    const v = document.querySelector(".pm-video video");
+    return { open: !!root && root.classList.contains("is-open"), paused: v ? v.paused : null };
+  });
+  check("transport pause works and keeps the viewer open",
+    afterPause.open === true && afterPause.paused === true, afterPause);
+
+  // Scrub and mute must not dismiss either.
+  for (const sel of ["[data-pm-scrub]", "[data-pm-mute]", "[data-pm-rate]"]) {
+    const at = await pt(sel);
+    if (at) await p.mouse.click(at.x, at.y);
+    await sleep(250);
+  }
+  check("scrub / mute / rate do not close the viewer",
+    await p.evaluate(() => { const r = document.querySelector(".pm"); return !!r && r.classList.contains("is-open"); }));
+
+  // Genuine empty space beside the picture MUST still dismiss. The letterbox
+  // band inside .pm-video but outside the frame is that space.
+  const gap = await p.evaluate(() => {
+    const c = document.querySelector(".pm-video"), f = document.querySelector(".pm-video__frame");
+    if (!c || !f) return null;
+    const cr = c.getBoundingClientRect(), fr = f.getBoundingClientRect();
+    if (cr.width - fr.width > 12) return { x: cr.x + (fr.x - cr.x) / 2, y: cr.y + cr.height / 2 };
+    if (cr.height - fr.height > 12) return { x: cr.x + cr.width / 2, y: cr.y + (fr.y - cr.y) / 2 };
+    return null;
+  });
+  if (gap) {
+    await p.mouse.click(gap.x, gap.y);
+    await sleep(900);
+    check("clicking empty space beside the picture still closes the viewer",
+      await p.evaluate(() => !document.querySelector(".pm") ||
+        !document.querySelector(".pm").classList.contains("is-open")), gap);
+  } else {
+    skip("clicking empty space beside the picture still closes the viewer",
+      "no letterbox band at this viewport/ratio to click");
+  }
+
+  // Escape, and the close button, on freshly opened viewers.
+  const reopen = async () => {
+    await p.evaluate(() => {
+      const t = document.querySelector("[data-demo] video[data-demo-vid]");
+      if (t) t.parentNode.click();
+    });
+    await sleep(1200);
+  };
+  await reopen();
+  await p.keyboard.press("Escape");
+  await sleep(900);
+  check("Escape still closes the viewer",
+    await p.evaluate(() => !document.querySelector(".pm") ||
+      !document.querySelector(".pm").classList.contains("is-open")));
+
+  await reopen();
+  const closeAt = await pt("[data-pm-close]");
+  if (closeAt) await p.mouse.click(closeAt.x, closeAt.y);
+  await sleep(900);
+  check("the close button still closes the viewer",
+    await p.evaluate(() => !document.querySelector(".pm") ||
+      !document.querySelector(".pm").classList.contains("is-open")));
+
+  // ---- TOUCH: a tap must reach the control, a drag must still swipe ----
+  //
+  // Capture is now taken only past the movement threshold, and these are the
+  // two sides of that bargain. A multi-item gallery is built directly because
+  // the day page opens the viewer with a single item and cannot swipe.
+  await p.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
+  const galleryCount = await p.evaluate(() => {
+    const tiles = Array.from(document.querySelectorAll("[data-demo] video[data-demo-vid]")).slice(0, 3);
+    if (!window.ProgramMedia || tiles.length < 2) return 0;
+    window.ProgramMedia.open(tiles.map((v) => ({
+      type: "video",
+      url: v.getAttribute("data-hd-mp4") || v.getAttribute("data-mp4"),
+      poster: v.getAttribute("poster"),
+      aspectRatio: Number(v.getAttribute("data-ar")) || 0,
+      sources: [{ src: v.getAttribute("data-hd-webm") || v.getAttribute("data-webm"), label: "WebM" },
+                { src: v.getAttribute("data-hd-mp4") || v.getAttribute("data-mp4"), label: "MP4" }],
+      title: "g",
+    })), 0);
+    return tiles.length;
+  });
+
+  if (galleryCount < 2) {
+    skip("touch tap on PLAY starts playback without swiping", "need >=2 demos for a gallery");
+    skip("touch swipe still changes demo", "need >=2 demos for a gallery");
+  } else {
+    await sleep(1800);
+    const idx = () => p.evaluate(() => {
+      const c = document.querySelector("[data-pm-count]");
+      return c ? c.textContent.trim() : "";
+    });
+    const before = await idx();
+    const bigAt = await pt(".pm-video__big");
+    await p.touchscreen.tap(bigAt.x, bigAt.y);
+    await sleep(1400);
+    const tapped = await p.evaluate(() => {
+      const root = document.querySelector(".pm");
+      const v = document.querySelector(".pm-video video");
+      return { open: !!root && root.classList.contains("is-open"), paused: v ? v.paused : null };
+    });
+    const afterTapIdx = await idx();
+    check("touch tap on PLAY starts playback without swiping",
+      tapped.open === true && tapped.paused === false && afterTapIdx === before,
+      { ...tapped, before, afterTapIdx });
+
+    // A real horizontal drag, well past the threshold.
+    const stageBox = await p.evaluate(() => {
+      const s = document.querySelector(".pm__stage").getBoundingClientRect();
+      return { y: s.y + s.height / 2, x1: s.x + s.width * 0.8, x2: s.x + s.width * 0.15 };
+    });
+    await p.touchscreen.touchStart(stageBox.x1, stageBox.y);
+    for (let i = 1; i <= 6; i++) {
+      await p.touchscreen.touchMove(stageBox.x1 + (stageBox.x2 - stageBox.x1) * (i / 6), stageBox.y);
+      await sleep(30);
+    }
+    await p.touchscreen.touchEnd();
+    await sleep(1200);
+    const afterSwipe = await idx();
+    check("touch swipe still changes demo", afterSwipe !== before, { before, afterSwipe });
+    await p.evaluate(() => { const c = document.querySelector("[data-pm-close]"); if (c) c.click(); });
+    await sleep(700);
+  }
+
   // Live element count must stay bounded, not one per exercise.
   const live = await p.evaluate(() => document.querySelectorAll('video[data-attached="1"]').length);
   const dom = await p.evaluate(() => ({

@@ -11,14 +11,17 @@
              so a zoomed photo can be explored without falling to the next
              slide.
    Video   : custom large-target controls (48px minimum), scrub bar with a
-             touch-sized hit area, playback rate, mute, Picture-in-Picture
-             and fullscreen where the browser supports them, plus a source
-             selector that appears ONLY when an item genuinely ships more
-             than one rendition. The platform stores a single file per
-             video today, so in practice it stays hidden rather than
-             pretending to offer qualities that don't exist.
+             touch-sized hit area, playback rate, mute, Picture-in-Picture,
+             plus a source selector that appears ONLY when an item genuinely
+             ships more than one rendition.
    Embeds  : YouTube/Vimeo keep their own player chrome — we give them the
              full stage and stay out of the way.
+
+   THIS VIEWER IS A CSS OVERLAY, not a Fullscreen API client. It is fixed to
+   the viewport, pins the page scroll behind it and sizes its own media box.
+   It deliberately does NOT call requestFullscreen and offers no control that
+   does — see the note above the PiP handler for why that split is not worth
+   having.
 
    Usage:
      window.ProgramMedia.open(items, startIndex, { onView: fn });
@@ -26,6 +29,7 @@
      items[] = {
        type: "image" | "video" | "embed",
        url, poster?, title?, subtitle?, key?,
+       aspectRatio?: number,              // reserves the box before media loads
        sources?: [{ src, label }],        // renders the source selector
        fallbackSources?: [{ src, label }] // used if every `sources` entry fails
      }
@@ -73,7 +77,6 @@
     volume: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6.5 9H3v6h3.5L11 19z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 6a9 9 0 010 12"/></svg>',
     muted: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6.5 9H3v6h3.5L11 19z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
     pip: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><rect x="12" y="12" width="7" height="5" rx="1.2"/></svg>',
-    expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5"/></svg>',
     zoomIn: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M11 8.5v5M8.5 11h5M20 20l-3.9-3.9"/></svg>',
     zoomOut: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8.5 11h5M20 20l-3.9-3.9"/></svg>',
     speed: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20a8 8 0 118-8"/><path d="M12 12l4.5-3"/></svg>',
@@ -103,7 +106,6 @@
         '<span class="pm__count" data-pm-count aria-live="polite"></span>' +
         '<div class="pm__bar-actions">' +
           '<button type="button" class="pm__icon" data-pm-pip aria-label="Picture in picture" title="Picture in picture (p)">' + ICON.pip + "</button>" +
-          '<button type="button" class="pm__icon" data-pm-full aria-label="Fullscreen" title="Fullscreen (f)">' + ICON.expand + "</button>" +
           '<button type="button" class="pm__icon pm__icon--close" data-pm-close aria-label="Close viewer" title="Close (Esc)">' + ICON.close + "</button>" +
         "</div>" +
       "</div>" +
@@ -121,7 +123,6 @@
     var subEl = root.querySelector("[data-pm-sub]");
     var countEl = root.querySelector("[data-pm-count]");
     var pipBtn = root.querySelector("[data-pm-pip]");
-    var fullBtn = root.querySelector("[data-pm-full]");
     var prevBtn = root.querySelector("[data-pm-prev]");
     var nextBtn = root.querySelector("[data-pm-next]");
 
@@ -162,13 +163,27 @@
         var hold = item.poster
           ? '<img class="pm-video__hold" src="' + esc(item.poster) + '" alt="" aria-hidden="true" decoding="async">'
           : "";
+        // The media box is reserved from the manifest's aspect ratio — the
+        // same number the inline tiles size themselves with — so it is correct
+        // before any media loads and does not move when metadata arrives.
+        // Without a ratio the frame simply fills the stage; the video's own
+        // box is metadata-independent either way, and object-fit keeps the
+        // picture honest.
+        var ratio = Number(item.aspectRatio) > 0 ? Number(item.aspectRatio) : 0;
+        var frameAttrs = ratio
+          ? ' class="pm-video__frame pm-video__frame--ratio" style="--pm-ratio:' + ratio + '"'
+          : ' class="pm-video__frame"';
         slide.innerHTML =
           '<div class="pm-video">' +
+          "<div" + frameAttrs + ">" +
           "<video playsinline preload=\"metadata\"" +
           (item.poster ? ' poster="' + esc(item.poster) + '"' : "") +
           (sources ? "" : ' src="' + esc(item.url) + '"') +
           ">" + sources + "</video>" + hold +
+          // Inside the frame, so it centres on the PICTURE rather than on the
+          // letterboxed stage around it.
           '<button type="button" class="pm-video__big" aria-label="Play">' + ICON.play + "</button>" +
+          "</div>" +
           "</div>";
         wireVideoLoad(slide, item);
       } else {
@@ -204,19 +219,35 @@
       // (a cached response decoded before this listener attached).
       if (v.readyState >= 2) release();
 
+      // The ONE swap that can still happen after the element is attached, and
+      // only on failure. The viewer already opens directly on the rendition it
+      // means to play (program.js picks -hd or the tile pair BEFORE the <video>
+      // exists), so a healthy open performs no swap at all and calls load()
+      // zero times. This guard makes sure a broken one cannot loop.
       var fellBack = false;
       v.addEventListener("error", function () {
         var alt = item.fallbackSources;
         if (fellBack || !alt || !alt.length) return release();
         fellBack = true;
+        // Carry position and play state across the reset. An error normally
+        // means nothing decoded and currentTime is 0, but a source that dies
+        // mid-playback would otherwise silently restart from the beginning.
+        var at = v.currentTime;
+        var wasPlaying = !v.paused;
         while (v.firstChild) v.removeChild(v.firstChild);
         alt.forEach(function (s) {
           var el = document.createElement("source");
           el.src = s.src;
           v.appendChild(el);
         });
+        v.addEventListener("loadedmetadata", function restore() {
+          v.removeEventListener("loadedmetadata", restore);
+          if (at > 0 && isFinite(v.duration)) v.currentTime = Math.min(at, v.duration);
+          if (wasPlaying) v.play().catch(function () {});
+        });
         // Keep the hold frame up across the swap — this is precisely the
-        // moment the stage would otherwise go black.
+        // moment the stage would otherwise go black. The box does not move:
+        // it comes from the frame's reserved ratio, not from the source.
         v.load();
       });
     }
@@ -657,12 +688,26 @@
     }
     root.addEventListener("pointermove", showControls, { passive: true });
 
-    /* ---------------------------------------------- fullscreen + PiP --- */
-    fullBtn.addEventListener("click", function () {
-      if (document.fullscreenElement) { document.exitFullscreen(); return; }
-      if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
-    });
-
+    /* ------------------------------------------------------------- PiP --- */
+    // FULLSCREEN MODEL: this viewer is a CSS overlay, and only that.
+    //
+    // It was previously both — an overlay that also offered the real
+    // Fullscreen API on its root, which is the hybrid that made "it only sizes
+    // correctly after using the browser's own fullscreen control" true: the
+    // overlay did not size its video, so entering real fullscreen was the only
+    // way to get a stage small enough for the intrinsically-sized element to
+    // fill. With the box fixed, real fullscreen adds nothing but the removal
+    // of browser chrome, and it costs a genuine platform split: iOS Safari
+    // does not implement requestFullscreen on arbitrary elements, only
+    // webkitEnterFullscreen on the <video> itself, which hands the clip to the
+    // native player and takes the custom transport, the swipe gesture and the
+    // rest of the gallery with it. One model everywhere beats a viewer that is
+    // a different product on iPhone.
+    //
+    // `.pm` is position: fixed / inset: 0 with safe-area padding and
+    // body.pm-open pins the scroll, so the overlay already occupies the whole
+    // viewport. `playsinline` on every <video> is what stops iOS promoting the
+    // clip into its own fullscreen player and re-introducing the split.
     pipBtn.addEventListener("click", function () {
       if (!video) return;
       if (document.pictureInPictureElement) { document.exitPictureInPicture().catch(function () {}); return; }
@@ -676,7 +721,6 @@
 
       switch (e.key) {
         case "Escape":
-          if (document.fullscreenElement) return; // let the browser exit fullscreen first
           close();
           break;
         case "ArrowRight": e.preventDefault(); goTo(index + 1); break;
@@ -689,7 +733,6 @@
         case "j": if (video) video.currentTime -= 10; break;
         case "m": if (video) { video.muted = !video.muted; if (foot.syncMute) foot.syncMute(); } break;
         case "p": if (!pipBtn.hidden) pipBtn.click(); break;
-        case "f": fullBtn.click(); break;
         case "+":
         case "=": setZoom(index, zoomState[index].scale + 0.6); break;
         case "-": setZoom(index, zoomState[index].scale - 0.6); break;
@@ -724,7 +767,6 @@
       document.removeEventListener("keydown", onKey);
       root.classList.remove("is-open");
       document.body.classList.remove("pm-open");
-      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
       var done = function () { if (root.parentNode) root.parentNode.removeChild(root); };
       root.addEventListener("transitionend", done, { once: true });
       setTimeout(done, 600);   // guarantee teardown if the transition is skipped

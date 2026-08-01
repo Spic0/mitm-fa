@@ -822,8 +822,13 @@
         // click handler falls back to the tile rendition when they are.
         var hd = (m.hdWebm ? ' data-hd-webm="' + esc(m.hdWebm) + '"' : "") +
           (m.hdMp4 ? ' data-hd-mp4="' + esc(m.hdMp4) + '"' : "");
+        // The same ratio the tile reserves its box with, carried on the element
+        // so the fullscreen viewer can reserve ITS box from it too, before any
+        // media loads. Without this the viewer's box was whatever the decoder
+        // had last reported and moved twice per open.
+        var ar = m.aspectRatio ? ' data-ar="' + esc(m.aspectRatio) + '"' : "";
         inner = '<video class="pg-ex__video" data-demo-vid' +
-          ' data-webm="' + esc(m.webm) + '" data-mp4="' + esc(m.mp4) + '"' + hd +
+          ' data-webm="' + esc(m.webm) + '" data-mp4="' + esc(m.mp4) + '"' + hd + ar +
           ' poster="' + esc(m.thumb || m.poster) + '"' +
           ' muted loop playsinline preload="metadata" aria-label="' + label + '"></video>';
       } else if (m && m.kind === "animated-image") {
@@ -1009,6 +1014,7 @@
           // time anyone can tap it. Costs nothing and gives the viewer
           // something real to hold on screen while the HD file loads.
           item.poster = media.getAttribute("poster");
+          item.aspectRatio = Number(media.getAttribute("data-ar")) || 0;
           item.sources = [
             { src: webm, label: "WebM" },
             { src: mp4, label: "MP4" },

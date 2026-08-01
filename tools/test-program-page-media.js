@@ -169,6 +169,33 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   await p.setViewport({ width: 1100, height: 900 });
   const errs = []; p.on("pageerror", (e) => errs.push(String(e)));
 
+  // Instrumentation for the fullscreen viewer, installed before any page
+  // script runs. The viewer regressed in a way NO request-level assertion
+  // could see: the <video> was sized intrinsically, so its box was the
+  // poster's 320x180 until playback replaced it, and the picture jumped twice
+  // per open while every byte budget here stayed green. So the box itself is
+  // now measured.
+  await p.evaluateOnNewDocument(() => {
+    window.__loads = 0;
+    const origLoad = HTMLMediaElement.prototype.load;
+    HTMLMediaElement.prototype.load = function () {
+      if (this.closest && this.closest(".pm")) window.__loads++;
+      return origLoad.apply(this, arguments);
+    };
+    // Every distinct box the viewer's video has ever had, sampled per frame.
+    // A resize the human eye would catch cannot hide from this.
+    window.__boxes = [];
+    (function sample() {
+      const v = document.querySelector(".pm-video video");
+      if (v) {
+        const r = v.getBoundingClientRect();
+        const k = Math.round(r.width) + "x" + Math.round(r.height);
+        if (r.width && window.__boxes[window.__boxes.length - 1] !== k) window.__boxes.push(k);
+      }
+      requestAnimationFrame(sample);
+    })();
+  });
+
   await p.goto(`http://localhost:3406/my-library/${FIX_ID}`, { waitUntil: "networkidle0" });
   await sleep(1200);
   check("no JS errors", errs.length === 0, errs.slice(0, 3));
@@ -275,6 +302,51 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
   check("tap fetches nothing but the -hd file", tapHits.length === hdHits.length,
     tapHits.filter((h) => !/variant=hd/.test(h.url)).map((h) => h.url));
   console.log(`  [fullscreen] one tap = ${KB(tapBytes)} (${tapHits.length} request(s))`);
+
+  // ---- the viewer's BOX: correct from the first frame, and never moves ----
+  //
+  // The video must fill the frame the viewer reserved for it, so that
+  // object-fit does the letterboxing and every control centred on the frame is
+  // centred on the picture. When it was sized intrinsically instead, a 1904px
+  // stage held a 320x180 video and the centre play button was nowhere near it.
+  const geom = await p.evaluate(() => {
+    const f = document.querySelector(".pm-video__frame");
+    const v = document.querySelector(".pm-video video");
+    const big = document.querySelector(".pm-video__big");
+    if (!f || !v) return null;
+    const fr = f.getBoundingClientRect(), vr = v.getBoundingClientRect();
+    const br = big ? big.getBoundingClientRect() : null;
+    return {
+      frame: { w: Math.round(fr.width), h: Math.round(fr.height) },
+      video: { w: Math.round(vr.width), h: Math.round(vr.height) },
+      fit: getComputedStyle(v).objectFit,
+      centreDx: br ? Math.abs((br.x + br.width / 2) - (vr.x + vr.width / 2)) : 0,
+      centreDy: br ? Math.abs((br.y + br.height / 2) - (vr.y + vr.height / 2)) : 0,
+      boxes: window.__boxes.slice(),
+      loads: window.__loads,
+    };
+  });
+  check("viewer video FILLS its frame (not intrinsically sized)",
+    !!geom && geom.video.w === geom.frame.w && geom.video.h === geom.frame.h, geom);
+  check("viewer video uses object-fit: contain", !!geom && geom.fit === "contain",
+    geom && geom.fit);
+  check("centre play button is centred on the picture",
+    !!geom && geom.centreDx <= 1 && geom.centreDy <= 1,
+    geom && { dx: geom.centreDx, dy: geom.centreDy });
+  // One box for the whole open: the size is known before metadata and does not
+  // change when it arrives, nor when playback replaces the poster.
+  check("viewer video box NEVER resizes during an open (target: 1 size)",
+    !!geom && geom.boxes.length === 1, geom && geom.boxes);
+  check("ZERO load() calls on a healthy open (source resolved before attach)",
+    !!geom && geom.loads === 0, geom && geom.loads);
+  console.log(`  [viewer] frame ${geom && geom.frame.w}x${geom && geom.frame.h}` +
+    `  video ${geom && geom.video.w}x${geom && geom.video.h}` +
+    `  boxes seen ${JSON.stringify(geom && geom.boxes)}  load() ${geom && geom.loads}`);
+
+  // The viewer is a CSS overlay and commits to being only that — it must never
+  // reach for the Fullscreen API, which is where the iOS split would come from.
+  const usesFsApi = await p.evaluate(() => !!document.fullscreenElement);
+  check("viewer never enters the Fullscreen API (single overlay model)", !usesFsApi);
 
   // Live element count must stay bounded, not one per exercise.
   const live = await p.evaluate(() => document.querySelectorAll('video[data-attached="1"]').length);

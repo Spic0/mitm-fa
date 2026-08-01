@@ -241,6 +241,10 @@
             { src: vid.getAttribute("data-mp4"), label: "MP4" },
           ],
           poster: vid.getAttribute("poster"),
+          // Same reserved box as the tile: without it the viewer's frame falls
+          // back to the whole stage, which still paints correctly but is not
+          // trimmed to the picture.
+          aspectRatio: Number(vid.getAttribute("data-ar")) || 0,
           title: title,
         };
       }
@@ -367,6 +371,7 @@
                   inner = '<video class="pv-ex__video" data-pv-vid' +
                     ' data-mp4="' + esc(facts.mp4) + '"' +
                     ' data-webm="' + esc(facts.webm) + '"' +
+                    (facts.aspectRatio ? ' data-ar="' + esc(facts.aspectRatio) + '"' : "") +
                     ' poster="' + esc(facts.thumb || facts.poster) + '"' +
                     ' muted loop playsinline preload="metadata"' +
                     ' aria-label="' + mediaLabel + ' demonstration"></video>';

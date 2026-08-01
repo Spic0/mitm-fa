@@ -153,23 +153,80 @@ body.pm-open { overflow: hidden; }
 .pm.is-zoomed .pm-image img { transition: none; cursor: grab; }
 .pm.is-zoomed .pm-image img:active { cursor: grabbing; }
 
-.pm-video { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-.pm-video video { max-width: 100%; max-height: 100%; width: auto; height: auto; background: #000; }
+/* container-type: size is what lets the frame below solve its own box against
+   the stage in pure CSS, with no metadata and no measuring in JS. */
+.pm-video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
 
-/* Hold frame: the tile's already-cached still, painted over the video until it
-   has a frame of its own. `object-fit: contain` inside the same box makes it
-   land on the same rectangle the letterboxed video will occupy, so the swap is
-   a sharpening rather than a jump. Removed from the DOM on `loadeddata` —
-   see wireVideoLoad() in assets/js/program-media.js. */
+/* THE VIEWER BOX.
+
+   `.pm-video video` used to be sized INTRINSICALLY (width/height auto, capped
+   by max-*). That made the element's box a function of whatever the decoder
+   had told it so far, which changed twice per open: it took the POSTER's size
+   first (the tile's 320px thumb, so a 320x180 stamp in the middle of a 1904px
+   stage) and only became the video's size once playback replaced the poster.
+   Measured at 1920x1080: container 1904x891, video 320x180 — the element was
+   covering 3% of the area it was given, which is why the centre play button
+   and any native control chrome sat nowhere near where the picture appeared.
+
+   The box is now derived from the aspect ratio the manifest already carries —
+   the same number the inline tiles reserve their space with — so it is known
+   before a single byte of media arrives and never moves afterwards. The video
+   fills that box and `object-fit: contain` keeps the picture undistorted for
+   any source dimensions. */
+.pm-video__frame { position: relative; width: 100%; height: 100%; }
+
+/* Largest box of the manifest's ratio that fits the stage, solved on both axes
+   at once.
+
+   `aspect-ratio` with `height: 100%; max-width: 100%` is the obvious spelling
+   and it is wrong: when the stage is narrower than the ratio wants, max-width
+   clamps the width while height stays definite at 100%, so the ratio is
+   silently dropped and the frame becomes the full stage. Measured on a 390px
+   viewport that produced a 374x655 box for 16:9 content. The min() pair below
+   has no such asymmetry — each axis is bounded by the stage AND by what the
+   other axis allows. */
+.pm-video__frame--ratio {
+  width: min(100cqw, calc(100cqh * var(--pm-ratio)));
+  height: min(100cqh, calc(100cqw / var(--pm-ratio)));
+}
+/* Container query units are the only part of this that is not ancient. Without
+   them the frame stays the full stage and `object-fit: contain` on the video
+   still paints the right picture in the right place — the box just isn't
+   trimmed to it. */
+@supports not (width: 1cqw) {
+  .pm-video__frame--ratio { width: 100%; height: 100%; }
+}
+
+.pm-video video,
 .pm-video__hold {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+/* Transparent, not #000: the element now spans the whole frame, so a black
+   background here would paint a rectangle over the viewer's own backdrop
+   rather than sit behind the picture. */
+.pm-video video { background: transparent; }
+
+/* Hold frame: the tile's already-cached still, painted over the video until it
+   has a frame of its own. It shares the rules above, so it occupies EXACTLY
+   the rectangle the video occupies and removing it is a sharpening rather than
+   a jump. (It previously filled the container while the video was intrinsic-
+   sized beneath it — the picture appeared full-bleed, then collapsed to a
+   320x180 stamp the moment the hold came off.) Removed on `loadeddata` — see
+   wireVideoLoad() in assets/js/program-media.js. */
+.pm-video__hold {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
 }
 

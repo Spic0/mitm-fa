@@ -200,6 +200,7 @@ async function loadFeaturedProduct(productId) {
         priceCents: true,
         creator: true,
         status: true,
+        freeAccess: true,
       },
     });
   } catch (err) {
@@ -260,13 +261,23 @@ function renderDeck(html, { presentation, content, visitId, product }) {
   // A draft or archived product therefore still appears inside the deck, which
   // is gated and usually password-protected, but the deck offers no outbound
   // link to a page that would 404 or that the visitor may not see.
+  //   unlisted      /my-library/:slug — the REAL program, opened without an
+  //                                     order because the product carries
+  //                                     freeAccess. This is the only
+  //                                     destination that shows a prospect the
+  //                                     product as a customer actually
+  //                                     experiences it: handbook, demos and
+  //                                     all. It is checked before "published"
+  //                                     so the flag, not the status, decides.
   const productUrl = !product
     ? ""
-    : product.status === PRESENTATION_STATUS
-      ? `/showcase/${encodeURIComponent(product.slug)}`
-      : product.status === "published"
-        ? `/program/${encodeURIComponent(product.slug)}`
-        : "";
+    : product.freeAccess
+      ? `/my-library/${encodeURIComponent(product.slug)}`
+      : product.status === PRESENTATION_STATUS
+        ? `/showcase/${encodeURIComponent(product.slug)}`
+        : product.status === "published"
+          ? `/program/${encodeURIComponent(product.slug)}`
+          : "";
   const productImage = product ? productImageSrc(product.imageUrl || product.thumbnailUrl) : "";
   // No price. The deck presents a product as material, not as a line item, and
   // printing a dollar figure next to it would imply it is being sold here —

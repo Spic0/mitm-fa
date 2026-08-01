@@ -43,7 +43,14 @@ stub("../middleware/auth", {
   requireAuth: (rq, _rs, next) => { rq.user = { id: "u1", role: state.role }; next(); },
 });
 stub("../middleware/rateLimit", { apiLimiter: (_rq, _rs, next) => next() });
-stub("../lib/entitlements", { hasEntitlement: async () => state.entitled });
+// isFreeAccess is consulted by the guest guard that runs BEFORE requireAuth.
+// These cases are all about an authenticated caller, so it answers false and
+// the guard falls straight through to the auth stub above, exactly as it does
+// in production for any product that is not flagged.
+stub("../lib/entitlements", {
+  hasEntitlement: async () => state.entitled,
+  isFreeAccess: async () => false,
+});
 stub("../lib/adminLog", { logEvent: () => {} });
 
 const router = req("./library.js");

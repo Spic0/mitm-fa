@@ -49,7 +49,14 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // forgotten `where` clause away from putting a showcase product on the
 // shop grid. The same reasoning is why "private" and "scheduled" are values
 // here and not two more booleans.
-const PRODUCT_STATUSES = new Set(["draft", "private", "scheduled", "published", "archived", "presentation"]);
+// "unlisted" joins them on exactly the same terms: reachable by direct link,
+// excluded from every listing by the published-only rule above, and unbuyable
+// because checkoutItems filters on published too. It differs from
+// "presentation" only in where the deck's View Product button sends people —
+// "presentation" goes to the /showcase marketing page, "unlisted" to the real
+// program at /my-library/:slug. Access is a separate question and a separate
+// column (Product.freeAccess); this value grants nothing on its own.
+const PRODUCT_STATUSES = new Set(["draft", "private", "scheduled", "published", "archived", "presentation", "unlisted"]);
 
 function invalidStatus(status) {
   if (status === undefined) return null;

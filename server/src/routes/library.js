@@ -4,7 +4,7 @@ const path = require("path");
 const { prisma } = require("../db");
 const { variantFileName, STRICT_VARIANTS, readManifest } = require("../lib/animatedMedia");
 const { requireAuth } = require("../middleware/auth");
-const { hasEntitlement } = require("../lib/entitlements");
+const { hasEntitlement, isFreeAccess } = require("../lib/entitlements");
 const { mintDownloadToken, verifyDownloadToken } = require("../lib/signedDownload");
 const { apiLimiter } = require("../middleware/rateLimit");
 const { logEvent } = require("../lib/adminLog");
@@ -159,7 +159,57 @@ function resolveTrainingMedia(trainingContent) {
   };
 }
 
-router.use(requireAuth);
+// GUEST ACCESS — the narrowest possible hole in requireAuth.
+//
+// Everything in this router has always required a session. A presentation
+// viewer is a prospect with no account, so for a product explicitly flagged
+// freeAccess two READ paths — and only those two — are reachable logged out:
+//
+//   GET /program/:productId          the program payload
+//   GET /media/:productId/:fileName  its demo media
+//
+// Both are needed together or neither is worth having: the page gate and the
+// media gate are the same check, so opening one alone renders a program whose
+// every demo is a 403.
+//
+// What this deliberately does NOT open, all of which still 401 exactly as
+// before because they do not match these two shapes:
+//
+//   GET  /              the caller's own library listing
+//   GET  /orders        the caller's own orders
+//   POST /program/:id/progress   and every other write
+//   GET  /download/media/:token and /download/resource/:token — the signed
+//        short-lived token paths, untouched and still session-checked
+//
+// Method is pinned to GET, the path patterns are anchored, and the product
+// must carry the flag. A guest who edits the productId to a paid product
+// fails isFreeAccess and lands back on the 401 below.
+const GUEST_READ_PATHS = [
+  /^\/program\/[^/]+$/,
+  /^\/media\/[^/]+\/[^/]+$/,
+];
+
+function guestProductKey(pathname) {
+  for (const re of GUEST_READ_PATHS) {
+    if (!re.test(pathname)) continue;
+    // Segment 2 is the product in both shapes: /program/:id, /media/:id/:file
+    const key = pathname.split("/")[2];
+    return key ? decodeURIComponent(key) : null;
+  }
+  return null;
+}
+
+router.use(async (req, res, next) => {
+  if (req.user) return next();
+  if (req.method === "GET") {
+    const key = guestProductKey(req.path);
+    if (key && (await isFreeAccess(key))) {
+      req.isGuest = true;
+      return next();
+    }
+  }
+  return requireAuth(req, res, next);
+});
 router.use(apiLimiter);
 
 // One row per distinct product ever purchased (so re-purchases still show a
@@ -239,10 +289,16 @@ router.get("/program/:productId", async (req, res) => {
   });
   if (!product) return res.status(404).json({ error: "Program not found" });
 
-  const isAdmin = req.user.role === "admin";
-  const entitled = await hasEntitlement(req.user.id, product.id);
+  const isAdmin = !!req.user && req.user.role === "admin";
+  const entitled = await hasEntitlement(req.user ? req.user.id : null, product.id);
   if (!entitled && !isAdmin) return res.status(403).json({ error: "You don't have access to this program" });
 
+  // A guest is entitled (the product is flagged free) but owns nothing and is
+  // nobody, so everything below that is keyed to a user is skipped. It is NOT
+  // preview: preview means "an admin looking at someone else's experience" and
+  // paints a banner saying so. A prospect must see the product exactly as a
+  // paying customer sees it, which is the whole point of the exercise.
+  const isGuest = !req.user;
   const isPreview = isAdmin && !entitled;
   if (isPreview) {
     // Fire-and-forget: an audit-trail write must never slow down or fail
@@ -258,7 +314,7 @@ router.get("/program/:productId", async (req, res) => {
   // The hero's "purchased on" / "owned since" line. Earliest paid order
   // containing this product — a re-purchase (or a gifted second copy) must
   // not make the customer look newer than they are.
-  const firstOrder = isPreview
+  const firstOrder = isPreview || isGuest
     ? null
     : await prisma.orderItem.findFirst({
         where: { productId: product.id, order: { userId: req.user.id, status: "paid" } },
@@ -272,7 +328,12 @@ router.get("/program/:productId", async (req, res) => {
   // without an entitlement never write progress: preview is a QA view of
   // someone else's experience, not their own.
   let progress = null;
-  if (!isPreview) {
+  if (isGuest) {
+    // The shape the client expects, with nothing stored and nothing written:
+    // there is no account to hang progress on, and a prospect ticking boxes
+    // must not leave rows behind.
+    progress = { completedKeys: [], lastKey: null, lastSection: null, lastOpenedAt: null };
+  } else if (!isPreview) {
     const existing = await prisma.programProgress.findUnique({
       where: { userId_productId: { userId: req.user.id, productId: product.id } },
       select: { completedKeys: true, lastKey: true, lastSection: true, lastOpenedAt: true },
@@ -430,8 +491,10 @@ router.get("/media/:productId/:fileName", async (req, res) => {
   // to escape the product's media folder.
   if (path.basename(fileName) !== fileName) return res.status(400).json({ error: "Invalid file name" });
 
-  const entitled = await hasEntitlement(req.user.id, productId);
-  if (!entitled && req.user.role !== "admin") {
+  // req.user is absent for a guest on a freeAccess product; hasEntitlement is
+  // what decides, and it is the same call the program route above makes.
+  const entitled = await hasEntitlement(req.user ? req.user.id : null, productId);
+  if (!entitled && !(req.user && req.user.role === "admin")) {
     return res.status(403).json({ error: "You don't have access to this media" });
   }
 

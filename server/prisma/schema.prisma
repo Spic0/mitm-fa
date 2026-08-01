@@ -54,8 +54,27 @@ model Product {
   imageUrl   String?
   thumbnailUrl String?
   description  String? // short description shown on shop grid/cards
-  status       String   @default("published") // "draft" | "private" | "scheduled" | "published" | "archived" | "presentation"
+  status       String   @default("published") // "draft" | "private" | "scheduled" | "published" | "archived" | "presentation" | "unlisted"
   featured     Boolean  @default(false)
+
+  // VISIBILITY and ACCESS are two different questions and these are the two
+  // different answers.
+  //
+  // `status` decides LISTING. Every public surface filters status:"published"
+  // (shop, homepage, featured, recommendations, sitemap, on-site search) and
+  // so does checkoutItems, which is why a non-published product is also
+  // unbuyable. "unlisted" therefore needs no new filtering anywhere: it is
+  // excluded everywhere by the rule that already exists.
+  //
+  // `freeAccess` decides ACCESS, which until now had exactly one source — a
+  // paid OrderItem. It grants entitlement to THIS product and nothing else,
+  // to anyone, with no order. It is deliberately NOT derived from priceCents
+  // (a product keeps its real price while being shown) and NOT from status
+  // (a draft must not become readable just for being unpublished).
+  //
+  // The pair is what a presentation product needs: unlisted so no customer
+  // can stumble into it, free so a prospect can read the real thing.
+  freeAccess   Boolean  @default(false)
   // When status is "scheduled", the moment it should flip to "published".
   // A timer sweep in src/index.js does the flip; until then "scheduled" is a
   // non-public status like any other, so nothing leaks early.

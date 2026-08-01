@@ -547,6 +547,15 @@ const KB = (b) => (b / 1024).toFixed(1) + " KB";
     await sleep(700);
   }
 
+  // The early "no JS errors" check runs before anything has been clicked, so
+  // it cannot see errors thrown by the controls. Closing the viewer mid-
+  // playback threw on every close (close() nulls the shared `video` reference
+  // and then pauses the element, landing a pause event in a handler that reads
+  // it) and nothing here noticed, because that path only became reachable once
+  // play actually worked.
+  check("no JS errors across the whole session, including the controls",
+    errs.length === 0, errs.slice(0, 3));
+
   // Live element count must stay bounded, not one per exercise.
   const live = await p.evaluate(() => document.querySelectorAll('video[data-attached="1"]').length);
   const dom = await p.evaluate(() => ({

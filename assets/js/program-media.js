@@ -387,7 +387,15 @@
       var curEl = foot.querySelector("[data-pm-cur]");
       var durEl = foot.querySelector("[data-pm-dur]");
 
+      // Both of these run from listeners bound to the <video>, and `video` is
+      // the shared reference that teardownFoot() nulls. close() tears the
+      // footer down and THEN pauses each element, so the pause event lands
+      // here after the reference is gone — a TypeError on `video.duration`
+      // every time the viewer is closed mid-playback. It only became
+      // reachable once playback could actually start; before that, pausing an
+      // already-paused element fired no event.
       function syncPlayIcon() {
+        if (!video) return;
         var playing = !video.paused && !video.ended;
         playBtn.innerHTML = playing ? ICON.pause : ICON.play;
         playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
@@ -395,6 +403,7 @@
       }
 
       function syncProgress() {
+        if (!video) return;
         var d = video.duration;
         var pct = isFinite(d) && d > 0 ? (video.currentTime / d) * 100 : 0;
         played.style.width = pct + "%";

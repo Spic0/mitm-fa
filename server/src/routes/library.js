@@ -14,6 +14,32 @@ const router = express.Router();
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "storage", "resources");
 const MEDIA_DIR = path.join(__dirname, "..", "..", "storage", "media");
 
+// X-Accel-Redirect offload for program media.
+//
+// Without it, one demo GIF costs two HTTP round trips and four DB queries:
+// /media/:productId/:fileName authorizes and 302s to /download/media/:token,
+// which authorizes AGAIN and then streams the bytes out of Node with
+// res.sendFile. Measured over a full handbook traverse of the largest real
+// program: 24 requests, ~48 queries and 1.17MB of image data pushed through
+// the event loop, for content that is immutable, UUID-named and sitting on
+// local disk — exactly what a static server exists to do.
+//
+// When MEDIA_X_ACCEL is on, the first endpoint still does the whole
+// entitlement check, then hands nginx an internal path instead of bytes. The
+// redirect and its duplicate check disappear: one request, two queries, zero
+// media bytes through Node, and nginx serves the file with sendfile().
+//
+// Off by default, and deliberately so — the offload only works behind an
+// nginx that defines the matching `internal` location (see
+// docs/media-x-accel.md). A dev run, a spare-port QA instance or anything
+// else hitting Node directly would get an empty 200 with a header no one
+// honours, so the token path below stays the fallback rather than being
+// replaced. `/download/media/:token` is also kept live regardless: tokens
+// already minted stay valid, and a <video> element re-requesting its src
+// while seeking must not start 404ing mid-scrub.
+const USE_X_ACCEL = process.env.MEDIA_X_ACCEL === "true";
+const ACCEL_MEDIA_PREFIX = "/internal-media/";
+
 router.use(requireAuth);
 router.use(apiLimiter);
 
@@ -300,9 +326,39 @@ router.get("/media/:productId/:fileName", async (req, res) => {
     }
   }
 
+  if (USE_X_ACCEL) return sendMediaViaAccel(res, productId, served);
+
   const token = mintDownloadToken("media", `${productId}/${served}`, req.user.id);
   res.redirect(`/api/library/download/media/${token}`);
 });
+
+// Hands the file off to nginx. Every header that matters for safety is set
+// here rather than in the nginx config, so the two cannot drift apart: the
+// route that authorizes the file is the one that decides how it may be
+// cached and what it is allowed to execute.
+function sendMediaViaAccel(res, productId, fileName) {
+  // Same private, short cache as the token path — the URL is scoped to one
+  // viewer and must never land in a shared cache. nginx forwards what we set
+  // here in place of its own expires/add_header directives.
+  res.set("Cache-Control", "private, max-age=60");
+
+  // SVG is the one gated media type that is both user-supplied and a
+  // scriptable document, and the token path defends it explicitly. nginx
+  // serving the bytes changes nothing about that risk, so the same two
+  // headers ride along on the accel response.
+  if (path.extname(fileName).toLowerCase() === ".svg") {
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    res.set("X-Content-Type-Options", "nosniff");
+  }
+
+  // Both segments are already validated basenames, but they become a URI that
+  // nginx re-parses, so they are encoded rather than interpolated raw — a
+  // literal '?' or '#' in a filename would otherwise truncate the path and
+  // serve the wrong file.
+  const uri = ACCEL_MEDIA_PREFIX + encodeURIComponent(productId) + "/" + encodeURIComponent(fileName);
+  res.set("X-Accel-Redirect", uri);
+  res.end();
+}
 
 router.get("/download/media/:token", async (req, res) => {
   const payload = verifyDownloadToken(req.params.token, "media");

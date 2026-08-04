@@ -60,6 +60,33 @@ function skeletonCard(colClass) {
   );
 }
 
+// Find a container by id and return the exact bounds of its inner HTML.
+//
+// This walks the div nesting instead of regex-matching up to the first
+// `</div>`. A non-greedy `([\s\S]*?)(</div>)` stops at the first CLOSING tag
+// it sees, which — for any container holding nested markup, i.e. every grid
+// here once it has cards in it — is a tag INSIDE the container, not the
+// container's own. Rewriting that partial region left the tail of the previous
+// block stranded after the new one, so each re-run stranded another copy and
+// leaked 4 unbalanced `</div>` per grid. That is what broke the four home
+// variants (-12 divs each) and shop.html (-4): the stray closers ended the
+// row early and every following column escaped into the section, which the
+// browser then reparented into a tall wall of never-filled skeletons.
+function findContainer(html, id) {
+  const m = html.match(new RegExp(`<div[^>]*id="${id}"[^>]*>`));
+  if (!m) return null;
+  const innerStart = m.index + m[0].length;
+  const tagRe = /<div\b[^>]*>|<\/div>/g;
+  tagRe.lastIndex = innerStart;
+  let depth = 1;
+  let t;
+  while ((t = tagRe.exec(html))) {
+    depth += t[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return { openTag: m[0], innerStart, innerEnd: t.index, closeTag: t[0] };
+  }
+  return null; // unbalanced source: leave it alone rather than guess
+}
+
 const files = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"));
 let touched = 0;
 
@@ -69,38 +96,34 @@ for (const file of files) {
   let changed = false;
 
   for (const [id, count] of Object.entries(GRIDS)) {
-    // Match the container and whatever it currently holds.
-    const re = new RegExp(`(<div[^>]*id="${id}"[^>]*>)([\\s\\S]*?)(</div>)`, "");
-    const m = html.match(re);
-    if (!m) continue;
+    const box = findContainer(html, id);
+    if (!box) continue;
 
-    const openTag = m[1];
-    const inner = m[2];
+    const inner = html.slice(box.innerStart, box.innerEnd);
     // Only ever replace our own generated block, never real markup.
     if (inner.trim() && !inner.includes(MARK_OPEN)) continue;
 
-    const colMatch = openTag.match(/data-col-class="([^"]+)"/);
+    const colMatch = box.openTag.match(/data-col-class="([^"]+)"/);
     const colClass = colMatch ? colMatch[1] : "col-xl-3 col-lg-4 col-md-6";
 
     const block = MARK_OPEN + Array.from({ length: count }, () => skeletonCard(colClass)).join("") + MARK_CLOSE;
     if (inner === block) continue;
 
-    html = html.replace(re, openTag + block + m[3]);
+    html = html.slice(0, box.innerStart) + block + html.slice(box.innerEnd);
     changed = true;
   }
 
   for (const [id, count] of Object.entries(STRIPS)) {
-    const re = new RegExp(`(<div[^>]*id="${id}"[^>]*>)([\\s\\S]*?)(</div>)`, "");
-    const m = html.match(re);
-    if (!m) continue;
-    const inner = m[2];
+    const box = findContainer(html, id);
+    if (!box) continue;
+    const inner = html.slice(box.innerStart, box.innerEnd);
     // The track ships with an HTML comment inside it; treat that as empty.
     const isEmpty = !inner.replace(/<!--(?!\/?skeleton)[\s\S]*?-->/g, "").trim();
     if (!isEmpty && !inner.includes(MARK_OPEN)) continue;
 
     const block = MARK_OPEN + Array.from({ length: count }, skeletonDealCard).join("") + MARK_CLOSE;
     if (inner === block) continue;
-    html = html.replace(re, m[1] + block + m[3]);
+    html = html.slice(0, box.innerStart) + block + html.slice(box.innerEnd);
     changed = true;
   }
 

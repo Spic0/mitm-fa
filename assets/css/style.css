@@ -6323,6 +6323,16 @@ body.cart-open { overflow: hidden; }
   border-right: 1px solid var(--border);
 }
 
+/* Right column wrapper (summary + extras). Needs an explicit full width
+   because .co-layout is `align-items: flex-start`, which on mobile's column
+   direction sizes cross-axis to content rather than stretching — without this
+   the summary and recommendations would shrink to their own text width. On
+   desktop this is 100% of the grid track, i.e. a no-op. */
+.co-side-col {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Right: summary */
 .co-summary-panel {
   flex: 0 0 42%;
@@ -6515,12 +6525,15 @@ body.cart-open { overflow: hidden; }
 }
 
 /* ---- Order summary (right panel) ---- */
+/* This heading names the primary content of the page, so it outranks the
+   upsell heading below it — it was a 10px muted eyebrow while "Add a little
+   extra" rendered at 15px/700 in full heading colour. */
 .co-summary__ttl {
-  font-size: 10px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 1px !important;
-  color: var(--paragraph-light) !important;
+  letter-spacing: 0.08em !important;
+  color: var(--heading-color) !important;
   margin-bottom: 14px !important;
   padding-bottom: 12px !important;
   border-bottom: 1px solid var(--border) !important;
@@ -7475,8 +7488,8 @@ button span,
 .co-order-item {
   display: flex !important;
   align-items: flex-start !important;
-  gap: 14px !important;
-  padding: 16px 0 !important;
+  gap: 16px !important;
+  padding: 20px 0 !important;
   font-size: 15px !important;
   border-bottom: 1px solid var(--border) !important;
   /* Collapse animation on remove, so a deleted row doesn't just vanish and
@@ -7487,11 +7500,14 @@ button span,
   opacity: 0;
   transform: translateX(-12px);
 }
+/* The thing being bought is the largest product image on the page. It was
+   60px while each upsell card was 144px wide — the customer's own purchase
+   rendered at under half the size of the things they hadn't bought. */
 .co-item-img {
-  width: 60px !important;
-  height: 60px !important;
+  width: 78px !important;
+  height: 78px !important;
   object-fit: cover !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   border: 1px solid var(--border) !important;
   flex-shrink: 0 !important;
 }
@@ -7504,8 +7520,8 @@ button span,
   gap: 3px;
 }
 .co-item-name {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1.35;
   color: var(--heading-color);
 }
@@ -7521,7 +7537,7 @@ button span,
   flex-shrink: 0;
 }
 .co-item-price {
-  font-size: 15px !important;
+  font-size: 17px !important;
   font-weight: 700 !important;
   color: var(--heading-color) !important;
   white-space: nowrap;
@@ -7812,18 +7828,47 @@ button span,
     grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
     align-items: start !important;
   }
-  .co-form-panel  { grid-column: 1; grid-row: 1 / span 2; }
-  .co-summary-panel { grid-column: 2; grid-row: 1; }
-  .co-extras-panel  { grid-column: 2; grid-row: 2; padding: 0 24px 40px 32px; }
+  .co-form-panel { grid-column: 1; grid-row: 1; }
+
+  /* The whole right-hand column is ONE grid item now, and it stretches to the
+     row's full height rather than shrinking to its own content. Both parts
+     matter for the sticky summary below: a sticky box can only travel inside
+     its containing block, so when the summary was itself the grid item its
+     containing block was its own grid area — its own height — and it had
+     exactly zero travel. Stretching gives it the taller of the two columns to
+     move through, which is what keeps it pinned while the form is scrolled. */
+  .co-side-col {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    min-width: 0;
+  }
+  .co-extras-panel { padding: 0 24px 40px 32px; }
 
   /* The flex sizing from the original two-panel layout has to be released
-     inside the grid: `max-width: 42%` resolved against the flex container
-     (the whole 1200px row) but resolves against the grid TRACK here, which
-     is itself 42% — leaving the summary 212px wide in a 504px column, half
-     the width of the extras block sitting directly beneath it. */
+     here: `max-width: 42%` resolved against the flex container (the whole
+     1200px row) but now resolves against .co-side-col, which is itself the
+     42% track — that would leave the summary 212px wide in a 504px column,
+     half the width of the extras block sitting directly beneath it. */
   .co-summary-panel {
     flex: initial;
     max-width: none;
+    /* Restores the stickiness the base rule always intended (it set
+       `position: sticky` at the top of this file); the grid rewrite is what
+       quietly took it away. Offset clears the checkout header, which is not
+       itself sticky, so it only needs a small breathing gap rather than the
+       header's full 57px. */
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    /* A sticky panel has content passing UNDER it, so it has to be opaque —
+       transparent, the recommendations scrolled straight through the totals.
+       And it needs to win the stacking contest outright: .co-recos__swiper is
+       `position: relative; z-index: 1`, so without a higher z-index here the
+       upsell cards paint over the pinned summary. */
+    background: var(--color-bg, #fafaf9);
+    z-index: 2;
   }
 }
 
@@ -8071,21 +8116,22 @@ button span,
    .co-recos__track below is the no-Swiper fallback — a native scroll-snap
    track, still a real horizontal swipe, never a static grid.
    -------------------------------------------------------------------- */
-.co-recos { margin: 22px 0 18px; }
+.co-recos { margin: 18px 0 14px; }
 .co-recos__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
+/* Secondary to the order summary: this is an offer, not the purchase. */
 .co-recos__ttl {
   margin: 0 !important;
   font-family: var(--montserrat);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--heading-color);
+  color: var(--paragraph);
 }
 .co-recos__hint {
   font-size: 11px;
@@ -8155,7 +8201,7 @@ button span,
   height: auto;
   /* Sized in CSS because the carousel runs slidesPerView:"auto" — this
      declaration is what decides how many cards a 390px screen shows. */
-  width: 132px;
+  width: 84px;
 }
 /* Swiper drives the track with transforms; a scroll-snap container inside it
    would fight that, so the fallback's snap behaviour is scoped to the
@@ -8164,7 +8210,7 @@ button span,
 .co-reco {
   scroll-snap-align: start;
   flex: 0 0 auto;
-  width: 132px;
+  width: 84px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -8175,18 +8221,20 @@ button span,
   transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 180ms ease;
 }
 .co-reco:active { transform: scale(0.975); }
+/* 4:3 rather than square: this is the single biggest lever on card height,
+   and height is what made the upsell strip read as the main content. */
 .co-reco__media {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   background: var(--color-surface-2);
   overflow: hidden;
 }
 .co-reco__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.co-reco__body { padding: 10px 11px 8px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; }
+.co-reco__body { padding: 8px 9px 7px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
 .co-reco__name {
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--heading-color);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--paragraph);
   /* Two lines then ellipsis, so a long plan name can't make one card
      taller than its neighbours and break the row's baseline. */
   display: -webkit-box;
@@ -8194,20 +8242,20 @@ button span,
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.co-reco__price { font-size: 13px; font-weight: 700; color: var(--heading-color); }
+.co-reco__price { font-size: 12px; font-weight: 600; color: var(--heading-color); }
 .co-reco__add {
-  margin: 0 9px 9px;
-  min-height: 38px;
+  margin: 0 7px 7px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 700;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--heading-color);
   background: var(--color-surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
   -webkit-tap-highlight-color: transparent;
@@ -8224,7 +8272,7 @@ button span,
    slightly wider cards rather than shrinking them further. */
 @media (min-width: 901px) {
   .co-recos__track { margin: 0; padding: 4px 0 12px; }
-  .co-reco { width: 144px; }
+  .co-reco { width: 84px; }
   .co-recos__swiper {
     margin: 0;
     padding: 4px 0 12px;
@@ -8233,7 +8281,7 @@ button span,
     -webkit-mask-image: none;
     mask-image: none;
   }
-  .co-recos__swiper .swiper-slide { width: 144px; }
+  .co-recos__swiper .swiper-slide { width: 84px; }
 }
 
 /* -----------------------------------------------------------------------

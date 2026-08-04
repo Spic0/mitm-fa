@@ -307,6 +307,19 @@
 
                 </div><!-- /.co-form-panel -->
 
+                <!-- The right column, as ONE element. The summary is sticky, and a
+                     sticky element can only travel within its own containing block:
+                     as a direct grid item its containing block was its own grid
+                     area, which is exactly its own height, so it had nowhere to
+                     travel and the stickiness silently did nothing. Wrapping the
+                     summary and the extras together gives it a containing block as
+                     tall as the whole column, so it now pins while the
+                     recommendations scroll underneath it. Source order is
+                     unchanged — the wrapper is display:contents-like on mobile
+                     (a plain block), so the mobile flow is still
+                     form -> summary -> extras. -->
+                <div class="co-side-col">
+
                 <!-- 3) Order summary — collapsed to a total + toggle on mobile,
                      and now BELOW the form rather than above it. Review is a
                      confirmation step, not an entry step: the shopper who has
@@ -397,6 +410,8 @@
                     </div>
                     <p class="co-ssl co-ssl--summary"><i class="fa-solid fa-lock"></i> Secured with 256-bit SSL encryption</p>
                 </aside><!-- /.co-extras-panel -->
+
+                </div><!-- /.co-side-col -->
 
             </div><!-- /.co-layout -->
         </section>

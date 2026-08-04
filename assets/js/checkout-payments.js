@@ -335,7 +335,7 @@
       var head =
         '<div class="co-recos">' +
         '<div class="co-recos__head">' +
-        '<p class="co-recos__ttl">Add a little extra</p>' +
+        '<p class="co-recos__ttl">You may also like</p>' +
         '<span class="co-recos__hint" aria-hidden="true">Swipe <i class="fa-solid fa-arrow-right-long"></i></span>' +
         "</div>";
 

@@ -6323,26 +6323,68 @@ body.cart-open { overflow: hidden; }
   border-right: 1px solid var(--border);
 }
 
-/* Right column wrapper (summary + extras). Needs an explicit full width
-   because .co-layout is `align-items: flex-start`, which on mobile's column
-   direction sizes cross-axis to content rather than stretching — without this
-   the summary and recommendations would shrink to their own text width. On
-   desktop this is 100% of the grid track, i.e. a no-op. */
+/* =====================================================================
+   CHECKOUT SIDEBAR ARCHITECTURE
+   =====================================================================
+   The right column is a flex column of three INDEPENDENT siblings:
+
+     .co-summary-panel   card 1 — product, qty, promo, totals, security
+     #checkoutRecommended card 2 — the upsell carousel (its own widget)
+     .co-trustlist        trust badges
+
+   None of them is nested inside another and none shares a height with
+   another, so no amount of content in one can push into or resize the
+   others. Spacing between them is owned here, by the column — not by
+   margins hung off the individual blocks — which is what keeps the
+   32px / 24px rhythm stable when the middle card removes itself.
+
+   Stacking is deliberate and flat; see the z-index scale in §Z below. */
 .co-side-col {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+/* Gaps, not a uniform `gap`, because the two are different: 32px isolates
+   the upsell from the purchase, 24px keeps the badges attached to it. */
+.co-side-col > .co-summary-panel { margin-bottom: 32px; }
+.co-side-col > .co-recommend { margin-bottom: 24px; }
+
+/* The card shell both widgets share. */
+.co-card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  /* A card must never be squeezed narrower than its column by a wide child
+     (the carousel track is intrinsically as wide as all its slides). */
+  min-width: 0;
 }
 
-/* Right: summary */
+/* Card 2 owns the spacing around the carousel, so the block inside it stops
+   contributing its own — otherwise the card's padding and the carousel's
+   margins stack into an off-rhythm gap. The full-bleed treatment is dropped
+   inside the card too: a card is a bounded widget, so its contents stay
+   within its padding rather than running to the panel edge. */
+.co-card--recos .co-recos { margin: 0; }
+.co-card--recos .co-recos__swiper,
+.co-card--recos .co-recos__track {
+  margin: 0;
+  padding: 4px 0 10px;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The badges are spaced by the column (24px above), so they add nothing. */
+.co-side-col > .co-trustlist {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Right: summary card */
 .co-summary-panel {
-  flex: 0 0 42%;
-  max-width: 42%;
-  padding: 32px 24px 40px 32px;
-  position: sticky;
-  top: 57px;
-  align-self: flex-start;
-  max-height: calc(100vh - 57px);
-  overflow-y: auto;
+  min-width: 0;
 }
 
 /* ---- Section blocks ---- */
@@ -6737,16 +6779,13 @@ body.cart-open { overflow: hidden; }
     border-right: none !important;
     border-bottom: 1px solid var(--border) !important;
   }
-  .co-summary-panel {
+  /* The summary is no longer the last block in the mobile flow (the badges
+     are), so it carries no sticky-bar clearance of its own — that belongs to
+     the last child, set in the sidebar's own mobile block below. Sticky is
+     scoped to the desktop media query now, so there is nothing to unset. */
+  .co-side-col {
     flex: 1 1 100% !important;
     max-width: 100% !important;
-    /* Superseded by the checkout redesign block at the end of this file,
-       which sets the summary's mobile padding and puts the clearance for the
-       fixed sticky bar on .co-extras-panel — the last element in the mobile
-       flow, and therefore the only one that can actually be overlapped. */
-    padding: 20px 16px 96px !important;
-    position: static !important;
-    max-height: none !important;
   }
   .co-hdr__inner { flex-direction: column; gap: 8px; }
   .co-row { flex-direction: column; gap: 0; }
@@ -7504,8 +7543,8 @@ button span,
    60px while each upsell card was 144px wide — the customer's own purchase
    rendered at under half the size of the things they hadn't bought. */
 .co-item-img {
-  width: 78px !important;
-  height: 78px !important;
+  width: 104px !important;
+  height: 104px !important;
   object-fit: cover !important;
   border-radius: 12px !important;
   border: 1px solid var(--border) !important;
@@ -7843,32 +7882,28 @@ button span,
     align-self: stretch;
     min-width: 0;
   }
-  .co-extras-panel { padding: 0 24px 40px 32px; }
+  /* The column's own gutter. The cards carry only their internal padding,
+     so the inset is set once here instead of being baked into each block. */
+  .co-side-col { padding: 32px 32px 40px 32px; }
 
-  /* The flex sizing from the original two-panel layout has to be released
-     here: `max-width: 42%` resolved against the flex container (the whole
-     1200px row) but now resolves against .co-side-col, which is itself the
-     42% track — that would leave the summary 212px wide in a 504px column,
-     half the width of the extras block sitting directly beneath it. */
+  /* ONLY the summary card is sticky. The recommendations and the badges are
+     ordinary flow content and scroll past it, which is why the card has to
+     be opaque and has to out-rank them — see §Z. */
   .co-summary-panel {
+    /* Releases the old two-panel flex sizing: `max-width: 42%` used to
+       resolve against the whole 1200px row, but would now resolve against
+       .co-side-col, which IS the 42% track — leaving the card half the
+       width of its own column. */
     flex: initial;
     max-width: none;
-    /* Restores the stickiness the base rule always intended (it set
-       `position: sticky` at the top of this file); the grid rewrite is what
-       quietly took it away. Offset clears the checkout header, which is not
-       itself sticky, so it only needs a small breathing gap rather than the
-       header's full 57px. */
     position: sticky;
     top: 24px;
+    /* Taller than the viewport (long carts, tax + discount rows, 200% zoom)
+       scrolls inside the card rather than letting it grow past the screen
+       and become unpinnable. */
     max-height: calc(100vh - 48px);
     overflow-y: auto;
-    /* A sticky panel has content passing UNDER it, so it has to be opaque —
-       transparent, the recommendations scrolled straight through the totals.
-       And it needs to win the stacking contest outright: .co-recos__swiper is
-       `position: relative; z-index: 1`, so without a higher z-index here the
-       upsell cards paint over the pinned summary. */
-    background: var(--color-bg, #fafaf9);
-    z-index: 2;
+    overscroll-behavior: contain;
   }
 }
 
@@ -7887,19 +7922,19 @@ button span,
        could not be swiped at all. */
     align-items: stretch !important;
   }
-  /* Belt and braces: a panel can never be wider than the phone, whatever a
+  /* Belt and braces: nothing can ever be wider than the phone, whatever a
      future child's intrinsic width turns out to be. */
   .co-form-panel,
-  .co-summary-panel,
-  .co-extras-panel {
+  .co-side-col,
+  .co-card {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
   }
   /* No `order` here on purpose: checkout.html is authored form -> summary ->
-     extras, so the natural flow IS the intended mobile sequence and paint
-     order matches focus order. Desktop rebuilds its two columns via explicit
-     grid placement above, which ignores source order entirely. */
+     recommendations -> badges, so the natural flow IS the intended mobile
+     sequence and paint order matches focus order. Desktop rebuilds its two
+     columns via explicit grid placement above, which ignores source order. */
 
   /* The form is the first thing under the logo, so it opens the page: no
      top rule, and only enough top padding to separate it from the header. */
@@ -7908,21 +7943,14 @@ button span,
     border-bottom: none !important;
   }
 
-  /* The summary is now a review step between payment and the extras. A top
-     hairline and a tinted strip separate it from the fields above without
-     giving it the visual weight of a card. */
-  .co-summary-panel {
-    padding: 4px 16px 8px !important;
-    border-top: 1px solid var(--border) !important;
-    border-bottom: 1px solid var(--border) !important;
-    background: var(--color-surface-2) !important;
-    margin-top: 18px !important;
-  }
-  .co-extras-panel {
-    /* Bottom clearance for the fixed bar is NOT set here — it belongs to the
-       footer, the actual last element in the flow. See §9. */
-    padding: 10px 16px 0 !important;
-  }
+  /* Same three-card stack as desktop, just without the sticky (which is
+     scoped to the desktop query) and on a tighter gutter. Bottom clearance
+     for the fixed CTA bar belongs to the footer, the actual last element in
+     the flow — see §9 — not to anything in here. */
+  .co-side-col { padding: 18px 16px 0 !important; }
+  .co-card { padding: 16px; border-radius: 14px; }
+  .co-side-col > .co-summary-panel { margin-bottom: 24px; }
+  .co-side-col > .co-recommend { margin-bottom: 20px; }
 
 }
 
@@ -8201,7 +8229,7 @@ button span,
   height: auto;
   /* Sized in CSS because the carousel runs slidesPerView:"auto" — this
      declaration is what decides how many cards a 390px screen shows. */
-  width: 84px;
+  width: 80px;
 }
 /* Swiper drives the track with transforms; a scroll-snap container inside it
    would fight that, so the fallback's snap behaviour is scoped to the
@@ -8210,7 +8238,7 @@ button span,
 .co-reco {
   scroll-snap-align: start;
   flex: 0 0 auto;
-  width: 84px;
+  width: 80px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -8272,7 +8300,7 @@ button span,
    slightly wider cards rather than shrinking them further. */
 @media (min-width: 901px) {
   .co-recos__track { margin: 0; padding: 4px 0 12px; }
-  .co-reco { width: 84px; }
+  .co-reco { width: 80px; }
   .co-recos__swiper {
     margin: 0;
     padding: 4px 0 12px;
@@ -8281,7 +8309,7 @@ button span,
     -webkit-mask-image: none;
     mask-image: none;
   }
-  .co-recos__swiper .swiper-slide { width: 84px; }
+  .co-recos__swiper .swiper-slide { width: 80px; }
 }
 
 /* -----------------------------------------------------------------------
@@ -8415,7 +8443,10 @@ button span,
   display: grid !important;
   grid-template-columns: 1fr 1fr;
   gap: 8px 14px !important;
-  margin: 18px 0 0 !important;
+  /* No margin of its own: the badges are the column's third block and the
+     column owns the 24px above them. A margin here stacked on top of that
+     and pushed the rhythm to 42px. */
+  margin: 0 !important;
   padding: 0 !important;
   list-style: none !important;
 }
@@ -8588,13 +8619,45 @@ button span,
 }
 
 /* Clearance for the fixed bar, which is present at all widths. It goes on the
-   LAST element in the page flow, and that is the footer — not the extras
-   panel: 112px of padding inside the panel only opened a dead gap between the
-   recommendations and the footer while still letting the footer's final rows
-   slide under the bar at the true bottom of the page. */
-.co-extras-panel { padding-bottom: 28px !important; }
+   LAST element in the page flow, and that is the footer — not anything in the
+   sidebar: padding inside a sidebar block only opens a dead gap above the
+   footer while still letting the footer's final rows slide under the bar at
+   the true bottom of the page. */
+.co-side-col { padding-bottom: 28px; }
 main.co-page ~ .footer-area {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* =======================================================================
+   §Z. CHECKOUT STACKING ORDER
+   One scale for the whole page, so "what covers what" is a decision rather
+   than an accident of source order. Every checkout component that creates a
+   stacking context is listed; anything not listed must stay `z-index: auto`
+   and simply paint in flow.
+
+   Audited against the rendered page, top to bottom:
+
+     2147483647  .pace / .loading     third-party preloader (inactive once done)
+        9999999  #preloader           site preloader
+      9999/9998  #cartDrawer/overlay  sitewide drawer — must cover the page
+             99  .scroll-up           back-to-top button
+             60  .co-stickybar        fixed CTA bar — covers page content
+             40  .co-cpanel           country dropdown — over the form, under
+                                      the CTA bar so the bar is never occluded
+             10  .co-summary-panel    the sticky card: content scrolls UNDER
+                                      it, so it must out-rank what it passes
+              1  .swiper              Swiper's own default on the carousel
+                                      root, plus two ::before/::after field
+                                      decorations
+              0  everything else      normal flow, z-index: auto
+
+   The summary sits at 10 rather than 2 to leave room above the carousel for
+   anything added later without another re-shuffle, while staying far below
+   the CTA bar and the drawer, which must always win. Verified by hit-testing
+   the pinned card's centre through a full scroll: nothing overlaps it.
+   ==================================================================== */
+@media (min-width: 901px) {
+  .co-summary-panel { z-index: 10; }
 }
 
 /* =======================================================================
@@ -8944,7 +9007,12 @@ main.co-page ~ .footer-area {
    the privacy line directly under the card fields. Desktop keeps all three.
    ======================================================================= */
 @media (max-width: 900px) {
-  .co-trustlist,
+  /* The card-brand row and the padlock line stay hidden here: on a phone they
+     sit inches from the same marks on the sticky CTA bar and the payment
+     panel, which is the repetition this block exists to remove.
+     .co-trustlist is NOT hidden — it is the third block of the mobile stack
+     (summary -> recommendations -> badges) and the only one of the three that
+     is not duplicated elsewhere on the screen. */
   .co-summary-payments,
   .co-ssl--summary { display: none !important; }
 }

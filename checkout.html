@@ -327,7 +327,7 @@
                      before tapping pay, and the shopper who has just arrived
                      wants the first field. The collapsed header keeps the total
                      one tap away from either. -->
-                <div class="co-summary-panel">
+                <div class="co-summary-panel co-card co-card--summary">
                     <div class="co-summary">
                         <!-- Mobile: a tappable header showing the total, with the
                              item list collapsed behind it (the Shopify/Stripe
@@ -373,43 +373,48 @@
                         </div>
                         </div><!-- /.co-summary__body -->
 
+                        <!-- Security information — the last thing inside the summary
+                             card, and the point the card ends at. Deliberately OUTSIDE
+                             .co-summary__body so it survives the mobile collapse: the
+                             body is what the toggle hides, and the padlock line is
+                             reassurance you want visible next to the total at the
+                             moment of paying, not something to go hunting for. -->
+                        <div class="co-summary-payments" role="list" aria-label="Accepted payment methods">
+                            <span class="card-brand visa" role="listitem">VISA</span>
+                            <span class="card-brand mc" role="listitem">MC</span>
+                            <span class="card-brand amex" role="listitem">AMEX</span>
+                            <span class="card-brand paypal" role="listitem">PayPal</span>
+                            <span class="card-brand applepay" role="listitem">Pay</span>
+                            <span class="card-brand gpay" role="listitem">GPay</span>
+                        </div>
+                        <p class="co-ssl co-ssl--summary"><i class="fa-solid fa-lock"></i> Secured with 256-bit SSL encryption</p>
+
                     </div>
-                </div><!-- /.co-summary-panel -->
+                </div><!-- /.co-summary-panel — card 1 ENDS here -->
 
-                <!-- 5) Everything that reassures or upsells, deliberately LAST in
-                     source order, so nothing promotional sits between the shopper
-                     and the fields. On desktop the grid places it back under the
-                     summary in the right-hand column. -->
-                <aside class="co-extras-panel">
+                <!-- CARD 2 — recommendations. A sibling of the summary card, never a
+                     child of it and never sharing its height: the two are independent
+                     widgets stacked by the column's own flex gap.
 
-                    <!-- "Add a little extra" — rule-based recommendations, see
-                         server/src/lib/recommendations.js. Populated by
-                         assets/js/checkout-payments.js as a looping swipe carousel
-                         (Swiper, already bundled sitewide); empty (no heading shown)
-                         until there's a cart to base picks on. -->
-                    <div id="checkoutRecommended" class="co-recommend"></div>
+                     This element IS the card (rather than a wrapper around one) so
+                     that `.co-recommend:empty` can collapse the whole thing when
+                     checkout-payments.js has no picks to show — a wrapper would
+                     leave an empty bordered box behind. That also means NO
+                     whitespace inside the tag: `:empty` counts text nodes.
 
-                    <!-- Trust indicators. Desktop-only: on mobile the flow ends at
-                         the recommendations and the sticky bar, and these are hidden
-                         (see the mobile flow block in style.css) rather than adding
-                         two more screens of scroll after the point of purchase. -->
-                    <ul class="co-trustlist">
-                        <li><i class="fa-solid fa-check"></i><span>Secure payment powered by Stripe</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>SSL encrypted checkout</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>Instant digital delivery</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>Lifetime access after purchase</span></li>
-                    </ul>
+                     Populated by assets/js/checkout-payments.js as a looping swipe
+                     carousel (Swiper, bundled sitewide); its own heading is rendered
+                     inside, from server/src/lib/recommendations.js picks. -->
+                <section id="checkoutRecommended" class="co-recommend co-card co-card--recos" aria-label="Recommended products"></section>
 
-                    <div class="co-summary-payments" role="list" aria-label="Accepted payment methods">
-                        <span class="card-brand visa" role="listitem">VISA</span>
-                        <span class="card-brand mc" role="listitem">MC</span>
-                        <span class="card-brand amex" role="listitem">AMEX</span>
-                        <span class="card-brand paypal" role="listitem">PayPal</span>
-                        <span class="card-brand applepay" role="listitem">Pay</span>
-                        <span class="card-brand gpay" role="listitem">GPay</span>
-                    </div>
-                    <p class="co-ssl co-ssl--summary"><i class="fa-solid fa-lock"></i> Secured with 256-bit SSL encryption</p>
-                </aside><!-- /.co-extras-panel -->
+                <!-- Trust indicators — the third and last block in the column, outside
+                     both cards, on every breakpoint. -->
+                <ul class="co-trustlist">
+                    <li><i class="fa-solid fa-check"></i><span>Secure payment powered by Stripe</span></li>
+                    <li><i class="fa-solid fa-check"></i><span>SSL encrypted checkout</span></li>
+                    <li><i class="fa-solid fa-check"></i><span>Instant digital delivery</span></li>
+                    <li><i class="fa-solid fa-check"></i><span>Lifetime access after purchase</span></li>
+                </ul>
 
                 </div><!-- /.co-side-col -->
 

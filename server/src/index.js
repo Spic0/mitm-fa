@@ -177,6 +177,20 @@ app.use("/partials", (req, res) => res.sendStatus(404));
 // routes/presentation.js. Same guard, same reason, as /partials above.
 app.use("/private", (req, res) => res.sendStatus(404));
 
+// The express.static mount at the bottom is rooted at the whole REPO root
+// (SITE_ROOT), not a public-assets subdirectory — so without these guards it
+// happily serves the backend itself (server/), the build tooling (tools/),
+// the VCS metadata (.git/), and internal security docs. That is a full
+// source + git-history disclosure on a production host. Same guard pattern as
+// /partials and /private above; `dotfiles:"deny"` on the static handler is
+// the paired half that closes .git/* (send@0.19.2's legacy dotfile handling
+// only checks the LAST path segment, so /.git/config would otherwise be
+// served even though /.gitignore is not).
+app.use(
+  ["/server", "/tools", "/.git", "/SECURITY_AUDIT.md", "/INCIDENT_RESPONSE.md"],
+  (req, res) => res.sendStatus(404)
+);
+
 // Private presentations: unlisted, link-only, and mounted BEFORE the static
 // handler so /presentation/:slug resolves here rather than 404ing against a
 // nonexistent file. Nothing links to these routes from anywhere on the
@@ -196,6 +210,11 @@ app.use(pagesRouter);
 // that matters; anything falling through here is revalidated every time).
 app.use(
   express.static(SITE_ROOT, {
+    // Closes every dotfile-containing path (.git/*, .env, ...). Without this,
+    // express.static leaves `dotfiles` unset, which in send@0.19.x falls back
+    // to legacy handling that only inspects the final path segment — serving
+    // /.git/config while hiding /.gitignore. "deny" 403s them all.
+    dotfiles: "deny",
     setHeaders: (res, filePath) => {
       if (/\.(?:js|css)$/.test(filePath)) {
         // `no-cache` means "revalidate before reuse", NOT "don't store": the

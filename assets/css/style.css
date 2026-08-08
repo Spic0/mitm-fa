@@ -2306,11 +2306,15 @@ input {
   background-color: #191919;
   border-bottom: unset;
 }
+/* Generic logo lockup (footer, and the auth/utility pages that reuse it).
+   Height-driven for the same reason as .header-logo above — see that rule. */
 .logo {
-  max-width: 158px;
+  display: inline-block;
 }
 .logo img {
-  width: 100%;
+  height: 30px;
+  width: auto;
+  display: block;
 }
 
 .side_bar {
@@ -4064,8 +4068,8 @@ input {
   flex-wrap: wrap;
   align-items: center;
 }
-.footer__copy-text .logo {
-  max-width: 90px;
+.footer__copy-text .logo img {
+  height: 30px;
 }
 
 /* Bottom bar — copyright on one side, legal links + payment icons on the
@@ -4157,8 +4161,8 @@ input {
 
   .footer-area .footer__item.newsletter .social-icon { margin-top: 24px !important; }
 
-  /* Logo tracks viewport width instead of sitting at a fixed 90px. */
-  .footer-area .footer__copy-text .logo { max-width: clamp(76px, 22vw, 110px); }
+  /* Logo tracks viewport height-wise; width follows the mark's aspect ratio. */
+  .footer-area .footer__copy-text .logo img { height: clamp(24px, 7vw, 30px); }
   .footer-area .footer__copy-text { justify-content: center; }
 
   /* Legal links also need real tap height, and centred wrapping avoids the
@@ -4512,16 +4516,27 @@ input {
   position: relative;
 }
 
-/* Logo */
+/* Logo.
+
+   Sized by HEIGHT, with width:auto — not the other way round. The FA mark is
+   1.79:1 where the wordmark it replaced was 2.93:1, so the old width-driven
+   rule (width:60px, height:auto) would have rendered it 33.6px tall instead of
+   20.5px and pushed the header open. Constraining the height instead pins the
+   one dimension the header's layout actually depends on and lets the width
+   fall out of the aspect ratio, which is also what keeps the mark from eating
+   horizontal room on a 320px screen.
+
+   26px sits comfortably inside the 32.8px row that .main-menu and
+   .header-actions already establish (align-items:stretch above), so the header
+   keeps its exact height. */
 .header-logo {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 60px;
 }
 .header-logo img {
-  width: 100%;
-  height: auto;
+  height: 26px;
+  width: auto;
   display: block;
 }
 
@@ -5148,10 +5163,12 @@ body.cart-open { overflow: hidden; }
   .cart-drawer { width: 100vw; }
 }
 @media (max-width: 480px) {
-  /* Mobile must never render the logo LARGER than desktop's 60px — it was
-     previously 90px here, backwards, and oversized enough relative to the
-     compact mobile header (logo + hamburger only) to clip/overflow. */
-  .header-logo { width: 48px; }
+  /* Mobile must never render the logo LARGER than desktop's 26px — it was
+     once bigger here than on desktop, backwards, and oversized enough
+     relative to the compact mobile header (logo + hamburger only) to
+     clip/overflow. 22px keeps the mark clear of the 44px hamburger while
+     leaving the row height set by that hamburger, not by the logo. */
+  .header-logo img { height: 22px; }
 }
 
 

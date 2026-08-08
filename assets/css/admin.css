@@ -65,8 +65,10 @@ body.admin-body {
   padding: 44px 36px;
   text-align: center;
 }
-.admin-auth__logo { max-width: 110px; margin: 0 auto 22px; }
-.admin-auth__logo img { width: 100%; display: block; }
+/* Height-driven, like every other logo slot on the site — see .header-logo in
+   style.css for why the FA mark must never be sized by width. */
+.admin-auth__logo { margin: 0 auto 22px; }
+.admin-auth__logo img { height: 38px; width: auto; display: block; margin: 0 auto; }
 .admin-auth__title { font-size: 20px; margin: 0 0 8px; }
 .admin-auth__subtitle { color: var(--a-text-muted); font-size: 14px; margin: 0 0 30px; line-height: 22px; }
 /* Both field types must be listed. When this rule covered only [type="email"]
@@ -105,7 +107,8 @@ body.admin-body {
 
 @media (max-width: 400px) {
   .admin-auth__card { padding: 32px 22px; }
-  .admin-auth__logo { max-width: 92px; margin-bottom: 18px; }
+  .admin-auth__logo { margin-bottom: 18px; }
+  .admin-auth__logo img { height: 32px; }
   .admin-auth__subtitle { margin-bottom: 24px; }
   .admin-auth__divider { margin: 22px 0; }
 }
@@ -210,7 +213,7 @@ body.admin-body {
   display: flex; align-items: center;
   padding: 4px 10px 28px;
 }
-.admin-sidebar__brand img { max-width: 108px; }
+.admin-sidebar__brand img { height: 28px; width: auto; display: block; }
 .admin-nav { list-style: none; margin: 0; padding: 0; }
 .admin-nav li { margin-bottom: 2px; }
 .admin-nav a {

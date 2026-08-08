@@ -415,7 +415,11 @@ function renderShowcasePage(product) {
     `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n` +
     `<meta name="robots" content="noindex, nofollow, noarchive">\n` +
     `<title>${escapeHtml(product.name)} | Fitness Agency</title>\n` +
-    `<link rel="shortcut icon" href="/assets/images/favicon.png">\n` +
+    `<link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">\n` +
+    `<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png">\n` +
+    `<link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">\n` +
+    `<link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">\n` +
+    `<meta name="theme-color" content="#fafaf9">\n` +
     `<link rel="stylesheet" href="/assets/css/presentation.css">\n` +
     `</head>\n<body class="pres-body shw-body">\n` +
     `<main class="shw">\n` +
@@ -424,6 +428,10 @@ function renderShowcasePage(product) {
     // product page, so it has to say immediately that it is not one.
     `<p class="shw-flag">Presentation material · Not for sale</p>\n` +
     `<header class="shw-head">\n` +
+    // After the "not for sale" flag, deliberately: the flag leads because the
+    // page looks like a product page and has to say straight away that it is
+    // not one. The mark identifies the source once that has landed.
+    `<img class="shw-logo" src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112">\n` +
     `<h1 class="shw-title">${escapeHtml(product.name)}</h1>\n` +
     (meta ? `<p class="shw-meta">${meta}</p>\n` : "") +
     (product.description ? `<p class="shw-lead">${escapeHtml(product.description)}</p>\n` : "") +
@@ -500,10 +508,19 @@ function renderGateScreen({ title, heading, body, formSlug }) {
     `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n` +
     `<meta name="robots" content="noindex, nofollow, noarchive">\n` +
     `<title>${escapeHtml(title)}</title>\n` +
-    `<link rel="shortcut icon" href="/assets/images/favicon.png">\n` +
+    `<link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">\n` +
+    `<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png">\n` +
+    `<link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">\n` +
+    `<link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">\n` +
+    `<meta name="theme-color" content="#fafaf9">\n` +
     `<link rel="stylesheet" href="/assets/css/presentation.css">\n` +
     `</head>\n<body class="pres-body pres-body--gate">\n` +
     `<main class="pres-gate">\n<div class="pres-gate__card">\n` +
+    // Brand first, then the padlock. The padlock is not a logo slot — it is
+    // the page's one signal that this is gated — so the mark goes above it
+    // rather than replacing it. Someone handed a bare link needs to see whose
+    // password box they are being asked to fill in.
+    `<img class="pres-gate__logo" src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112">\n` +
     `<div class="pres-gate__mark" aria-hidden="true"></div>\n` +
     `<h1 class="pres-gate__title">${escapeHtml(heading)}</h1>\n` +
     `<p class="pres-gate__body">${escapeHtml(body)}</p>\n` +

@@ -533,6 +533,7 @@ textarea:focus-visible,
    eyebrow, title, subtitle, then the supporting lines — rather than four
    things arriving at once. Runs regardless of the IntersectionObserver,
    which never fires for content already in the viewport at first paint. */
+.pres-hero__logo,
 .pres-hero__eyebrow,
 .pres-hero__title,
 .pres-hero__subtitle,
@@ -542,6 +543,15 @@ textarea:focus-visible,
 .pres-hs {
   animation: pres-rise var(--p-dur-slow) var(--p-ease-soft) both;
 }
+/* Height-driven and first in the hero's rise sequence, so the mark lands
+   before the eyebrow rather than sitting there while the rest animates in. */
+.pres-hero__logo {
+  height: clamp(30px, 4.4vw, 44px);
+  width: auto;
+  display: block;
+  margin-bottom: clamp(18px, 2.4vw, 28px);
+}
+.pres-hero__logo { animation-delay: 20ms; }
 .pres-hero__eyebrow { animation-delay: 60ms; }
 .pres-hero__title { animation-delay: 130ms; }
 /* The slogan's own two-line sequence runs at 300–520ms (see below), so the
@@ -4787,6 +4797,12 @@ textarea:focus-visible,
 }
 
 .shw-head { margin: clamp(24px, 3vw, 36px) 0 clamp(28px, 3.4vw, 44px); }
+.shw-logo {
+  height: clamp(26px, 3.2vw, 34px);
+  width: auto;
+  display: block;
+  margin-bottom: clamp(16px, 2vw, 22px);
+}
 
 .shw-title {
   font-size: clamp(34px, 5.4vw, 62px);
@@ -4944,6 +4960,14 @@ textarea:focus-visible,
   box-shadow: var(--p-shadow-lg);
   text-align: center;
   animation: pres-rise 520ms var(--p-ease-soft) both;
+}
+/* Card is text-align:center, so the auto margins are what actually centre the
+   mark — an inline-level img would only centre if it were still inline. */
+.pres-gate__logo {
+  height: 30px;
+  width: auto;
+  display: block;
+  margin: 0 auto 24px;
 }
 .pres-gate__mark {
   width: 36px;

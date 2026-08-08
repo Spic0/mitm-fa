@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Official Fitness Agency mark. Geometry is verbatim from the supplied
+     master (/var/www/FA ideja copy.svg, Illustrator export): the polygon
+     points are byte identical and nothing has been redrawn or restyled.
+
+     Two things were changed, both mechanical.
+
+     1. viewBox cropped from the master's square 0 0 1000 1000 canvas to the
+        mark's actual ink box (x 169.27 to 830.73, y 274.45 to 644.34, padded
+        0.5 on each side to clear the 1px stroke). The master centres a
+        662x371 mark on that square, so about 72 percent of it is empty.
+        Rendered into any fixed box, the padding shrinks the mark to roughly
+        half the size it should be and throws its optical alignment off
+        centre. Cropping the canvas changes no geometry and no proportion.
+     2. Explicit fill on the polygons. The master relies on the SVG default
+        fill (black) and declares only a stroke colour, which is fine in
+        Illustrator but leaves the paint unspecified to anything that
+        overrides the initial colour, notably a browser in forced dark mode,
+        and to `currentColor` if this is ever inlined. #010101 is the
+        master's own declared stroke colour, so this pins the authored
+        appearance rather than picking a new one.
+
+     Do not add a doc comment containing a double hyphen here: that is
+     illegal inside an XML comment and silently breaks the whole file, which
+     renders as a broken image rather than an error.
+
+     Every surface this lands on is light (page background #fafaf9, surface-2
+     #f2f1ee, presentation #fff), so there is deliberately no inverse
+     variant. Size it by HEIGHT, never by width: the mark is 1.79:1 where the
+     old wordmark was 2.93:1, so width driven sizing grows its height by 64
+     percent. See .header-logo in assets/css/style.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="112"
+     viewBox="168.77 273.95 662.46 370.89" role="img" aria-label="Fitness Agency">
+	<g fill="#010101" stroke="#010101" stroke-miterlimit="10">
+		<polygon points="169.27,644.34 266.12,644.34 266.12,355.85 497.94,355.85 550.49,274.45 169.27,274.45 	"/>
+		<polygon points="271.27,495.97 271.27,420.76 441.27,420.76 394.91,495.97 	"/>
+		<polygon points="370.18,644.34 623.64,274.45 830.73,644.34 731.82,644.34 608.18,420.76 476.3,644.34 	"/>
+	</g>
+</svg>

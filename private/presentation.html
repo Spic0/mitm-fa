@@ -9,7 +9,12 @@
          belt-and-braces copy for anything that only reads markup. -->
     <meta name="robots" content="noindex, nofollow, noarchive">
     <title><!--PRES_TITLE--> | Fitness Agency</title>
-    <link rel="shortcut icon" href="/assets/images/favicon.png" data-brand-favicon>
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
 
     <!-- Deliberately NOT loading bootstrap/all.min/animate/swiper the way the
          storefront pages do. This deck shares the platform's design tokens and
@@ -73,6 +78,13 @@
             <div class="pres-hero__inner">
 
                 <div class="pres-hero__copy">
+                    <!-- The deck opens on the mark. Decks are shown on someone
+                         else's screen, often out of context and with no browser
+                         chrome to say whose they are, so the first thing on the
+                         first slide should be the brand. This is also the
+                         "wordmark" the slogan comment below refers to — the
+                         slogan was placed directly under it. -->
+                    <img class="pres-hero__logo" src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112">
                     <p class="pres-eyebrow pres-hero__eyebrow"><!--PRES_EYEBROW--></p>
                     <h1 class="pres-hero__title"><!--PRES_HERO_TITLE--></h1>
 

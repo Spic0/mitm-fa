@@ -44,6 +44,10 @@
     </noscript>
     <!-- Style css -->
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <!-- Shared eyebrow / landing-slot / trust-band styles, same file the
+         homepage loads, plus this page's own section composition. -->
+    <link rel="stylesheet" href="/assets/css/brand-blocks.css">
+    <link rel="stylesheet" href="/assets/css/about.css">
 </head>
 
 <body>
@@ -121,16 +125,19 @@
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-lg-6">
-                        <div class="image position-relative">
-                            <img class="radius-10" src="/assets/images/about/about-image.jpg" alt="image">
-                            <div class="video__btn-wrp">
-                                <div class="video-btn video-pulse">
-                                    <a class="video-popup secondary-bg"
-                                        href="https://www.youtube.com/watch?v=Cn4G2lZ_g2I"><i
-                                            class="fa-solid fa-play"></i></a>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Was assets/images/about/about-image.jpg — a grey
+                             "945X726" placeholder — behind a pulsing play
+                             button whose video-popup pointed at
+                             youtube.com/watch?v=Cn4G2lZ_g2I, which is
+                             "Bangladesh In 4K - Land of Natural Beauty |
+                             Scenic Relaxation Film". The theme author left it
+                             in; it has nothing to do with this business.
+
+                             Now an operator-supplied landing slot: drop
+                             assets/images/landing/about-lead.<ext> to fill it.
+                             Empty renders the branded FA fallback. -->
+                        <div class="landing-slot about__lead" data-landing-slot="about-lead"
+                            data-landing-alt="Fitness Agency coaching"></div>
                     </div>
                     <div class="col-lg-6">
                         <div class="discount__item pl-30">
@@ -144,7 +151,14 @@
                                     generated from a template, and delivered as a guide you can start following the
                                     same day you buy it.
                                 </p>
-                                <a class="btn-one" href="/contact"><span>More About us</span></a>
+                                <!-- Was "More About us" (mixed case, breaking
+                                     the Title Case CTA rule) pointing at
+                                     /contact — a "more about us" button on the
+                                     About page, leading somewhere that is not
+                                     about us. This is the page's only CTA, so
+                                     it now goes where a convinced reader
+                                     actually wants to go. -->
+                                <a class="btn-one" href="/shop"><span>Browse All Plans</span></a>
                             </div>
                         </div>
                     </div>
@@ -153,275 +167,140 @@
         </section>
         <!-- About area end here -->
 
-        <!-- Service area start here -->
-        <section class="service-area pt-130 pb-130 bg-image" data-background="/assets/images/bg/about-bg.jpg">
-            <div class="container">
-                <div class="row g-4 align-items-center justify-content-center justify-content-lg-start">
-                    <div class="col-xl-3 col-lg-4 col-md-6">
-                        <div class="service__item mb-50">
-                            <div class="service__icon">
-                                <img src="/assets/images/icon/feature-icon1.png" alt="icon">
-                            </div>
-                            <div class="service__content">
-                                <h4>Free delivery</h4>
-                                <p>For all orders above $45</p>
-                            </div>
-                        </div>
-                        <div class="service__item">
-                            <div class="service__icon">
-                                <img src="/assets/images/icon/feature-icon2.png" alt="icon">
-                            </div>
-                            <div class="service__content">
-                                <h4>Secure payments</h4>
-                                <p>Confidence on all your devices</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-6 col-lg-4 d-none d-lg-block">
-                        <div class="service__image image">
-                            <img src="/assets/images/service/service-image.png" alt="image">
-                            <div class="section-header service-header d-flex align-items-center">
-                                <span class="title-icon mr-10"></span>
-                                <h2>Sign Up & Save 25%</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-lg-4 col-md-6">
-                        <div class="service__item mb-50">
-                            <div class="service__icon">
-                                <img src="/assets/images/icon/feature-icon3.png" alt="icon">
-                            </div>
-                            <div class="service__content">
-                                <h4>Top-notch support</h4>
-                                <p>sayhello&gazacom</p>
-                            </div>
-                        </div>
-                        <div class="service__item">
-                            <div class="service__icon">
-                                <img src="/assets/images/icon/feature-icon4.png" alt="icon">
-                            </div>
-                            <div class="service__content">
-                                <h4>180 Days Return</h4>
-                                <p>money back guranry</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Service area end here -->
+        <!-- How it works start here.
+             ================================================================
+             REPLACES the theme's "service-area", which was a vape shop's
+             fulfilment promises rendered on a fitness site:
 
-        <!-- Testimonial area start here -->
-        <section class="testimonial pt-130 pb-130">
-            <div class="container">
-                <div class="testimonial__wrp bor radius-10">
-                    <div class="testimonial__head-wrp bor-bottom pb-65 pt-65 pl-65 pr-65">
-                        <div class="section-header d-flex align-items-center">
-                            <span class="title-icon mr-10"></span>
-                            <h2>Customers Speak for Us</h2>
-                        </div>
-                        <div class="arry-btn my-4 my-lg-0">
-                            <button class="arry-prev testimonial__arry-prev"><i
-                                    class="fa-light fa-chevron-left"></i></button>
-                            <button class="ms-3 active arry-next testimonial__arry-next"><i
-                                    class="fa-light fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-                    <div class="pt-45 pb-45 pr-55">
-                        <div class="row g-4 align-items-center justify-content-between">
-                            <div class="col-lg-7">
-                                <div class="swiper testimonial__slider">
-                                    <div class="swiper-wrapper">
-                                        <div class="swiper-slide">
-                                            <div class="testimonial__item pl-65">
-                                                <div class="testi-header mb-30">
-                                                    <div class="testi-content">
-                                                        <h3>Kenneth S. Fisher</h3>
-                                                        <span>marketing manager</span>
-                                                    </div>
-                                                    <i class="fa-solid fa-quote-right"></i>
-                                                </div>
-                                                <p>posuere luctus orci. Donec vitae mattis quam, vitae tempor arcu.
-                                                    Aenean non odio porttitor, convallis erat sit amet, facilisis velit.
-                                                    Nulla ornare convallis malesuada. Phasellus molestie, ipsum ac
-                                                    fringilla.</p>
-                                                <div class="star mt-30">
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="swiper-slide">
-                                            <div class="testimonial__item pl-65">
-                                                <div class="testi-header mb-30">
-                                                    <div class="testi-content">
-                                                        <h3>Francis A. Cote</h3>
-                                                        <span>Garden Maker</span>
-                                                    </div>
-                                                    <i class="fa-solid fa-quote-right"></i>
-                                                </div>
-                                                <p>posuere luctus orci. Donec vitae mattis quam, vitae tempor arcu.
-                                                    Aenean non odio porttitor, convallis erat sit amet, facilisis velit.
-                                                    Nulla ornare convallis malesuada. Phasellus molestie, ipsum ac
-                                                    fringilla.</p>
-                                                <div class="star mt-30">
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                    <i class="fa-solid fa-star"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4">
-                                <div class="testimonial__image">
-                                    <div class="swiper testimonial__slider">
-                                        <div class="swiper-wrapper">
-                                            <div class="swiper-slide">
-                                                <img src="/assets/images/testimonial/testimonial1.png" alt="image">
-                                            </div>
-                                            <div class="swiper-slide">
-                                                <img src="/assets/images/testimonial/testimonial2.png" alt="image">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Testimonial area end here -->
+               - assets/images/service/service-image.png — a PHOTOGRAPH OF A
+                 PERSON VAPING, exhaling vapour, masked into an infinity
+                 shape. Live on this page, beside the heading below.
+               - assets/images/bg/about-bg.jpg — vape smoke, as the section
+                 background.
+               - "Free delivery — For all orders above $45". Nothing here is
+                 delivered; every product is a download.
+               - "180 Days Return — money back guranry" [sic]. No such policy
+                 exists; the footer's own Refund Policy link goes to
+                 /coming-soon.
+               - "Top-notch support — sayhello&gazacom", a corrupted
+                 placeholder email string.
+               - "Sign Up & Save 25%", a discount no promotion grants.
 
-        <!-- Blog area start here -->
-        <section class="blog pt-130 pb-130 sub-bg">
+             What replaces them are statements this codebase can actually
+             back: access is granted by a paid OrderItem which carries no
+             expiry field, checkout runs through Stripe/PayPal, and every
+             product record has a named creator. The support line points at
+             the real contact page instead of a mangled address. -->
+        <section class="how-area">
             <div class="container">
-                <div class="blog__head-wrp mb-65">
-                    <div class="section-header d-flex align-items-center">
-                        <span class="title-icon mr-10"></span>
-                        <h2>Our Latest Blog</h2>
-                    </div>
-                    <a href="/blog" class="btn-two primary-hover mt-4 mt-md-0"><span>view all blog</span></a>
+                <div class="section-header section-header--stacked mb-40 wow fadeInUp" data-wow-delay=".1s">
+                    <span class="eyebrow">How It Works</span>
+                    <h2>Buy Once, Keep It For Good</h2>
                 </div>
-                <div class="row g-4">
-                    <div class="col-xl-8">
-                        <div class="blog__item-left">
-                            <div class="swiper blog__slider">
-                                <div class="swiper-wrapper">
-                                    <div class="swiper-slide">
-                                        <div class="row g-4">
-                                            <div class="col-md-6">
-                                                <div class="blog__item-left-content">
-                                                    <span class="blog__tag">Nutrition</span>
-                                                    <h3><a href="/blog/article">How to Set Up Your Macros for Fat Loss</a></h3>
-                                                    <p>A practical guide to calculating and tracking your protein, carbs, and fats for sustainable weight loss.</p>
-                                                    <span class="blog__item-left-content-info">By <strong>Coach Alex</strong> 2
-                                                        weeks ago</span>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="image">
-                                                    <img class="radius-10" src="/assets/images/blog/blog-image2.png"
-                                                        alt="image">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide">
-                                        <div class="row g-4">
-                                            <div class="col-md-6">
-                                                <div class="blog__item-left-content">
-                                                    <span class="blog__tag">Nutrition</span>
-                                                    <h3><a href="/blog/article">How to Set Up Your Macros for Fat Loss</a></h3>
-                                                    <p>A practical guide to calculating and tracking your protein, carbs, and fats for sustainable weight loss.</p>
-                                                    <span class="blog__item-left-content-info">By <strong>Coach Alex</strong> 2
-                                                        weeks ago</span>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="image">
-                                                    <img class="radius-10" src="/assets/images/blog/blog-image3.png"
-                                                        alt="image">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="blog__item-left-dot-wrp">
-                                <div class="dot blog__dot"></div>
-                            </div>
-                        </div>
+                <div class="how-grid">
+                    <div class="how-item wow fadeInUp" data-wow-delay=".1s">
+                        <h4>Written by named coaches</h4>
+                        <p>Every plan lists the coach who wrote it. You can browse by creator and see everything
+                            they've published.</p>
                     </div>
-                    <div class="col-xl-4 d-block d-md-none d-xl-block">
-                        <div class="blog__item-right">
-                            <a href="/blog/article" class="image d-block">
-                                <img class="radius-10" src="/assets/images/blog/blog-image-sm.png" alt="image">
-                            </a>
-                            <h3><a href="/blog/article">Top 10 Exercises for a Stronger Core</a>
-                            </h3>
-                            <div class="d-flex align-items-center justify-content-between">
-                                <span class="blog__tag">Fitness</span>
-                                <span>2 weeks ago</span>
-                            </div>
-                        </div>
+                    <div class="how-item wow fadeInUp" data-wow-delay=".2s">
+                        <h4>Instant download</h4>
+                        <p>Your plan is available the moment payment clears — no waiting, nothing shipped.</p>
+                    </div>
+                    <div class="how-item wow fadeInUp" data-wow-delay=".3s">
+                        <h4>Lifetime access</h4>
+                        <p>A purchase doesn't expire and isn't a subscription. It stays in your library.</p>
+                    </div>
+                    <div class="how-item wow fadeInUp" data-wow-delay=".4s">
+                        <h4>Secure checkout</h4>
+                        <p>Payments are handled by Stripe and PayPal. Questions? <a href="/contact">Get in touch</a>.
+                        </p>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- Blog area end here -->
+        <!-- How it works end here -->
 
-        <!-- Brand area start here -->
-        <section class="brand-area pt-130 pb-130">
+        <!-- Testimonial area REMOVED 2026-08-11.
+             ================================================================
+             This page carried a "Customers Speak for Us" slider with two
+             five-star reviews attributed to "Kenneth S. Fisher, marketing
+             manager" and "Francis A. Cote, Garden Maker", both quoting the
+             same block of Lorem Ipsum ("posuere luctus orci. Donec vitae
+             mattis quam..."), beside two grey "427X371" placeholder portraits.
+
+             They were invented by the theme author, not written by customers.
+             Fabricated reviews with star ratings are not a styling problem to
+             be cleaned up — they are false statements about real people's
+             opinions, and in the UK/EU they are specifically prohibited
+             (DMCC Act 2024; UCPD Annex I). So the section is deleted outright
+             rather than restyled or left with placeholder names.
+
+             Reinstate it only with real, attributable customer quotes. The
+             platform has order data but no review model, so there is nothing
+             here to render honestly today. -->
+
+        <!-- Blog teaser start here.
+             ================================================================
+             Was a Swiper whose two slides were THE SAME ARTICLE ("How to Set
+             Up Your Macros for Fat Loss") duplicated, on grey "457X431"
+             placeholder thumbnails, beside a third "400X260" placeholder.
+
+             There is no blog data model — every article is hardcoded markup in
+             blog.html — so this teaser cannot be generated. It now links to
+             three real, distinct articles that exist on /blog, with no
+             thumbnails at all rather than dimension placeholders: a text list
+             is an honest teaser, a grey box with numbers in it is not. -->
+        <section class="blog-teaser sub-bg">
             <div class="container">
-                <div class="sub-title text-center mb-65">
-                    <h3><span class="title-icon"></span> trusted by athletes &amp; coaches <span class="title-icon"></span>
-                    </h3>
-                </div>
-                <div class="swiper brand__slider">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand1.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand2.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand3.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand4.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand5.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand6.png" alt="icon">
-                            </div>
-                        </div>
+                <div class="blog-teaser__head mb-40">
+                    <div class="section-header section-header--stacked wow fadeInUp" data-wow-delay=".1s">
+                        <span class="eyebrow">From the Blog</span>
+                        <h2>Training &amp; Nutrition Reading</h2>
                     </div>
+                    <a href="/blog" class="btn-two primary-hover mt-4 mt-md-0"><span>View All Articles</span></a>
                 </div>
+                <ul class="blog-teaser__list">
+                    <li class="wow fadeInUp" data-wow-delay=".1s">
+                        <span class="blog__tag">Nutrition</span>
+                        <h3><a href="/blog/article">How to Set Up Your Macros for Fat Loss</a></h3>
+                    </li>
+                    <li class="wow fadeInUp" data-wow-delay=".2s">
+                        <span class="blog__tag">Training</span>
+                        <h3><a href="/blog/article">Progressive Overload Explained: How to Keep Getting Stronger</a>
+                        </h3>
+                    </li>
+                    <li class="wow fadeInUp" data-wow-delay=".3s">
+                        <span class="blog__tag">Recovery</span>
+                        <h3><a href="/blog/article">Why Recovery Days Matter As Much As Training Days</a></h3>
+                    </li>
+                </ul>
             </div>
         </section>
-        <!-- Brand area end here -->
+        <!-- Blog teaser end here -->
+
+        <!-- Trust area start here. Was the identical fake-endorsement band
+             the homepage carried: lowercase "trusted by athletes & coaches"
+             above six of the vape theme's filler marks (brand1-6.png) posing
+             as organisations that trust this platform.
+
+             data-trust-autoload tells assets/js/trust-stats.js to fetch the
+             catalog for itself here; the homepage deliberately omits it,
+             because home-dynamic.js already has that data and passes it in. -->
+        <section class="trust-area" id="trustArea" data-trust-autoload>
+            <div class="container">
+                <div class="trust__head wow fadeInUp" data-wow-delay=".1s">
+                    <span class="eyebrow">Trusted by Athletes &amp; Coaches</span>
+                    <h2 class="trust__title">Built by coaches, bought by people who train</h2>
+                </div>
+                <dl class="trust__stats" id="trustStats" aria-live="polite">
+                    <!-- Counted from live data by assets/js/trust-stats.js. -->
+                </dl>
+                <p class="trust__note">Every plan on Fitness Agency is written by a named coach and sold as a
+                    downloadable guide you keep for good.</p>
+            </div>
+        </section>
+        <!-- Trust area end here -->
     </main>
 
     <!-- Footer area start here -->
@@ -533,6 +412,7 @@
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/nav-featured.js" defer></script>
+    <script src="/assets/js/trust-stats.js" defer></script>
 </body>
 
 </html>

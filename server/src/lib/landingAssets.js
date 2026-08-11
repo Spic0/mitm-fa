@@ -92,6 +92,16 @@ const SLOTS = {
     sizes: "(min-width: 992px) 380px, 92vw",
     eager: false,
   },
+  // about.html's lead image. Replaced a "945X726" grey placeholder that sat
+  // behind a play button wired to a YouTube "Scenic Relaxation Film" the theme
+  // author left in.
+  "about-lead": {
+    label: "About page lead image",
+    ratio: "4 / 3",
+    ideal: { width: 1200, height: 900 },
+    sizes: "(min-width: 992px) 560px, 92vw",
+    eager: false,
+  },
 };
 
 // Generated derivatives share the directory with their sources, so the slot

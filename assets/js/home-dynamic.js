@@ -202,58 +202,9 @@ document.addEventListener("DOMContentLoaded", function () {
     picks.forEach(function (p) { dealTrack.appendChild(dealCard(p)); });
   }
 
-  // ---- Trust stats: the social-proof section above the footer. Every
-  // number here is COUNTED from live data, never stored or authored — the
-  // section that used to sit here showed six of the vape theme's filler
-  // logos as though they were organisations endorsing the platform.
-  //
-  // A stat is only rendered when its count is at least 2, so the section
-  // can never read "1 Coach" and pass it off as proof. If nothing clears
-  // that bar the whole section is removed: no social proof is a better look
-  // than thin social proof, and inventing a number is not an option. ----
-  function renderTrustStats(products, taxonomies) {
-    if (!trustStats) return;
-
-    var coaches = {};
-    products.forEach(function (p) {
-      if (p.creator) coaches[p.creator] = true;
-    });
-
-    var sports = 0;
-    var athletes = taxonomies.find(function (t) { return t.key === "athletes"; });
-    if (athletes) sports = athletes.nodes.length;
-
-    var candidates = [
-      { value: products.length, label: products.length === 1 ? "Plan published" : "Plans published" },
-      { value: Object.keys(coaches).length, label: Object.keys(coaches).length === 1 ? "Coach" : "Coaches & creators" },
-      { value: sports, label: sports === 1 ? "Sport covered" : "Sports covered" },
-    ].filter(function (s) { return s.value >= 2; });
-
-    if (!candidates.length) {
-      if (trustSection) trustSection.remove();
-      return;
-    }
-
-    trustStats.innerHTML = "";
-    candidates.forEach(function (stat) {
-      var item = document.createElement("div");
-      item.className = "trust__stat";
-
-      var dd = document.createElement("dd");
-      dd.className = "trust__stat-value";
-      dd.textContent = String(stat.value);
-
-      var dt = document.createElement("dt");
-      dt.className = "trust__stat-label";
-      dt.textContent = stat.label;
-
-      // <dd> before <dt> visually (the number is the loud element) while the
-      // list stays a valid definition list for assistive tech.
-      item.appendChild(dd);
-      item.appendChild(dt);
-      trustStats.appendChild(item);
-    });
-  }
+  // ---- Trust stats live in assets/js/trust-stats.js, shared with about.html.
+  // It is called with the data already fetched below rather than autoloading,
+  // so the homepage does not request the catalog twice. ----
 
   Promise.all([
     peopleTrack || trustStats ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
@@ -265,7 +216,7 @@ document.addEventListener("DOMContentLoaded", function () {
     renderPeopleStrip(taxonomies);
     renderDealCards(products);
     renderHeroPrice(products);
-    renderTrustStats(products, taxonomies);
+    if (window.TrustStats) window.TrustStats.render(products, taxonomies);
   }).catch(function () {
     // Real data failed to load — hide every dynamic section rather than
     // showing stale/fake placeholders.

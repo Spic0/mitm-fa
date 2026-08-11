@@ -49,6 +49,10 @@
     </noscript>
     <!-- Style css -->
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <!-- brand-blocks.css carries the shared eyebrow/landing-slot/trust styles
+         (about.html loads it too); home-dynamic.css layers this page's own
+         section composition on top and must come after it. -->
+    <link rel="stylesheet" href="/assets/css/brand-blocks.css">
     <link rel="stylesheet" href="/assets/css/home-dynamic.css">
     <link rel="stylesheet" href="/assets/css/media-container.css">
 </head>
@@ -494,6 +498,7 @@
     <script src="/assets/js/nav-featured.js" defer></script>
     <script src="/assets/js/product-card.js" defer></script>
     <script src="/assets/js/home-products.js" defer></script>
+    <script src="/assets/js/trust-stats.js" defer></script>
     <script src="/assets/js/home-dynamic.js" defer></script>
 </body>
 

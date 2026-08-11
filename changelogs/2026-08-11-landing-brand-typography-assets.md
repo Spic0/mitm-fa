@@ -224,6 +224,49 @@ Now orphaned on disk, referenced by nothing (kept for now, pending a decision):
 `view/view-image1-3.jpg`, `bg/view-bg.jpg`. `brand/brand1-6.png` is NOT orphaned
 — `about.html` still shows those same filler marks as endorsement logos.
 
+## about.html cleaned to the same standard
+
+The About page carried the same class of content, and in places worse.
+
+**Imagery.** `service/service-image.png` is a PHOTOGRAPH OF A PERSON VAPING,
+exhaling vapour, masked into an infinity shape — live on the About page of a
+fitness company, beside a "Sign Up & Save 25%" heading. `bg/about-bg.jpg` is
+vape smoke, used as that section's background. Four more grey dimension
+placeholders: `about-image.jpg` ("945X726"), `testimonial1/2.png` ("427X371"),
+`blog-image2/3.png` ("457X431"), `blog-image-sm.png` ("400X260").
+
+**Fabricated testimonials — deleted, not restyled.** A "Customers Speak for Us"
+slider carried two five-star reviews attributed to "Kenneth S. Fisher, marketing
+manager" and "Francis A. Cote, Garden Maker", both quoting the same block of
+Lorem Ipsum. Invented by the theme author. Fabricated reviews with star ratings
+are false statements about real people's opinions and are specifically
+prohibited in the UK/EU (DMCC Act 2024; UCPD Annex I). There is no review model,
+so there is nothing to render honestly in their place.
+
+**False commerce claims** for a business that sells downloads: "Free delivery —
+For all orders above $45"; "180 Days Return — money back guranry" [sic], a
+policy nothing backs and whose footer link goes to /coming-soon; "Top-notch
+support — sayhello&gazacom", a corrupted placeholder email; "Sign Up & Save 25%".
+Replaced by four statements the codebase can back.
+
+**A tourism video.** The lead image's play button opened
+`youtube.com/watch?v=Cn4G2lZ_g2I` — "Bangladesh In 4K - Land of Natural Beauty |
+Scenic Relaxation Film", left in by the theme author.
+
+**A duplicated article.** The blog teaser's two slides were the same post twice.
+It now lists three real, distinct articles from /blog, with no thumbnails at all
+rather than dimension placeholders — a text list is an honest teaser, a grey box
+with its own pixel size printed on it is not.
+
+**Shared, not copied.** `.eyebrow`, `.landing-slot` (and its branded empty
+state) and the `.trust-*` band moved out of `home-dynamic.css` into
+`assets/css/brand-blocks.css`, which both pages load; the trust renderer moved
+into `assets/js/trust-stats.js`. The homepage passes its already-fetched data to
+`TrustStats.render()`; About carries `data-trust-autoload` and fetches for
+itself, so neither page requests the catalog twice.
+
+New slot `about-lead` (1200x900, 4:3) replaces the "945X726" placeholder.
+
 ## Not changed
 - `assets/images/footer/footer-bg.jpg` — smoke artwork, 18 pages.
 - `assets/css/critical.css` — regeneration not required; no `style.css` rule

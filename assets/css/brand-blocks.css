@@ -1,0 +1,222 @@
+/* ===========================================================================
+   FITNESS AGENCY SHARED BRAND BLOCKS
+   ===========================================================================
+   The pieces of the brand/typography/asset pass that more than one page uses:
+   the eyebrow label, the landing asset slots (including the branded empty
+   state), and the trust/social-proof band.
+
+   These started life in home-dynamic.css when only the homepage had them.
+   about.html needed the identical treatment — it carried the same fake
+   endorsement logos and the same grey dimension placeholders — and the whole
+   point of this pass is that the site reads as ONE system, so they are shared
+   rather than copied. Page-specific composition (promo tiles, the featured
+   plan showcase, the homepage product filters) stays in home-dynamic.css.
+
+   Load AFTER style.css so equal-specificity rules here win.
+   ------------------------------------------------------------------------ */
+
+/* ---- The capitalization system ------------------------------------------
+   One rule per role, applied as PRESENTATION so the DOM text stays readable
+   for assistive tech and for anyone reading the markup:
+
+     section heading   Title Case, set in the markup, no transform  (h2)
+     eyebrow / label   uppercase + tracked, via .eyebrow            (below)
+     filter / sort     uppercase + tracked, quieter than a heading  (below)
+     CTA button        Title Case, set in the markup, no transform
+     body copy         sentence case, set in the markup
+
+   The page previously mixed all five arbitrarily — a Title Case "Latest Plans
+   & Programs" sat directly beside lowercase "latest item" / "top ratting" /
+   "featured products", and the trust heading was lowercase at body weight. */
+.eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-bottom: 12px;
+}
+
+.section-header--stacked {
+  display: block;
+}
+.section-header--stacked h2 {
+  margin: 0;
+}
+
+/* ---- Landing asset slots -------------------------------------------------
+   A named, fixed-shape hole that server/src/routes/pages.js fills from
+   assets/images/landing/. THE SLOT DEFINES THE SHAPE, THE IMAGE ADAPTS —
+   the same contract media-container.css enforces for product cards, so an
+   operator dropping a portrait phone screenshot into a 16:9 slot cannot
+   change the layout.
+
+   Ratios live here rather than in the markup because the storefront CSP
+   sends `style-src-attr 'self'`: an inline style="" attribute is silently
+   dropped, so a server-injected aspect-ratio would never apply. */
+.landing-slot {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: var(--color-surface-2);
+  isolation: isolate;
+}
+.landing-slot[data-landing-slot="promo-primary"] { aspect-ratio: 16 / 9; }
+.landing-slot[data-landing-slot="promo-secondary-a"],
+.landing-slot[data-landing-slot="promo-secondary-b"] { aspect-ratio: 3 / 2; }
+.landing-slot[data-landing-slot="showcase"] { aspect-ratio: 4 / 5; }
+.landing-slot[data-landing-slot="about-lead"] { aspect-ratio: 4 / 3; }
+
+/* Legacy engines without aspect-ratio still reserve a box instead of
+   collapsing to zero height. */
+@supports not (aspect-ratio: 1) {
+  .landing-slot::before { content: ""; display: block; padding-top: 56.25%; }
+  .landing-slot[data-landing-slot="showcase"]::before { padding-top: 125%; }
+}
+
+.landing-slot picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.landing-slot__img,
+.landing-slot__backdrop,
+.landing-slot__lqip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* The tiny inline LQIP and the blurred backdrop are pure decoration and sit
+   under the real image; no fade is used, the real image simply paints over
+   them once decoded (which needs no JS and cannot get stuck at opacity 0). */
+.landing-slot__lqip {
+  object-fit: cover;
+  filter: blur(12px);
+  transform: scale(1.1);
+  z-index: 0;
+}
+.landing-slot__backdrop {
+  object-fit: cover;
+  transform: scale(1.15);
+  filter: blur(18px) saturate(1.2);
+  opacity: 0.55;
+  z-index: 1;
+}
+.landing-slot__img { z-index: 2; }
+
+/* object-fit is what keeps the source's proportions intact — the image is
+   cropped or letterboxed, never stretched. Which one is chosen per image on
+   the server from the real measured dimensions (chooseFit in
+   mediaDerivatives.js), never guessed in CSS. */
+.landing-slot--cover .landing-slot__img { object-fit: cover; object-position: center; }
+.landing-slot--contain .landing-slot__img { object-fit: contain; padding: 6%; }
+
+/* ---- The branded empty state --------------------------------------------
+   THIS IS THE RULE THAT REPLACES "410X432". A slot with no file on disk is a
+   normal, expected state, and it must look like a deliberate brand surface —
+   never like a broken image, and never like anything technical. The FA mark
+   is sized by HEIGHT only (background-size: auto <h>): the mark is 1.79:1
+   where the old theme wordmark was 2.93:1, so any width-driven rule renders
+   it 64% too tall. */
+.landing-slot:not(.is-filled) {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-2);
+}
+.landing-slot:not(.is-filled)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/assets/images/logo/fa-logo.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: auto 34px;
+  opacity: 0.14;
+}
+@media (min-width: 768px) {
+  .landing-slot:not(.is-filled)::after { background-size: auto 44px; }
+}
+
+/* ---- Trust / social proof ------------------------------------------------
+   The section the brief called out as "too small and visually insignificant".
+   The fix is hierarchy, not font-size: a quiet tracked eyebrow names the
+   claim, a real heading carries it, and the COUNTED numbers are the loud
+   element. It also gets a real top border and generous padding so it reads as
+   a deliberate closing statement leading into the footer, rather than one
+   more content row. */
+.trust-area {
+  padding-top: clamp(56px, 9vw, 100px);
+  padding-bottom: clamp(56px, 9vw, 100px);
+}
+.trust__head {
+  text-align: center;
+  max-width: 620px;
+  margin: 0 auto clamp(28px, 5vw, 44px);
+}
+.trust__title {
+  font-size: clamp(22px, 4.4vw, 32px);
+  line-height: 1.25;
+  margin: 0;
+}
+.trust__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: clamp(24px, 5vw, 40px);
+  margin: 0;
+  padding: clamp(28px, 5vw, 44px) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+/* :empty guards the pre-JS state — an empty <dl> would otherwise paint two
+   rules across the page with nothing between them. */
+.trust__stats:empty {
+  border: 0;
+  padding: 0;
+}
+.trust__stat { min-width: 0; }
+.trust__stat-value {
+  display: block;
+  margin: 0 0 6px;
+  font-family: var(--prosto-one);
+  font-size: clamp(34px, 7vw, 52px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--color-text);
+}
+.trust__stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  /* Two-word labels wrap on narrow phones; balance keeps the halves even
+     instead of leaving one orphan word under a 52px number. */
+  text-wrap: balance;
+}
+.trust__note {
+  max-width: 52ch;
+  margin: clamp(24px, 4vw, 36px) auto 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+
+/* ---- Motion -------------------------------------------------------------
+   The theme's .title-icon decoration runs two infinite 3s translate loops
+   next to section headings. Honour a reduced-motion preference rather than
+   looping forever regardless. */
+@media (prefers-reduced-motion: reduce) {
+  .title-icon::before,
+  .title-icon::after {
+    animation: none;
+  }
+}

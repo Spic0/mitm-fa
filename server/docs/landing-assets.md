@@ -1,7 +1,8 @@
 # Landing-page images: where they live and how to replace them
 
-Everything below is about the **marketing imagery on the homepage** — the promo
-tiles and the featured-plan showcase. Product covers are a different system
+Everything below is about the **marketing imagery on the homepage and the
+About page** — the promo tiles, the featured-plan showcase, and the About lead
+image. Product covers are a different system
 (admin panel upload) and are covered at the bottom.
 
 The short version:
@@ -50,6 +51,7 @@ The file must be named exactly after the slot it fills:
 | `promo-secondary-a.<ext>` | Small upper-right tile, "New to Training" | **900 × 600** | 3:2 |
 | `promo-secondary-b.<ext>` | Small lower-right tile, "Nutrition & Diet" | **900 × 600** | 3:2 |
 | `showcase.<ext>` | Featured-plan showcase image | **1200 × 1500** | 4:5 portrait |
+| `about-lead.<ext>` | About page lead image | **1200 × 900** | 4:3 |
 
 A filename that isn't a slot name is ignored, and
 `node tools/build-landing-assets.js` prints a warning naming the valid slots —

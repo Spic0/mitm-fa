@@ -421,6 +421,10 @@ for (const [route, meta] of Object.entries(PAGE_META)) {
     if (html == null) return next();
     html = await inlineHeader(html, meta.file);
     html = applyStaticSeo(html, meta, route === "/coming-soon" ? null : route);
+    // Cheap for pages with no slots: applyLandingAssets tests each slot's
+    // pattern against the template and returns immediately when none match,
+    // so this costs one regex test per slot and never touches the disk.
+    html = applyLandingAssets(html);
     res.type("html").send(html);
   });
 }

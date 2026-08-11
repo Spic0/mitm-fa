@@ -10,6 +10,7 @@ Drop files here, named exactly after the slot they fill, then run:
 | `promo-secondary-a.<ext>` | Small upper-right tile | 900 × 600 | 3:2 |
 | `promo-secondary-b.<ext>` | Small lower-right tile | 900 × 600 | 3:2 |
 | `showcase.<ext>` | Featured-plan showcase (optional — falls back to the product's own cover) | 1200 × 1500 | 4:5 |
+| `about-lead.<ext>` | About page lead image | 1200 × 900 | 4:3 |
 
 `<ext>` is one of `jpg`, `png`, `webp`, `avif`, `svg`. WebP/AVIF derivatives are
 generated for you; do not convert by hand and do not add version suffixes to the

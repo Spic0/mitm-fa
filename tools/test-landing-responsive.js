@@ -118,6 +118,48 @@ function findChrome() {
         grids.push({ id, present: true, cards: el.children.length });
       });
 
+      // Hero composition. Below 992px the brief's order is
+      // headline -> products -> CTA with no paragraph; from 992px up the
+      // original two-column desktop composition must be intact. Both are
+      // asserted from the RENDERED box positions rather than from the CSS,
+      // because the mobile order is produced by `display: contents` plus
+      // `order`, and reading the rules would not prove the boxes actually
+      // land in that sequence.
+      const heroBox = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const cs = getComputedStyle(el);
+        if (cs.display === "none") return { hidden: true };
+        const r = el.getBoundingClientRect();
+        return {
+          top: Math.round(r.top), bottom: Math.round(r.bottom),
+          left: Math.round(r.left), right: Math.round(r.right),
+          w: Math.round(r.width), align: cs.textAlign,
+        };
+      };
+      const hero = {
+        title: heroBox(".hero__title"),
+        sub: heroBox(".hero__sub"),
+        stage: heroBox(".hero__stage"),
+        actions: heroBox(".hero__actions"),
+        twoCol: getComputedStyle(document.querySelector(".hero__grid"))
+          .gridTemplateColumns.split(" ").filter(Boolean).length >= 2,
+      };
+      // Is the headline optically centred in its own box? Compare the widest
+      // rendered line's left and right gaps — `text-align: center` on a box
+      // that is itself off-centre would still look wrong.
+      const t = document.querySelector(".hero__title");
+      if (t) {
+        const rg = document.createRange();
+        rg.selectNodeContents(t);
+        const rects = [...rg.getClientRects()];
+        const tb = t.getBoundingClientRect();
+        hero.lineCount = new Set(rects.map((r) => Math.round(r.top))).size;
+        hero.centreSkew = rects.length
+          ? Math.max(...rects.map((r) => Math.abs((r.left - tb.left) - (tb.right - r.right))))
+          : 0;
+      }
+
       return {
         vw,
         scrollW: doc.scrollWidth,
@@ -127,6 +169,7 @@ function findChrome() {
         sections,
         slots,
         grids,
+        hero,
         trustStats: document.querySelectorAll(".trust__stat").length,
       };
     });
@@ -141,9 +184,31 @@ function findChrome() {
       if (sl.w === 0 || sl.h === 0) problems.push(`landing slot "${sl.name}" is ${sl.w}x${sl.h}`);
     }
 
+    // ---- hero composition -------------------------------------------------
+    const h = result.hero;
+    if (!h.title || h.title.hidden) problems.push("hero headline is missing");
+    else if (width < 992) {
+      // Phone/tablet: one column, headline -> products -> CTA, no paragraph.
+      if (!h.sub || !h.sub.hidden) problems.push("hero paragraph should be hidden below 992px");
+      if (h.title.align !== "center") problems.push(`hero headline text-align is ${h.title.align}, expected center`);
+      if (h.centreSkew > 2) problems.push(`hero headline lines are off-centre by ${h.centreSkew}px`);
+      if (h.stage && h.stage.top < h.title.bottom) problems.push("product stage is not below the headline");
+      if (h.actions && h.stage && h.actions.top < h.stage.bottom) {
+        problems.push("Explore Programs CTA is not below the product stage");
+      }
+      if (h.twoCol) problems.push("hero is still two columns below 992px");
+    } else {
+      // Desktop: the original composition. These guard the mobile work from
+      // leaking upward — the failure mode this change could plausibly cause.
+      if (!h.sub || h.sub.hidden) problems.push("hero paragraph must be visible from 992px up");
+      if (h.title.align !== "left") problems.push(`desktop hero headline text-align is ${h.title.align}, expected left`);
+      if (!h.twoCol) problems.push("desktop hero lost its two-column grid");
+    }
+
     const status = problems.length ? "FAIL" : "ok  ";
     console.log(
       `${status} ${String(width).padStart(4)}px  scrollW=${result.scrollW}  ` +
+      `hero=[${width < 992 ? "h1>stage>cta" : "2col"} lines=${result.hero.lineCount} skew=${result.hero.centreSkew}px sub=${result.hero.sub && result.hero.sub.hidden ? "hidden" : "shown"}]  ` +
       `slots=[${result.slots.map((s) => `${s.name}:${s.w}x${s.h}${s.filled ? "" : "(empty)"}`).join(" ")}]  ` +
       `trustStats=${result.trustStats}`
     );

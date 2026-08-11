@@ -59,16 +59,51 @@
   align-items: center;
 }
 
+/* PHONE ORDER: headline -> products -> CTA.
+   .hero__copy is a pure layout wrapper with no styles and no semantics of its
+   own, so `display: contents` dissolves it and promotes the headline, sub and
+   actions to grid items alongside the stage. That is what makes them
+   individually orderable without moving anything in the DOM — so the desktop
+   two-column composition, which needs copy and stage as two boxes, is restored
+   at 992px by simply putting the box back (`display: block`).
+   The alternative — reordering the markup — would have forced desktop to
+   reassemble the left column out of separated children, i.e. changing desktop
+   to fix mobile, which the brief rules out.
+   `display: contents` on a semantically-empty div is the safe case for it:
+   the historic a11y-tree bug dropped the element's own role, and this element
+   has none. */
+.hero__copy { display: contents; }
+.hero__title { order: 1; }
+.hero__stage { order: 2; }
+.hero__actions { order: 3; }
+
+/* The supporting paragraph is phone-hidden, not deleted: it still carries the
+   "written for everyday lifters" half of the promise on desktop, where there
+   is room for it. On a phone it sat between the headline and the first
+   product, which is the one place nothing should be — the products are the
+   argument, and the paragraph delayed them by ~100px of vertical space. */
+.hero__sub { display: none; }
+
 .hero__title {
   /* Uppercase is applied here rather than typed into the markup, so the DOM
      text and the accessible name stay sentence case. At three words this is
      display type and carries the caps comfortably — unlike the longer
      headlines further down the page, which stay sentence case for legibility. */
   text-transform: uppercase;
-  font-size: clamp(31px, 8.6vw, 60px);
-  line-height: 1.02;
+  font-size: clamp(29px, 7.9vw, 60px);
+  /* 1.02 was tuned for the old three-word headline, which never wrapped past
+     two lines. This one is 43 characters and sets as three lines on every
+     phone width, where 1.02 closed the caps up into a block. */
+  line-height: 1.1;
   letter-spacing: -0.025em;
-  margin: 0 0 14px;
+  margin: 0;
+  text-align: center;
+  /* Holds the measure so the three lines break in the same intentional place
+     across the whole phone range instead of re-flowing per width. `balance`
+     then evens their lengths; the cap is what stops a 430px screen setting it
+     as two long lines and a short orphan. */
+  max-width: 17ch;
+  margin-inline: auto;
   text-wrap: balance;
 }
 .hero__sub {
@@ -83,6 +118,8 @@
   flex-wrap: wrap;
   gap: 14px;
   align-items: center;
+  /* Centred under the deck, which is itself centred. */
+  justify-content: center;
 }
 /* One dominant CTA. Sized up from the sitewide .btn-one — this is the single
    most important control on the site — but deliberately still the same
@@ -251,6 +288,22 @@
     /* Header is 42px from this breakpoint up; 62px minimum clears it. */
     padding: clamp(62px, 5vw, 88px) 0 clamp(48px, 5vw, 84px);
   }
+  /* Reassemble the left column. From here up the hero is two boxes side by
+     side, so .hero__copy becomes a real grid item again and the per-child
+     ordering above stops applying (its children are no longer grid items).
+     Everything in this block restores a value the phone layout changed —
+     nothing here is new desktop design. */
+  .hero__copy { display: block; }
+  .hero__title {
+    text-align: left;
+    max-width: none;
+    margin-inline: 0;
+    margin-bottom: 14px;
+    line-height: 1.02;
+  }
+  .hero__sub { display: block; }
+  .hero__actions { justify-content: flex-start; }
+
   .hero__grid {
     grid-template-columns: 1.05fr 0.95fr;
     gap: clamp(40px, 6vw, 88px);

@@ -583,9 +583,9 @@ async function applyHeroContext(html, product) {
     const dims = cover.width && cover.height ? ` width="${cover.width}" height="${cover.height}"` : "";
     mediaHtml =
       lqip +
-      `<picture>${sources}<img class="pmedia__img" src="${escapeHtml(src)}" sizes="${HERO_SIZES}" alt="${escapeHtml(product.name)}"${dims} fetchpriority="high" decoding="async"></picture>`;
+      `<picture>${sources}<img class="pmedia__img" data-instant src="${escapeHtml(src)}" sizes="${HERO_SIZES}" alt="${escapeHtml(product.name)}"${dims} fetchpriority="high" decoding="async"></picture>`;
   } else if (src) {
-    mediaHtml = `<img class="pmedia__img" src="${escapeHtml(src)}" alt="${escapeHtml(product.name)}" fetchpriority="high" decoding="async">`;
+    mediaHtml = `<img class="pmedia__img" data-instant src="${escapeHtml(src)}" alt="${escapeHtml(product.name)}" fetchpriority="high" decoding="async">`;
   } else {
     mediaHtml = "";
   }
@@ -610,9 +610,20 @@ async function applyHeroContext(html, product) {
     // .pmedia rules in media-container.css key off .pmedia--cover /
     // .pmedia--contain / .pmedia--vector, and that is the same contract every
     // product card on the site already uses.
+    //
+    // `is-ready` (and `data-instant` on the <img> above) are the other half of
+    // that contract, and this card was missing both. .pmedia__img starts at
+    // opacity 0 and is revealed by MediaContainer.build()'s load handler — but
+    // build() never runs on THIS card: hero-slideshow.js finds a server-
+    // rendered <img> and sets dataset.attached = "1" precisely so it does not
+    // overwrite the markup the preload points at. So the hero's first card —
+    // the LCP element, preloaded and fetchpriority=high — painted invisible
+    // and only appeared when the deck first rotated onto a client-built card.
+    // Server-rendered media has no load event to wait for, which is exactly
+    // what data-instant is for.
     .replace(
       /<span class="hero-card__media pmedia"([^>]*data-hero-media[^>]*)><\/span>/,
-      `<span class="hero-card__media pmedia ${fitClass}${vectorClass}"$1>${mediaHtml}</span>`
+      `<span class="hero-card__media pmedia is-ready ${fitClass}${vectorClass}"$1>${mediaHtml}</span>`
     );
 
   result = replaceAttrInTag(result, /<a\b[^>]*data-hero-cta[^>]*>/, "href", ctaHref);

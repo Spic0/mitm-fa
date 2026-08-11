@@ -360,29 +360,102 @@
         </section>
         <!-- Featured plan showcase end here -->
 
-        <!-- Trust area start here. Was "trusted by athletes & coaches" set
-             lowercase at base <h3> size above a Swiper of six 60x65 PNGs — the
-             generic filler marks the vape theme ships — presented as
-             organisations endorsing the platform. They are not real, so they are
-             gone rather than restyled.
+        <!-- Value area start here.
+             ================================================================
+             Replaces a "Trusted by Athletes & Coaches" band that counted
+             plans, coaches and sports. Those numbers were real, but they
+             answered the wrong question: the landing page's audience is the
+             person deciding whether to BUY a plan, not a coach deciding
+             whether to publish one. Creator-side proof told a visitor nothing
+             about what they would receive or how they would use it.
 
-             The stats below are COUNTED from live data by
-             assets/js/home-dynamic.js and render only when a count is >= 2; the
-             section removes itself entirely if nothing clears that bar. -->
-        <section class="trust-area" id="trustArea">
+             This section exists to reduce purchase uncertainty — what you get,
+             how you use it, and why a structured plan beats improvising. No
+             counts, no testimonials, no trust claims; every line describes the
+             product itself.
+
+             The preview is DRAWN IN CSS, not an image: it costs no request and
+             no bytes, stays sharp at any density, and cannot go stale. Its
+             structure mirrors the real program viewer (week -> day -> exercise
+             with a `sets × reps` prescription and a demo thumbnail — see
+             trainingContent in server/prisma/schema.prisma and .pg-ex__reps in
+             assets/css/program.css). It is aria-hidden: it illustrates the
+             interface, it is not content. -->
+        <section class="value-area">
             <div class="container">
-                <div class="trust__head wow fadeInUp" data-wow-delay=".1s">
-                    <span class="eyebrow">Trusted by Athletes &amp; Coaches</span>
-                    <h2 class="trust__title">Built by coaches, bought by people who train</h2>
+                <div class="value__grid">
+                    <div class="value__intro wow fadeInUp" data-wow-delay=".1s">
+                        <span class="eyebrow">Inside Every Plan</span>
+                        <h2 class="value__title">Everything you need to follow the plan.</h2>
+                        <p class="value__lede">Your workouts, guidance and supporting materials — organized in one
+                            place so you can focus on following the plan, not figuring out what to do next.</p>
+                    </div>
+
+                    <div class="value__preview wow fadeInUp" data-wow-delay=".2s" aria-hidden="true">
+                        <div class="vp">
+                            <div class="vp__head">
+                                <span class="vp__crumb">Week 1 · Day 2</span>
+                                <span class="vp__day">Upper Body</span>
+                            </div>
+                            <ul class="vp__rows">
+                                <li class="vp__row">
+                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
+                                    <span class="vp__body">
+                                        <span class="vp__name">Barbell Bench Press</span>
+                                        <span class="vp__reps">4 × 6</span>
+                                    </span>
+                                </li>
+                                <li class="vp__row">
+                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
+                                    <span class="vp__body">
+                                        <span class="vp__name">Incline Dumbbell Press</span>
+                                        <span class="vp__reps">3 × 10</span>
+                                    </span>
+                                </li>
+                                <li class="vp__row vp__row--fade">
+                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
+                                    <span class="vp__body">
+                                        <span class="vp__name">Cable Fly</span>
+                                        <span class="vp__reps">3 × 12</span>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <dl class="trust__stats" id="trustStats" aria-live="polite">
-                    <!-- Populated by assets/js/home-dynamic.js from real counts. -->
-                </dl>
-                <p class="trust__note">Every plan on Fitness Agency is written by a named coach and sold as a
-                    downloadable guide you keep for good.</p>
+
+                <ol class="value__list">
+                    <li class="value__item wow fadeInUp" data-wow-delay=".1s">
+                        <span class="value__num">01</span>
+                        <h3 class="value__item-title">Your program</h3>
+                        <p>Follow your workouts day by day with exercises, sets, reps and progression.</p>
+                    </li>
+                    <li class="value__item wow fadeInUp" data-wow-delay=".15s">
+                        <span class="value__num">02</span>
+                        <h3 class="value__item-title">Your guidance</h3>
+                        <p>Access exercise demonstrations, coach instructions and additional resources included with
+                            your program.</p>
+                    </li>
+                    <li class="value__item wow fadeInUp" data-wow-delay=".2s">
+                        <span class="value__num">03</span>
+                        <h3 class="value__item-title">Your supporting material</h3>
+                        <p>Nutrition plans, handbooks and other resources — when included with your program.</p>
+                    </li>
+                    <li class="value__item wow fadeInUp" data-wow-delay=".25s">
+                        <span class="value__num">04</span>
+                        <h3 class="value__item-title">Your access</h3>
+                        <p>Buy once and keep access to your purchased program.</p>
+                    </li>
+                </ol>
+
+                <div class="value__cta wow fadeInUp" data-wow-delay=".2s">
+                    <a class="btn-one value__cta-btn" href="/shop">
+                        <span>Find Your Program <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                    </a>
+                </div>
             </div>
         </section>
-        <!-- Trust area end here -->
+        <!-- Value area end here -->
     </main>
 
     <!-- Footer area start here -->
@@ -498,7 +571,6 @@
     <script src="/assets/js/nav-featured.js" defer></script>
     <script src="/assets/js/product-card.js" defer></script>
     <script src="/assets/js/home-products.js" defer></script>
-    <script src="/assets/js/trust-stats.js" defer></script>
     <script src="/assets/js/home-dynamic.js" defer></script>
 </body>
 

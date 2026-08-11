@@ -267,6 +267,52 @@ itself, so neither page requests the catalog twice.
 
 New slot `about-lead` (1200x900, 4:3) replaces the "945X726" placeholder.
 
+## Landing page closing section: trust band -> customer value
+
+The homepage's trust band (counted plans / coaches / sports) is replaced by
+"Everything you need to follow the plan."
+
+The numbers were real, but they answered the wrong question. The landing page's
+audience is the person deciding whether to BUY a plan, not a coach deciding
+whether to publish one — and creator-side proof tells that visitor nothing about
+what they receive or how they use it. The section now exists to reduce purchase
+uncertainty: four numbered benefits (program / guidance / supporting material /
+access) under a plain-language promise, ending in "Find Your Program".
+
+No counts, no testimonials, no trust claims. Every line describes the product.
+
+**The preview is drawn in CSS, not an image.** It costs no request and no bytes,
+stays sharp at any density, and cannot go stale the way a screenshot would. Its
+structure mirrors the real program viewer — week/day crumb, exercise name, a
+`sets × reps` pill, a demo thumbnail — matching `trainingContent` in
+`server/prisma/schema.prisma` and `.pg-ex__reps` in `assets/css/program.css`.
+The third row fades so the card reads as a crop of something longer. It is
+`aria-hidden`: it illustrates the interface, and a screen reader announcing three
+illustrative exercise names as a real program would be misleading.
+
+Two layout bugs found while measuring, both invisible until checked:
+
+- The section ran **236% of viewport height at 320x568**. The largest single
+  cause was stacking the number above its title, which cost a line per item
+  (~108px across four). Setting them on one line — as the brief writes them,
+  "01 YOUR PROGRAM" — plus tighter padding took it to 203% (128% at 390px).
+- Body copy sat **11px lower in two of the four columns**. Each item stretches
+  to the tallest sibling and a grid's `auto` rows soak up that leftover,
+  inflating row 1 on the items with shorter copy. `align-content: start` collects
+  the slack at the bottom instead. A second, narrower case: at 992-1100px the
+  longest label wraps to two lines while the others do not, so the title box is
+  reserved at two lines across the 4-up range.
+
+Measured across 320/375/390/430/768/1024/1280/1440/1920: no horizontal overflow,
+nothing clipped, CTA 48px tall at every width (>= 44px tap target), columns
+stepping 1 -> 2 (600px) -> 4 (992px), no console errors.
+
+**about.html keeps its trust band.** It was not in scope for this change, and
+that page's context is different — it is partly about the company. The shared
+`.trust-*` styles and `assets/js/trust-stats.js` therefore stay; only the
+homepage's copy of the section is gone, and index.html no longer loads
+trust-stats.js.
+
 ## Not changed
 - `assets/images/footer/footer-bg.jpg` — smoke artwork, 18 pages.
 - `assets/css/critical.css` — regeneration not required; no `style.css` rule

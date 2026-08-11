@@ -14,9 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var marqueeList = document.getElementById("peopleMarqueeList");
   var marqueeWrapper = marqueeList ? marqueeList.closest(".people-marquee") : null;
   var heroPrice = document.getElementById("heroStartingPrice");
-  var trustStats = document.getElementById("trustStats");
-  var trustSection = document.getElementById("trustArea");
-  if (!peopleTrack && !dealTrack && !marqueeList && !heroPrice && !trustStats) return;
+  if (!peopleTrack && !dealTrack && !marqueeList && !heroPrice) return;
 
   // ---- Hero "starting price": real lowest current product price, not the
   // hardcoded (and inaccurate) "$99.00" the old hero used. Left empty
@@ -202,13 +200,9 @@ document.addEventListener("DOMContentLoaded", function () {
     picks.forEach(function (p) { dealTrack.appendChild(dealCard(p)); });
   }
 
-  // ---- Trust stats live in assets/js/trust-stats.js, shared with about.html.
-  // It is called with the data already fetched below rather than autoloading,
-  // so the homepage does not request the catalog twice. ----
-
   Promise.all([
-    peopleTrack || trustStats ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
-    dealTrack || heroPrice || marqueeList || trustStats ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
+    peopleTrack ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
+    dealTrack || heroPrice || marqueeList ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
   ]).then(function (results) {
     var taxonomies = results[0].taxonomies || [];
     var products = results[1].products || [];
@@ -216,13 +210,11 @@ document.addEventListener("DOMContentLoaded", function () {
     renderPeopleStrip(taxonomies);
     renderDealCards(products);
     renderHeroPrice(products);
-    if (window.TrustStats) window.TrustStats.render(products, taxonomies);
   }).catch(function () {
     // Real data failed to load — hide every dynamic section rather than
     // showing stale/fake placeholders.
     if (marqueeWrapper) marqueeWrapper.style.display = "none";
     if (peopleSection) peopleSection.style.display = "none";
     if (dealSection) dealSection.style.display = "none";
-    if (trustSection) trustSection.remove();
   });
 });

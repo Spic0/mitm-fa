@@ -67,6 +67,22 @@ const fail = (m) => { failures++; console.log(`  FAIL  ${m}`); };
   });
 
   for (const product of targets) {
+    // WHICH image the page actually renders first is not always the cover:
+    // shop-single.js prefers the gallery when the product has one, and only
+    // falls back to the cover. Asserting against product.cover when a gallery
+    // item is on screen tests an image that is not there — it reported Sulek
+    // as broken because its 250x250 gallery still legitimately has no
+    // derivatives (nothing smaller than the 320w tier is worth cutting).
+    const detail = await (await fetch(`${BASE}/api/products/${encodeURIComponent(product.slug)}`, {
+      headers: { "x-forwarded-proto": "https" },
+    })).json();
+    const d = detail.product || {};
+    const primary = (Array.isArray(d.media) && d.media.length)
+      ? d.media[0]
+      : { url: d.imageUrl, cover: d.cover, type: "image" };
+    const primaryCover = primary.cover || null;
+    const expectDerivatives = !!(primaryCover && primaryCover.sources && primaryCover.sources.length);
+
     // The filename of the original upload, which is what must never be fetched.
     const originalFile = (product.cover.src || product.imageUrl || "").split("/").pop();
     const originalBytes = (() => {
@@ -140,13 +156,23 @@ const fail = (m) => { failures++; console.log(`  FAIL  ${m}`); };
         continue;
       }
 
-      if (first.inPicture && first.types.includes("image/avif") && first.types.includes("image/webp")) {
+      // An image with no derivatives is a legitimate, expected state — an SVG,
+      // a GIF (never rasterised on purpose), or a still smaller than the 320w
+      // tier. The requirement there is that it degrades to a plain <img>, not
+      // that it magically gains formats that were never generated.
+      if (!expectDerivatives) {
+        ok(`primary image has no derivatives by design (${primaryCover ? `${primaryCover.width}x${primaryCover.height}${primaryCover.tiny ? ", tiny" : ""}` : "no manifest"}) — degrades to plain <img>`);
+        if (!first.inPicture) ok("rendered as a plain <img>, as intended");
+        else fail("wrapped in <picture> with no sources to offer");
+      } else if (first.inPicture && first.types.includes("image/avif") && first.types.includes("image/webp")) {
         ok(`main slide offers AVIF + WebP`);
       } else {
         fail(`main slide is not a <picture> with both formats (got ${JSON.stringify(first.types)})`);
       }
 
-      if (/-(320|640|960|1280)\.(avif|webp)$/.test(first.currentSrc)) {
+      if (!expectDerivatives) {
+        ok(`resolved to the original by design: ${first.currentSrc.split("/").pop()}`);
+      } else if (/-(320|640|960|1280)\.(avif|webp)$/.test(first.currentSrc)) {
         ok(`resolved to a derivative: ${first.currentSrc.split("/").pop()}`);
       } else {
         fail(`resolved to ${first.currentSrc.split("/").pop() || "(nothing)"} — expected a sized derivative`);
@@ -173,7 +199,9 @@ const fail = (m) => { failures++; console.log(`  FAIL  ${m}`); };
       // chosen 640w derivative look like a 234px one.
       const chosenW = Number((first.currentSrc.match(/-(\d+)\.(?:avif|webp)$/) || [])[1]) || 0;
       const need = first.w * (vp.deviceScaleFactor || 1);
-      if (!chosenW) {
+      if (!expectDerivatives) {
+        ok(`no derivative tiers to choose from — skipping size check`);
+      } else if (!chosenW) {
         fail(`could not read a width from ${first.currentSrc.split("/").pop() || "(nothing)"}`);
       } else if (chosenW >= need * 0.75 && chosenW <= need * 2.2) {
         ok(`derivative sized sensibly: ${chosenW}w for a ${first.w}px box @${vp.deviceScaleFactor || 1}x (needs ~${need}px)`);

@@ -177,8 +177,17 @@ const mb = (n) => `${(n / 1048576).toFixed(2)}MB`;
   const imgBytes = images.reduce((a, r) => a + (r.bytes || 0), 0);
 
   // Duplicates are a real defect class here — the same cover fetched twice.
+  //
+  // data: URIs are excluded. Chrome emits a requestWillBeSent for each one, so
+  // the LQIP placeholder of a product that appears in two grids on the same
+  // page counts as a "2x duplicate" — but a data: URI is inline in the markup,
+  // costs no connection and no bytes, so reporting it as a duplicate request
+  // is a false alarm that hides the real ones.
   const seen = new Map();
-  for (const r of done) seen.set(r.url, (seen.get(r.url) || 0) + 1);
+  for (const r of done) {
+    if (/^data:/.test(r.url)) continue;
+    seen.set(r.url, (seen.get(r.url) || 0) + 1);
+  }
   const dupes = [...seen.entries()].filter(([, n]) => n > 1);
 
   console.log(`\n${"=".repeat(74)}`);

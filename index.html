@@ -148,7 +148,15 @@
             <div class="container">
                 <div class="hero__grid">
                     <div class="hero__copy">
-                        <h1 class="hero__title">Train Like Your Favorite Athlete or Creator</h1>
+                        <!-- A two-part lockup, not one line of text: the small
+                             tracked kicker over the large display line is what
+                             carries the campaign tone. Uppercasing is done in
+                             CSS so the DOM text and the accessible name stay
+                             sentence case ("Train like the ones you follow"). -->
+                        <h1 class="hero__title">
+                            <span class="hero__title-lead">Train like</span>
+                            <span class="hero__title-main">the ones you follow</span>
+                        </h1>
                         <!-- The sub carries the half of the promise the headline
                              cannot: that these are the real programs behind names
                              you already follow, AND that they are written for
@@ -181,13 +189,22 @@
                             <li class="hero-card is-active" data-hero-card>
                                 <a class="hero-card__link" href="/shop" data-hero-cta>
                                     <span class="hero-card__media pmedia" data-hero-media></span>
-                                    <span class="hero-card__foot">
+                                    <!-- The caption lives INSIDE the card, so the
+                                         name can never be showing one product
+                                         while the plate shows another — they are
+                                         the same element and move together. -->
+                                    <span class="hero-card__info">
+                                        <span class="hero-card__eyebrow" data-hero-eyebrow></span>
                                         <span class="hero-card__name" data-hero-title></span>
-                                        <span class="hero-card__price" data-hero-price></span>
+                                        <span class="hero-card__meta" data-hero-meta></span>
                                     </span>
                                 </a>
                             </li>
                         </ul>
+                        <!-- One hairline per product, filled by hero-slideshow.js.
+                             Decorative: the same products are reachable in the
+                             grids below and through the CTA. -->
+                        <div class="hero__progress" data-hero-progress aria-hidden="true"></div>
                     </div>
                 </div>
             </div>

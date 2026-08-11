@@ -84,27 +84,45 @@
    argument, and the paragraph delayed them by ~100px of vertical space. */
 .hero__sub { display: none; }
 
+/* The headline is a two-part LOCKUP, not one run of text: a small tracked-out
+   kicker over a large tight display line. That size/weight/tracking contrast
+   is what makes it read as a campaign statement rather than a big bold
+   sentence — the previous 43-character headline set at one size in three even
+   lines, which is exactly the shape generic template type takes.
+   Both parts are Inter, the only family on the site. */
 .hero__title {
-  /* Uppercase is applied here rather than typed into the markup, so the DOM
-     text and the accessible name stay sentence case. At three words this is
-     display type and carries the caps comfortably — unlike the longer
-     headlines further down the page, which stay sentence case for legibility. */
-  text-transform: uppercase;
-  font-size: clamp(29px, 7.9vw, 60px);
-  /* 1.02 was tuned for the old three-word headline, which never wrapped past
-     two lines. This one is 43 characters and sets as three lines on every
-     phone width, where 1.02 closed the caps up into a block. */
-  line-height: 1.1;
-  letter-spacing: -0.025em;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
   text-align: center;
-  /* Holds the measure so the three lines break in the same intentional place
-     across the whole phone range instead of re-flowing per width. `balance`
-     then evens their lengths; the cap is what stops a 430px screen setting it
-     as two long lines and a short orphan. */
-  max-width: 17ch;
-  margin-inline: auto;
+  text-transform: uppercase;
+}
+.hero__title-lead {
+  font-size: clamp(10.5px, 2.9vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.36em;
+  /* Letter-spacing appends a trailing space after the LAST letter, which
+     shifts centred text left by half a space. Indenting by the same amount
+     puts it back on the optical centre — the detail that separates set type
+     from defaulted type. */
+  text-indent: 0.36em;
+  line-height: 1;
+  color: var(--color-text-faint);
+}
+.hero__title-main {
+  font-size: clamp(35px, 11.2vw, 68px);
+  font-weight: 800;
+  /* Display sizes need negative tracking and sub-1 leading; at this scale the
+     default spacing reads loose and accidental. */
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  /* 11ch holds "THE ONES / YOU FOLLOW" as two balanced lines at every phone
+     width instead of reflowing per device. */
+  max-width: 11ch;
   text-wrap: balance;
+  color: var(--color-text);
 }
 .hero__sub {
   font-size: clamp(15px, 1.7vw, 17px);
@@ -136,15 +154,28 @@
   font-size: 0.85em;
 }
 
-/* ---- The deck -----------------------------------------------------------
-   Three cards at most are ever visible: the active one, and one behind it on
-   each side. Everything else is display:none, so the deck's height is fixed by
-   the active card and cannot grow with the catalog. */
+/* ---- The stage ----------------------------------------------------------
+   A depth composition, not a row of cards. The deck carries a `perspective`,
+   so the flanking products are pushed BACK in Z and turned on their Y axis
+   rather than merely scaled — a real vanishing point is what stops three
+   rectangles reading as a stock carousel. At most four cards exist in the DOM
+   at once (active, its two neighbours, and one mid-exit); everything else is
+   display:none, so a 300-product catalog costs the same as a 3-product one. */
+.hero {
+  /* One source of truth for the motion, shared by the CSS below and by
+     hero-slideshow.js, which reads them so the JS timers can never drift out
+     of step with the transitions. */
+  --hero-dur: 620ms;
+  --hero-dwell: 3200ms;
+  /* Decelerating, no overshoot. A card that bounces reads as a toy; this is
+     the curve of something with mass coming to rest. */
+  --hero-ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+}
 .hero__stage {
   position: relative;
   /* Bounded so the card cannot balloon on a large phone or a tablet in
      portrait, where a 100%-width card would swallow the fold. */
-  max-width: 300px;
+  max-width: 296px;
   margin: 0 auto;
   width: 100%;
 }
@@ -153,51 +184,103 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  /* The vanishing point. Kept long: a short perspective exaggerates the
+     rotation into a fisheye, which is the difference between "depth" and
+     "3D effect". */
+  perspective: 1500px;
+  perspective-origin: 50% 45%;
   /* Every card is absolutely positioned, so the deck needs its own height for
-     them to size against. This ratio covers the WHOLE card — media plus the
-     52px foot — which is why the media box below ends up nearer 0.86:1 than
-     3:4. Fixed here, so rotating between products of wildly different cover
-     shapes cannot resize the deck. */
-  aspect-ratio: 3 / 4;
+     them to size against. This ratio covers the WHOLE card — poster plus the
+     info block — and is fixed, so rotating between products of wildly
+     different cover shapes cannot resize the deck. */
+  aspect-ratio: 0.66;
 }
 .hero-card {
   position: absolute;
   inset: 0;
   display: none;
-  /* Motion is restrained on purpose: one soft ease, no parallax, no zoom, no
-     rotation. It should register as "there are more of these" without ever
-     asking to be watched.
-
-     380ms, down from 700ms. At 700 the card was still visibly settling when
-     the eye had already arrived, which is what read as "sluggish" — the fix is
-     a shorter duration, not a different curve. The easing is unchanged and
-     deliberately decelerating, so the movement still lands softly rather than
-     snapping; only the transform/opacity pair animates, both compositor
-     properties, so the shorter window costs no extra main-thread work and
-     stays smooth on a low-end phone. */
-  transition: transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
-              opacity 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform, opacity;
+  opacity: 0;
+  /* Transform, opacity and filter only — all compositor-friendly. Nothing
+     here triggers layout, which is what keeps the sequence smooth on a
+     low-end phone while four cards move at once. */
+  transition:
+    transform var(--hero-dur) var(--hero-ease),
+    opacity var(--hero-dur) var(--hero-ease),
+    filter var(--hero-dur) var(--hero-ease);
 }
+/* Only the cards that are actually on stage render. */
 .hero-card.is-active,
 .hero-card.is-prev,
-.hero-card.is-next { display: block; }
+.hero-card.is-next,
+.hero-card.is-exit-left,
+.hero-card.is-exit-right { display: block; }
 
+/* will-change is scoped to the cards in motion rather than sitting on every
+   .hero-card forever — a permanent hint on off-stage cards keeps compositor
+   layers alive for content that is display:none. */
+.hero-card.is-active,
+.hero-card.is-prev,
+.hero-card.is-next,
+.hero-card.is-exit-left,
+.hero-card.is-exit-right { will-change: transform, opacity; }
+
+/* ACTIVE — dominant: full scale, full opacity, sharp, nearest the viewer,
+   and the only card that is interactive. */
 .hero-card.is-active {
   opacity: 1;
-  transform: none;
-  z-index: 3;
+  transform: translate3d(0, 0, 0) rotateY(0deg) scale(1);
+  filter: none;
+  z-index: 4;
+  pointer-events: auto;
 }
-/* The flanking cards read as depth, not as content: pushed back, tucked
-   behind, and mostly hidden on phones where there is no room for them. */
+/* FLANKS — depth, not content. Turned toward the centre, set back in Z, and
+   softened just enough to read as out of focus. The blur is deliberately
+   small: past ~2px it stops looking like depth of field and starts looking
+   like a smeared image. */
 .hero-card.is-prev,
 .hero-card.is-next {
-  opacity: 0.55;
+  opacity: 0.4;
+  z-index: 2;
+  pointer-events: none;
+  filter: blur(1.5px);
+}
+/* Pushed well back in Z rather than scaled down: the perspective does the
+   shrinking, which is what makes the size difference read as distance instead
+   of as two different-sized cards. -320px against a 1500px perspective puts
+   them at roughly 82% — clearly subordinate, still legible as products. */
+.hero-card.is-prev {
+  transform: translate3d(-33%, 0, -320px) rotateY(16deg) scale(1);
+}
+.hero-card.is-next {
+  transform: translate3d(33%, 0, -320px) rotateY(-16deg) scale(1);
+}
+
+/* EXIT — the card does not vanish, it keeps travelling: further out, further
+   back, turning away and dissolving. Continuing the flank's direction is what
+   makes the stack feel like a physical sequence rather than a set of states. */
+.hero-card.is-exit-left,
+.hero-card.is-exit-right {
+  opacity: 0;
   z-index: 1;
   pointer-events: none;
+  filter: blur(4px);
 }
-.hero-card.is-prev  { transform: translateX(-16%) scale(0.86); }
-.hero-card.is-next  { transform: translateX(16%) scale(0.86); }
+.hero-card.is-exit-left {
+  transform: translate3d(-66%, 0, -380px) rotateY(24deg) scale(0.9);
+}
+.hero-card.is-exit-right {
+  transform: translate3d(66%, 0, -380px) rotateY(-24deg) scale(0.9);
+}
+
+/* A card that wraps from one flank to the other (only possible with exactly
+   three products) would otherwise slide the full width of the stage behind
+   the active card. JS adds this for one frame to move it silently. */
+.hero-card.is-instant { transition: none !important; }
+
+/* Held at zero for the frame in which a card is silently placed into its slot,
+   then released so it fades up on the spot. Declared AFTER the slot rules so
+   it wins on source order at equal specificity. */
+.hero-card.is-entering { opacity: 0; }
 
 .hero-card__link {
   display: flex;
@@ -213,24 +296,46 @@
    cropped upload all render inside one fixed frame without distortion and
    without changing the layout. Only the shape is overridden here. */
 .hero-card__media.pmedia {
-  --pmedia-radius: 14px;
-  /* The deck owns the card's overall shape; the media takes whatever height is
-     left once the foot has its 52px. So the box's own aspect-ratio is cleared
-     rather than left to fight the flex height — with a definite width AND a
-     flex-resolved height, an aspect-ratio would simply be ignored, and leaving
-     it in would misdescribe what the box actually does. Net result is a media
-     box of about 0.86:1, and the image inside is object-fit'ed either way, so
-     no source is ever distorted. */
+  --pmedia-radius: 16px;
+  /* The mount. A cover that is not the plate's shape is letterboxed rather
+     than cropped or stretched, so this colour is visible around it — for a
+     RASTER cover .pmedia__backdrop fills that space with a blurred copy of the
+     artwork, but vector covers get this flat tone. media-container.css
+     defaults it to a cold #f1f1f3, which sat as a grey rectangle on this
+     section's warm #fafaf9 ground; the brand surface tone makes the same
+     letterbox read as a deliberate mat around a framed print.
+     Overridden per-image by MediaContainer when the manifest carries the
+     artwork's own dominant colour. */
+  --pmedia-bg: var(--color-surface-2);
+  /* The deck owns the card's overall shape; the poster takes whatever height
+     is left once the info block has its own. So the box's own aspect-ratio is
+     cleared rather than left to fight the flex height — with a definite width
+     AND a flex-resolved height, an aspect-ratio would simply be ignored, and
+     leaving it in would misdescribe what the box actually does. Net result is
+     a consistent ~3:4 portrait plate, identical for every product, and the
+     image inside is object-fit'ed either way, so no upload is ever distorted
+     and no upload can change the composition. */
   aspect-ratio: auto;
   min-height: 0;
   flex: 1 1 auto;
   border: 1px solid var(--color-border);
-  /* A single soft shadow lifts the active card off the light ground. It is the
-     only shadow in the section. */
-  box-shadow: 0 18px 40px -24px rgba(26, 26, 26, 0.45);
+  /* Two shadows, not one: a tight contact shadow that sits the plate on the
+     ground, and a long soft cast that gives it height. A single blurred
+     shadow is the thing that reads as a default card. */
+  box-shadow:
+    0 2px 6px -2px rgba(26, 26, 26, 0.18),
+    0 30px 60px -30px rgba(26, 26, 26, 0.55);
+  transition: box-shadow var(--hero-dur) var(--hero-ease);
 }
+/* Backgrounded plates lose the cast shadow — depth comes from the perspective
+   and the dimming, and stacked shadows behind the active card would only
+   muddy the ground. */
 .hero-card.is-prev .hero-card__media.pmedia,
-.hero-card.is-next .hero-card__media.pmedia { box-shadow: none; }
+.hero-card.is-next .hero-card__media.pmedia,
+.hero-card.is-exit-left .hero-card__media.pmedia,
+.hero-card.is-exit-right .hero-card__media.pmedia {
+  box-shadow: 0 2px 6px -3px rgba(26, 26, 26, 0.2);
+}
 
 /* .pmedia--vector insets vector art by 6% because in a 280px grid card that
    reads as deliberate framing. In the hero the card is the whole point, so the
@@ -240,37 +345,120 @@
    which is exactly why the server chose `contain` for them. */
 .hero-card .pmedia--vector .pmedia__img { padding: 2%; }
 
-.hero-card__foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  min-height: 40px; /* reserves its line before JS fills it — no shift */
+/* ---- The caption --------------------------------------------------------
+   Three tight lines under the plate, set like a magazine credit: a tracked-out
+   attribution, the title, then the commercial detail. The product name and its
+   image can never disagree because they are the SAME element — the caption
+   lives inside each card, so there is no second thing to keep in sync. */
+.hero-card__info {
+  padding-top: 14px;
+  /* Reserves all three lines before JS fills them, so the deck never shifts. */
+  min-height: 78px;
+  text-align: center;
+  /* Staggered behind the plate: the image arrives, then the words catch up.
+     Only reaches full opacity on the active card. */
+  opacity: 0;
+  transform: translateY(9px);
+  transition:
+    opacity 380ms var(--hero-ease),
+    transform 380ms var(--hero-ease);
+}
+.hero-card.is-active .hero-card__info {
+  opacity: 1;
+  transform: none;
+  /* The delay IS the micro-interaction — it reads as the caption settling
+     after the plate rather than the two sliding as one block. */
+  transition-delay: 150ms;
+}
+.hero-card__eyebrow {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em; /* optical centring, as on the headline kicker */
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  line-height: 1;
+  min-height: 10px;
 }
 .hero-card__name {
-  font-size: 14.5px;
-  font-weight: 650;
-  line-height: 1.3;
-  color: var(--color-text);
-  /* Product names vary in length; clamping keeps every card's foot the same
-     height so rotation never resizes the deck. */
   display: -webkit-box;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  color: var(--color-text);
+  /* Product names vary in length; clamping keeps every caption the same
+     height so rotation never resizes the deck. */
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.hero-card__price {
-  flex: 0 0 auto;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--color-text);
+.hero-card__meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.2;
 }
-/* The flanking previews show artwork only — their names would be unreadable at
-   55% opacity behind the active card, and would clutter what should read as
-   depth. */
-.hero-card.is-prev .hero-card__foot,
-.hero-card.is-next .hero-card__foot { visibility: hidden; }
+
+/* ---- Progress -----------------------------------------------------------
+   One hairline per product; the active one fills over exactly the dwell time,
+   so the section states how much is left rather than surprising the reader.
+   Decorative and aria-hidden — the same products are reachable in the grids
+   below and through the CTA. */
+.hero__progress {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 20px;
+}
+.hero__progress-seg {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 34px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.hero__progress-seg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-text);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.hero__progress-seg.is-done::after { transform: scaleX(1); }
+.hero__progress-seg.is-active::after {
+  animation: hero-progress var(--hero-dwell) linear forwards;
+}
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Short screens trade plate size for keeping the CTA in the fold. Keyed on
+   HEIGHT, so a normal phone at the same width is unaffected, and in two tiers
+   because one threshold cannot serve both a 740px Android and a 568px SE:
+   sizing for the shorter would needlessly shrink the plate on the taller.
+   Measured against real device viewports — see tools/.fold.js in the commit
+   history; 360x740 overshot the fold by 25px before this. */
+@media (max-height: 800px) {
+  .hero__stage { max-width: 268px; }
+  .hero { padding-top: 78px; }
+}
+@media (max-height: 700px) {
+  .hero__stage { max-width: 232px; }
+  .hero { padding-top: 74px; }
+  /* Below this the caption's third line is what pushes the CTA out; the price
+     still shows, it just sits tighter. */
+  .hero-card__info { min-height: 70px; padding-top: 11px; }
+  .hero__progress { margin-top: 14px; }
+}
 
 @media (min-width: 480px) {
   .hero__cta.btn-one { width: auto; }
@@ -278,9 +466,13 @@
 }
 
 @media (min-width: 768px) {
-  .hero__stage { max-width: 340px; }
-  .hero-card.is-prev { transform: translateX(-34%) scale(0.84); }
-  .hero-card.is-next { transform: translateX(34%) scale(0.84); }
+  .hero__stage { max-width: 348px; }
+  /* More room, so the flanks can sit wider and turn a little harder without
+     the stage clipping them. */
+  .hero-card.is-prev { transform: translate3d(-38%, 0, -230px) rotateY(17deg) scale(0.97); }
+  .hero-card.is-next { transform: translate3d(38%, 0, -230px) rotateY(-17deg) scale(0.97); }
+  .hero-card.is-exit-left { transform: translate3d(-74%, 0, -420px) rotateY(26deg) scale(0.9); }
+  .hero-card.is-exit-right { transform: translate3d(74%, 0, -420px) rotateY(-26deg) scale(0.9); }
 }
 
 @media (min-width: 992px) {
@@ -318,18 +510,32 @@
     margin: 0 auto;
   }
   .hero__sub { margin-bottom: 30px; }
+  /* Desktop is the same system, composed for the space rather than scaled up:
+     the lockup ranges left against a taller plate, and the caption ranges left
+     under it so the whole column reads as one editorial block instead of a
+     centred phone layout stretched wide. */
+  .hero__title { align-items: flex-start; text-align: left; }
+  .hero__title-main { max-width: 13ch; }
+  .hero-card__info { text-align: left; }
+  .hero__progress { justify-content: flex-start; }
+  .hero__deck { aspect-ratio: 0.7; }
+
   /* The overhang is a percentage of the CARD, but the room for it comes from
      the viewport — so at 992-1199, where the stage is nearly as wide as its
-     column, 38% put the is-next card ~48px past the right edge and it got
-     sheared by the section clip. Held to 26% here and widened again once
+     column, a wide offset puts the is-next card past the right edge and it
+     gets sheared by the section clip. Held in here and widened again once
      there is room. */
-  .hero-card.is-prev { transform: translateX(-20%) scale(0.82); }
-  .hero-card.is-next { transform: translateX(20%) scale(0.82); }
+  .hero-card.is-prev { transform: translate3d(-23%, 0, -240px) rotateY(15deg) scale(0.96); }
+  .hero-card.is-next { transform: translate3d(23%, 0, -240px) rotateY(-15deg) scale(0.96); }
+  .hero-card.is-exit-left { transform: translate3d(-50%, 0, -430px) rotateY(24deg) scale(0.88); }
+  .hero-card.is-exit-right { transform: translate3d(50%, 0, -430px) rotateY(-24deg) scale(0.88); }
 }
 
 @media (min-width: 1200px) {
-  .hero-card.is-prev { transform: translateX(-34%) scale(0.82); }
-  .hero-card.is-next { transform: translateX(34%) scale(0.82); }
+  .hero-card.is-prev { transform: translate3d(-37%, 0, -250px) rotateY(18deg) scale(0.96); }
+  .hero-card.is-next { transform: translate3d(37%, 0, -250px) rotateY(-18deg) scale(0.96); }
+  .hero-card.is-exit-left { transform: translate3d(-76%, 0, -450px) rotateY(27deg) scale(0.88); }
+  .hero-card.is-exit-right { transform: translate3d(76%, 0, -450px) rotateY(-27deg) scale(0.88); }
 }
 
 @media (min-width: 1400px) {
@@ -337,10 +543,16 @@
 }
 
 /* Reduced motion: hero-slideshow.js already stops the rotation outright, so
-   there is nothing left to animate. Clearing the transition too means the
-   single layout pass it does perform lands instantly rather than easing. */
+   there is nothing left to animate. Clearing the transitions too means the
+   single layout pass it does perform lands instantly rather than easing, and
+   the progress bar must not animate a fill for a rotation that never happens.
+   The blur/perspective composition is kept — it is a static picture, not
+   motion, and it is what the section looks like. */
 @media (prefers-reduced-motion: reduce) {
-  .hero-card { transition: none; }
+  .hero-card,
+  .hero-card__info,
+  .hero-card__media.pmedia { transition: none; }
+  .hero__progress { display: none; }
 }
 
 .people-strip-area,

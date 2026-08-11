@@ -139,16 +139,44 @@ function findChrome() {
       };
       const hero = {
         title: heroBox(".hero__title"),
+        // The lockup's alignment is set on the <h1> flex container; the two
+        // spans inherit it. Read it from the container.
+        titleAlign: (() => {
+          const el = document.querySelector(".hero__title");
+          return el ? getComputedStyle(el).textAlign : null;
+        })(),
+        // Caption fields live INSIDE each card, so image and name cannot
+        // disagree. Assert the active card actually carries all three.
+        caption: (() => {
+          const c = document.querySelector(".hero-card.is-active");
+          if (!c) return null;
+          const txt = (s) => {
+            const e = c.querySelector(s);
+            return e ? e.textContent.trim() : null;
+          };
+          return { eyebrow: txt(".hero-card__eyebrow"), name: txt(".hero-card__name"), meta: txt(".hero-card__meta") };
+        })(),
         sub: heroBox(".hero__sub"),
         stage: heroBox(".hero__stage"),
         actions: heroBox(".hero__actions"),
         twoCol: getComputedStyle(document.querySelector(".hero__grid"))
           .gridTemplateColumns.split(" ").filter(Boolean).length >= 2,
       };
-      // Is the headline optically centred in its own box? Compare the widest
-      // rendered line's left and right gaps — `text-align: center` on a box
-      // that is itself off-centre would still look wrong.
-      const t = document.querySelector(".hero__title");
+      // Is the headline centred in its own box? Compare each rendered line's
+      // left and right gaps — `text-align: center` on a box that is itself
+      // off-centre would still look wrong.
+      //
+      // Measured on .hero__title-main, the display line, NOT the whole <h1>.
+      // The <h1> also contains the tracked-out kicker, which carries a
+      // deliberate `text-indent` equal to its letter-spacing: letter-spacing
+      // appends a trailing space after the final letter, so a raw-centred
+      // kicker has its GLYPHS sitting half a space left of centre. In a
+      // shrink-to-fit centred box the indent widens the box as well as
+      // offsetting the text, so the net effect is the required half-space
+      // nudge. getClientRects reports the advance box, which therefore reads
+      // as ~4px "off-centre" precisely WHEN the ink is correct — measuring it
+      // would fail the fix and pass the bug.
+      const t = document.querySelector(".hero__title-main") || document.querySelector(".hero__title");
       if (t) {
         const rg = document.createRange();
         rg.selectNodeContents(t);
@@ -190,7 +218,7 @@ function findChrome() {
     else if (width < 992) {
       // Phone/tablet: one column, headline -> products -> CTA, no paragraph.
       if (!h.sub || !h.sub.hidden) problems.push("hero paragraph should be hidden below 992px");
-      if (h.title.align !== "center") problems.push(`hero headline text-align is ${h.title.align}, expected center`);
+      if (h.titleAlign !== "center") problems.push(`hero headline text-align is ${h.titleAlign}, expected center`);
       if (h.centreSkew > 2) problems.push(`hero headline lines are off-centre by ${h.centreSkew}px`);
       if (h.stage && h.stage.top < h.title.bottom) problems.push("product stage is not below the headline");
       if (h.actions && h.stage && h.actions.top < h.stage.bottom) {
@@ -201,8 +229,17 @@ function findChrome() {
       // Desktop: the original composition. These guard the mobile work from
       // leaking upward — the failure mode this change could plausibly cause.
       if (!h.sub || h.sub.hidden) problems.push("hero paragraph must be visible from 992px up");
-      if (h.title.align !== "left") problems.push(`desktop hero headline text-align is ${h.title.align}, expected left`);
+      if (h.titleAlign !== "left") problems.push(`desktop hero headline text-align is ${h.titleAlign}, expected left`);
       if (!h.twoCol) problems.push("desktop hero lost its two-column grid");
+    }
+
+    // The caption is the hero's product identity — a card with a plate but no
+    // name is the failure this structure exists to prevent.
+    if (!h.caption) problems.push("no active hero card");
+    else {
+      if (!h.caption.name) problems.push("active hero card has no product name");
+      if (!h.caption.eyebrow) problems.push("active hero card has no attribution eyebrow");
+      if (!h.caption.meta) problems.push("active hero card has no price/meta line");
     }
 
     const status = problems.length ? "FAIL" : "ok  ";

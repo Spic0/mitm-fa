@@ -550,6 +550,34 @@ function applyShowcaseContext(html, product) {
   return result;
 }
 
+// Hero caption fields.
+//
+// KEEP IN STEP WITH the identical pair in assets/js/hero-slideshow.js. The
+// server renders card 0 for crawlers and no-JS visitors; the client renders
+// every other card from GET /api/products. Two renderers of the same data is
+// exactly the shape of bug this codebase has hit before, so
+// tools/test-landing-responsive.js asserts that the server-rendered caption
+// still matches the client-rendered one for the same product.
+//
+// The eyebrow is the ATTRIBUTION — "train like the ones you follow" only means
+// anything if the name behind the program is the first thing read. It falls
+// back to difficulty when the creator's name is already inside the product
+// title, because "SAM SULEK / Sam Sulek Strength & Size Peak" reads as a
+// stutter rather than a credit.
+function heroEyebrow(product) {
+  const creator = (product.creator || "").trim();
+  const name = (product.name || "").toLowerCase();
+  if (creator && !name.includes(creator.toLowerCase())) return creator;
+  if (product.difficulty) return product.difficulty;
+  return creator || "Training program";
+}
+
+function heroMeta(product) {
+  const parts = [formatProductPrice(product.priceCents)];
+  if (product.durationWeeks) parts.push(`${product.durationWeeks} weeks`);
+  return parts.join("  ·  ");
+}
+
 async function applyHeroContext(html, product) {
   if (process.env.APP_URL) {
     html = html.replace("<!--HOME_CANONICAL-->", `<link rel="canonical" href="${appUrl("/")}">`);
@@ -605,7 +633,8 @@ async function applyHeroContext(html, product) {
   let result = html
     .replace(/(<section class="hero" data-hero-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
     .replace(/(<span[^>]*data-hero-title[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(product.name)}$2`)
-    .replace(/(<span[^>]*data-hero-price[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(formatProductPrice(product.priceCents))}$2`)
+    .replace(/(<span[^>]*data-hero-eyebrow[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(heroEyebrow(product))}$2`)
+    .replace(/(<span[^>]*data-hero-meta[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(heroMeta(product))}$2`)
     // The fit modifier goes on the CLASS LIST, not a data attribute — the
     // .pmedia rules in media-container.css key off .pmedia--cover /
     // .pmedia--contain / .pmedia--vector, and that is the same contract every

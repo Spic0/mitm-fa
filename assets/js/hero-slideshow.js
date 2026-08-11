@@ -1,52 +1,63 @@
-// Homepage hero deck: an auto-rotating stack of real product cards, driven
-// entirely by GET /api/products + GET /api/taxonomy. No hardcoded products,
-// images or copy. Card 0 is server-rendered (applyHeroContext in
-// server/src/routes/pages.js) so crawlers and no-JS visitors get a real
-// product with a real link; this script recognises it by data-hero-id and
-// reuses it rather than re-rendering a duplicate.
+// Homepage hero: a depth stack of real product cards, driven entirely by
+// GET /api/products + GET /api/taxonomy. No hardcoded products, images or copy.
+// Card 0 is server-rendered (applyHeroContext in server/src/routes/pages.js) so
+// crawlers and no-JS visitors get a real product with a real link; this script
+// recognises it by data-hero-id and reuses it rather than re-rendering a
+// duplicate.
 //
-// WHAT CHANGED, AND WHY IT MATTERS
+// THE MOTION SYSTEM
 //
-// This used to render each product as a full-bleed background at blur(22px)
-// brightness(0.55) under a dark scrim. The product was unrecognisable — which
-// defeated the point of showing products at all — and the <h1> over it was the
-// product NAME, swapping every 6s, so the page never stated what the business
-// sells. The headline and supporting copy are now fixed brand copy in the
-// markup, and this file only manages the deck.
+// Cards are not animated individually. There are four SLOTS — prev, active,
+// next, and a transient exit — and a card is only ever assigned to a slot. All
+// geometry (position, Z depth, Y rotation, scale, blur, opacity, shadow) lives
+// in home-dynamic.css against those slot classes, and every change is a class
+// swap that the browser tweens. That is what makes the sequence coherent:
+// the card leaving the stack and the card arriving are running the same
+// transition on the same properties at the same time, so they read as one
+// movement rather than two animations that happen to overlap.
 //
-// Depth now comes from scale and opacity on the neighbouring cards. The active
-// card is never blurred, never dimmed and never scaled down.
+//   forward:  active -> prev -> exit-left        next -> active
+//   backward: active -> next -> exit-right       prev -> active
+//
+// A card only EXITS when it falls out of the window entirely, so with 4+
+// products the visitor watches a continuous flow of plates travelling through
+// the stack rather than three elements swapping states.
 //
 // Rotation is plain JS (setTimeout + an index), not the vendored Swiper.
 // Swiper 8.3.2's `effect: "fade"` only animates between physically-adjacent
 // slides; autoplay's wrap from last to first is a non-adjacent jump whose
 // `transitionend` never fires, which leaves Swiper's internal `animating` flag
 // stuck true and silently no-ops every later tick. That was the original
-// "hero stops after two products" bug. A small manual carousel avoids it.
+// "hero stops after two products" bug. A small manual carousel avoids it, and
+// is also what keeps the DOM bounded — see WINDOW below.
 document.addEventListener("DOMContentLoaded", function () {
-  // Dwell time per card, in ms. 6000 was long enough that the deck read as
-  // static — a visitor who glanced away came back to the same card. 3400 is
-  // set against what the card actually has to communicate: a product name, a
-  // price and one image. Read-rate research puts a short phrase plus a glance
-  // at an image comfortably under 3s, so this leaves headroom without stalling.
-  //
-  // Deliberately NOT lower: below ~2.5s the deck starts changing while the eye
-  // is still resolving the name, which produces the "I can't tell what any of
-  // these are" failure — faster, but strictly worse at selling anything.
-  //
-  // The 380ms CSS transition (home-dynamic.css) runs INSIDE this window, so
-  // the card is fully settled for ~3s of the 3.4s.
-  var DELAY = 3400;
-  var SIZES = "(min-width: 992px) 420px, (min-width: 576px) 320px, 62vw";
-  // How many cards on each side of the active one get their image attached.
-  // Only the active card and its two immediate neighbours are ever visible, so
-  // a wider window would download bytes nothing can display. This is what
-  // keeps a 300-product catalog from meaning 300 hero images.
-  var WINDOW = 1;
-
   var section = document.querySelector(".hero");
   var deck = document.getElementById("heroDeck");
   if (!section || !deck || !window.ProFitAPI || !window.MediaContainer) return;
+
+  // Timings are declared ONCE, in CSS (.hero), and read back here. Duplicating
+  // them as JS literals is how a transition ends up half-finished when the
+  // next tick fires — the two numbers drift the moment either is tuned.
+  function ms(name, fallback) {
+    var raw = getComputedStyle(section).getPropertyValue(name).trim();
+    if (!raw) return fallback;
+    var n = parseFloat(raw);
+    if (isNaN(n)) return fallback;
+    return /ms$/.test(raw) ? n : n * 1000;
+  }
+  var DUR = ms("--hero-dur", 620);
+  var DWELL = ms("--hero-dwell", 3200);
+
+  var SIZES = "(min-width: 992px) 420px, (min-width: 576px) 320px, 62vw";
+  // How many cards on each side of the active one get their image attached.
+  // Only the active card and its two immediate neighbours are ever on stage, so
+  // a wider window would download bytes nothing can display. This is what keeps
+  // a 300-product catalog from meaning 300 hero images, and it is why the
+  // infinite loop costs no extra DOM: the deck holds one <li> per product but
+  // at most four carry an <img>, and the rest are display:none.
+  var WINDOW = 1;
+
+  var SLOTS = ["is-active", "is-prev", "is-next", "is-exit-left", "is-exit-right"];
 
   // A visitor who has asked for reduced motion gets the first card, statically.
   // Not "the same animation, faster" — the request is for no motion, and a
@@ -64,6 +75,21 @@ document.addEventListener("DOMContentLoaded", function () {
       : products.slice().sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
   }
 
+  // KEEP IN STEP WITH heroEyebrow/heroMeta in server/src/routes/pages.js, which
+  // renders the same two fields for card 0. See the note there.
+  function eyebrowFor(p) {
+    var creator = (p.creator || "").trim();
+    var name = (p.name || "").toLowerCase();
+    if (creator && name.indexOf(creator.toLowerCase()) === -1) return creator;
+    if (p.difficulty) return p.difficulty;
+    return creator || "Training program";
+  }
+  function metaFor(p) {
+    var parts = [window.ProFitAPI.formatProductPrice(p.priceCents)];
+    if (p.durationWeeks) parts.push(p.durationWeeks + " weeks");
+    return parts.join("  ·  ");
+  }
+
   function buildCard(product) {
     var li = document.createElement("li");
     li.className = "hero-card";
@@ -78,19 +104,23 @@ document.addEventListener("DOMContentLoaded", function () {
     var media = document.createElement("span");
     media.className = "hero-card__media pmedia";
 
-    var foot = document.createElement("span");
-    foot.className = "hero-card__foot";
+    var info = document.createElement("span");
+    info.className = "hero-card__info";
+    var eyebrow = document.createElement("span");
+    eyebrow.className = "hero-card__eyebrow";
+    eyebrow.textContent = eyebrowFor(product);
     var name = document.createElement("span");
     name.className = "hero-card__name";
     name.textContent = product.name;
-    var price = document.createElement("span");
-    price.className = "hero-card__price";
-    price.textContent = window.ProFitAPI.formatProductPrice(product.priceCents);
-    foot.appendChild(name);
-    foot.appendChild(price);
+    var meta = document.createElement("span");
+    meta.className = "hero-card__meta";
+    meta.textContent = metaFor(product);
+    info.appendChild(eyebrow);
+    info.appendChild(name);
+    info.appendChild(meta);
 
     a.appendChild(media);
-    a.appendChild(foot);
+    a.appendChild(info);
     li.appendChild(a);
     return li;
   }
@@ -107,10 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // .hero__deck / .hero-card__media in home-dynamic.css), and setting
     // --pmedia-ratio here would be inert — the box has a definite width and a
     // flex-resolved height, so an aspect-ratio never applies.
-    var box = window.MediaContainer.build(product, {
-      sizes: SIZES,
-      eager: !!eager,
-    });
+    var box = window.MediaContainer.build(product, { sizes: SIZES, eager: !!eager });
     // build() returns its own .pmedia element; move its children and classes
     // onto the card's existing box rather than swapping the node, so the
     // card's own layout classes survive.
@@ -119,10 +146,11 @@ document.addEventListener("DOMContentLoaded", function () {
     el.dataset.attached = "1";
   }
 
-  // Releases a card that has rotated out of the window. Removing the nodes is
-  // what actually frees the decoded image — leaving them in the DOM at
-  // opacity 0 keeps every bitmap resident, which is the trap the handbook
-  // viewer already documents.
+  // Releases a card that has left the stack. Removing the nodes is what
+  // actually frees the decoded image — leaving them in the DOM at opacity 0
+  // keeps every bitmap resident, which is the trap the handbook viewer already
+  // documents. This is the other half of the infinite loop's memory story: the
+  // window slides, and everything behind it is torn back down to an empty box.
   function detach(el) {
     if (!el || el.dataset.attached !== "1") return;
     var media = el.querySelector(".hero-card__media");
@@ -130,6 +158,37 @@ document.addEventListener("DOMContentLoaded", function () {
     media.innerHTML = "";
     media.className = "hero-card__media pmedia";
     el.dataset.attached = "0";
+  }
+
+  // Assigns a slot. `instant` suppresses the tween for one frame — used when a
+  // card has to be repositioned somewhere it could not travel to continuously.
+  function setSlot(el, slot, instant) {
+    if (!el) return;
+    if (el.dataset.slot === slot) return;
+    if (instant) {
+      el.classList.add("is-instant");
+      // Force the class change to be picked up with transitions off before the
+      // next paint, then re-enable them. Without the reflow the browser
+      // collapses both class changes into one style recalculation and the
+      // suppression never applies.
+      SLOTS.forEach(function (s) { el.classList.remove(s); });
+      if (slot) el.classList.add(slot);
+      void el.offsetWidth;
+      el.classList.remove("is-instant");
+    } else {
+      SLOTS.forEach(function (s) { el.classList.remove(s); });
+      if (slot) el.classList.add(slot);
+    }
+    el.dataset.slot = slot || "";
+
+    // Only the active card is reachable by tap or keyboard; the rest are
+    // decoration and must not be tab stops behind the front plate.
+    var link = el.querySelector(".hero-card__link");
+    if (link) {
+      if (slot === "is-active") link.removeAttribute("tabindex");
+      else link.setAttribute("tabindex", "-1");
+    }
+    el.setAttribute("aria-hidden", slot === "is-active" ? "false" : "true");
   }
 
   Promise.all([
@@ -151,7 +210,6 @@ document.addEventListener("DOMContentLoaded", function () {
       startIndex = 0;
       if (ssrEl) {
         var fresh = buildCard(slides[0]);
-        fresh.className = "hero-card is-active";
         fresh.setAttribute("data-hero-card", "");
         deck.replaceChild(fresh, ssrEl);
         ssrEl = fresh;
@@ -174,73 +232,147 @@ document.addEventListener("DOMContentLoaded", function () {
       els[p.id] = el;
     });
 
+    var n = slides.length;
     var currentIndex = startIndex;
 
-    function at(i) {
-      var n = slides.length;
-      return slides[((i % n) + n) % n];
+    function at(i) { return slides[((i % n) + n) % n]; }
+
+    // ---- progress -------------------------------------------------------
+    var progressEl = section.querySelector("[data-hero-progress]");
+    var segs = [];
+    if (progressEl && n > 1) {
+      slides.forEach(function () {
+        var s = document.createElement("span");
+        s.className = "hero__progress-seg";
+        progressEl.appendChild(s);
+        segs.push(s);
+      });
     }
-
-    // Assigns the three visible roles and attaches/detaches images to match.
-    // Everything else is left classless, which CSS renders as display:none —
-    // so the deck's height is set by the active card alone and cannot grow
-    // with the catalog.
-    function layout() {
-      var n = slides.length;
-      var keep = {};
-      for (var d = -WINDOW; d <= WINDOW; d++) keep[at(currentIndex + d).id] = true;
-
-      slides.forEach(function (p, i) {
-        var el = els[p.id];
-        if (!el) return;
-        var offset = i - currentIndex;
-        // Shortest signed distance around the ring, so the card before index 0
-        // is "prev", not "n-1 away".
-        if (offset > n / 2) offset -= n;
-        if (offset < -n / 2) offset += n;
-
-        el.classList.remove("is-active", "is-prev", "is-next");
-        if (offset === 0) el.classList.add("is-active");
-        else if (offset === -1 && n > 1) el.classList.add("is-prev");
-        else if (offset === 1 && n > 2) el.classList.add("is-next");
-
-        // The active card is the only one a visitor can reach with a tap or
-        // the keyboard; the flanking previews are decoration.
-        var link = el.querySelector(".hero-card__link");
-        if (link) {
-          if (offset === 0) link.removeAttribute("tabindex");
-          else link.setAttribute("tabindex", "-1");
+    var isPaused = false;
+    function paintProgress() {
+      segs.forEach(function (s, i) {
+        s.classList.remove("is-active", "is-done");
+        if (i < currentIndex) s.classList.add("is-done");
+        else if (i === currentIndex) {
+          // Restart the fill animation from zero on every step. Removing and
+          // re-adding the class in the same frame is a no-op, so the node is
+          // replaced instead — the cheapest reliable animation reset.
+          var fresh = s.cloneNode(false);
+          fresh.className = "hero__progress-seg is-active";
+          // A step can land while the section is paused (a backgrounded tab
+          // still runs the pending timeout once). The replacement node has no
+          // memory of that, so the paused state has to be re-applied or the
+          // bar animates on alone. CSSOM, not a style attribute — the site's
+          // CSP sends `style-src-attr 'self'` and drops inline style attrs.
+          if (isPaused) fresh.style.setProperty("animation-play-state", "paused");
+          s.replaceWith(fresh);
+          segs[i] = fresh;
         }
-        el.setAttribute("aria-hidden", offset === 0 ? "false" : "true");
-
-        if (keep[p.id]) attach(el, p, false);
-        else detach(el);
       });
     }
 
-    layout();
+    // ---- slot assignment -------------------------------------------------
+    // `dir` is +1 forward, -1 backward, 0 for the initial paint. It decides
+    // which side a departing card leaves from, which is the whole reason the
+    // motion reads as travel rather than as a crossfade.
+    function layout(dir) {
+      var wanted = {};
+      wanted[at(currentIndex).id] = "is-active";
+      // With two products there is only one flank, and at(i-1) === at(i+1);
+      // assigning next last means the single neighbour sits on the incoming
+      // side, which is the one the eye is already tracking.
+      if (n > 2) wanted[at(currentIndex - 1).id] = "is-prev";
+      if (n > 1) wanted[at(currentIndex + 1).id] = "is-next";
 
-    if (slides.length <= 1 || reduceMotion) return;
+      slides.forEach(function (p) {
+        var el = els[p.id];
+        if (!el) return;
+        var was = el.dataset.slot || "";
+        var now = wanted[p.id];
 
+        if (now) {
+          attach(el, p, now === "is-active" && dir === 0);
+          var arriving = !was || was === "is-exit-left" || was === "is-exit-right";
+          // A wrap — only reachable with exactly three products, where the card
+          // behind on one side becomes the card behind on the other. Moving it
+          // continuously would drag it straight across the stage behind the
+          // active plate, which is the one movement that would give the
+          // illusion away.
+          var wrapping = (was === "is-prev" && now === "is-next") || (was === "is-next" && now === "is-prev");
+
+          if (arriving || wrapping) {
+            // Placed with the tween suppressed so it does not fly in from
+            // wherever it was last parked — then faded up on the spot, which
+            // is the difference between a plate appearing and a plate popping.
+            //
+            // Never on the first paint: holding the active card at opacity 0
+            // for two frames to fade it in would push back the LCP element the
+            // preload exists to get on screen early.
+            if (dir === 0) {
+              setSlot(el, now, true);
+            } else {
+              el.classList.add("is-entering");
+              setSlot(el, now, true);
+              (function (card) {
+                window.requestAnimationFrame(function () {
+                  window.requestAnimationFrame(function () { card.classList.remove("is-entering"); });
+                });
+              })(el);
+            }
+          } else {
+            setSlot(el, now);
+          }
+        } else if (was && was !== "is-exit-left" && was !== "is-exit-right") {
+          // Falling out of the window: keep travelling in the direction of
+          // the stack, then tear the image down once the exit has played.
+          setSlot(el, dir < 0 ? "is-exit-right" : "is-exit-left");
+          (function (card) {
+            window.setTimeout(function () {
+              // Re-check: a fast scrub could have brought it back on stage.
+              if (card.dataset.slot === "is-exit-left" || card.dataset.slot === "is-exit-right") {
+                setSlot(card, "");
+                detach(card);
+              }
+            }, DUR + 60);
+          })(el);
+        }
+      });
+
+      paintProgress();
+    }
+
+    layout(0);
+
+    if (n <= 1 || reduceMotion) return;
+
+    // ---- rotation --------------------------------------------------------
     var timer = null;
-    function scheduleNext() {
+    function step() {
+      currentIndex = (currentIndex + 1) % n;
+      layout(1);
+    }
+    function schedule() {
       // Re-scheduled after each step rather than setInterval, so there is
-      // always exactly one pending timer to clear.
-      timer = setTimeout(function () {
-        currentIndex = (currentIndex + 1) % slides.length;
-        layout();
-        scheduleNext();
-      }, DELAY);
+      // always exactly one pending timer to clear, and a paused tab can never
+      // accumulate a backlog of ticks that all fire at once on return.
+      timer = window.setTimeout(function () {
+        step();
+        schedule();
+      }, DWELL);
     }
     function pause() {
-      if (timer) clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
       timer = null;
+      isPaused = true;
+      segs.forEach(function (s) { s.style.setProperty("animation-play-state", "paused"); });
     }
     function resume() {
-      if (!timer) scheduleNext();
+      isPaused = false;
+      segs.forEach(function (s) { s.style.removeProperty("animation-play-state"); });
+      if (!timer) schedule();
     }
 
-    scheduleNext();
+    schedule();
     section.addEventListener("mouseenter", pause);
     section.addEventListener("mouseleave", resume);
     // A backgrounded tab should not keep cycling: it burns nothing useful and
@@ -249,6 +381,17 @@ document.addEventListener("DOMContentLoaded", function () {
       if (document.hidden) pause();
       else resume();
     });
+    // Nor should a hero that has been scrolled past. On a phone the section
+    // leaves the viewport almost immediately, and animating four composited
+    // layers off-screen is pure battery cost.
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { if (!document.hidden) resume(); }
+          else pause();
+        });
+      }, { threshold: 0.15 }).observe(section);
+    }
   }).catch(function () {
     // Real data failed to load — leave the server-rendered card exactly as it
     // is rather than emptying the hero.

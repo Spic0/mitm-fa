@@ -58,8 +58,22 @@ window.ProFitAPI = (function () {
     return "$" + (cents / 100).toFixed(2);
   }
 
+  // Price of a PRODUCT, as shown on a card/hero/product page. Distinct from
+  // formatPrice above, which is for monetary amounts generally (cart subtotal,
+  // order total) where "$0.00" is the correct and expected rendering of zero.
+  //
+  // A product at 0 is a free plan, and "$0.00" on a storefront reads as a
+  // pricing bug rather than an offer — the catalog currently has one such
+  // product published and featured, so this is a live case, not a hypothetical.
+  // Kept in step with formatProductPrice() in server/src/routes/pages.js, which
+  // renders the same two values into the server-rendered hero and showcase.
+  function formatProductPrice(cents) {
+    return cents === 0 ? "Free" : formatPrice(cents);
+  }
+
   return {
     formatPrice: formatPrice,
+    formatProductPrice: formatProductPrice,
     me: function () { return get("/auth/me"); },
     getConfig: function () { return get("/config"); },
     requestMagicLink: function (email) { return post("/auth/magic-link", { email: email }); },

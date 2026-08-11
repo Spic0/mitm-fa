@@ -190,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var p = data.product;
 
     titleEl.textContent = p.name;
-    document.getElementById("productPrice").textContent = window.ProFitAPI.formatPrice(p.priceCents);
+    document.getElementById("productPrice").textContent = window.ProFitAPI.formatProductPrice(p.priceCents);
     document.getElementById("productDescriptionShort").textContent = p.description || "";
 
     var categoryLink = document.getElementById("productCategoryLink");

@@ -65,6 +65,27 @@ async function getBestsellers(limit, excludeIds) {
   return candidates.slice(0, limit);
 }
 
+// Position-only bestseller ranking for the public catalog: Map<productId, 1-based
+// rank> covering just the products that have actually sold at least one paid
+// unit. Everything else is absent from the map, which callers must read as
+// "no sales data", NOT as "rank last" — those are different claims and only
+// one of them is true.
+//
+// Deliberately exposes the ORDER and never the counts. "Best sellers" is a
+// normal public sort on any store; how many units a specific plan has sold is
+// private business data, and once it ships in a JSON payload it is public
+// forever. Same groupBy as getBestsellers above, so the two can never disagree
+// about what "bestseller" means.
+async function getSalesRankMap() {
+  const rows = await prisma.orderItem.groupBy({
+    by: ["productId"],
+    where: { order: { status: "paid" } },
+    _count: { productId: true },
+  });
+  rows.sort((a, b) => b._count.productId - a._count.productId);
+  return new Map(rows.map((r, i) => [r.productId, i + 1]));
+}
+
 // The reusable recommendation engine — one rule-based priority cascade that
 // powers the checkout "Add a little extra" module today, and is meant to
 // back "related products" on product pages / the cart drawer too: callers
@@ -154,4 +175,4 @@ async function getRecommendations(productIds, limit = 3) {
   return picks.slice(0, limit).map(serializeCard);
 }
 
-module.exports = { getRecommendations, getBestsellers, productType };
+module.exports = { getRecommendations, getBestsellers, getSalesRankMap, productType };

@@ -11,7 +11,7 @@ window.ProductCard = (function () {
   function build(p, opts) {
     opts = opts || {};
     var link = "/program/" + encodeURIComponent(p.slug);
-    var price = window.ProFitAPI.formatPrice(p.priceCents);
+    var price = window.ProFitAPI.formatProductPrice(p.priceCents);
 
     var col = document.createElement("div");
     col.className = opts.colClass || "col-xl-4 col-lg-6 col-md-6";

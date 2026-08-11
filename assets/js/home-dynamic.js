@@ -14,7 +14,9 @@ document.addEventListener("DOMContentLoaded", function () {
   var marqueeList = document.getElementById("peopleMarqueeList");
   var marqueeWrapper = marqueeList ? marqueeList.closest(".people-marquee") : null;
   var heroPrice = document.getElementById("heroStartingPrice");
-  if (!peopleTrack && !dealTrack && !marqueeList && !heroPrice) return;
+  var trustStats = document.getElementById("trustStats");
+  var trustSection = document.getElementById("trustArea");
+  if (!peopleTrack && !dealTrack && !marqueeList && !heroPrice && !trustStats) return;
 
   // ---- Hero "starting price": real lowest current product price, not the
   // hardcoded (and inaccurate) "$99.00" the old hero used. Left empty
@@ -148,10 +150,14 @@ document.addEventListener("DOMContentLoaded", function () {
     a.className = "deal-card";
     a.href = "/program/" + encodeURIComponent(p.slug);
 
-    var offTag = document.createElement("span");
-    offTag.className = "deal-card__off";
-    offTag.innerHTML = "50%<br>off";
-    a.appendChild(offTag);
+    // A hardcoded "50% off" roundel used to be stamped on EVERY card here,
+    // regardless of the product, with no discount behind it — the price
+    // rendered below it was simply the full admin-set price. Removed rather
+    // than made conditional: nothing in the product model expresses a "was"
+    // price, so there is no honest number to compute a percentage from.
+    // Real discounts live in the Promotion table and are applied at checkout
+    // (server/src/lib/promotions.js); if a badge is wanted here later it must
+    // read from there.
 
     var imageWrap = document.createElement("span");
     imageWrap.className = "deal-card__image";
@@ -172,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var price = document.createElement("span");
     price.className = "deal-card__price";
-    price.textContent = window.ProFitAPI.formatPrice(p.priceCents);
+    price.textContent = window.ProFitAPI.formatProductPrice(p.priceCents);
     content.appendChild(price);
 
     var cta = document.createElement("span");
@@ -196,19 +202,76 @@ document.addEventListener("DOMContentLoaded", function () {
     picks.forEach(function (p) { dealTrack.appendChild(dealCard(p)); });
   }
 
+  // ---- Trust stats: the social-proof section above the footer. Every
+  // number here is COUNTED from live data, never stored or authored — the
+  // section that used to sit here showed six of the vape theme's filler
+  // logos as though they were organisations endorsing the platform.
+  //
+  // A stat is only rendered when its count is at least 2, so the section
+  // can never read "1 Coach" and pass it off as proof. If nothing clears
+  // that bar the whole section is removed: no social proof is a better look
+  // than thin social proof, and inventing a number is not an option. ----
+  function renderTrustStats(products, taxonomies) {
+    if (!trustStats) return;
+
+    var coaches = {};
+    products.forEach(function (p) {
+      if (p.creator) coaches[p.creator] = true;
+    });
+
+    var sports = 0;
+    var athletes = taxonomies.find(function (t) { return t.key === "athletes"; });
+    if (athletes) sports = athletes.nodes.length;
+
+    var candidates = [
+      { value: products.length, label: products.length === 1 ? "Plan published" : "Plans published" },
+      { value: Object.keys(coaches).length, label: Object.keys(coaches).length === 1 ? "Coach" : "Coaches & creators" },
+      { value: sports, label: sports === 1 ? "Sport covered" : "Sports covered" },
+    ].filter(function (s) { return s.value >= 2; });
+
+    if (!candidates.length) {
+      if (trustSection) trustSection.remove();
+      return;
+    }
+
+    trustStats.innerHTML = "";
+    candidates.forEach(function (stat) {
+      var item = document.createElement("div");
+      item.className = "trust__stat";
+
+      var dd = document.createElement("dd");
+      dd.className = "trust__stat-value";
+      dd.textContent = String(stat.value);
+
+      var dt = document.createElement("dt");
+      dt.className = "trust__stat-label";
+      dt.textContent = stat.label;
+
+      // <dd> before <dt> visually (the number is the loud element) while the
+      // list stays a valid definition list for assistive tech.
+      item.appendChild(dd);
+      item.appendChild(dt);
+      trustStats.appendChild(item);
+    });
+  }
+
   Promise.all([
-    peopleTrack ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
-    dealTrack || heroPrice || marqueeList ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
+    peopleTrack || trustStats ? window.ProFitAPI.getTaxonomy() : Promise.resolve({ taxonomies: [] }),
+    dealTrack || heroPrice || marqueeList || trustStats ? window.ProFitAPI.listProducts() : Promise.resolve({ products: [] }),
   ]).then(function (results) {
-    renderProductMarquee(results[1].products || []);
-    renderPeopleStrip(results[0].taxonomies || []);
-    renderDealCards(results[1].products || []);
-    renderHeroPrice(results[1].products || []);
+    var taxonomies = results[0].taxonomies || [];
+    var products = results[1].products || [];
+    renderProductMarquee(products);
+    renderPeopleStrip(taxonomies);
+    renderDealCards(products);
+    renderHeroPrice(products);
+    renderTrustStats(products, taxonomies);
   }).catch(function () {
     // Real data failed to load — hide every dynamic section rather than
     // showing stale/fake placeholders.
     if (marqueeWrapper) marqueeWrapper.style.display = "none";
     if (peopleSection) peopleSection.style.display = "none";
     if (dealSection) dealSection.style.display = "none";
+    if (trustSection) trustSection.remove();
   });
 });

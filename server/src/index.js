@@ -216,6 +216,21 @@ app.use(
     // /.git/config while hiding /.gitignore. "deny" 403s them all.
     dotfiles: "deny",
     setHeaders: (res, filePath) => {
+      // express.static -> send@0.19 resolves types with mime@1.x, whose table
+      // predates AVIF, so every .avif falls through to
+      // `application/octet-stream`. Combined with the nosniff header this app
+      // sets, that is a mislabelled image the browser is explicitly told not
+      // to re-interpret — and AVIF is the FIRST <source> in every <picture>
+      // the media pipeline emits, so it is the variant most browsers pick.
+      // Verified against production before changing: every AVIF derivative on
+      // the live site is currently served as octet-stream.
+      //
+      // Set before the cache branches below so it applies to derivatives and
+      // any hand-placed .avif alike.
+      if (/\.avif$/.test(filePath)) {
+        res.setHeader("Content-Type", "image/avif");
+      }
+
       if (/\.(?:js|css)$/.test(filePath)) {
         // `no-cache` means "revalidate before reuse", NOT "don't store": the
         // browser still keeps the file and still gets a 304 with no body when

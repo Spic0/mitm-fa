@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (metaEl) metaEl.textContent = describeMeta(product, taxIndex);
     if (titleEl) titleEl.textContent = product.name;
     if (descEl) descEl.textContent = product.description || "";
-    if (priceEl) priceEl.textContent = window.ProFitAPI.formatPrice(product.priceCents);
+    if (priceEl) priceEl.textContent = window.ProFitAPI.formatProductPrice(product.priceCents);
     if (ctaEl) ctaEl.href = "/program/" + encodeURIComponent(product.slug);
     section.setAttribute("data-hero-id", product.id);
   }

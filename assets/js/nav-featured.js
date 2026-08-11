@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
       featured.slice(0, 3).forEach(function (p) {
         topPicksEl.appendChild(productCard(p, {
           name: p.name,
-          meta: '<span class="mega-menu-card__price">' + window.ProFitAPI.formatPrice(p.priceCents) + "</span>",
+          meta: '<span class="mega-menu-card__price">' + window.ProFitAPI.formatProductPrice(p.priceCents) + "</span>",
         }));
       });
     }
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!p.creator) return;
         featuredCreatorsEl.appendChild(productCard(p, {
           name: p.creator,
-          meta: escapeHtml(p.name) + " · <span class=\"mega-menu-card__price\">" + window.ProFitAPI.formatPrice(p.priceCents) + "</span>",
+          meta: escapeHtml(p.name) + " · <span class=\"mega-menu-card__price\">" + window.ProFitAPI.formatProductPrice(p.priceCents) + "</span>",
         }));
       });
     }

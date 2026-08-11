@@ -533,38 +533,53 @@ CSS TABLE OF CONTENTS
 	// in localStorage means a returning visitor sees a consistent countdown
 	// instead of it resetting on every reload, and it self-renews a fresh
 	// 48h window on expiry instead of ever going stale again.
+	// The homepage no longer carries this countdown: a 48h window that re-armed
+	// itself forever is a deadline that does not exist, and it sat above a
+	// "$79.00 -> $49.00" price that matched no product. Without this guard the
+	// interval below still ran once a second, forever, on every page of the
+	// site, writing into elements that are no longer there.
+	//
+	// The block is left in place (rather than deleted) because it is shared
+	// theme script and the markup still exists on the unrouted index-2 /
+	// index-light variants. If a REAL, dated offer is ever run, point this at
+	// the Promotion row's expiresAt instead of a rolling window.
 	var COUNTDOWN_KEY = "profit_offer_countdown_target";
 	var COUNTDOWN_WINDOW_MS = 48 * 60 * 60 * 1000;
-	var targetDate = parseInt(localStorage.getItem(COUNTDOWN_KEY), 10);
-	if (!targetDate || targetDate <= Date.now()) {
-		targetDate = Date.now() + COUNTDOWN_WINDOW_MS;
-		localStorage.setItem(COUNTDOWN_KEY, targetDate);
-	}
-	var countdownInterval = setInterval(function () {
-		var currentDate = new Date().getTime();
-		var remainingTime = targetDate - currentDate;
-
-		if (remainingTime <= 0) {
+	// Scoped as an `if`, NOT an early return — this is the middle of a shared
+	// ready handler and returning here would silently skip every initializer
+	// below it (the shop-single sliders, among others).
+	if (document.getElementById("day")) {
+		var targetDate = parseInt(localStorage.getItem(COUNTDOWN_KEY), 10);
+		if (!targetDate || targetDate <= Date.now()) {
 			targetDate = Date.now() + COUNTDOWN_WINDOW_MS;
 			localStorage.setItem(COUNTDOWN_KEY, targetDate);
-			remainingTime = targetDate - currentDate;
 		}
+		setInterval(function () {
+			var currentDate = new Date().getTime();
+			var remainingTime = targetDate - currentDate;
 
-		var days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
-		var hours = Math.floor(
-			(remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-		);
-		var minutes = Math.floor(
-			(remainingTime % (1000 * 60 * 60)) / (1000 * 60)
-		);
-		var seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+			if (remainingTime <= 0) {
+				targetDate = Date.now() + COUNTDOWN_WINDOW_MS;
+				localStorage.setItem(COUNTDOWN_KEY, targetDate);
+				remainingTime = targetDate - currentDate;
+			}
 
-		// Pad single-digit values with leading zeros
-		$("#day").text(days.toString().padStart(2, "0"));
-		$("#hour").text(hours.toString().padStart(2, "0"));
-		$("#min").text(minutes.toString().padStart(2, "0"));
-		$("#sec").text(seconds.toString().padStart(2, "0"));
-	}, 1000);
+			var days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+			var hours = Math.floor(
+				(remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+			);
+			var minutes = Math.floor(
+				(remainingTime % (1000 * 60 * 60)) / (1000 * 60)
+			);
+			var seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+			// Pad single-digit values with leading zeros
+			$("#day").text(days.toString().padStart(2, "0"));
+			$("#hour").text(hours.toString().padStart(2, "0"));
+			$("#min").text(minutes.toString().padStart(2, "0"));
+			$("#sec").text(seconds.toString().padStart(2, "0"));
+		}, 1000);
+	}
 	// Countdown area end here ***
 
 	// Shop single swiper slider area start here ***

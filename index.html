@@ -136,10 +136,11 @@
             </div>
             <div class="container">
                 <div class="hero-slideshow__content" id="heroContent">
-                    <span class="hero-slideshow__badge">
-                        <img src="/assets/images/icon/fire.svg" alt="" aria-hidden="true">
-                        Get 20% off your first plan
-                    </span>
+                    <!-- The hero's <h1> is a PRODUCT name and swaps per slide,
+                         so without this line a first-time visitor is never told
+                         what Fitness Agency sells. Deliberately static — it must
+                         not swap with the slideshow. -->
+                    <span class="hero-slideshow__badge">Training &amp; nutrition plans by real coaches</span>
                     <p class="hero-slideshow__meta" data-hero-meta></p>
                     <h1 data-hero-title></h1>
                     <p class="hero-slideshow__desc" data-hero-desc></p>
@@ -206,56 +207,55 @@
         </section>
         <!-- Deal cards area end here -->
 
-        <!-- View area start here -->
-        <section class="view-area">
-            <div class="bg-image view__bg" data-background="/assets/images/bg/view-bg.jpg"></div>
+        <!-- Promo tiles area start here. Replaces the theme's "view-area",
+             which shipped live with a vape-smoke section background, three grey
+             dimension placeholders, an orange flame icon beside a dead "GET 25%
+             OFF NOW" button, and two paragraphs of template filler. See
+             changelogs/2026-08-11-landing-brand-typography-assets.md.
+
+             Imagery here is OPERATOR-SUPPLIED, not hardcoded: each tile declares
+             a named landing slot, and dropping assets/images/landing/<slot>.<ext>
+             fills it. An unfilled slot renders a branded FA fallback, never a
+             technical placeholder. See server/docs/landing-assets.md. -->
+        <section class="promo-tiles-area">
             <div class="container">
-                <div class="row g-4">
-                    <div class="col-lg-6 wow fadeInLeft" data-wow-delay=".1s">
-                        <div class="view__left-item">
-                            <div class="image">
-                                <img src="/assets/images/view/view-image1.jpg" alt="image">
-                            </div>
-                            <div class="view__left-content sub-bg">
-                                <h2><a class="primary-hover" href="/shop">12-Week Strength Builder</a>
-                                </h2>
-                                <p class="fw-600">Sell globally in minutes with localized currencies languages, and
-                                    experie
-                                    for every fitness goal. Expert plans for muscle gain, fat loss, and performance.</p>
-                                <a class="btn-two" href="/shop"><span>Shop Now</span></a>
-                                <a class="off-btn" href="#0"><img class="mr-10" src="/assets/images/icon/fire.svg"
-                                        alt="icon"> GET
-                                    <span class="primary-color">25%
-                                        OFF</span> NOW</a>
-                            </div>
+                <div class="section-header section-header--stacked mb-40 wow fadeInUp" data-wow-delay=".1s">
+                    <span class="eyebrow">Where To Start</span>
+                    <h2>Find the Plan That Fits Your Goal</h2>
+                </div>
+                <div class="promo-tiles">
+                    <a class="promo-tile promo-tile--lead wow fadeInUp" data-wow-delay=".1s" href="/shop">
+                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-primary"
+                            data-landing-alt="Fitness Agency training programmes"></div>
+                        <div class="promo-tile__body">
+                            <h3 class="promo-tile__title">Browse Every Plan</h3>
+                            <p class="promo-tile__desc">Structured training and nutrition programmes built by working
+                                coaches, delivered as a guide you keep.</p>
+                            <span class="promo-tile__cta">Shop All Plans</span>
                         </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="view__item mb-25 wow fadeInDown" data-wow-delay=".2s">
-                            <div class="view__content">
-                                <h3><a class="primary-hover" href="/shop">New to fitness?</a></h3>
-                                <p>Whereas recognition of the inherent dignity</p>
-                                <a class="btn-two" href="/shop"><span>Shop Now</span></a>
-                            </div>
-                            <div class="view__image">
-                                <img src="/assets/images/view/view-image2.jpg" alt="image">
-                            </div>
+                    </a>
+                    <a class="promo-tile wow fadeInUp" data-wow-delay=".2s" href="/shop">
+                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-secondary-a"
+                            data-landing-alt="Beginner training programmes"></div>
+                        <div class="promo-tile__body">
+                            <h3 class="promo-tile__title">New to Training</h3>
+                            <p class="promo-tile__desc">Start with a beginner block and progress from there.</p>
+                            <span class="promo-tile__cta">View Plans</span>
                         </div>
-                        <div class="view__item wow fadeInUp" data-wow-delay=".3s">
-                            <div class="view__content">
-                                <h3><a class="primary-hover" href="/shop">Fat Loss Diet Plan</a></h3>
-                                <p>Whereas recognition of the inherent dignity</p>
-                                <a class="btn-two" href="/shop"><span>Shop Now</span></a>
-                            </div>
-                            <div class="view__image">
-                                <img src="/assets/images/view/view-image3.jpg" alt="image">
-                            </div>
+                    </a>
+                    <a class="promo-tile wow fadeInUp" data-wow-delay=".3s" href="/shop">
+                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-secondary-b"
+                            data-landing-alt="Nutrition and diet plans"></div>
+                        <div class="promo-tile__body">
+                            <h3 class="promo-tile__title">Nutrition &amp; Diet</h3>
+                            <p class="promo-tile__desc">Eating plans that work alongside your training.</p>
+                            <span class="promo-tile__cta">View Plans</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
         </section>
-        <!-- View area end here -->
+        <!-- Promo tiles area end here -->
 
         <!-- Product area start here -->
         <section class="product-area pt-130 pb-130 mt-130">
@@ -264,22 +264,32 @@
                     class="product__wrp pb-30 mb-65 bor-bottom d-flex flex-wrap align-items-center justify-content-xl-between justify-content-center">
                     <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".1s">
                         <span class="title-icon mr-10"></span>
-                        <h2>Latest Plans & Programs</h2>
+                        <h2>Latest Plans &amp; Programs</h2>
                     </div>
-                    <ul class="nav nav-pills mt-4 mt-xl-0">
+                    <!-- Filter labels in Title Case so the accessible name and
+                         DOM text stay readable; the uppercase treatment is CSS
+                         presentation. Was "latest item" / "top ratting" /
+                         "featured products" — lowercase against a Title Case
+                         heading, with "ratting" misspelled.
+
+                         The middle tab is now real: ranked by paid-order volume
+                         via bestsellerRank from GET /api/products. It previously
+                         rendered THE SAME list as Latest, because no rating model
+                         exists. home-products.js hides it when nothing has sold. -->
+                    <ul class="nav nav-pills mt-4 mt-xl-0" id="homeProductTabs">
                         <li class="nav-item wow fadeInUp" data-wow-delay=".1s">
                             <a href="#latest-item" data-bs-toggle="tab" class="nav-link px-4 active">
-                                latest item
+                                Latest
                             </a>
                         </li>
-                        <li class="nav-item wow fadeInUp" data-wow-delay=".2s">
-                            <a href="#top-ratting" data-bs-toggle="tab" class="nav-link px-4 bor-left bor-right">
-                                top ratting
+                        <li class="nav-item wow fadeInUp" data-wow-delay=".2s" data-tab="best-sellers" hidden>
+                            <a href="#best-sellers" data-bs-toggle="tab" class="nav-link px-4 bor-left bor-right">
+                                Best Sellers
                             </a>
                         </li>
                         <li class="nav-item wow fadeInUp" data-wow-delay=".3s">
                             <a href="#featured-products" data-bs-toggle="tab" class="nav-link ps-4">
-                                featured products
+                                Featured
                             </a>
                         </li>
                     </ul>
@@ -288,8 +298,8 @@
                     <div id="latest-item" class="tab-pane fade show active">
                         <div class="row g-4" id="homeGridLatest" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
                     </div>
-                    <div id="top-ratting" class="tab-pane fade">
-                        <div class="row g-4" id="homeGridTopRated" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
+                    <div id="best-sellers" class="tab-pane fade">
+                        <div class="row g-4" id="homeGridBestSellers" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
                     </div>
                     <div id="featured-products" class="tab-pane fade">
                         <div class="row g-4" id="homeGridFeatured" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
@@ -299,133 +309,76 @@
         </section>
         <!-- Product area end here -->
 
-        <!-- Get now area start here -->
-        <section class="get-now-area pt-130 pb-130">
-            <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-xl-6">
-                        <h4 class="mb-30 wow fadeInUp" data-wow-delay=".1s"><img src="/assets/images/icon/fire.svg"
-                                alt="icon">
-                            GET <span class="primary-color">20% OFF</span> YOUR FIRST PLAN</h4>
-                        <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".2s">
-                            <span class="title-icon mr-10"></span>
-                            <h2>Latest Plans & Programs</h2>
-                        </div>
-                        <div class="get-now__content">
-                            <div class="get-info py-4 wow fadeInUp" data-wow-delay=".2s">
-                                <del>$79.00</del> <span>$49.00</span>
-                            </div>
-                            <p class="fw-600 wow fadeInUp" data-wow-delay=".3s">Every plan is built by experienced
-                                coaches and delivered as a downloadable guide you can start using the moment you
-                                purchase it.</p>
-                            <ul class="pt-30 pb-30 bor-bottom wow fadeInUp" data-wow-delay=".3s">
-                                <li>Instant Download</li>
-                                <li>Lifetime Access</li>
-                                <li>30 Day Refund</li>
-                            </ul>
-                            <div class="time-up d-flex flex-wrap align-items-center gap-5 mt-30 wow fadeInUp"
-                                data-wow-delay=".4s">
-                                <div class="info">
-                                    <h4>HURRY UP !</h4>
-                                    <span>Offer end in :</span>
-                                </div>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <div class="get-time">
-                                        <h3 id="day">00</h3>
-                                        <span>Day</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="hour">00</h3>
-                                        <span>Hr</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="min">00</h3>
-                                        <span>Min</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="sec">00</h3>
-                                        <span>Sec</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-6">
-                        <div class="get-now__image mt-5 mt-xl-0">
-                            <div class="get-bg-image">
-                                <img src="/assets/images/shop/get-bg.png" alt="image">
-                            </div>
-                            <div class="swiper get__slider">
-                                <div class="swiper-wrapper">
-                                    <div class="swiper-slide">
-                                        <div class="image">
-                                            <img src="/assets/images/shop/get-image.png" alt="image">
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide">
-                                        <div class="image">
-                                            <img src="/assets/images/shop/get-image2.png" alt="image">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="get-now-arry get-now__arry-left">
-                                <i class="fa-light fa-chevron-left"></i>
-                            </button>
-                            <button class="get-now-arry get-now__arry-right text-warning">
-                                <i class="fa-light fa-chevron-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Get now area end here -->
+        <!-- Featured plan showcase start here.
+             THIS IS WHERE THE "410x432" GREY BOX CAME FROM: the theme's
+             "get-now-area" carried a Swiper of two 2KB grey PNGs with "410X432"
+             painted into them. Also removed here: a fabricated "20% OFF" claim,
+             a "$79.00 -> $49.00" price matching no product, a rolling 48h
+             countdown that re-armed itself forever, and a duplicate
+             "Latest Plans & Programs" heading. See
+             changelogs/2026-08-11-landing-brand-typography-assets.md.
 
-        <!-- Brand area start here -->
-        <section class="brand-area pt-130 pb-130">
+             What renders now is ONE REAL PRODUCT resolved server-side
+             (applyShowcaseContext in server/src/routes/pages.js). The image can
+             be overridden by dropping assets/images/landing/showcase.* ; the
+             product's own cover is used when that slot is empty. -->
+        <section class="showcase-area" data-showcase-id="">
             <div class="container">
-                <div class="sub-title text-center mb-65">
-                    <h3><span class="title-icon"></span> trusted by athletes &amp; coaches <span class="title-icon"></span>
-                    </h3>
-                </div>
-                <div class="swiper brand__slider">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand1.png" alt="icon">
-                            </div>
+                <div class="showcase">
+                    <div class="showcase__media wow fadeInUp" data-wow-delay=".1s">
+                        <div class="landing-slot showcase__slot" data-landing-slot="showcase"
+                            data-landing-alt="Featured Fitness Agency plan"></div>
+                    </div>
+                    <div class="showcase__body wow fadeInUp" data-wow-delay=".2s">
+                        <span class="eyebrow">Featured Plan</span>
+                        <h2 class="showcase__title" data-showcase-title></h2>
+                        <p class="showcase__meta" data-showcase-meta></p>
+                        <p class="showcase__desc" data-showcase-desc></p>
+                        <span class="showcase__price" data-showcase-price></span>
+                        <div class="showcase__cta-row">
+                            <a class="btn-one showcase__cta" href="/shop" data-showcase-cta><span>View Plan</span></a>
                         </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand2.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand3.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand4.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand5.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="/assets/images/brand/brand6.png" alt="icon">
-                            </div>
-                        </div>
+                        <!-- Structural facts, not marketing claims: a paid
+                             OrderItem grants access immediately and carries no
+                             expiry field (server/prisma/schema.prisma), and
+                             checkout runs through Stripe/PayPal. The theme's
+                             third bullet was "30 Day Refund" — a policy nothing
+                             in the codebase backs, whose own footer link points
+                             at /coming-soon — so it is not repeated. -->
+                        <ul class="showcase__assurances">
+                            <li>Instant download after purchase</li>
+                            <li>Lifetime access, no subscription</li>
+                            <li>Secure Stripe &amp; PayPal checkout</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- Brand area end here -->
+        <!-- Featured plan showcase end here -->
+
+        <!-- Trust area start here. Was "trusted by athletes & coaches" set
+             lowercase at base <h3> size above a Swiper of six 60x65 PNGs — the
+             generic filler marks the vape theme ships — presented as
+             organisations endorsing the platform. They are not real, so they are
+             gone rather than restyled.
+
+             The stats below are COUNTED from live data by
+             assets/js/home-dynamic.js and render only when a count is >= 2; the
+             section removes itself entirely if nothing clears that bar. -->
+        <section class="trust-area" id="trustArea">
+            <div class="container">
+                <div class="trust__head wow fadeInUp" data-wow-delay=".1s">
+                    <span class="eyebrow">Trusted by Athletes &amp; Coaches</span>
+                    <h2 class="trust__title">Built by coaches, bought by people who train</h2>
+                </div>
+                <dl class="trust__stats" id="trustStats" aria-live="polite">
+                    <!-- Populated by assets/js/home-dynamic.js from real counts. -->
+                </dl>
+                <p class="trust__note">Every plan on Fitness Agency is written by a named coach and sold as a
+                    downloadable guide you keep for good.</p>
+            </div>
+        </section>
+        <!-- Trust area end here -->
     </main>
 
     <!-- Footer area start here -->

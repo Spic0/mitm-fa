@@ -15,6 +15,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { getAllTaxonomyTrees } = require("../lib/taxonomy");
 const { normalizeImageUrl, coverMedia } = require("../lib/media");
+const { resolveSlot, SLOTS } = require("../lib/landingAssets");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -24,6 +25,16 @@ const HIDDEN_HEADER_PAGES = new Set(["checkout.html"]);
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Price of a PRODUCT for display. A plan at 0 is free, and rendering that as
+// "$0.00" on a storefront reads as a pricing bug rather than an offer — the
+// catalog has one such product published and featured today, so this is a
+// live case. Kept in step with ProFitAPI.formatProductPrice in
+// assets/js/api.js, which renders the same two values client-side; the SSR'd
+// hero/showcase and the JS that later re-renders them must never disagree.
+function formatProductPrice(cents) {
+  return cents === 0 ? "Free" : `$${(cents / 100).toFixed(2)}`;
 }
 
 function appUrl(pathname) {
@@ -464,18 +475,82 @@ function describeProductCategory(product) {
   return nodes[0] ? nodes[0].name : null;
 }
 
-async function applyHeroContext(html) {
+// The showcase section deliberately features a DIFFERENT plan from the hero
+// where the catalog allows it — two sections pushing the identical product is
+// a wasted slot, and the whole point of the section is a second entry point
+// into the catalog. Falls back to the hero's product rather than rendering
+// nothing when only one product is published.
+async function resolveShowcaseProduct(heroProduct) {
+  const excludeId = heroProduct ? heroProduct.id : null;
+  const where = { status: "published", ...(excludeId ? { id: { not: excludeId } } : {}) };
+
+  const featured = await prisma.product.findFirst({
+    where: { ...where, featured: true },
+    orderBy: { createdAt: "desc" },
+    include: { taxonomies: { include: { taxonomyNode: { include: { parent: true } } } } },
+  });
+  if (featured) return featured;
+
+  const newest = await prisma.product.findFirst({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: { taxonomies: { include: { taxonomyNode: { include: { parent: true } } } } },
+  });
+  return newest || heroProduct;
+}
+
+function applyShowcaseContext(html, product) {
+  if (!product) return html;
+
+  const category = describeProductCategory(product);
+  const metaParts = [product.creator, category].filter(Boolean);
+  const meta = escapeHtml(metaParts.join(" · "));
+  const ctaHref = `/program/${encodeURIComponent(product.slug)}`;
+
+  let result = html
+    .replace(/(<section class="showcase-area[^"]*" data-showcase-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
+    .replace(/(<h2[^>]*data-showcase-title[^>]*>)[^<]*(<\/h2>)/, `$1${escapeHtml(product.name)}$2`)
+    .replace(/(<p[^>]*data-showcase-meta[^>]*>)[^<]*(<\/p>)/, `$1${meta}$2`)
+    .replace(/(<p[^>]*data-showcase-desc[^>]*>)[^<]*(<\/p>)/, `$1${escapeHtml(product.description || "")}$2`)
+    .replace(
+      /(<span[^>]*data-showcase-price[^>]*>)[^<]*(<\/span>)/,
+      `$1${escapeHtml(formatProductPrice(product.priceCents))}$2`
+    );
+
+  result = result.replace(/<a\b[^>]*data-showcase-cta[^>]*>/, (tag) =>
+    tag.replace(/href="[^"]*"/, `href="${ctaHref}"`)
+  );
+
+  // Image cascade: an art-directed assets/images/landing/showcase.* wins if the
+  // operator has supplied one (applyLandingAssets fills it later in the
+  // pipeline); otherwise this falls back to the product's OWN cover, which
+  // already has responsive derivatives from the upload pipeline. Only if there
+  // is neither does the slot stay empty and get the branded fallback — which
+  // is still a deliberate-looking box, never a dimension label.
+  if (!resolveSlot("showcase")) {
+    const cover = coverMedia(product.imageUrl);
+    const src = normalizeImageUrl(product.imageUrl);
+    if (src) {
+      const rendered = renderLandingSlot(
+        { src, sizes: SLOTS.showcase.sizes, eager: false, cover },
+        product.name
+      );
+      result = result.replace(
+        /<div class="landing-slot([^"]*)"([^>]*?)data-landing-slot="showcase"([^>]*)></,
+        (whole, extra, before, after) =>
+          `<div class="landing-slot${extra} ${rendered.classes}"${before}data-landing-slot="showcase"${after}>${rendered.html}<`
+      );
+    }
+  }
+
+  return result;
+}
+
+async function applyHeroContext(html, product) {
   if (process.env.APP_URL) {
     html = html.replace("<!--HOME_CANONICAL-->", `<link rel="canonical" href="${appUrl("/")}">`);
   }
 
-  let product;
-  try {
-    product = await resolveHeroProduct();
-  } catch (err) {
-    console.error("Failed to load hero product; rendering hero shell only.", err);
-    return html;
-  }
   if (!product) return html;
 
   const category = describeProductCategory(product);
@@ -483,7 +558,7 @@ async function applyHeroContext(html) {
   const meta = escapeHtml(metaParts.join(" · "));
   const title = escapeHtml(product.name);
   const description = escapeHtml(product.description || "");
-  const price = escapeHtml(`$${(product.priceCents / 100).toFixed(2)}`);
+  const price = escapeHtml(formatProductPrice(product.priceCents));
   const ctaHref = `/program/${encodeURIComponent(product.slug)}`;
   // The hero backdrop is this page's LCP element, so it is preloaded below.
   // Preloading the ORIGINAL upload made that actively counterproductive: on
@@ -537,11 +612,123 @@ async function applyHeroContext(html) {
   return result;
 }
 
+// ---------------------------------------------------------------------
+// Landing-page marketing slots.
+//
+// The template declares empty, named holes:
+//
+//   <div class="landing-slot" data-landing-slot="promo-primary"
+//        data-landing-alt="..."></div>
+//
+// and this fills each one from whatever file is currently sitting in
+// assets/images/landing/ (see server/src/lib/landingAssets.js). A slot with
+// no file on disk is left exactly as authored — empty — and CSS paints a
+// branded fallback into it. That is the invariant the "410X432" grey box
+// violated: an unfilled slot must look deliberate, never technical.
+//
+// NOTE: no style="" anywhere below. The storefront CSP sends
+// `style-src-attr 'self'`, so an inline style attribute is silently dropped
+// (no console error, the rule just never applies). Every slot's aspect ratio
+// therefore lives in CSS keyed off the slot name, not in the markup.
+// ---------------------------------------------------------------------
+function renderLandingSlot(slot, alt) {
+  const cover = slot.cover;
+  const altAttr = escapeHtml(alt || "");
+  const sizes = escapeHtml(slot.sizes);
+  // `contain` images are letterboxed on a blurred copy of themselves, exactly
+  // as product cards do it, so an off-ratio marketing image still fills its
+  // frame instead of floating on a flat slab.
+  const fit = cover && cover.fit === "contain" ? "contain" : "cover";
+  const loading = slot.eager ? "" : ' loading="lazy"';
+  const priority = slot.eager ? ' fetchpriority="high"' : "";
+
+  // No manifest yet (file dropped but tools/build-landing-assets.js not run):
+  // still render a working image, just without srcset/LQIP. Degrading to the
+  // original is the same fallback product covers take.
+  if (!cover || !cover.sources || !cover.sources.length) {
+    return {
+      classes: `is-filled landing-slot--${fit}`,
+      html: `<img class="landing-slot__img" src="${escapeHtml(slot.src)}" alt="${altAttr}"${loading}${priority} decoding="async">`,
+    };
+  }
+
+  const sources = cover.sources
+    .map((s) => `<source type="${escapeHtml(s.type)}" srcset="${escapeHtml(s.srcset)}" sizes="${sizes}">`)
+    .join("");
+
+  // The blurred backdrop behind a contained image: the narrowest derivative,
+  // since it is scaled up and blurred to 18px anyway and resolution is
+  // irrelevant. Skipped for cover, which has no letterbox area to fill.
+  let backdrop = "";
+  if (fit === "contain") {
+    const webp = cover.sources.find((s) => s.type === "image/webp") || cover.sources[0];
+    const smallest = String(webp.srcset).split(",")[0].trim().split(/\s+/)[0];
+    if (smallest) backdrop = `<img class="landing-slot__backdrop" src="${escapeHtml(smallest)}" alt="" aria-hidden="true" decoding="async">`;
+  }
+
+  const lqip = cover.placeholder
+    ? `<img class="landing-slot__lqip" src="${escapeHtml(cover.placeholder)}" alt="" aria-hidden="true" decoding="async">`
+    : "";
+
+  return {
+    classes: `is-filled landing-slot--${fit}`,
+    html:
+      lqip +
+      backdrop +
+      `<picture>${sources}<img class="landing-slot__img" src="${escapeHtml(cover.src)}" alt="${altAttr}" sizes="${sizes}"${loading}${priority} decoding="async"></picture>`,
+  };
+}
+
+function applyLandingAssets(html) {
+  for (const name of Object.keys(SLOTS)) {
+    // Matches the whole empty container for THIS slot, capturing its opening
+    // tag so the alt text authored in markup survives. Bounded to a single
+    // element (`[^>]*>` then the literal close) — it cannot run past the
+    // container and swallow the rest of the section.
+    const pattern = new RegExp(
+      `<div class="landing-slot([^"]*)"([^>]*?)data-landing-slot="${name}"([^>]*)></div>`
+    );
+    if (!pattern.test(html)) continue;
+
+    const slot = resolveSlot(name);
+    html = html.replace(pattern, (whole, extraClasses, before, after) => {
+      const attrs = before + after;
+      const altMatch = attrs.match(/data-landing-alt="([^"]*)"/);
+      const alt = altMatch ? altMatch[1] : "";
+
+      // Empty slot: leave the hole exactly as authored. CSS renders the FA
+      // mark on a brand surface — no <img>, so no broken-image request and
+      // nothing technical is ever exposed to a visitor.
+      if (!slot) return whole;
+
+      const rendered = renderLandingSlot(slot, alt);
+      return `<div class="landing-slot${extraClasses} ${rendered.classes}"${before}data-landing-slot="${name}"${after}>${rendered.html}</div>`;
+    });
+  }
+  return html;
+}
+
 router.get("/", async (req, res, next) => {
   let html = await readTemplate("index.html");
   if (html == null) return next();
   html = await inlineHeader(html, "index.html");
-  html = await applyHeroContext(html);
+
+  // Both server-rendered sections resolve from the same catalog read, so the
+  // showcase can deliberately avoid repeating whatever the hero opened on. A
+  // database failure degrades to the un-filled shells (the client-side
+  // scripts still populate everything else) rather than 500ing the homepage.
+  let heroProduct = null;
+  let showcaseProduct = null;
+  try {
+    heroProduct = await resolveHeroProduct();
+    showcaseProduct = await resolveShowcaseProduct(heroProduct);
+  } catch (err) {
+    console.error("Failed to load homepage products; rendering shells only.", err);
+  }
+
+  html = await applyHeroContext(html, heroProduct);
+  html = applyShowcaseContext(html, showcaseProduct);
+  html = applyLandingAssets(html);
   res.type("html").send(html);
 });
 

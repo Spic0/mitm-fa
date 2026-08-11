@@ -1,6 +1,7 @@
 const express = require("express");
 const { prisma } = require("../db");
 const { normalizeImageUrl, coverMedia } = require("../lib/media");
+const { getSalesRankMap } = require("../lib/recommendations");
 
 const router = express.Router();
 
@@ -9,7 +10,7 @@ const router = express.Router();
 // (a holdover from when products carried free-text category/tags fields,
 // which were removed from the schema). The storefront's shop.js has nothing
 // to filter on unless the product's taxonomy node ids ride along here.
-function serialize(product) {
+function serialize(product, salesRank) {
   const out = {
     id: product.id,
     slug: product.slug,
@@ -27,6 +28,11 @@ function serialize(product) {
     durationWeeks: product.durationWeeks,
     overview: product.overview,
     createdAt: product.createdAt,
+    // 1-based position among products that have actually sold, or null for
+    // "no sales data" — see getSalesRankMap. The homepage's third product tab
+    // is driven by this instead of showing a duplicate of Latest under a
+    // "Top Rating" label it had no data to support.
+    bestsellerRank: salesRank == null ? null : salesRank,
     taxonomyNodeIds: (product.taxonomies || []).map((t) => t.taxonomyNodeId),
   };
 
@@ -60,12 +66,19 @@ router.get("/", async (req, res) => {
   const where = { status: "published" };
   if (req.query.featured === "true") where.featured = true;
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { createdAt: "asc" },
-    include: withTaxonomy,
-  });
-  res.json({ products: products.map(serialize) });
+  // One extra groupBy per catalog fetch. Deliberately not cached: it is a
+  // single indexed aggregate over OrderItem, and a stale bestseller list is a
+  // wrong claim about what other customers bought, which is exactly the kind
+  // of thing this change exists to stop the page doing.
+  const [products, salesRank] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "asc" },
+      include: withTaxonomy,
+    }),
+    getSalesRankMap().catch(() => new Map()),
+  ]);
+  res.json({ products: products.map((p) => serialize(p, salesRank.get(p.id))) });
 });
 
 router.get("/:idOrSlug", async (req, res) => {

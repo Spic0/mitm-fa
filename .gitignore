@@ -33,3 +33,20 @@ server/_apitest.js
 *-960.webp
 *-1280.avif
 *-1280.webp
+
+# Landing-page marketing imagery (assets/images/landing/). Operator-supplied
+# and dropped straight onto the production box — see
+# server/docs/landing-assets.md. Deliberately NOT tracked, for the same reason
+# product uploads aren't, plus one specific to this deploy: production is
+# updated with `git merge --ff-only`, and an untracked file on the box blocks
+# any merge that would introduce a tracked file of the same name. Keeping these
+# out of git means dropping an image can never wedge a deploy.
+#
+# CONSEQUENCE: these files exist ONLY on the box and are not in git history.
+# They must be part of the server backup, not relied on to survive a re-clone.
+assets/images/landing/*
+!assets/images/landing/.gitkeep
+!assets/images/landing/README.md
+
+# Screenshots from tools/test-landing-responsive.js --shots.
+tools/.shots/

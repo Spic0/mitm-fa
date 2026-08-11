@@ -12,8 +12,8 @@
 //   - a page is only patched if it loads css-preload-swap.js, which is what
 //     flips rel="preload" back to rel="stylesheet". Without it the deferred
 //     CSS would never apply at all and the page would render unstyled.
-//     (index-2.html, index-2-light.html and index-light.html don't load it,
-//     so they are deliberately left render-blocking.)
+//     (every page that ships this bundle loads it; the three theme homepage
+//     variants that didn't were deleted 2026-08-11.)
 //   - both files are added to the page's <noscript> block, so a visitor with
 //     JS disabled still gets the full stylesheets.
 //

@@ -816,6 +816,16 @@ const SIMPLE_REDIRECTS = [
   // shop-2.html was a byte-for-byte duplicate of shop.html (SEO duplicate
   // content + two shop pages to maintain).
   ["/shop-2.html", "/shop"],
+  // The theme's three alternate homepage layouts, deleted 2026-08-11. Nothing
+  // ever linked to them, but they were reachable through the static mount and
+  // returned 200, so they were indexable near-duplicates of "/" — and they
+  // still carried every placeholder, fabricated offer and vape-theme image
+  // that the homepage had just been cleaned of. Redirected rather than left to
+  // 404 for the same reason /index.html is: consolidate any crawled or
+  // bookmarked URL onto the one canonical homepage.
+  ["/index-2.html", "/"],
+  ["/index-light.html", "/"],
+  ["/index-2-light.html", "/"],
   // The homepage's only canonical URL is "/" — /index.html must never be a
   // second, independently-indexable copy or a URL that shows up in the
   // address bar. Every internal link already points at "/"; this only

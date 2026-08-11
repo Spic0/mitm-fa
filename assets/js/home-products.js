@@ -13,10 +13,12 @@ document.addEventListener("DOMContentLoaded", function () {
   };
   var heroRow = document.getElementById("heroProductSlides");
 
-  // Column widths differ between the index.html/index-light.html grid (4-up
-  // at xl) and the index-2/index-2-light grid (3-up at xl) — each grid
-  // container declares its own via data-col-class rather than the shared
-  // renderer guessing which page it's on.
+  // Each grid container declares its own column widths via data-col-class
+  // rather than the shared renderer guessing which page it's on. This existed
+  // because the theme's homepage variants used a 3-up xl grid where index.html
+  // uses 4-up; those variants are gone, but the attribute stays — shop.js
+  // renders the same cards at col-xl-3, so the renderer still must not assume
+  // one grid shape.
   function optsFor(grid) {
     return { colClass: grid ? grid.dataset.colClass : undefined };
   }

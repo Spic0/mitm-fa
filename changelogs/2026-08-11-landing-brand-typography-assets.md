@@ -203,11 +203,28 @@ All 11 widths pass. Existing suites (`test-products-pagination`,
 `test-admin-api-resilience`, `test-free-access`, `test-media-x-accel`,
 `test-handbook-media`, `test-presentation-picker`) still pass.
 
-## Not changed
+## Theme homepage variants deleted
 
-- `index-2.html`, `index-light.html`, `index-2-light.html` — unrouted theme
-  variants, still reachable through the static mount, still carrying every item
-  removed above. Not in `sitemap.xml` and not disallowed in `robots.txt`.
+`index-2.html`, `index-light.html` and `index-2-light.html` are gone. Nothing
+ever linked to them, but all three returned 200 through the static mount, so
+they were indexable near-duplicates of `/` — and they still carried every
+placeholder, fabricated offer and vape-theme image the homepage had just been
+cleaned of.
+
+Each now 301s to `/`, following the same convention as the existing
+`/index.html` and `/shop-2.html` redirects: consolidate crawled or bookmarked
+URLs onto the one canonical homepage rather than leaving them to 404.
+
+Their removal made the theme's countdown block in `assets/js/script.js` fully
+dead — they held the last `#day`/`#hour`/`#min`/`#sec` markup on the site — so
+it is deleted rather than left guarded.
+
+Now orphaned on disk, referenced by nothing (kept for now, pending a decision):
+`icon/fire.svg`, `shop/get-image.png`, `shop/get-image2.png`, `shop/get-bg.png`,
+`view/view-image1-3.jpg`, `bg/view-bg.jpg`. `brand/brand1-6.png` is NOT orphaned
+— `about.html` still shows those same filler marks as endorsement logos.
+
+## Not changed
 - `assets/images/footer/footer-bg.jpg` — smoke artwork, 18 pages.
 - `assets/css/critical.css` — regeneration not required; no `style.css` rule
   changed, and the new rules live in `home-dynamic.css`, which is already

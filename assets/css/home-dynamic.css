@@ -1,5 +1,5 @@
-/* Homepage dynamic sections: a dynamic product hero slideshow (.hero-
-   slideshow), a scrolling product-title marquee directly under it (class
+/* Homepage sections: the hero (.hero — brand copy plus a rotating deck of real
+   product cards), a scrolling product-title marquee directly under it (class
    names still say "people-marquee" — same reused marquee CSS/markup, just
    fed product titles instead of Athlete/Creator names now), an Athletes/
    Creators people-strip, and a deal-cards product strip. Mobile-first: base
@@ -8,298 +8,278 @@
    scroll-snap (no swiper dependency) so they work with any item count the
    backend returns, including very few or zero. */
 
-/* ---- Hero slideshow: real admin-managed product data, driven by
-   assets/js/hero-slideshow.js (GET /api/products + GET /api/taxonomy).
-   Slide 0's content/background is server-rendered directly into index.html
-   (server/src/index.js -> applyHeroContext) for SEO/no-JS; this file only
-   lays out and animates what that markup (SSR'd or client-added) contains —
-   nothing here is itself hardcoded to a specific product. ---- */
-.hero-slideshow {
+/* ===========================================================================
+   HERO — brand message + a deck of real product cards
+   ===========================================================================
+   Replaces a full-bleed background treatment that ran each product cover
+   through `filter: blur(22px) brightness(0.55)` under a dark scrim, with six
+   text elements stacked over it. Two things were wrong at once: that much blur
+   destroys the product (so showing products achieved nothing), and the <h1>
+   was the product NAME, swapping every 6s, so the page never said what the
+   business sells.
+
+   The rules now: the active card is NEVER blurred, dimmed or scaled down.
+   Depth is carried entirely by the two flanking cards. The surface is the
+   brand's own light ground, so the cards are the darkest, sharpest thing in
+   the section and the eye lands on them.
+
+   Mobile-first: the base rules below are the phone layout — copy first, deck
+   under it — and the two-column composition only appears once there is width
+   for it. Desktop is not the design being scaled down.
+   ------------------------------------------------------------------------ */
+.hero {
   position: relative;
-  display: flex;
-  align-items: center;
-  /* Mobile: NO viewport-based height and no px floor — the hero is exactly
-     as tall as its own content plus the padding below, and nothing more.
-
-     It previously carried `min-height: max(520px, 88vh)` (with an 88svh
-     line after it). `max()` means the hero can only ever get TALLER than
-     its content, never shorter, and measured on the real page its content
-     needs 421.5px — so the floor was injecting dead space:
-
-         320x568  hero 520.0px  content 421.5px  ->  98.5px empty
-         375x667  hero 587.0px  content 421.5px  -> 165.4px empty
-         390x844  hero 742.7px  content 421.5px  -> 321.2px empty
-         430x932  hero 820.2px  content 421.5px  -> 398.6px empty  (49%)
-
-     That empty space is what pushed the product ticker directly beneath
-     the hero down across the fold — at 320px wide with the browser
-     toolbars showing (460px of real estate) 0% of the ticker was on
-     screen, at 375x553 only 83% of it was, so it read as a strip whose
-     bottom had been cut off. Nothing was clipping it; the hero was simply
-     reserving up to half a screen of nothing above it.
-
-     Deliberately no `overflow: hidden` here either. The only thing that
-     needs clipping is the scaled/blurred background image, and
-     .hero-slideshow__bg-layer below already clips it inside its own
-     `inset: 0` box — so this section cannot crop anything, its own
-     children or the section after it, under any viewport. */
-  padding: 84px 0 32px;
-  background: var(--color-text); /* dark fallback while the first image loads */
-}
-
-/* Background layer: fills the section, sits behind everything else, and is
-   the single place the oversized (scale(1.18) + slow pan) background image
-   is clipped — see the note about `overflow` on .hero-slideshow above. */
-.hero-slideshow__bg-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+  background-color: var(--color-bg);
+  /* The flanking cards are translated +/-38% and deliberately sit partly
+     outside the stage — that overhang is the depth cue. Without clipping here
+     they extend past the viewport edge and create horizontal overflow
+     (measured: 10 escaping elements at 320px, 5 at 1024-1440). Clipping at the
+     section keeps the overhang visible inside the layout and impossible to
+     scroll to. Bottom padding is always >= 32px, so the active card's shadow
+     is never cut. */
   overflow: hidden;
-}
-.hero-slideshow__swiper,
-.hero-slideshow__swiper .swiper-wrapper,
-.hero-slideshow__slide {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-/* Crossfade between slides: assets/js/hero-slideshow.js toggles each
-   slide's opacity directly (plain JS, no Swiper) — this is what animates
-   that change. Duration must match the JS SPEED constant. Defaults to
-   fully opaque so the server-rendered first slide is visible with no JS
-   at all; slides added by JS start at opacity 0 via inline style. */
-.hero-slideshow__slide {
-  transition: opacity 900ms ease;
-}
-.hero-slideshow__bg-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  /* Large, slightly blurred, slightly darkened — never the focal point.
-     Scaled up so the blur's soft edge never shows inside the frame. */
-  filter: blur(22px) brightness(0.55) saturate(1.05);
-  transform: scale(1.18);
-  animation: heroSlowPan 22s ease-in-out infinite alternate;
-}
-/* Very subtle pan/zoom — a premium touch, never fast or distracting enough
-   to compete with the foreground content. Respects reduced-motion. */
-@keyframes heroSlowPan {
-  0% { transform: scale(1.18) translate(0, 0); }
-  100% { transform: scale(1.26) translate(-1.4%, -1%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-slideshow__bg-img {
-    animation: none;
-  }
-}
-.hero-slideshow__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  /* Belt-and-suspenders on top of the brightness filter above — guarantees
-     readable contrast for light text regardless of how bright/busy a given
-     admin-uploaded cover image is. */
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.55) 0%, rgba(10, 10, 10, 0.72) 100%);
+  /* .site-header is position:fixed and 65px tall on mobile / 42px on desktop
+     (set by .main-menu and the 44px hamburger — see style.css). The hero is
+     the first element in <main>, so its top padding is the ONLY thing keeping
+     the headline out from under it: at 20px the <h1> was overlapped by 34-45px
+     and effectively invisible on every phone. Anything set here must clear the
+     header first and add breathing room second.
+
+     Beyond that it stays tight. The old hero reserved up to half a screen of
+     empty space and pushed the CTA off the fold; the point here is that
+     headline, sub, CTA and a real part of the first card all land in the
+     first viewport. */
+  padding: 84px 0 clamp(32px, 6vw, 72px);
 }
 
-.hero-slideshow__content {
-  position: relative;
-  z-index: 2;
-  max-width: 620px;
-  color: #ffffff;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-/* The slideshow swaps its title every few seconds and product names are not
-   the same length, so the <h1> silently grew from one line to two and pushed
-   the description and CTA row down with it — a 0.0475 layout shift ~7s into
-   the page, long after everything had "finished" loading. That is the most
-   jarring kind of shift, because the visitor is already reading by then.
-
-   .hero-slideshow__desc solved the same problem for itself with a clamp plus
-   a fixed min-height; the <h1> never got the equivalent because it has no
-   rule of its own here at all — it inherits the global heading styles. This
-   is that missing rule, deliberately mirroring the desc pattern below rather
-   than inventing a second approach. */
-.hero-slideshow__content h1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  /* Two lines at the inherited heading line-height, so a one-line title
-     reserves the same box as a two-line one. */
-  min-height: 2.2em;
-}
-.hero-slideshow__content--out {
-  opacity: 0;
-  transform: translateX(-14px);
-}
-.hero-slideshow__badge {
-  display: inline-flex;
+.hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(24px, 5vw, 40px);
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius-pill, 100px);
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 20px;
-  backdrop-filter: blur(4px);
 }
-.hero-slideshow__badge img {
-  width: 14px;
-  height: 14px;
-  filter: brightness(0) invert(1); /* the fire icon is dark-line art; make it read on a dark badge */
-}
-.hero-slideshow__meta {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+
+.hero__title {
+  /* Uppercase is applied here rather than typed into the markup, so the DOM
+     text and the accessible name stay sentence case. At three words this is
+     display type and carries the caps comfortably — unlike the longer
+     headlines further down the page, which stay sentence case for legibility. */
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 0 0 10px;
-  min-height: 1.2em; /* reserves its line even before content loads/swaps, avoiding CLS */
-}
-.hero-slideshow h1 {
-  font-size: 26px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: clamp(31px, 8.6vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
   margin: 0 0 14px;
+  text-wrap: balance;
 }
-.hero-slideshow__desc {
-  font-size: 14px;
+.hero__sub {
+  font-size: clamp(15px, 1.7vw, 17px);
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.82);
-  margin: 0 0 26px;
-  max-width: 48ch;
-  /* Fixed 2-line box regardless of a given product's description length —
-     content swaps never reflow the hero's height (no CLS between slides). */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  min-height: 2.8em;
-}
-/* Price is the primary visual anchor, ranked above the CTA in both markup
-   order and weight — the user should register the value proposition
-   (headline -> description -> price) before reaching the "Shop Now" action,
-   per the conversion-path spec this hero was redesigned around. */
-.hero-slideshow__price {
-  display: block;
-  font-size: 34px;
-  line-height: 1.1;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: #ffffff;
+  color: var(--color-text-muted);
   margin: 0 0 22px;
-  min-height: 1.1em; /* reserves its line before content loads/swaps, avoiding CLS */
+  max-width: 42ch;
 }
-.hero-slideshow__cta-row {
+.hero__actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
 }
-.hero-slideshow__cta.btn-one {
-  /* Inverted from the sitewide dark .btn-one — a near-black button would
-     nearly disappear against this section's own dark, blurred backdrop. A
-     light, high-contrast button is what actually needs to pop here.
-     Deliberately not the visual anchor of the hero (the price above is) —
-     full-width for thumb reach, but no oversized padding/shadow to compete
-     with it. */
+/* One dominant CTA. Sized up from the sitewide .btn-one — this is the single
+   most important control on the site — but deliberately still the same
+   component, not a bespoke button that would read as belonging to another
+   design system. Full width on phones for thumb reach. */
+.hero__cta.btn-one {
   width: 100%;
   text-align: center;
-  background-color: #ffffff;
-  color: var(--color-text);
-  padding-left: 28px;
-  padding-right: 28px;
+  padding: 16px 34px;
+  font-size: 15px;
 }
-.hero-slideshow__cta.btn-one:hover {
-  background-color: #f0f0f0;
-  color: var(--color-text);
+.hero__cta.btn-one i {
+  margin-left: 8px;
+  font-size: 0.85em;
 }
-.hero-slideshow__cta.btn-one span {
+
+/* ---- The deck -----------------------------------------------------------
+   Three cards at most are ever visible: the active one, and one behind it on
+   each side. Everything else is display:none, so the deck's height is fixed by
+   the active card and cannot grow with the catalog. */
+.hero__stage {
+  position: relative;
+  /* Bounded so the card cannot balloon on a large phone or a tablet in
+     portrait, where a 100%-width card would swallow the fold. */
+  max-width: 300px;
+  margin: 0 auto;
+  width: 100%;
+}
+.hero__deck {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Every card is absolutely positioned, so the deck needs its own height for
+     them to size against. This ratio covers the WHOLE card — media plus the
+     52px foot — which is why the media box below ends up nearer 0.86:1 than
+     3:4. Fixed here, so rotating between products of wildly different cover
+     shapes cannot resize the deck. */
+  aspect-ratio: 3 / 4;
+}
+.hero-card {
+  position: absolute;
+  inset: 0;
+  display: none;
+  /* Motion is restrained on purpose: one soft ease, no parallax, no zoom, no
+     rotation. It should register as "there are more of these" without ever
+     asking to be watched. */
+  transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1),
+              opacity 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform, opacity;
+}
+.hero-card.is-active,
+.hero-card.is-prev,
+.hero-card.is-next { display: block; }
+
+.hero-card.is-active {
+  opacity: 1;
+  transform: none;
+  z-index: 3;
+}
+/* The flanking cards read as depth, not as content: pushed back, tucked
+   behind, and mostly hidden on phones where there is no room for them. */
+.hero-card.is-prev,
+.hero-card.is-next {
+  opacity: 0.55;
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-card.is-prev  { transform: translateX(-16%) scale(0.86); }
+.hero-card.is-next  { transform: translateX(16%) scale(0.86); }
+
+.hero-card__link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   color: inherit;
+  text-decoration: none;
+}
+.hero-card__link:hover { color: inherit; }
+
+/* The media box IS a .pmedia container (see media-container.css) — the same
+   contract every product grid uses, so a portrait, square, vector or oddly
+   cropped upload all render inside one fixed frame without distortion and
+   without changing the layout. Only the shape is overridden here. */
+.hero-card__media.pmedia {
+  --pmedia-radius: 14px;
+  /* The deck owns the card's overall shape; the media takes whatever height is
+     left once the foot has its 52px. So the box's own aspect-ratio is cleared
+     rather than left to fight the flex height — with a definite width AND a
+     flex-resolved height, an aspect-ratio would simply be ignored, and leaving
+     it in would misdescribe what the box actually does. Net result is a media
+     box of about 0.86:1, and the image inside is object-fit'ed either way, so
+     no source is ever distorted. */
+  aspect-ratio: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  border: 1px solid var(--color-border);
+  /* A single soft shadow lifts the active card off the light ground. It is the
+     only shadow in the section. */
+  box-shadow: 0 18px 40px -24px rgba(26, 26, 26, 0.45);
+}
+.hero-card.is-prev .hero-card__media.pmedia,
+.hero-card.is-next .hero-card__media.pmedia { box-shadow: none; }
+
+/* .pmedia--vector insets vector art by 6% because in a 280px grid card that
+   reads as deliberate framing. In the hero the card is the whole point, so the
+   same inset just makes the product smaller — tightened here only. Contained
+   RASTER covers keep their blurred backdrop and are untouched: program covers
+   carry their title in the artwork, so cropping them would cut the name off,
+   which is exactly why the server chose `contain` for them. */
+.hero-card .pmedia--vector .pmedia__img { padding: 2%; }
+
+.hero-card__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  min-height: 40px; /* reserves its line before JS fills it — no shift */
+}
+.hero-card__name {
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--color-text);
+  /* Product names vary in length; clamping keeps every card's foot the same
+     height so rotation never resizes the deck. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hero-card__price {
+  flex: 0 0 auto;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+/* The flanking previews show artwork only — their names would be unreadable at
+   55% opacity behind the active card, and would clutter what should read as
+   depth. */
+.hero-card.is-prev .hero-card__foot,
+.hero-card.is-next .hero-card__foot { visibility: hidden; }
+
+@media (min-width: 480px) {
+  .hero__cta.btn-one { width: auto; }
+  .hero__stage { max-width: 320px; }
 }
 
-@media (min-width: 420px) {
-  .hero-slideshow__cta.btn-one {
-    width: auto;
-  }
-}
-/* ---- Hero floors above mobile.
-   Every one of these is `min(<px>, 88svh)`, never a bare px value and never
-   `max()`. The floor is therefore mathematically incapable of exceeding 88%
-   of the viewport the visitor can actually see, so the hero can never grow
-   tall enough to push the ticker below it off the first screen — which is
-   the exact failure the base rule above documents.
-
-   This also covers a phone held in landscape, which is what a bare px floor
-   got wrong: an iPhone 15 Pro Max is 932x430, so it is WIDER than 768px and
-   picks up the desktop rules here while being only 430px tall. `min()`
-   resolves that to 378px on its own, no viewport-height media query needed.
-
-   `min-height` only ever sets a floor, so where the hero's content is
-   taller than the result (421.5px of content vs 378px on that landscape
-   phone) the content still wins and the section sizes to it.
-
-   The bare px line before each `min()` is the fallback for browsers with no
-   svh support (< Chrome 108 / Safari 15.4); those breakpoints start at
-   576px, and the value is the same one that shipped before. ---- */
-@media (min-width: 576px) {
-  .hero-slideshow {
-    min-height: 560px;
-    min-height: min(560px, 88svh);
-  }
-  .hero-slideshow h1 {
-    font-size: 34px;
-  }
-  .hero-slideshow__desc {
-    font-size: 15px;
-  }
-  .hero-slideshow__price {
-    font-size: 38px;
-  }
-}
 @media (min-width: 768px) {
-  .hero-slideshow {
-    padding: 116px 0 60px;
-    min-height: 600px;
-    min-height: min(600px, 88svh);
-  }
-  .hero-slideshow h1 {
-    font-size: 44px;
-  }
-  .hero-slideshow__price {
-    font-size: 42px;
-  }
+  .hero__stage { max-width: 340px; }
+  .hero-card.is-prev { transform: translateX(-34%) scale(0.84); }
+  .hero-card.is-next { transform: translateX(34%) scale(0.84); }
 }
+
 @media (min-width: 992px) {
-  .hero-slideshow {
-    padding: 136px 0 70px;
-    min-height: 640px;
-    min-height: min(640px, 88svh);
+  .hero {
+    /* Header is 42px from this breakpoint up; 62px minimum clears it. */
+    padding: clamp(62px, 5vw, 88px) 0 clamp(48px, 5vw, 84px);
   }
-  .hero-slideshow h1 {
-    font-size: 54px;
+  .hero__grid {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(40px, 6vw, 88px);
   }
-  .hero-slideshow__desc {
-    font-size: 16px;
-    -webkit-line-clamp: 3;
-    min-height: 4.6em;
+  .hero__stage {
+    max-width: 380px;
+    /* Centred in its column, not right-aligned. Right-aligning pushed the
+       is-next card's 38% overhang past the viewport edge, so it was sheared
+       off by the section clip instead of tucking behind the active card —
+       it read as an accident rather than as depth. Centring keeps both
+       overhangs inside the viewport at every width from 992 up. */
+    margin: 0 auto;
   }
-  .hero-slideshow__price {
-    font-size: 46px;
-  }
+  .hero__sub { margin-bottom: 30px; }
+  /* The overhang is a percentage of the CARD, but the room for it comes from
+     the viewport — so at 992-1199, where the stage is nearly as wide as its
+     column, 38% put the is-next card ~48px past the right edge and it got
+     sheared by the section clip. Held to 26% here and widened again once
+     there is room. */
+  .hero-card.is-prev { transform: translateX(-20%) scale(0.82); }
+  .hero-card.is-next { transform: translateX(20%) scale(0.82); }
 }
-@media (min-width: 1300px) {
-  .hero-slideshow h1 {
-    font-size: 60px;
-  }
+
+@media (min-width: 1200px) {
+  .hero-card.is-prev { transform: translateX(-34%) scale(0.82); }
+  .hero-card.is-next { transform: translateX(34%) scale(0.82); }
+}
+
+@media (min-width: 1400px) {
+  .hero__stage { max-width: 420px; }
+}
+
+/* Reduced motion: hero-slideshow.js already stops the rotation outright, so
+   there is nothing left to animate. Clearing the transition too means the
+   single layout pass it does perform lands instantly rather than easing. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-card { transition: none; }
 }
 
 .people-strip-area,

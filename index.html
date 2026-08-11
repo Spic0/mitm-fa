@@ -13,6 +13,15 @@
          image only — every other slide loads lazily/on-demand from the
          client. See server/src/index.js -> applyHeroContext. -->
     <!--HERO_PRELOAD-->
+    <!-- The hero <h1> is the largest text on the site and is set in Inter 700.
+         Inter is self-hosted with `font-display: swap`, so without this the
+         headline first paints in the fallback, then reflows when the real font
+         arrives — measured at 390px that moved the whole hero up 34px (the
+         headline went from three lines to two), which was the single largest
+         layout shift on the page. 24KB, fetched in parallel with the CSS that
+         declares it. Only the 700 weight: the other weights are body-sized,
+         where a swap costs a line-height, not a line. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-700-normal.woff2" crossorigin>
     <!-- Favicon img -->
     <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
@@ -112,50 +121,71 @@
 
     <main>
 
-        <!-- Banner area start here: fully dynamic hero product slideshow.
-             Data source: GET /api/products + GET /api/taxonomy (see
-             assets/js/hero-slideshow.js) — featured products first, falling
-             back to the newest published products if none are featured.
-             Nothing here is hardcoded.
+        <!-- Hero start here.
+             ================================================================
+             Rebuilt for conversion. The previous hero used each product cover
+             as a FULL-BLEED BACKGROUND at blur(22px) brightness(0.55) under a
+             dark scrim, with six stacked text elements over it: a badge, a
+             creator/category meta line, the product name as <h1>, a
+             description, a price and a CTA. Two problems compounded — the
+             product was unrecognisable (that much blur destroys it), and the
+             <h1> was a PRODUCT NAME that swapped every 6 seconds, so the page
+             never actually said what Fitness Agency is.
 
-             Slide 0 is server-rendered directly into this markup (see
-             server/src/index.js -> applyHeroContext, which mirrors the
-             existing applyShopContext pattern used for shop.html) so a
-             crawler or no-JS visitor sees a real product headline,
-             description, price and image immediately — not an empty shell.
-             assets/js/hero-slideshow.js recognizes the SSR'd slide via
-             data-hero-id and reuses it as swiper slide 0 rather than
-             re-rendering a duplicate/flash. Every other slide is added
-             client-side. -->
-        <section class="hero-slideshow" data-hero-id="">
-            <div class="hero-slideshow__bg-layer">
-                <div class="swiper hero-slideshow__swiper" id="heroSwiper">
-                    <div class="swiper-wrapper" id="heroSwiperWrapper">
-                        <div class="swiper-slide hero-slideshow__slide">
-                            <img class="hero-slideshow__bg-img" data-hero-bg-img alt="" src="" srcset="" sizes="100vw">
+             Now: one fixed brand headline, one supporting line, one CTA, and
+             the products rendered as SHARP CARDS that are the dominant visual.
+             Depth comes from scale and opacity on the neighbouring cards, not
+             from blurring the thing the visitor is meant to look at.
+
+             Still fully dynamic — GET /api/products + GET /api/taxonomy via
+             assets/js/hero-slideshow.js, featured products first, falling back
+             to newest published. Card 0 is server-rendered (applyHeroContext
+             in server/src/routes/pages.js) so a crawler or no-JS visitor gets a
+             real product with a real link, and it doubles as the LCP preload
+             target. The script recognises it by data-hero-id and reuses it
+             rather than re-rendering a duplicate. -->
+        <section class="hero" data-hero-id="">
+            <div class="container">
+                <div class="hero__grid">
+                    <div class="hero__copy">
+                        <h1 class="hero__title">Train with a plan.</h1>
+                        <p class="hero__sub">Programs built to help you train with direction — from strength and
+                            size to nutrition and performance.</p>
+                        <!-- Deliberately ONE call to action. A "Browse by goal"
+                             secondary was considered and dropped: there is no
+                             goals index page to send it to (goals exist only as
+                             /goal/:slug leaves, already in the header menu), so
+                             it would have pointed at /shop — the same place as
+                             the primary, competing with it for nothing. -->
+                        <div class="hero__actions">
+                            <a class="btn-one hero__cta" href="/shop">
+                                <span>Explore Programs <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            </a>
                         </div>
                     </div>
-                </div>
-                <div class="hero-slideshow__scrim" aria-hidden="true"></div>
-            </div>
-            <div class="container">
-                <div class="hero-slideshow__content" id="heroContent">
-                    <!-- The hero's <h1> is a PRODUCT name and swaps per slide,
-                         so without this line a first-time visitor is never told
-                         what Fitness Agency sells. Deliberately static — it must
-                         not swap with the slideshow. -->
-                    <span class="hero-slideshow__badge">Training &amp; nutrition plans by real coaches</span>
-                    <p class="hero-slideshow__meta" data-hero-meta></p>
-                    <h1 data-hero-title></h1>
-                    <p class="hero-slideshow__desc" data-hero-desc></p>
-                    <span class="hero-slideshow__price" data-hero-price></span>
-                    <div class="hero-slideshow__cta-row">
-                        <a href="/shop" class="btn-one hero-slideshow__cta" data-hero-cta><span>Shop Now</span></a>
+
+                    <!-- The deck. Card 0 is server-rendered inside; every other
+                         card is appended by hero-slideshow.js, which attaches
+                         image sources only for the cards in view and strips
+                         them again on the way out, so a catalog of 300 featured
+                         products never means 300 hero images. -->
+                    <div class="hero__stage">
+                        <ul class="hero__deck" id="heroDeck">
+                            <li class="hero-card is-active" data-hero-card>
+                                <a class="hero-card__link" href="/shop" data-hero-cta>
+                                    <span class="hero-card__media pmedia" data-hero-media></span>
+                                    <span class="hero-card__foot">
+                                        <span class="hero-card__name" data-hero-title></span>
+                                        <span class="hero-card__price" data-hero-price></span>
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- Banner area end here -->
+        <!-- Hero end here -->
 
         <!-- Product marquee area start here: slim, continuously-scrolling strip
              directly under the hero, showing plain product titles only — no

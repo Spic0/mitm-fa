@@ -557,33 +557,45 @@ async function applyHeroContext(html, product) {
 
   if (!product) return html;
 
-  const category = describeProductCategory(product);
-  const metaParts = [product.creator, category].filter(Boolean);
-  const meta = escapeHtml(metaParts.join(" · "));
-  const title = escapeHtml(product.name);
-  const description = escapeHtml(product.description || "");
-  const price = escapeHtml(formatProductPrice(product.priceCents));
   const ctaHref = `/program/${encodeURIComponent(product.slug)}`;
-  // The hero backdrop is this page's LCP element, so it is preloaded below.
-  // Preloading the ORIGINAL upload made that actively counterproductive: on
-  // one real product that meant fetching a 636KB PNG at the highest priority,
-  // and the same bytes again for the card's blurred backdrop. Point both the
-  // tag and the preload at responsive derivatives instead, and let the browser
-  // pick by viewport via imagesrcset.
-  const heroMedia = coverMedia(product.imageUrl);
-  const heroWebp = heroMedia && (heroMedia.sources || []).find((s) => s.type === "image/webp");
-  // Widest derivative for src (the hero is full-bleed), srcset for the choice.
-  const heroFallback = heroWebp
-    ? String(heroWebp.srcset).split(",").map((x) => x.trim().split(/\s+/)[0]).pop()
-    : null;
-  const bgSrc = escapeHtml(heroFallback || normalizeImageUrl(product.imageUrl) || "");
-  const heroSrcset = heroWebp ? escapeHtml(heroWebp.srcset) : "";
+  const cover = coverMedia(product.imageUrl);
+  const src = normalizeImageUrl(product.imageUrl) || "";
 
-  // Replaces one attribute's value within whichever single tag matches
-  // tagPattern, regardless of where that attribute falls in the tag's
-  // attribute order (a plain "...marker[^>]*?attr=" regex silently fails to
-  // match, and .replace() silently no-ops, whenever attr happens to appear
-  // *before* the marker in the source — as href does on the CTA anchor).
+  // The hero card's image. It is no longer a full-bleed blurred backdrop but a
+  // ~320-420px CSS-wide card, so the widest derivative is waste: `sizes` tells
+  // the browser the real display width and it picks accordingly. The old code
+  // deliberately pinned src to the WIDEST derivative because the image was
+  // full-bleed; that reasoning no longer applies and would now over-fetch by
+  // roughly 4x on a phone.
+  const HERO_SIZES = "(min-width: 992px) 420px, (min-width: 576px) 320px, 62vw";
+  const webp = cover && (cover.sources || []).find((s) => s.type === "image/webp");
+
+  let mediaHtml;
+  if (cover && cover.sources && cover.sources.length) {
+    const sources = cover.sources
+      .map((so) => `<source type="${escapeHtml(so.type)}" srcset="${escapeHtml(so.srcset)}" sizes="${HERO_SIZES}">`)
+      .join("");
+    const lqip = cover.placeholder
+      ? `<img class="pmedia__placeholder" src="${escapeHtml(cover.placeholder)}" alt="" aria-hidden="true" decoding="async">`
+      : "";
+    // Intrinsic width/height let the browser reserve the exact box before CSS
+    // arrives, which is what keeps this at zero layout shift on a slow paint.
+    const dims = cover.width && cover.height ? ` width="${cover.width}" height="${cover.height}"` : "";
+    mediaHtml =
+      lqip +
+      `<picture>${sources}<img class="pmedia__img" src="${escapeHtml(src)}" sizes="${HERO_SIZES}" alt="${escapeHtml(product.name)}"${dims} fetchpriority="high" decoding="async"></picture>`;
+  } else if (src) {
+    mediaHtml = `<img class="pmedia__img" src="${escapeHtml(src)}" alt="${escapeHtml(product.name)}" fetchpriority="high" decoding="async">`;
+  } else {
+    mediaHtml = "";
+  }
+
+  // The fit mode is decided server-side from the image's real dimensions (see
+  // chooseFit in lib/mediaDerivatives.js) — CSS cannot know an aspect ratio
+  // before the image loads, and guessing is what produces jumping layouts.
+  const fitClass = cover && cover.fit === "contain" ? "pmedia--contain" : "pmedia--cover";
+  const vectorClass = cover && cover.orientation === "vector" ? " pmedia--vector" : "";
+
   function replaceAttrInTag(str, tagPattern, attrName, value) {
     return str.replace(tagPattern, (tag) =>
       tag.replace(new RegExp(`${attrName}="[^"]*"`), `${attrName}="${value}"`)
@@ -591,27 +603,35 @@ async function applyHeroContext(html, product) {
   }
 
   let result = html
-    .replace(/(<section class="hero-slideshow" data-hero-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
-    .replace(/(<p[^>]*data-hero-meta[^>]*>)[^<]*(<\/p>)/, `$1${meta}$2`)
-    .replace(/(<h1[^>]*data-hero-title[^>]*>)[^<]*(<\/h1>)/, `$1${title}$2`)
-    .replace(/(<p[^>]*data-hero-desc[^>]*>)[^<]*(<\/p>)/, `$1${description}$2`)
-    .replace(/(<span[^>]*data-hero-price[^>]*>)[^<]*(<\/span>)/, `$1${price}$2`);
+    .replace(/(<section class="hero" data-hero-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
+    .replace(/(<span[^>]*data-hero-title[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(product.name)}$2`)
+    .replace(/(<span[^>]*data-hero-price[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(formatProductPrice(product.priceCents))}$2`)
+    // The fit modifier goes on the CLASS LIST, not a data attribute — the
+    // .pmedia rules in media-container.css key off .pmedia--cover /
+    // .pmedia--contain / .pmedia--vector, and that is the same contract every
+    // product card on the site already uses.
+    .replace(
+      /<span class="hero-card__media pmedia"([^>]*data-hero-media[^>]*)><\/span>/,
+      `<span class="hero-card__media pmedia ${fitClass}${vectorClass}"$1>${mediaHtml}</span>`
+    );
 
   result = replaceAttrInTag(result, /<a\b[^>]*data-hero-cta[^>]*>/, "href", ctaHref);
-  result = replaceAttrInTag(result, /<img\b[^>]*data-hero-bg-img[^>]*>/, "src", bgSrc);
 
-  if (heroSrcset) {
-    result = replaceAttrInTag(result, /<img\b[^>]*data-hero-bg-img[^>]*>/, "srcset", heroSrcset);
-  }
-
-  if (bgSrc) {
-    // imagesrcset/imagesizes make the preload agree with what the <img> will
-    // actually choose — without them the browser preloads one URL and then
-    // downloads a different one, doubling the cost of the LCP image.
-    const attrs = heroSrcset
-      ? ` imagesrcset="${heroSrcset}" imagesizes="100vw"`
+  if (src) {
+    // Preload only THIS card. Every other card's image is attached by
+    // hero-slideshow.js as it comes into the rotation window, so the first
+    // paint never pays for slides the visitor may never see.
+    //
+    // imagesrcset/imagesizes must mirror the <img> exactly, or the browser
+    // preloads one URL at high priority and then downloads a different one —
+    // paying for the LCP image twice.
+    const attrs = webp
+      ? ` imagesrcset="${escapeHtml(webp.srcset)}" imagesizes="${HERO_SIZES}"`
       : "";
-    result = result.replace("<!--HERO_PRELOAD-->", `<link rel="preload" as="image" href="${bgSrc}"${attrs} fetchpriority="high">`);
+    result = result.replace(
+      "<!--HERO_PRELOAD-->",
+      `<link rel="preload" as="image" href="${escapeHtml(src)}"${attrs} fetchpriority="high">`
+    );
   }
   return result;
 }

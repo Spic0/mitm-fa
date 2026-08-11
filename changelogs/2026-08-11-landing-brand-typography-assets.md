@@ -313,6 +313,73 @@ that page's context is different — it is partly about the company. The shared
 homepage's copy of the section is gone, and index.html no longer loads
 trust-stats.js.
 
+## Hero rebuilt: blurred backdrop -> sharp product deck
+
+The hero used each product cover as a full-bleed background at
+`filter: blur(22px) brightness(0.55)` under a dark scrim, with six text
+elements stacked over it: a badge, a creator/category meta line, the product
+name as the `<h1>`, a description, a price and a CTA.
+
+Two faults compounded. That much blur destroys the product, so showing products
+achieved nothing — and the `<h1>` was a PRODUCT NAME that swapped every six
+seconds, so the page never stated what the business is.
+
+Now: one fixed headline ("Train with a plan."), one supporting line, one CTA,
+and the products as SHARP CARDS that are the dominant visual. Depth comes from
+scale and opacity on the two flanking cards. The active card is never blurred,
+never dimmed and never scaled down. The surface is the brand's own light ground,
+so the cards are the sharpest thing in the section.
+
+Text elements in the hero: six -> three.
+
+**Still fully dynamic.** Same data (featured products, falling back to newest
+published), same server-rendered first card for crawlers/no-JS, same
+`data-hero-id` handshake. Only the presentation changed.
+
+**Media.** Each card's image is built by `MediaContainer.build()` — the same
+container every product grid uses — so the hero gets AVIF/WebP srcset, the LQIP,
+the server-decided fit mode and intrinsic dimensions without a second
+implementation. `sizes` now describes a ~320-420px card instead of `100vw`; the
+old code deliberately pinned `src` to the WIDEST derivative because the image
+was full-bleed, which would now over-fetch by roughly 4x on a phone.
+
+Images are attached only for the active card and its two neighbours, and
+stripped again on the way out — so a catalog of 300 featured products still
+means three hero images. Measured: 3 of 5 cards hold images at any moment.
+
+Four bugs found by measuring:
+
+- **The `<h1>` was hidden behind the header.** `.site-header` is `position:
+  fixed` at 65px (mobile) / 42px (desktop), and the hero is the first element in
+  `<main>`, so its top padding is the only thing keeping the headline clear. At
+  20px the headline was overlapped by 34-45px on every phone tested.
+- **The flanking cards caused horizontal overflow** — 10 escaping elements at
+  320px, 5 at 1024-1440. The section now clips, and the desktop overhang is
+  scaled per breakpoint (20% at 992-1199, 34% above) so the preview tucks
+  behind the active card instead of being sheared at the viewport edge.
+- **The headline reflowed when Inter loaded.** Inter is self-hosted with
+  `font-display: swap` and was never preloaded, so the `<h1>` painted in the
+  fallback, then dropped from three lines to two — moving the whole hero up
+  34px. That was the page's largest layout shift. Preloading the 700 weight
+  (24KB) removed it: CLS at 390px went 0.0597 -> 0.0151, and what remains is
+  the people/deal strips, not the hero.
+- **Vector covers were inset 6%** by the grid preset, which is right in a 280px
+  card and just makes the product smaller in a hero. 2% here. Contained RASTER
+  covers keep their blurred backdrop untouched — program covers carry their
+  title in the artwork, which is why the server chose `contain` for them and why
+  cropping them would cut the name off.
+
+Measured at 320/375/390/430/768/1024/1280/1440/1920: no header overlap, no
+horizontal overflow, CTA fully above the fold at every width, 60-100% of the
+first card visible in the first viewport, hero 599-821px tall, no console
+errors, no broken images.
+
+Throttled (Chrome DevTools network emulation): FCP 192-256ms and LCP 420-908ms
+on both 20/10 Mbps and 10/2 Mbps, with the whole deck costing 38-64KB.
+
+Rotation verified advancing past the third slide (the old Swiper bug), and
+`prefers-reduced-motion` stops it outright rather than merely speeding it up.
+
 ## Not changed
 - `assets/images/footer/footer-bg.jpg` — smoke artwork, 18 pages.
 - `assets/css/critical.css` — regeneration not required; no `style.css` rule

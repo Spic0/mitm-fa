@@ -6,7 +6,7 @@ Drop files here, named exactly after the slot they fill, then run:
 
 | Filename | Where it appears | Size | Ratio |
 |---|---|---|---|
-| `promo-primary.<ext>` | Large left promo tile | 1280 × 720 | 16:9 |
+| `promo-primary.<ext>` | Large left promo tile | 1200 × 1200 | square (crops to 16:9 stacked, ~0.85:1 on desktop — centre the subject) |
 | `promo-secondary-a.<ext>` | Small upper-right tile | 900 × 600 | 3:2 |
 | `promo-secondary-b.<ext>` | Small lower-right tile | 900 × 600 | 3:2 |
 | `showcase.<ext>` | Featured-plan showcase (optional — falls back to the product's own cover) | 1200 × 1500 | 4:5 |

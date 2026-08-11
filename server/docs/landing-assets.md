@@ -46,7 +46,7 @@ The file must be named exactly after the slot it fills:
 
 | Filename | Where it appears | Recommended size | Ratio |
 |---|---|---|---|
-| `promo-primary.<ext>` | Large left promo tile, "Browse Every Plan" | **1280 × 720** | 16:9 |
+| `promo-primary.<ext>` | Large left promo tile, "Browse Every Plan" | **1200 × 1200** | square — see note |
 | `promo-secondary-a.<ext>` | Small upper-right tile, "New to Training" | **900 × 600** | 3:2 |
 | `promo-secondary-b.<ext>` | Small lower-right tile, "Nutrition & Diet" | **900 × 600** | 3:2 |
 | `showcase.<ext>` | Featured-plan showcase image | **1200 × 1500** | 4:5 portrait |
@@ -54,6 +54,12 @@ The file must be named exactly after the slot it fills:
 A filename that isn't a slot name is ignored, and
 `node tools/build-landing-assets.js` prints a warning naming the valid slots —
 a typo'd filename is by far the most common reason a slot "doesn't work".
+
+**`promo-primary` is the one slot whose shape changes with the viewport.** While
+the tiles are stacked it is 16:9; on desktop that tile spans the full height of
+the two beside it and its image absorbs the spare height, making the box roughly
+0.85:1. Supply a **square** image with the subject centred — it crops sensibly
+both ways. A 16:9 source loses about half its width on desktop.
 
 `showcase` is optional and behaves differently from the other three: when it is
 empty, the section falls back to the **real cover image of the featured

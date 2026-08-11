@@ -119,9 +119,15 @@ named holes; the server fills them from whatever is in
 <div class="landing-slot" data-landing-slot="promo-primary" data-landing-alt="…"></div>
 ```
 
-Four slots: `promo-primary` (16:9), `promo-secondary-a`, `promo-secondary-b`
-(3:2), `showcase` (4:5). Dropping `assets/images/landing/<slot>.<ext>` fills the
-slot; deleting the file empties it.
+Four slots: `promo-primary`, `promo-secondary-a`, `promo-secondary-b` (3:2) and
+`showcase` (4:5). Dropping `assets/images/landing/<slot>.<ext>` fills the slot;
+deleting the file empties it.
+
+`promo-primary` is the one slot whose shape changes with the viewport — 16:9
+while the tiles are stacked, ~0.85:1 on desktop where that tile spans the height
+of the two beside it and its media absorbs the spare column height (letting the
+BODY absorb it instead left a 634px void under a 467px image). A square source
+is therefore what the docs ask for.
 
 - Derivative generation reuses the **product upload pipeline verbatim**
   (`lib/mediaDerivatives.js`) — AVIF + WebP at 320/640/960/1280, LQIP, dominant

@@ -66,10 +66,16 @@ const SLOTS = {
     eager: false,
   },
   "promo-primary": {
+    // The one slot whose shape CHANGES with the breakpoint: 16:9 while the
+    // tiles are stacked, then roughly 0.85:1 on desktop, where this tile spans
+    // the full height of the two beside it and its media absorbs the spare
+    // column height. A square source is therefore the right thing to supply —
+    // it cover-crops sensibly in both directions, whereas a 16:9 source loses
+    // about half its width on desktop. Keep the subject centred.
     label: "Primary promo tile (large, left)",
-    ratio: "16 / 9",
-    ideal: { width: 1280, height: 720 },
-    sizes: "(min-width: 992px) 620px, 92vw",
+    ratio: "16 / 9 stacked, ~0.85 / 1 on desktop",
+    ideal: { width: 1200, height: 1200 },
+    sizes: "(min-width: 992px) 800px, 92vw",
     eager: false,
   },
   "promo-secondary-a": {

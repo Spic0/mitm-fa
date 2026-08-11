@@ -857,10 +857,29 @@
     grid-template-columns: 1.35fr 1fr;
     align-items: stretch;
   }
-  /* The lead tile occupies the full height of the two stacked tiles beside
-     it. Its media keeps its own 16:9 ratio and the body absorbs the extra
-     height, so nothing is stretched or cropped to fit the column. */
+  /* The lead tile spans the full height of the two stacked tiles beside it.
+     Letting its media keep a fixed 16:9 there leaves a tall void under the
+     copy, because 16:9 is much shorter than two stacked 3:2 tiles — an
+     unexplained empty area, which is exactly what this pass exists to remove.
+
+     So on desktop the lead media drops its fixed ratio and takes whatever
+     height the body doesn't need. The slot is cover-fitted, so a 16:9 source
+     crops vertically to fill rather than distorting; min-height keeps the box
+     sane if the copy ever grows long enough to eat the column. */
   .promo-tile--lead { grid-row: 1 / span 2; }
+  .promo-tile--lead .promo-tile__media.landing-slot {
+    flex: 1 1 auto;
+    aspect-ratio: auto;
+    min-height: 260px;
+  }
+  /* .promo-tile__body carries `flex: 1 1 auto` so a short card still fills its
+     own height. On the lead tile that makes the BODY eat the spare column
+     height instead of the media — measured 634px of body under 467px of image.
+     The media is the element that should absorb it here. */
+  .promo-tile--lead .promo-tile__body { flex: 0 0 auto; }
+  @supports not (aspect-ratio: 1) {
+    .promo-tile--lead .promo-tile__media.landing-slot::before { padding-top: 0; }
+  }
   .promo-tile--lead .promo-tile__title { font-size: 26px; }
   .promo-tile--lead .promo-tile__desc { font-size: 15px; }
   .promo-tile--lead .promo-tile__body { padding: 28px 28px 32px; }

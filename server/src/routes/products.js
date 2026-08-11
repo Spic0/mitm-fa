@@ -45,6 +45,12 @@ function serialize(product, salesRank) {
       url: normalizeImageUrl(m.url),
       type: m.type,
       alt: m.alt || product.name,
+      // Gallery stills get the same responsive payload as the cover. Without
+      // this the detail page had no derivatives to choose from and shipped the
+      // raw upload — the cover path was fixed months ago, but the gallery is a
+      // second image source that was never given the same treatment.
+      // Video is skipped: coverMedia only ever describes stills.
+      cover: m.type === "video" ? null : coverMedia(m.url),
     }));
   }
   return out;

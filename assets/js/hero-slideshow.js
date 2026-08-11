@@ -24,7 +24,19 @@
 // stuck true and silently no-ops every later tick. That was the original
 // "hero stops after two products" bug. A small manual carousel avoids it.
 document.addEventListener("DOMContentLoaded", function () {
-  var DELAY = 6000; // ms between slides
+  // Dwell time per card, in ms. 6000 was long enough that the deck read as
+  // static — a visitor who glanced away came back to the same card. 3400 is
+  // set against what the card actually has to communicate: a product name, a
+  // price and one image. Read-rate research puts a short phrase plus a glance
+  // at an image comfortably under 3s, so this leaves headroom without stalling.
+  //
+  // Deliberately NOT lower: below ~2.5s the deck starts changing while the eye
+  // is still resolving the name, which produces the "I can't tell what any of
+  // these are" failure — faster, but strictly worse at selling anything.
+  //
+  // The 380ms CSS transition (home-dynamic.css) runs INSIDE this window, so
+  // the card is fully settled for ~3s of the 3.4s.
+  var DELAY = 3400;
   var SIZES = "(min-width: 992px) 420px, (min-width: 576px) 320px, 62vw";
   // How many cards on each side of the active one get their image attached.
   // Only the active card and its two immediate neighbours are ever visible, so

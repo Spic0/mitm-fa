@@ -39,8 +39,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var img = document.createElement("img");
     img.className = "mega-menu-card__thumb";
-    window.MediaContainer.applyResponsive(img, p, "(min-width: 992px) 220px, 50vw");
     img.alt = "";
+    // These live inside the mega-menu, which is closed on every page load.
+    // Without `lazy` the browser fetched all of them eagerly on EVERY page,
+    // competing with that page's real LCP image for bandwidth — on the product
+    // page at 390px this thumbnail was the single largest image on the page,
+    // larger than the product cover itself. Lazy on a hidden element defers
+    // the fetch until the menu is actually opened, which is the point.
+    img.loading = "lazy";
+    img.decoding = "async";
+    // The thumb is 44x44 CSS px (see .mega-menu-card__thumb). It previously
+    // declared 220px/50vw, which on a 2x phone asked for ~390px and pulled the
+    // 640w derivative — a 640px-wide image for a 44px box. 44px lands on the
+    // smallest derivative, which is still 3.6x the pixels a 2x screen needs.
+    var node = window.MediaContainer.applyResponsive(img, p, "44px");
 
     var body = document.createElement("span");
     body.className = "mega-menu-card__body";
@@ -55,7 +67,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     body.appendChild(name);
     body.appendChild(meta);
-    a.appendChild(img);
+    // `node`, not `img` — applyResponsive returns a <picture> wrapper when
+    // derivatives exist, and appending the bare img would drop the AVIF source.
+    a.appendChild(node);
     a.appendChild(body);
     return a;
   }

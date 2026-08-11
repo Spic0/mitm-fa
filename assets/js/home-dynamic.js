@@ -160,10 +160,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var imageWrap = document.createElement("span");
     imageWrap.className = "deal-card__image";
     var img = document.createElement("img");
-    window.MediaContainer.applyResponsive(img, p, "(min-width: 768px) 320px, 82vw");
     img.alt = p.name;
     img.loading = "lazy";
-    imageWrap.appendChild(img);
+    img.decoding = "async";
+    // `node`, not `img` — applyResponsive returns a <picture> wrapper when
+    // derivatives exist, and appending the bare img would drop the AVIF source.
+    var node = window.MediaContainer.applyResponsive(img, p, "(min-width: 768px) 320px, 82vw");
+    imageWrap.appendChild(node);
     a.appendChild(imageWrap);
 
     var content = document.createElement("span");

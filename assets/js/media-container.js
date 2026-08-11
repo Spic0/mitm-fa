@@ -158,20 +158,69 @@ window.MediaContainer = (function () {
   // srcset only ever offers sizes that actually exist, and src keeps the
   // original as the final fallback, so an image with no manifest behaves
   // exactly as it did before.
+  //
+  // RETURNS THE NODE TO INSERT, which is not always the <img> that went in:
+  // when derivatives exist it comes back wrapped in a <picture>. Callers must
+  // append the return value, not the img they passed.
+  //
+  // It used to set `srcset` on the <img> directly. That works, but an <img>
+  // carries exactly one srcset and therefore exactly one format — so it picked
+  // WebP and left AVIF unused, even though every derivative is generated in
+  // both and AVIF is typically 25-30% smaller again. Measured on the nav
+  // thumbnail: 75KB WebP where the AVIF beside it is 52KB.
   function applyResponsive(img, product, sizes) {
     if (!img) return img;
     var cover = product && product.cover;
     var src = (cover && cover.src) || (product && product.imageUrl) || "";
-    if (!cover || !cover.sources || !cover.sources.length) {
-      img.src = src;
-      return img;
-    }
-    var webp = cover.sources.filter(function (s) { return s.type === "image/webp"; })[0] || cover.sources[0];
-    img.srcset = webp.srcset;
-    img.sizes = sizes || DEFAULT_SIZES;
     img.src = src;
-    return img;
+    if (!cover || !cover.sources || !cover.sources.length) return img;
+    return pictureFor(img, cover, sizes);
   }
 
-  return { build: build, applyResponsive: applyResponsive, smallestDerivative: smallestDerivative, DEFAULT_SIZES: DEFAULT_SIZES };
+  // Wraps a caller-owned <img> in a <picture> offering every derivative format.
+  //
+  // This exists alongside applyResponsive() because that one sets `srcset` on
+  // the <img> directly, which can only ever offer ONE format — it picks WebP
+  // and leaves AVIF (typically 25-30% smaller again) on the table. That is an
+  // acceptable trade for a decorative backdrop; it is not acceptable for the
+  // product page's main image, which is the LCP element on that page.
+  //
+  // The caller keeps ownership of the <img> — its classes, alt, loading and
+  // fetchpriority are already set by the surface that created it, and the
+  // gallery's CSS is bound to `.product-gallery-img`. So this returns either
+  // the new <picture> or, when there are no derivatives, the original <img>
+  // untouched, and the caller inserts whatever comes back.
+  //
+  // NOTE: <source> must precede the <img> inside <picture>, and the <img> must
+  // stay the last child — the browser picks the first <source> whose type it
+  // supports and falls back to the <img> only if none match.
+  function pictureFor(img, cover, sizes) {
+    if (!img) return img;
+    if (!cover || !cover.sources || !cover.sources.length) return img;
+
+    var picture = el("picture");
+    cover.sources.forEach(function (s) {
+      var source = el("source");
+      source.type = s.type;
+      source.srcset = s.srcset;
+      source.sizes = sizes || DEFAULT_SIZES;
+      picture.appendChild(source);
+    });
+    // `sizes` on the <img> as well: it applies to the fallback path and is what
+    // the preload scanner reads.
+    img.sizes = sizes || DEFAULT_SIZES;
+
+    // Intrinsic dimensions reserve the box before any byte arrives. The
+    // gallery's CSS already pins an aspect-ratio, so this is belt-and-braces
+    // for the moment before the stylesheet applies.
+    if (cover.width && cover.height) {
+      img.width = cover.width;
+      img.height = cover.height;
+    }
+
+    picture.appendChild(img);
+    return picture;
+  }
+
+  return { build: build, applyResponsive: applyResponsive, pictureFor: pictureFor, smallestDerivative: smallestDerivative, DEFAULT_SIZES: DEFAULT_SIZES };
 })();

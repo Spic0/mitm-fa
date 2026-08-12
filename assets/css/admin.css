@@ -1423,3 +1423,248 @@ body.a-modal-body-lock { overflow: hidden; }
     .a-pager { justify-content: center; }
     .a-pager__count { width: 100%; text-align: center; }
 }
+
+/* ==========================================================================
+   Partner Profiles
+   --------------------------------------------------------------------------
+   The admin section and its six-step wizard. Every value below is an existing
+   admin token (--a-*); this adds no new colour, radius or shadow. The only
+   genuinely new components are the product picker, the reorderable rows and
+   the live preview frame — everything else reuses a-card / a-table / a-btn /
+   a-form-row / a-wizard-* as-is.
+   ========================================================================== */
+
+/* Monospaced and selectable, like the presentation link row: an admin who
+   can't use the clipboard button must still be able to read and copy it. */
+.partner-admin-url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--a-text-muted);
+}
+.partner-admin-url:hover { color: var(--a-primary); }
+
+.a-form-hint {
+    display: block;
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text-muted);
+}
+
+/* ---- Slug field: a fixed origin prefix welded to the editable segment, so
+   it is always obvious that the input is one path segment and not a URL. ---- */
+.partner-slug-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    overflow: hidden;
+}
+.partner-slug-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--a-surface-2);
+    border-right: 1px solid var(--a-border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--a-text-muted);
+    white-space: nowrap;
+}
+.partner-slug-row input {
+    border: 0 !important;
+    border-radius: 0 !important;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ---- Avatar ---- */
+.partner-avatar-row { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.partner-avatar-preview {
+    flex: 0 0 auto;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.partner-avatar-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.partner-avatar-initials { font-size: 26px; font-weight: 700; color: var(--a-text-muted); }
+.partner-avatar-actions { flex: 1 1 220px; min-width: 0; }
+
+/* ---- Social rows ---- */
+.partner-social-list { display: flex; flex-direction: column; gap: 10px; }
+.partner-social-row { display: flex; align-items: center; gap: 10px; }
+.partner-social-icon {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--a-surface-2);
+    color: var(--a-text);
+}
+.partner-social-label {
+    flex: 0 0 84px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--a-text);
+}
+.partner-social-row input { flex: 1 1 auto; min-width: 0; }
+
+/* ---- Product picker + selected/reorderable rows ---- */
+.partner-picker {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    margin-bottom: 18px;
+}
+.partner-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--a-border);
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--a-dur-fast) var(--a-ease);
+}
+.partner-picker-row:last-child { border-bottom: 0; }
+.partner-picker-row:hover { background: var(--a-surface-2); }
+.partner-picker-body, .partner-selected-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.partner-picker-body strong, .partner-selected-body strong {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--a-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.partner-picker-body span, .partner-selected-body span { font-size: 12px; color: var(--a-text-muted); }
+.partner-picker-add { flex: 0 0 auto; color: var(--a-text-muted); }
+
+.partner-thumb {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--a-surface-2);
+    display: block;
+}
+.partner-thumb--empty { display: inline-block; }
+
+.partner-selected { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.partner-selected-row, .partner-link-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+}
+.partner-selected-row.is-dragging, .partner-link-row.is-dragging { opacity: 0.5; }
+.partner-drag { flex: 0 0 auto; cursor: grab; color: var(--a-text-muted); padding: 0 2px; }
+.partner-drag:active { cursor: grabbing; }
+
+/* Link rows carry four fields, so they stack their inputs and drop the
+   actions onto their own line below the comfortable width for a modal. */
+.partner-link-row { align-items: flex-start; flex-wrap: wrap; }
+.partner-link-fields { flex: 1 1 320px; min-width: 0; display: grid; gap: 6px; }
+.partner-link-actions { flex: 0 0 auto; display: flex; gap: 4px; align-items: center; }
+
+.partner-count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 1px 7px;
+    border-radius: var(--a-radius-pill);
+    background: var(--a-surface-2);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--a-text-muted);
+}
+
+/* ---- Publish step ---- */
+.partner-publish-url {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface-2);
+    margin-bottom: 14px;
+}
+.partner-publish-url__label { font-size: 12px; font-weight: 600; color: var(--a-text-muted); }
+.partner-publish-url code {
+    flex: 1 1 240px;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--a-text);
+    overflow-wrap: anywhere;
+}
+.partner-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.partner-preview-tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; }
+
+/* The preview is a REAL iframe of the real public page, not a mock-up. The
+   mobile frame is a true 390px viewport so what the admin sees is what a
+   phone renders; the desktop frame renders at 1280 and is scaled down to
+   fit the modal with transform, which changes apparent size without
+   changing the layout the page computes. */
+.partner-preview {
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface-2);
+    padding: 14px;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+}
+.partner-preview__frame { position: relative; overflow: hidden; border-radius: var(--a-radius); background: #fff; }
+.partner-preview iframe { border: 0; display: block; }
+
+.partner-preview--mobile .partner-preview__frame {
+    width: 390px;
+    max-width: 100%;
+    height: 620px;
+    box-shadow: var(--a-shadow-modal);
+}
+.partner-preview--mobile iframe { width: 390px; height: 620px; }
+
+.partner-preview--desktop .partner-preview__frame {
+    width: 100%;
+    height: 460px;
+}
+.partner-preview--desktop iframe {
+    width: 1280px;
+    height: 920px;
+    transform: scale(0.5);
+    transform-origin: top left;
+}
+
+@media (max-width: 900px) {
+    .partner-preview--mobile .partner-preview__frame,
+    .partner-preview--mobile iframe { width: 100%; }
+    .partner-social-label { flex-basis: 68px; }
+}

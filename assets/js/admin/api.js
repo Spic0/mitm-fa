@@ -278,6 +278,24 @@ window.AdminAPI = (function () {
     duplicatePresentation: function (id) { return post("/api/admin/presentations/" + id + "/duplicate"); },
     regeneratePresentationLink: function (id) { return post("/api/admin/presentations/" + id + "/regenerate-link"); },
 
+    // ---- Partner Profiles ----
+    // Child collections (socials/links/products) are sent as whole ordered
+    // arrays on the partner PATCH, not through per-row endpoints — see
+    // server/src/routes/admin/partners.js for why.
+    listPartners: function (params) { return get("/api/admin/partners?" + new URLSearchParams(params || {})); },
+    getPartner: function (id) { return get("/api/admin/partners/" + id); },
+    getPartnerPreview: function (id) { return get("/api/admin/partners/" + id + "/preview"); },
+    createPartner: function (body) { return post("/api/admin/partners", body); },
+    updatePartner: function (id, body) { return patch("/api/admin/partners/" + id, body); },
+    deletePartner: function (id) { return del("/api/admin/partners/" + id); },
+    publishPartner: function (id) { return post("/api/admin/partners/" + id + "/publish"); },
+    unpublishPartner: function (id) { return post("/api/admin/partners/" + id + "/unpublish"); },
+    archivePartner: function (id) { return post("/api/admin/partners/" + id + "/archive"); },
+    uploadPartnerAvatar: function (id, formData, onProgress) { return postForm("/api/admin/partners/" + id + "/avatar", formData, onProgress); },
+    listPartnerProductOptions: function (search) {
+      return get("/api/admin/partners/product-options?" + new URLSearchParams(search ? { search: search } : {}));
+    },
+
     listInfluencers: function (params) { return get("/api/admin/influencers?" + new URLSearchParams(params || {})); },
     createInfluencer: function (body) { return post("/api/admin/influencers", body); },
     updateInfluencer: function (id, body) { return patch("/api/admin/influencers/" + id, body); },

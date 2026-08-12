@@ -89,6 +89,13 @@ const cspDirectives = {
   // bonus video got an empty frame. YouTube and Vimeo are the only two
   // hosts turned into iframes; anything else stays an ordinary link.
   frameSrc: [
+    // 'self': the Partner Profiles wizard previews a profile by framing the
+    // REAL public page at /partners/:slug, which is the whole point — a
+    // preview rendered by separate code would be a second renderer to keep in
+    // step with the first. This permits framing THIS origin only; it grants
+    // no third party anything, and frameAncestors below (unchanged, 'self')
+    // still governs who may frame us.
+    "'self'",
     "https://js.stripe.com",
     "https://hooks.stripe.com",
     "https://www.paypal.com",

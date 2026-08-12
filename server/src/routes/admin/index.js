@@ -16,6 +16,7 @@ const promotionsRoutes = require("./promotions");
 const influencersRoutes = require("./influencers");
 const promotionNotificationsRoutes = require("./promotionNotifications");
 const presentationsRoutes = require("./presentations");
+const partnersRoutes = require("./partners");
 const builderRoutes = require("./builder");
 
 const router = express.Router();
@@ -40,6 +41,9 @@ router.use("/system-logs", requireAdmin, systemLogsRoutes);
 router.use("/settings", requireAdmin, settingsRoutes);
 router.use("/taxonomy", requireAdmin, taxonomyRoutes);
 router.use("/presentations", requireAdmin, presentationsRoutes);
+// Partner Profiles. Admin-only like every other publishing section — a
+// "manager" (the promotions-only tier) has no business creating public pages.
+router.use("/partners", requireAdmin, partnersRoutes);
 // Product Builder support (template library, media library). Mounted under its
 // own prefix rather than folded into /products so the builder's cross-product
 // concerns don't have to pretend to belong to one product id.

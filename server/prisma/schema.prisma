@@ -104,6 +104,10 @@ model Product {
   promotionEligibility PromotionProduct[]
   promotionsAsFreeGift Promotion[] @relation("PromotionFreeProduct")
   progress             ProgramProgress[]
+  // Partner profiles featuring this product. Cascade lives on PartnerProduct,
+  // so deleting a product cleanly removes it from every profile that curated
+  // it rather than leaving a dangling row.
+  partnerFeatures      PartnerProduct[]
 }
 
 // One tree per top-level nav root (Shop by Goal / Browse Athletes / Browse
@@ -368,6 +372,10 @@ model Influencer {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   promotions     Promotion[]
+  // Optional link to the public-facing profile record. Kept nullable and
+  // SetNull: the commercial record and the published profile have independent
+  // lifecycles, and removing one must never delete the other.
+  partners       Partner[]
 }
 
 model Promotion {
@@ -643,4 +651,115 @@ model ProgramProgress {
 
   @@unique([userId, productId])
   @@index([userId, lastOpenedAt])
+}
+
+// ---------------------------------------------------------------------
+// Partner Profiles — the public, Fitness-Agency-branded profile page a
+// partner shares as their single link (fitness.agency/partners/:slug).
+//
+// Deliberately SEPARATE from Influencer above, which is a COMMERCIAL record
+// (commission rate, payment reference, internal notes) attached to discount
+// codes. This is a PUBLISHING record. The two answer different questions —
+// "what do we owe this person" vs "what does the public see" — and a person
+// can exist as one without the other. `influencerId` links them when they
+// happen to be the same human, so the admin can cross-reference without
+// either model having to carry the other's fields.
+//
+// The profile owns NO product data. PartnerProduct is a join row to the
+// existing Product table, so a price/cover/name edited in Admin -> Products
+// is reflected on every profile that features it on the very next request.
+model Partner {
+  id          String  @id @default(cuid())
+  slug        String  @unique // public URL segment: /partners/<slug>
+  displayName String
+  handle      String? // "@sam_sulek" style label, display-only, never a URL
+  partnerType String  @default("creator") // "athlete" | "creator" | "coach" | "influencer" | "personality"
+  bio         String? // short, plain text — rendered escaped, never as HTML
+  avatarUrl   String? // stored like Product.imageUrl: a bare relative path
+  websiteUrl  String?
+
+  // Publishing state. Mirrors Product's vocabulary rather than inventing a
+  // second one: "draft" | "published" | "archived". Only "published" is
+  // publicly reachable — draft and archived both 404, and neither appears in
+  // the sitemap. Archived is kept distinct from deleted so a profile can be
+  // taken off the internet without destroying the link/product curation.
+  status String @default("draft")
+
+  // Controlled appearance. NOT free-form colour/font input — the brief is
+  // explicit that a partner profile must stay on-brand. These are enum-ish
+  // keys the CSS knows about, validated server-side against a fixed list.
+  accent   String @default("brand") // "brand" | "mono"
+  layout   String @default("stack") // "stack" | "grid"
+
+  // CTA label on the featured link/product, so a partner can say "Get the
+  // program" instead of the generic default, without touching anything else.
+  ctaLabel String?
+
+  // SEO override. Falls back to a generated description when empty, so a
+  // profile is never published with no meta description.
+  metaDescription String?
+
+  influencerId String?
+  influencer   Influencer? @relation(fields: [influencerId], references: [id], onDelete: SetNull)
+
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  socials  PartnerSocial[]
+  links    PartnerLink[]
+  products PartnerProduct[]
+
+  @@index([status])
+}
+
+// One row per configured platform. A platform with no row is simply not
+// rendered — which is how "do not show empty social icons" is enforced
+// structurally rather than by a truthiness check in a template.
+model PartnerSocial {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  platform String // "instagram" | "tiktok" | "youtube" | "x" | "facebook" | "twitch" | "spotify" | "linkedin"
+  url      String
+  position Int    @default(0)
+
+  // One row per platform per partner: two Instagram icons on one profile is
+  // always a mistake, so the database refuses it rather than the UI hoping.
+  @@unique([partnerId, platform])
+  @@index([partnerId, position])
+}
+
+// Free-form "link in bio" rows — the Linktree-style part of the page.
+model PartnerLink {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  title       String
+  url         String
+  description String?
+  icon        String? // font-awesome key from a server-side allowlist, never raw markup
+  featured    Boolean @default(false) // renders as the one primary link above the fold
+  position    Int     @default(0)
+
+  @@index([partnerId, position])
+}
+
+// Join row to the EXISTING catalog. Carries only curation state (order,
+// which one is featured) — never a copy of the product's name, price or
+// image, so the profile cannot drift out of sync with Admin -> Products.
+model PartnerProduct {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  featured Boolean @default(false)
+  position Int     @default(0)
+
+  @@unique([partnerId, productId])
+  @@index([partnerId, position])
 }

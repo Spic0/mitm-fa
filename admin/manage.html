@@ -228,6 +228,46 @@
         <div id="taxonomyList"></div>
     </template>
 
+    <template id="tpl-partners">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="admin-page-title">Partner Profiles</h1>
+                <p class="admin-page-subtitle">Public, Fitness Agency-branded profile pages for athletes, creators and coaches — one shareable link carrying their bio, socials, products and custom links.</p>
+            </div>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createPartnerBtn"><i class="fa-solid fa-plus"></i> New Partner</button>
+        </div>
+
+        <div class="a-card">
+            <div class="a-card-pad u-pb-0">
+                <div class="a-toolbar">
+                    <input type="text" id="partnerSearch" placeholder="Search name, handle or URL…" class="u-minw-260">
+                    <select id="partnerStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+            </div>
+            <div class="a-table-wrap">
+                <table class="a-table">
+                    <thead>
+                        <tr>
+                            <th>Partner</th>
+                            <th>Status</th>
+                            <th>Profile URL</th>
+                            <th>Products</th>
+                            <th>Links</th>
+                            <th>Last updated</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="partnersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
     <template id="tpl-presentations">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
@@ -565,6 +605,10 @@
     <script src="/assets/js/admin/promotions.js"></script>
     <script src="/assets/js/admin/promotion-drawer.js"></script>
     <script src="/assets/js/admin/presentations.js"></script>
+    <!-- Wizard must load before the panel that opens it, same ordering as
+         promotion-wizard.js above promotions.js. -->
+    <script src="/assets/js/admin/partner-wizard.js"></script>
+    <script src="/assets/js/admin/partners.js"></script>
     <script src="/assets/js/admin/notifications.js"></script>
     <script src="/assets/js/admin/analytics.js"></script>
     <script src="/assets/js/admin/email-logs.js"></script>

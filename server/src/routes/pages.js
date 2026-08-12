@@ -16,6 +16,14 @@ const { prisma } = require("../db");
 const { getAllTaxonomyTrees } = require("../lib/taxonomy");
 const { normalizeImageUrl, coverMedia } = require("../lib/media");
 const { resolveSlot, SLOTS } = require("../lib/landingAssets");
+const { PROFILE_INCLUDE, buildPublicProfile, defaultMetaDescription } = require("../lib/partners");
+const {
+  ORGANIZATION,
+  getService,
+  listServices,
+  relatedServices,
+  audienceEntries,
+} = require("../lib/services");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -382,6 +390,772 @@ router.get("/program/:slug", async (req, res, next) => {
   if (html == null) return next();
   html = await inlineHeader(html, "shop-single.html");
   html = applyProductSeo(html, product);
+  res.type("html").send(html);
+});
+
+// ---------------------------------------------------------------------
+// /services and /services/:slug — the SEO service pages.
+//
+// Entirely server-rendered from lib/services.js, which is sourced from what
+// Fitness Agency already says about itself in the partner deck. Each page
+// gets its OWN title, description, canonical, OpenGraph/Twitter tags and
+// JSON-LD — the brief's hard requirement that none of these are shared —
+// and its own section mix, because these are different search intents rather
+// than one template with the nouns swapped.
+// ---------------------------------------------------------------------
+
+function serviceUrl(slug) {
+  return appUrl(`/services/${encodeURIComponent(slug)}`);
+}
+
+// Organization data reused across every service page, built from the real
+// facts in lib/services.js. Emitted once per page as part of the JSON-LD
+// graph rather than as a second, competing top-level block.
+function organizationLd() {
+  return {
+    "@type": "Organization",
+    "@id": appUrl("/#organization"),
+    name: ORGANIZATION.name,
+    url: appUrl("/"),
+    description: ORGANIZATION.description,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: ORGANIZATION.addressLocality,
+      addressCountry: ORGANIZATION.addressCountry,
+    },
+  };
+}
+
+function renderServiceCta(service) {
+  const heading = service
+    ? `Interested in ${service.navLabel.toLowerCase()}?`
+    : "Want to see what this looks like for you?";
+  const body = service
+    ? "We take on a small number of partners at a time, and fit matters more than size. Tell us about the audience and the method, and we'll tell you honestly whether we can build something worth selling."
+    : "Tell us about the audience and the method, and we'll tell you honestly whether we can build something worth selling.";
+  return (
+    '<section class="svc-cta">' +
+    `<h2>${escapeHtml(heading)}</h2>` +
+    `<p>${escapeHtml(body)}</p>` +
+    '<div class="svc-hero__actions">' +
+    '<a class="svc-btn svc-btn--primary" href="/contact"><span>Start a conversation</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>' +
+    '<a class="svc-btn svc-btn--ghost" href="/shop"><span>See what partners sell</span></a>' +
+    "</div></section>"
+  );
+}
+
+function renderServiceMain(service) {
+  const related = relatedServices(service);
+  const audience = audienceEntries(service);
+
+  let out = '<main class="svc">';
+
+  // Breadcrumb: real internal links, and the same trail the BreadcrumbList
+  // structured data below describes.
+  out +=
+    '<nav class="svc-crumb" aria-label="Breadcrumb">' +
+    '<a href="/">Home</a> <span aria-hidden="true">/</span> ' +
+    '<a href="/services">Services</a> <span aria-hidden="true">/</span> ' +
+    `<span>${escapeHtml(service.navLabel)}</span></nav>`;
+
+  // ---- Hero: WHAT + FOR WHOM + WHY, and then it stops. ----
+  out +=
+    '<header class="svc-hero">' +
+    `<span class="svc-hero__kicker">${escapeHtml(service.heroKicker)}</span>` +
+    `<h1 class="svc-hero__title">${escapeHtml(service.name)}</h1>` +
+    `<p class="svc-hero__lead">${escapeHtml(service.heroLead)}</p>` +
+    '<div class="svc-hero__actions">' +
+    '<a class="svc-btn svc-btn--primary" href="/contact"><span>Apply to partner</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>' +
+    '<a class="svc-btn svc-btn--ghost" href="/services"><span>All services</span></a>' +
+    "</div></header>";
+
+  // ---- Value proposition ----
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">Why Fitness Agency</span>' +
+    `<p class="svc-value">${escapeHtml(service.valueProp)}</p>` +
+    "</section>";
+
+  // ---- What it includes ----
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">What it includes</span>' +
+    `<h2 class="svc-section__title">Everything ${escapeHtml(service.navLabel.toLowerCase())} covers</h2>` +
+    `<div class="svc-grid${service.includes.length > 4 ? " svc-grid--3" : ""}">` +
+    service.includes
+      .map(
+        (i) =>
+          '<div class="svc-card">' +
+          `<h3>${escapeHtml(i.title)}</h3>` +
+          `<p>${escapeHtml(i.body)}</p>` +
+          "</div>"
+      )
+      .join("") +
+    "</div></section>";
+
+  // ---- How we handle it ----
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">Our approach</span>' +
+    `<h2 class="svc-section__title">${escapeHtml(service.approach.heading)}</h2>` +
+    '<div class="svc-section__body">' +
+    service.approach.body.map((p) => `<p>${escapeHtml(p)}</p>`).join("") +
+    "</div></section>";
+
+  // ---- Who it's for ----
+  if (audience.length) {
+    out +=
+      '<section class="svc-section">' +
+      '<span class="svc-section__eyebrow">Who it\'s for</span>' +
+      '<h2 class="svc-section__title">Built for the people already doing the work</h2>' +
+      '<div class="svc-grid">' +
+      audience
+        .map(
+          (a) =>
+            '<div class="svc-card">' +
+            `<h3>${escapeHtml(a.key.charAt(0).toUpperCase() + a.key.slice(1))}</h3>` +
+            `<p>${escapeHtml(a.text)}</p>` +
+            "</div>"
+        )
+        .join("") +
+      "</div></section>";
+  }
+
+  // ---- Benefits ----
+  if (service.benefits && service.benefits.length) {
+    out +=
+      '<section class="svc-section">' +
+      '<span class="svc-section__eyebrow">What changes</span>' +
+      '<h2 class="svc-section__title">The difference you would notice</h2>' +
+      '<ul class="svc-benefits">' +
+      service.benefits
+        .map((b) => `<li><i class="fa-solid fa-check" aria-hidden="true"></i><span>${escapeHtml(b)}</span></li>`)
+        .join("") +
+      "</ul></section>";
+  }
+
+  // ---- Process, only where one genuinely applies ----
+  if (service.process && service.process.length) {
+    out +=
+      '<section class="svc-section">' +
+      '<span class="svc-section__eyebrow">How it works</span>' +
+      '<h2 class="svc-section__title">Six steps from first conversation to compounding revenue</h2>' +
+      '<ol class="svc-steps">' +
+      service.process
+        .map(
+          (s, i) =>
+            '<li class="svc-step">' +
+            `<span class="svc-step__num">${i + 1}</span>` +
+            '<span class="svc-step__body">' +
+            `<h3>${escapeHtml(s.title)}</h3>` +
+            `<p>${escapeHtml(s.body)}</p>` +
+            "</span></li>"
+        )
+        .join("") +
+      "</ol></section>";
+  }
+
+  // ---- A real link into the catalogue, where one makes sense ----
+  if (service.productHint) {
+    out +=
+      '<section class="svc-section">' +
+      '<span class="svc-section__eyebrow">See it in practice</span>' +
+      '<h2 class="svc-section__title">Real products, already selling</h2>' +
+      '<div class="svc-section__body"><p>The storefront below is the same platform described on this page — every product on it was built, published and is supported by this team.</p></div>' +
+      `<div class="svc-hero__actions"><a class="svc-btn svc-btn--ghost" href="${escapeHtml(service.productHint.path)}"><span>${escapeHtml(service.productHint.label)}</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a></div>` +
+      "</section>";
+  }
+
+  // ---- CTA ----
+  out += renderServiceCta(service);
+
+  // ---- Related services: the internal-linking half of the brief ----
+  if (related.length) {
+    out +=
+      '<section class="svc-section">' +
+      '<span class="svc-section__eyebrow">Related services</span>' +
+      '<h2 class="svc-section__title">What usually comes with it</h2>' +
+      '<div class="svc-grid svc-grid--3">' +
+      related
+        .map(
+          (r) =>
+            `<a class="svc-related-card" href="/services/${encodeURIComponent(r.slug)}">` +
+            `<span><strong>${escapeHtml(r.name)}</strong><span>${escapeHtml(r.heroKicker)}</span></span>` +
+            '<i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>'
+        )
+        .join("") +
+      "</div></section>";
+  }
+
+  out += "</main>";
+  return out;
+}
+
+function renderServicesIndex() {
+  const services = listServices();
+  let out = '<main class="svc">';
+
+  out +=
+    '<nav class="svc-crumb" aria-label="Breadcrumb">' +
+    '<a href="/">Home</a> <span aria-hidden="true">/</span> <span>Services</span></nav>';
+
+  out +=
+    '<header class="svc-hero">' +
+    '<span class="svc-hero__kicker">For athletes, influencers, creators and coaches</span>' +
+    '<h1 class="svc-hero__title">Everything we handle</h1>' +
+    '<p class="svc-hero__lead">Eleven separate systems a creator would otherwise have to buy, integrate and maintain themselves, plus an in-house studio that produces what a launch needs. Here they are one product.</p>' +
+    '<div class="svc-hero__actions">' +
+    '<a class="svc-btn svc-btn--primary" href="/contact"><span>Apply to partner</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>' +
+    '<a class="svc-btn svc-btn--ghost" href="/shop"><span>See what partners sell</span></a>' +
+    "</div></header>";
+
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">Services</span>' +
+    '<h2 class="svc-section__title">Pick the part you need — or all of it</h2>' +
+    '<div class="svc-grid svc-grid--3">' +
+    services
+      .map(
+        (s) =>
+          `<a class="svc-index-card" href="/services/${encodeURIComponent(s.slug)}">` +
+          `<h2>${escapeHtml(s.name)}</h2>` +
+          `<p>${escapeHtml(s.heroLead)}</p>` +
+          '<span class="svc-index-card__more"><span>Learn more</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>' +
+          "</a>"
+      )
+      .join("") +
+    "</div></section>";
+
+  out += renderServiceCta(null);
+  out += "</main>";
+  return out;
+}
+
+function applyServiceSeo(html, meta) {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const url = meta.canonical;
+  const image = appUrl("/assets/images/banner/inner-banner.jpg");
+
+  const block =
+    `<meta name="description" content="${description}">\n` +
+    `    <link rel="canonical" href="${url}">\n` +
+    `    <meta property="og:type" content="website">\n` +
+    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
+    `    <meta property="og:description" content="${description}">\n` +
+    `    <meta property="og:url" content="${url}">\n` +
+    `    <meta property="og:image" content="${image}">\n` +
+    `    <meta name="twitter:card" content="summary_large_image">\n` +
+    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
+    `    <meta name="twitter:description" content="${description}">\n` +
+    `    <meta name="twitter:image" content="${image}">\n` +
+    `    <script type="application/ld+json">${JSON.stringify(meta.jsonLd)}</script>`;
+
+  return html
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace("<!--SERVICE_SEO-->", block);
+}
+
+router.get("/services", async (req, res) => {
+  let html = await readTemplate("service.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "service.html");
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "CollectionPage",
+        name: "Services | Fitness Agency",
+        url: appUrl("/services"),
+        description: ORGANIZATION.description,
+        // An ItemList of the real services, each pointing at its own page —
+        // this is what tells a crawler these eight URLs are a set.
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: listServices().map((s, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: s.name,
+            url: serviceUrl(s.slug),
+          })),
+        },
+      },
+    ],
+  };
+
+  html = applyServiceSeo(html, {
+    title: "Services",
+    description:
+      "Platform, production and partnership services for athletes, influencers, creators and coaches — storefront, products, payments, video, design and support as one system.",
+    canonical: appUrl("/services"),
+    jsonLd,
+  });
+  html = html.replace("<!--SERVICE_MAIN-->", renderServicesIndex());
+  res.type("html").send(html);
+});
+
+router.get("/services/:slug", async (req, res) => {
+  const service = getService(req.params.slug);
+  if (!service) return render404(req, res);
+
+  let html = await readTemplate("service.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "service.html");
+
+  // A Service node (the offering), the Organization that provides it, and the
+  // breadcrumb trail — one graph rather than three competing blocks.
+  //
+  // Deliberately absent: aggregateRating, review, offers/price. None of those
+  // exist as real data, and fabricating them is exactly what the brief rules
+  // out.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "Service",
+        name: service.name,
+        serviceType: service.navLabel,
+        description: service.description,
+        url: serviceUrl(service.slug),
+        provider: { "@id": appUrl("/#organization") },
+        areaServed: "Worldwide",
+        audience: audienceEntries(service).map((a) => ({
+          "@type": "Audience",
+          audienceType: a.key,
+          description: a.text,
+        })),
+        hasOfferCatalog: {
+          "@type": "OfferCatalog",
+          name: `${service.name} — what it includes`,
+          itemListElement: service.includes.map((i) => ({
+            "@type": "Offer",
+            itemOffered: { "@type": "Service", name: i.title, description: i.body },
+          })),
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: appUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Services", item: appUrl("/services") },
+          { "@type": "ListItem", position: 3, name: service.navLabel, item: serviceUrl(service.slug) },
+        ],
+      },
+    ],
+  };
+
+  html = applyServiceSeo(html, {
+    title: service.title,
+    description: service.description,
+    canonical: serviceUrl(service.slug),
+    jsonLd,
+  });
+  html = html.replace("<!--SERVICE_MAIN-->", renderServiceMain(service));
+  res.type("html").send(html);
+});
+
+// ---------------------------------------------------------------------
+// /partners/:slug — the public partner profile.
+//
+// Rendered ENTIRELY server-side. There is no client fetch and no page
+// script: a crawler, a no-JS visitor and a phone on a slow connection all
+// receive the finished header, links and product cards in the first
+// response. That is also what makes the first screen cheap — the only thing
+// the browser must fetch before the profile is readable is the avatar.
+//
+// Product data is read live through the PartnerProduct relation, so a price
+// or cover changed in Admin -> Products is reflected here on the very next
+// request. Nothing about a product is stored on the profile.
+// ---------------------------------------------------------------------
+
+// Renders one .pmedia box for a product cover / avatar, using the SAME
+// responsive payload and the SAME class contract as every other product
+// image on the site (assets/css/media-container.css).
+//
+// Two hooks are non-negotiable and have caused a live invisible-image bug
+// before: `.pmedia__img` starts at `opacity: 0` and is only revealed by
+// MediaContainer.build()'s load handler — which never runs on server-
+// rendered markup. So server-rendered media MUST carry `data-instant` on
+// the <img> and `is-ready` on the box, or it paints invisible forever.
+function renderProfileMedia(imageUrl, alt, opts) {
+  const options = opts || {};
+  const src = normalizeImageUrl(imageUrl) || "";
+  if (!src) return "";
+
+  const cover = coverMedia(imageUrl);
+  const sizes = options.sizes || "100vw";
+  const loading = options.eager ? "" : ' loading="lazy"';
+  const priority = options.eager ? ' fetchpriority="high"' : "";
+  const fitClass = cover && cover.fit === "contain" ? "pmedia--contain" : "pmedia--cover";
+  const vectorClass = cover && cover.orientation === "vector" ? " pmedia--vector" : "";
+  const extraClass = options.className ? ` ${options.className}` : "";
+
+  // No manifest (external URL, or an image predating the derivative
+  // pipeline): degrade to the plain original, exactly as coverMedia's
+  // contract says callers must.
+  if (!cover || !cover.sources || !cover.sources.length) {
+    return (
+      `<span class="pmedia is-ready ${fitClass}${vectorClass}${extraClass}">` +
+      `<img class="pmedia__img" data-instant src="${escapeHtml(src)}" alt="${escapeHtml(alt || "")}"${loading}${priority} decoding="async">` +
+      "</span>"
+    );
+  }
+
+  const sources = cover.sources
+    .map((s) => `<source type="${escapeHtml(s.type)}" srcset="${escapeHtml(s.srcset)}" sizes="${escapeHtml(sizes)}">`)
+    .join("");
+  const lqip = cover.placeholder
+    ? `<img class="pmedia__placeholder" src="${escapeHtml(cover.placeholder)}" alt="" aria-hidden="true" decoding="async">`
+    : "";
+  // Intrinsic dimensions let the browser reserve the exact box before CSS
+  // arrives — this is what holds the page at zero layout shift.
+  const dims = cover.width && cover.height ? ` width="${cover.width}" height="${cover.height}"` : "";
+
+  return (
+    `<span class="pmedia is-ready ${fitClass}${vectorClass}${extraClass}">` +
+    lqip +
+    `<picture>${sources}` +
+    `<img class="pmedia__img" data-instant src="${escapeHtml(src)}" sizes="${escapeHtml(sizes)}" alt="${escapeHtml(alt || "")}"${dims}${loading}${priority} decoding="async">` +
+    "</picture></span>"
+  );
+}
+
+// Delay classes cap at 8 — see the note in assets/css/partner.css.
+function revealClass(index) {
+  return `pprofile__reveal pprofile__reveal--${Math.min(index + 1, 8)}`;
+}
+
+function renderPartnerAvatar(profile) {
+  if (profile.avatarUrl) {
+    const cover = coverMedia(profile.avatarUrl);
+    const src = normalizeImageUrl(profile.avatarUrl);
+    // Displayed at 96px (120px from 768px up), so even a 3x phone only needs
+    // ~360px. `sizes` is what stops the browser reaching for the 1280w tier
+    // for a thumbnail — the exact over-fetch this codebase has shipped
+    // three times on other surfaces.
+    const sizes = "(min-width: 768px) 120px, 96px";
+    if (cover && cover.sources && cover.sources.length) {
+      const sources = cover.sources
+        .map((s) => `<source type="${escapeHtml(s.type)}" srcset="${escapeHtml(s.srcset)}" sizes="${sizes}">`)
+        .join("");
+      return (
+        '<div class="pprofile__avatar">' +
+        `<picture>${sources}<img src="${escapeHtml(src)}" sizes="${sizes}" alt="${escapeHtml(profile.displayName)}" width="120" height="120" fetchpriority="high" decoding="async"></picture>` +
+        "</div>"
+      );
+    }
+    return (
+      '<div class="pprofile__avatar">' +
+      `<img src="${escapeHtml(src)}" alt="${escapeHtml(profile.displayName)}" width="120" height="120" fetchpriority="high" decoding="async">` +
+      "</div>"
+    );
+  }
+
+  // No image: initials on a brand surface. Deliberate-looking, and it costs
+  // no request at all.
+  const initials = profile.displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+  return `<div class="pprofile__avatar pprofile__avatar--initials">${escapeHtml(initials)}</div>`;
+}
+
+function renderPartnerSocials(profile) {
+  // An unconfigured platform has no row at all (see lib/partners.js), so
+  // this renders exactly what exists and nothing else — "do not show empty
+  // social icons" holds structurally rather than by a truthiness check.
+  const items = profile.socials.slice();
+  if (profile.websiteUrl) {
+    items.push({
+      platform: "website",
+      url: profile.websiteUrl,
+      label: "Website",
+      icon: "fa-globe",
+    });
+  }
+  if (!items.length) return "";
+
+  const links = items
+    .map((s) => {
+      // Font Awesome splits brand marks (fa-brands) from UI glyphs
+      // (fa-solid); the website globe is the only non-brand icon here.
+      const family = s.icon === "fa-globe" ? "fa-solid" : "fa-brands";
+      return (
+        `<a class="pprofile__social" href="${escapeHtml(s.url)}" target="_blank" rel="noopener nofollow" aria-label="${escapeHtml(profile.displayName)} on ${escapeHtml(s.label)}">` +
+        `<i class="${family} ${escapeHtml(s.icon)}" aria-hidden="true"></i></a>`
+      );
+    })
+    .join("");
+
+  return `<div class="pprofile__socials">${links}</div>`;
+}
+
+function renderPartnerFeatureCard(product, ctaLabel) {
+  const href = `/program/${encodeURIComponent(product.slug)}`;
+  // The featured cover is the largest image on the page and sits just below
+  // the fold on a phone. Eager, because it is the profile's primary
+  // conversion surface and lazy-loading it would leave a hole exactly where
+  // the visitor is heading.
+  const media = renderProfileMedia(product.imageUrl, product.name, {
+    eager: true,
+    sizes: "(min-width: 576px) 512px, 100vw",
+  });
+  const eyebrow = product.creator && !product.name.toLowerCase().includes(product.creator.toLowerCase())
+    ? product.creator
+    : product.difficulty || "Training program";
+
+  return (
+    `<a class="pprofile__feature" href="${href}">` +
+    media +
+    '<div class="pprofile__feature-body">' +
+    `<span class="pprofile__feature-eyebrow">${escapeHtml(eyebrow)}</span>` +
+    `<h3 class="pprofile__feature-title">${escapeHtml(product.name)}</h3>` +
+    '<div class="pprofile__feature-foot">' +
+    `<span class="pprofile__price">${escapeHtml(formatProductPrice(product.priceCents))}</span>` +
+    `<span class="pprofile__feature-action">${escapeHtml(ctaLabel || "View program")} <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>` +
+    "</div></div></a>"
+  );
+}
+
+function renderPartnerProductRow(product, index) {
+  const href = `/program/${encodeURIComponent(product.slug)}`;
+  // 64px box; `sizes` keeps the browser on the 320w tier even at 3x.
+  const media = renderProfileMedia(product.imageUrl, product.name, {
+    eager: false,
+    sizes: "64px",
+  });
+  const sub = [product.creator, product.durationWeeks ? `${product.durationWeeks} weeks` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    `<a class="pprofile__row pprofile__row--product ${revealClass(index)}" href="${href}">` +
+    `<span class="pprofile__thumb">${media}</span>` +
+    '<span class="pprofile__row-body">' +
+    `<span class="pprofile__row-title">${escapeHtml(product.name)}</span>` +
+    (sub ? `<span class="pprofile__row-sub">${escapeHtml(sub)}</span>` : "") +
+    "</span>" +
+    `<span class="pprofile__row-price">${escapeHtml(formatProductPrice(product.priceCents))}</span>` +
+    "</a>"
+  );
+}
+
+function renderPartnerLinkRow(link, index) {
+  // Off-site links get nofollow + noopener; in-platform ones (/shop,
+  // /program/x) stay ordinary internal links so they pass crawl signal,
+  // which is the internal-linking half of the brief.
+  const external = /^https?:\/\//i.test(link.url);
+  const relAttr = external ? ' target="_blank" rel="noopener nofollow"' : "";
+  return (
+    `<a class="pprofile__row ${revealClass(index)}" href="${escapeHtml(link.url)}"${relAttr}>` +
+    `<span class="pprofile__row-icon"><i class="fa-solid ${escapeHtml(link.icon)}" aria-hidden="true"></i></span>` +
+    '<span class="pprofile__row-body">' +
+    `<span class="pprofile__row-title">${escapeHtml(link.title)}</span>` +
+    (link.description ? `<span class="pprofile__row-sub">${escapeHtml(link.description)}</span>` : "") +
+    "</span>" +
+    '<span class="pprofile__row-chev"><i class="fa-regular fa-arrow-up-right-from-square" aria-hidden="true"></i></span>' +
+    "</a>"
+  );
+}
+
+// The whole <main>. Order is the brief's: identity -> socials -> primary CTA
+// -> featured product -> products -> custom links -> brand mark.
+function renderPartnerMain(profile, opts) {
+  const options = opts || {};
+  const featuredLink = profile.links.find((l) => l.featured) || null;
+  const otherLinks = profile.links.filter((l) => l !== featuredLink);
+  const featuredProduct = profile.products.find((p) => p.featured) || null;
+  const otherProducts = profile.products.filter((p) => p !== featuredProduct);
+
+  const previewBar = options.preview
+    ? '<div class="pprofile__preview-bar"><i class="fa-solid fa-eye" aria-hidden="true"></i> ' +
+      `Admin preview — this profile is ${escapeHtml(profile.status)} and is not publicly visible.</div>`
+    : "";
+
+  let out = `${previewBar}<main class="pprofile pprofile--${escapeHtml(profile.layout)}">`;
+
+  // ---- Identity ----
+  out += '<header class="pprofile__head">';
+  out += renderPartnerAvatar(profile);
+  out += `<h1 class="pprofile__name">${escapeHtml(profile.displayName)}</h1>`;
+  out += '<div class="pprofile__meta">';
+  out += `<span class="pprofile__badge"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${escapeHtml(profile.typeLabel)}</span>`;
+  if (profile.handle) out += `<span class="pprofile__handle">@${escapeHtml(profile.handle)}</span>`;
+  out += "</div>";
+  if (profile.bio) out += `<p class="pprofile__bio">${escapeHtml(profile.bio)}</p>`;
+  out += renderPartnerSocials(profile);
+  out += "</header>";
+
+  // ---- Primary CTA ----
+  // The featured custom link wins the slot if there is one; otherwise the
+  // featured product's own card carries the action, so the page never shows
+  // two competing primary buttons.
+  if (featuredLink) {
+    const external = /^https?:\/\//i.test(featuredLink.url);
+    const relAttr = external ? ' target="_blank" rel="noopener nofollow"' : "";
+    out +=
+      `<a class="pprofile__cta pprofile__reveal pprofile__reveal--1" href="${escapeHtml(featuredLink.url)}"${relAttr}>` +
+      `<span class="pprofile__cta-label">${escapeHtml(featuredLink.title)}</span>` +
+      '<i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>';
+  }
+
+  // ---- Featured product ----
+  if (featuredProduct) {
+    out += '<section class="pprofile__section">';
+    out += '<h2 class="pprofile__section-title">Featured</h2>';
+    out += `<div class="pprofile__reveal pprofile__reveal--2">${renderPartnerFeatureCard(featuredProduct, profile.ctaLabel)}</div>`;
+    out += "</section>";
+  }
+
+  // ---- Remaining products ----
+  if (otherProducts.length) {
+    out += '<section class="pprofile__section">';
+    out += `<h2 class="pprofile__section-title">${featuredProduct ? "More programs" : "Programs"}</h2>`;
+    out += '<div class="pprofile__links pprofile__links--products">';
+    out += otherProducts.map((p, i) => renderPartnerProductRow(p, i)).join("");
+    out += "</div></section>";
+  }
+
+  // ---- Custom links ----
+  if (otherLinks.length) {
+    out += '<section class="pprofile__section">';
+    out += '<h2 class="pprofile__section-title">Links</h2>';
+    out += '<div class="pprofile__links">';
+    out += otherLinks.map((l, i) => renderPartnerLinkRow(l, i)).join("");
+    out += "</div></section>";
+  }
+
+  // ---- Brand mark ----
+  out +=
+    '<div class="pprofile__mark"><a href="/">' +
+    '<img src="/assets/images/logo/fa-logo.svg" alt="" height="22" data-brand-logo aria-hidden="true">' +
+    "<span>Fitness Agency</span></a></div>";
+
+  out += "</main>";
+  return out;
+}
+
+function applyPartnerSeo(html, profile, opts) {
+  const options = opts || {};
+  const title = escapeHtml(profile.displayName);
+  const rawDescription = profile.metaDescription || defaultMetaDescription(profile);
+  const description = escapeHtml(rawDescription);
+  const url = appUrl(`/partners/${encodeURIComponent(profile.slug)}`);
+
+  const normalizedAvatar = profile.avatarUrl ? normalizeImageUrl(profile.avatarUrl) : "";
+  const image = normalizedAvatar
+    ? escapeHtml(/^https?:\/\//.test(normalizedAvatar) ? normalizedAvatar : appUrl(normalizedAvatar))
+    : "";
+
+  // JSON-LD: a ProfilePage whose mainEntity is the Person. `sameAs` carries
+  // only social URLs that are actually configured — this is the machine-
+  // readable claim "these accounts are the same person", so a guessed or
+  // placeholder URL would be a false statement, not just a dead link.
+  //
+  // Nothing here is fabricated: no ratings, no reviews, no prices, no
+  // invented credentials. Every field is a stored value.
+  const sameAs = profile.socials.map((s) => s.url);
+  if (profile.websiteUrl) sameAs.push(profile.websiteUrl);
+
+  const person = {
+    "@type": "Person",
+    name: profile.displayName,
+    url: url,
+  };
+  if (profile.bio) person.description = profile.bio;
+  if (image) person.image = image;
+  if (sameAs.length) person.sameAs = sameAs;
+  if (profile.handle) person.alternateName = `@${profile.handle}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    name: `${profile.displayName} | Fitness Agency`,
+    url: url,
+    mainEntity: person,
+  };
+
+  // A draft/archived profile reached through admin preview must never be
+  // indexed, and must not advertise a canonical URL that would consolidate
+  // signal onto a page the public gets a 404 from.
+  const indexable = profile.status === "published" && !options.preview;
+
+  const block =
+    `<meta name="description" content="${description}">\n` +
+    (indexable ? `    <link rel="canonical" href="${url}">\n` : "") +
+    (indexable ? "" : `    <meta name="robots" content="noindex, nofollow">\n`) +
+    `    <meta property="og:type" content="profile">\n` +
+    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
+    `    <meta property="og:description" content="${description}">\n` +
+    `    <meta property="og:url" content="${url}">\n` +
+    (image ? `    <meta property="og:image" content="${image}">\n` : "") +
+    `    <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">\n` +
+    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
+    `    <meta name="twitter:description" content="${description}">\n` +
+    (image ? `    <meta name="twitter:image" content="${image}">\n` : "") +
+    `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
+
+  let result = html
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace("<!--PARTNER_SEO-->", block);
+
+  // Preload the avatar — the profile's first meaningful pixel.
+  //
+  // The preload MUST resolve to the same file the <picture> will pick, or the
+  // browser fetches one image at high priority and then downloads a different
+  // one, paying for the header image twice. The <picture> offers AVIF first,
+  // so the preload advertises AVIF and carries `type` — a browser without
+  // AVIF support ignores the hint entirely and simply loads the image from
+  // the markup, which is already in this response and found by the preload
+  // scanner anyway. Falling back to the widest-supported source instead would
+  // reintroduce exactly the mismatch this avoids.
+  if (normalizedAvatar) {
+    const cover = coverMedia(profile.avatarUrl);
+    const sources = (cover && cover.sources) || [];
+    const preferred = sources.find((s) => s.type === "image/avif") || sources[0];
+    const sizes = "(min-width: 768px) 120px, 96px";
+    const tag = preferred
+      ? `<link rel="preload" as="image" type="${escapeHtml(preferred.type)}" imagesrcset="${escapeHtml(preferred.srcset)}" imagesizes="${sizes}" fetchpriority="high">`
+      : `<link rel="preload" as="image" href="${escapeHtml(normalizedAvatar)}" fetchpriority="high">`;
+    result = result.replace("<!--PARTNER_PRELOAD-->", tag);
+  }
+  return result;
+}
+
+router.get("/partners/:slug", async (req, res) => {
+  const slug = String(req.params.slug || "").toLowerCase();
+  const partner = await prisma.partner.findUnique({
+    where: { slug },
+    include: PROFILE_INCLUDE,
+  });
+
+  // Not found, draft and archived are ONE response to the public: a 404.
+  // Distinguishing them would leak which slugs exist as unpublished drafts.
+  //
+  // An authenticated admin is the single exception — they get the same page
+  // with a preview banner and robots:noindex, which is what makes "preview
+  // before publishing" work without a second renderer or a shareable token.
+  const isAdmin = !!(req.user && req.user.role === "admin");
+  if (!partner) return render404(req, res);
+  if (partner.status !== "published" && !isAdmin) return render404(req, res);
+
+  const preview = partner.status !== "published";
+  const profile = buildPublicProfile(partner);
+
+  let html = await readTemplate("partner.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "partner.html");
+  html = applyPartnerSeo(html, profile, { preview });
+  html = html.replace("<!--PARTNER_MAIN-->", renderPartnerMain(profile, { preview }));
+  // A draft previewed by an admin must never be cached by an intermediary
+  // and served to someone else.
+  if (preview) res.set("Cache-Control", "private, no-store");
   res.type("html").send(html);
 });
 
@@ -831,14 +1605,22 @@ router.get("/robots.txt", (req, res) => {
 });
 
 router.get("/sitemap.xml", async (req, res) => {
-  const staticUrls = ["/", "/shop", "/about", "/contact", "/blog"];
+  const staticUrls = ["/", "/shop", "/about", "/contact", "/blog", "/services"];
 
-  const [products, trees] = await Promise.all([
+  // Every service page. Static content, so these come from the catalogue in
+  // lib/services.js rather than the database.
+  const serviceUrls = listServices().map((s) => `/services/${encodeURIComponent(s.slug)}`);
+
+  const [products, trees, partners] = await Promise.all([
     prisma.product.findMany({ where: { status: "published" }, select: { slug: true } }),
     safeGetAllTaxonomyTrees(),
+    // Only published profiles. Drafts and archived profiles 404 for the
+    // public, so listing them would be advertising dead URLs.
+    prisma.partner.findMany({ where: { status: "published" }, select: { slug: true } }),
   ]);
 
   const productUrls = products.map((p) => `/program/${encodeURIComponent(p.slug)}`);
+  const partnerUrls = partners.map((p) => `/partners/${encodeURIComponent(p.slug)}`);
 
   const goals = trees.find((t) => t.key === "goals");
   const goalUrls = goals ? goals.nodes.map((n) => `/goal/${encodeURIComponent(n.slug)}`) : [];
@@ -859,7 +1641,16 @@ router.get("/sitemap.xml", async (req, res) => {
     creators.nodes.forEach((cat) => cat.children.forEach((leaf) => creatorUrls.push(`/creator/${encodeURIComponent(leaf.slug)}`)));
   }
 
-  const allUrls = [...staticUrls, ...productUrls, ...goalUrls, ...sportUrls, ...athleteUrls, ...creatorUrls];
+  const allUrls = [
+    ...staticUrls,
+    ...serviceUrls,
+    ...productUrls,
+    ...goalUrls,
+    ...sportUrls,
+    ...athleteUrls,
+    ...creatorUrls,
+    ...partnerUrls,
+  ];
 
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

@@ -40,6 +40,13 @@ window.MediaContainer = (function () {
   // the browser to prioritise the fetch. Used for the first row of cards,
   // which is where the LCP element almost always is — lazy-loading that is a
   // measurable regression, not an optimization.
+  //
+  // `opts.preload` is the third state, for media that must be IN THE BROWSER
+  // before it is shown but must not compete with the LCP: it fetches
+  // immediately, like eager, but at low priority. The hero deck is the caller
+  // — a card waiting off-stage is display:none, and a `loading="lazy"` image
+  // inside a display:none subtree never intersects anything, so it would
+  // never load at all and the card would slide onto the stage empty.
   function build(product, opts) {
     opts = opts || {};
     var cover = product.cover || null;
@@ -78,7 +85,7 @@ window.MediaContainer = (function () {
       bd.alt = "";
       bd.setAttribute("aria-hidden", "true");
       bd.decoding = "async";
-      bd.loading = opts.eager ? "eager" : "lazy";
+      bd.loading = opts.eager || opts.preload ? "eager" : "lazy";
       bd.addEventListener("load", function () { bd.classList.add("is-loaded"); });
       box.appendChild(bd);
     }
@@ -86,8 +93,9 @@ window.MediaContainer = (function () {
     var img = el("img", "pmedia__img");
     img.alt = product.name || "";
     img.decoding = "async";
-    img.loading = opts.eager ? "eager" : "lazy";
+    img.loading = opts.eager || opts.preload ? "eager" : "lazy";
     if (opts.eager) img.setAttribute("fetchpriority", "high");
+    else if (opts.preload) img.setAttribute("fetchpriority", "low");
 
     // Intrinsic dimensions let the browser reserve the right box even before
     // CSS applies, which keeps CLS at 0 on a slow first paint.

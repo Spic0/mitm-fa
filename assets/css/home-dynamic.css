@@ -194,29 +194,35 @@
      deck's sizer as well as by the caption itself, so the box the deck
      reserves and the box the text occupies cannot disagree. */
   --hero-caption-h: 96px;
+
+  /* How much of each neighbouring product stays visible at the viewport edge
+     on a phone. This is the whole "one dominant product" dial: enough to say
+     the deck continues in both directions and that it can be swiped, not
+     enough to read as a second product competing with the active one. */
+  --hero-hint: 34px;
 }
 .hero__stage {
   position: relative;
-  /* Bounded so the card cannot balloon on a large phone or a tablet in
-     portrait, where a 100%-width card would swallow the fold. Narrower than
-     the 296px this used to be: the plate is now a true 3:4 cover rather than
-     the ~5:6 that fell out of the old flex sizing, so the same width would
-     have made the deck 43px taller and pushed the CTA out of the fold on the
-     short phones the fold tiers below exist to protect. */
-  max-width: 264px;
+  /* ON A PHONE THIS IS THE ACTIVE PRODUCT'S WIDTH, and the whole composition
+     is sized from it. It tracks the viewport (76vw) up to a cap, so the active
+     cover is the dominant object at every phone width rather than a fixed box
+     that happens to look right on one device. The cap stops it ballooning on a
+     large phone or a portrait tablet, where a near-full-width card would push
+     the CTA off the fold. The two height tiers below trade this width for fold
+     safety on short screens. */
+  max-width: min(76vw, 284px);
   margin: 0 auto;
   width: 100%;
+  /* Horizontal gestures belong to the carousel, vertical ones to the page.
+     Declaring it here is what stops a swipe from panning the page sideways
+     without any JS having to fight the browser for the gesture. */
+  touch-action: pan-y;
 }
 .hero__deck {
   position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
-  /* The vanishing point. Kept long: a short perspective exaggerates the
-     rotation into a fisheye, which is the difference between "depth" and
-     "3D effect". */
-  perspective: 1500px;
-  perspective-origin: 50% 45%;
   /* Every card is absolutely positioned, so the deck needs its own height for
      them to size against.
 
@@ -285,16 +291,27 @@
     opacity calc(var(--hero-dur) * 0.72) var(--hero-ease-in),
     filter calc(var(--hero-dur) * 0.72) var(--hero-ease-in);
 }
-/* FLANKS — depth, not content. Turned toward the centre, set back in Z, and
-   softened just enough to read as out of focus. The blur is deliberately
-   small: past ~2px it stops looking like depth of field and starts looking
-   like a smeared image. */
+/* FLANKS — a HINT, not a second product.
+   ---------------------------------------------------------------------------
+   This is the phone model, and it is deliberately not the desktop one. Desktop
+   (>=768px, further down) keeps the three-card depth stage; a phone gets ONE
+   dominant product with the neighbours tucked almost entirely behind it and
+   off the edge, because at 390px three cards at 0.4 opacity read as three
+   competing products rather than as depth — measured, the flanks sat 74px from
+   centre at 40% opacity, which is a card, not a hint.
+
+   Pushed out by 88% of the card's own width, so each neighbour is mostly
+   BEHIND the active card and mostly past the viewport edge; what is left is a
+   ~17% sliver that says "there is more here, you can swipe" and nothing more.
+   No rotateY and no Z on the phone: a flat translate plus a small scale is all
+   the depth this composition needs, and 3D rotation at this size is exactly
+   the "exaggerated effect" that reads as cheap. */
 .hero-card.is-prev,
 .hero-card.is-next {
-  opacity: 0.4;
+  opacity: 0.26;
   z-index: 2;
   pointer-events: none;
-  filter: blur(1.5px);
+  filter: blur(1px);
   /* Departing: holds full strength past the midpoint, then falls away. Paired
      with .is-active's fast rise this is what guarantees a solid, sharp plate
      in every single frame of the hand-off. */
@@ -303,43 +320,58 @@
     opacity var(--hero-dur) var(--hero-ease-out),
     filter var(--hero-dur) var(--hero-ease-out);
 }
-/* Pushed well back in Z rather than scaled down: the perspective does the
-   shrinking, which is what makes the size difference read as distance instead
-   of as two different-sized cards. -320px against a 1500px perspective puts
-   them at roughly 82% — clearly subordinate, still legible as products. */
+/* THE HINT IS ANCHORED TO THE VIEWPORT, NOT TO THE CARD.
+   A plain percentage offset is a fraction of the CARD's width, so the sliver
+   that ends up visible is really (viewport - card) / 2 — and the two vary
+   independently. On a short screen the height tiers shrink the card while the
+   viewport stays as wide as ever, and the gap grows to fill the difference:
+   measured at 375x667, a flat 88% offset left 98px of the neighbour showing,
+   which is a second product, not a hint.
+
+   Solving for the neighbour's inner edge instead pins it at exactly
+   --hero-hint from the viewport edge at every width and every card size. The
+   card's centre sits on the viewport centre, so its inner edge lands at
+   50vw + X - (scale x 50%); setting that equal to 100vw - hint gives the X
+   below. `43%` is the scale (0.86) halved — the element's own half-width after
+   scaling, since translate percentages resolve against the unscaled border
+   box.
+
+   Only valid while the deck is centred in the viewport, which is true for the
+   whole phone range; from 768px up the depth stage overrides these outright. */
 .hero-card.is-prev {
-  transform: translate3d(-33%, 0, -320px) rotateY(16deg) scale(1);
+  transform: translate3d(calc(var(--hero-hint) - 50vw - 43%), 0, 0) scale(0.86);
 }
 .hero-card.is-next {
-  transform: translate3d(33%, 0, -320px) rotateY(-16deg) scale(1);
+  transform: translate3d(calc(50vw + 43% - var(--hero-hint)), 0, 0) scale(0.86);
 }
 
-/* EXIT — the card does not vanish, it keeps travelling: further out, further
-   back, turning away and dissolving. Continuing the flank's direction is what
-   makes the stack feel like a physical sequence rather than a set of states. */
+/* OFFSTAGE — the parking position on each side, fully outside the composition.
+   It is BOTH where a card finishes its exit and where an arriving card is
+   placed before it travels in, which is what makes entry and exit the same
+   movement run in opposite directions. Keeping one geometry for both is also
+   why a card can never appear at a position it could not have travelled to. */
 .hero-card.is-exit-left,
 .hero-card.is-exit-right {
   opacity: 0;
   z-index: 1;
   pointer-events: none;
-  filter: blur(4px);
+  filter: blur(2px);
 }
+/* Same solve, one step further: the inner edge is pushed 24px PAST the
+   viewport edge, so a parked card is provably outside the composition however
+   wide the screen is and whatever the card measures. `40%` is scale 0.8
+   halved. */
 .hero-card.is-exit-left {
-  transform: translate3d(-66%, 0, -380px) rotateY(24deg) scale(0.9);
+  transform: translate3d(calc(-50vw - 40% - 24px), 0, 0) scale(0.8);
 }
 .hero-card.is-exit-right {
-  transform: translate3d(66%, 0, -380px) rotateY(-24deg) scale(0.9);
+  transform: translate3d(calc(50vw + 40% + 24px), 0, 0) scale(0.8);
 }
 
-/* A card that wraps from one flank to the other (only possible with exactly
-   three products) would otherwise slide the full width of the stage behind
-   the active card. JS adds this for one frame to move it silently. */
+/* Suppresses the tween for the single frame in which a card is PLACED at its
+   offstage parking position. Everything visible is a real transition; this
+   exists only so the placement itself is not one. */
 .hero-card.is-instant { transition: none !important; }
-
-/* Held at zero for the frame in which a card is silently placed into its slot,
-   then released so it fades up on the spot. Declared AFTER the slot rules so
-   it wins on source order at equal specificity. */
-.hero-card.is-entering { opacity: 0; }
 
 .hero-card__link {
   display: flex;
@@ -535,24 +567,16 @@
    sizing for the shorter would needlessly shrink the plate on the taller.
    Measured against real device viewports — see tools/.fold.js in the commit
    history; 360x740 overshot the fold by 25px before this. */
-/* Narrow phones. At 320px the stage is most of the viewport, so a 33% flank
-   overhang runs past the section's clip and the card behind reads as sliced
-   off rather than as set back — measured, its right edge landed 20px outside
-   the viewport. Less room, so the same composition is held in: narrower stage,
-   tighter offset, and a little less Z to compensate for the smaller card.
-   Declared BEFORE the height tiers below so that on a short AND narrow screen
-   (a 320x568 SE) those still win and the CTA stays in the fold. */
-@media (max-width: 359px) {
-  .hero__stage { max-width: 232px; }
-  .hero-card.is-prev { transform: translate3d(-26%, 0, -300px) rotateY(15deg) scale(1); }
-  .hero-card.is-next { transform: translate3d(26%, 0, -300px) rotateY(-15deg) scale(1); }
-  .hero-card.is-exit-left { transform: translate3d(-52%, 0, -370px) rotateY(22deg) scale(0.9); }
-  .hero-card.is-exit-right { transform: translate3d(52%, 0, -370px) rotateY(-22deg) scale(0.9); }
-}
+/* The narrow-phone tier that used to sit here is gone. It existed to rein in a
+   33% flank overhang that was being sheared by the section clip — the phone
+   model no longer has one, the neighbours are supposed to run off the edge,
+   and `min(76vw, …)` already scales the card down on a narrow screen. Leaving
+   it would have re-injected rotateY into the very layout the rebuild removed
+   it from. */
 
 @media (max-height: 800px) {
   .hero { --hero-caption-h: 92px; padding-top: 78px; }
-  .hero__stage { max-width: 236px; }
+  .hero__stage { max-width: min(70vw, 248px); }
 }
 @media (max-height: 700px) {
   /* Below this the caption's third line is what pushes the CTA out; the price
@@ -567,13 +591,39 @@
 
 @media (min-width: 480px) {
   .hero__cta.btn-one { width: auto; }
-  .hero__stage { max-width: 320px; }
+  /* Still the phone model — one dominant product, neighbours hinted — just
+     with more room to be big in. The depth stage does not start until 768. */
+  .hero__stage { max-width: min(64vw, 340px); }
 }
 
+/* ===========================================================================
+   FROM 768px UP: the three-card depth stage.
+   ===========================================================================
+   Everything in this block RESTORES the composition the phone rules above
+   deliberately switch off. A tablet or desktop has the width to show three
+   products at once and read them as depth rather than as competition, and
+   that composition is the existing desktop design — it is not the phone
+   layout scaled up, and the phone layout is not this one shrunk down.
+
+   `perspective` lives here rather than on .hero__deck because there is no
+   rotateY below this breakpoint; declaring a vanishing point for a flat
+   translate would do nothing but cost a stacking context. */
 @media (min-width: 768px) {
   .hero__stage { max-width: 348px; }
-  /* More room, so the flanks can sit wider and turn a little harder without
-     the stage clipping them. */
+  .hero__deck {
+    perspective: 1500px;
+    perspective-origin: 50% 45%;
+  }
+  /* Set BACK in Z and turned toward the centre, rather than the phone's flat
+     translate — the perspective does the shrinking, which is what makes the
+     size difference read as distance instead of as smaller cards. */
+  .hero-card.is-prev,
+  .hero-card.is-next {
+    opacity: 0.4;
+    filter: blur(1.5px);
+  }
+  .hero-card.is-exit-left,
+  .hero-card.is-exit-right { filter: blur(4px); }
   .hero-card.is-prev { transform: translate3d(-38%, 0, -230px) rotateY(17deg) scale(0.97); }
   .hero-card.is-next { transform: translate3d(38%, 0, -230px) rotateY(-17deg) scale(0.97); }
   .hero-card.is-exit-left { transform: translate3d(-74%, 0, -420px) rotateY(26deg) scale(0.9); }

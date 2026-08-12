@@ -417,23 +417,30 @@ document.addEventListener("DOMContentLoaded", function () {
           var wrapping = (was === "is-prev" && now === "is-next") || (was === "is-next" && now === "is-prev");
 
           if (arriving || wrapping) {
-            // Placed with the tween suppressed so it does not fly in from
-            // wherever it was last parked — then faded up on the spot, which
-            // is the difference between a plate appearing and a plate popping.
+            // THE CARD MUST TRAVEL ONTO THE STAGE, NOT APPEAR ON IT.
             //
-            // Never on the first paint: holding the active card at opacity 0
-            // for two frames to fade it in would push back the LCP element the
-            // preload exists to get on screen early.
+            // This used to place the card directly at its destination with the
+            // tween suppressed and then fade it up on the spot. Measured, the
+            // arriving plate held one x-position for the entire 850ms and only
+            // its opacity moved — so what the eye saw was a card materialising
+            // beside the active one, which is precisely the "another card
+            // suddenly appears" this rebuild removes.
+            //
+            // Instead: park it OFFSTAGE on the side it is coming from, with the
+            // tween suppressed for that one frame (it is outside the
+            // composition and at opacity 0, so the placement itself is
+            // invisible), then assign the real slot in the same pass. The
+            // browser has a previous computed style to interpolate from, so the
+            // card travels in on the same curve everything else is using.
+            //
+            // Not on the first paint: there is nothing to travel from, and
+            // holding the active card offstage for a frame would push back the
+            // LCP element the preload exists to get on screen early.
             if (dir === 0) {
               setSlot(el, now, true);
             } else {
-              el.classList.add("is-entering");
-              setSlot(el, now, true);
-              (function (card) {
-                window.requestAnimationFrame(function () {
-                  window.requestAnimationFrame(function () { card.classList.remove("is-entering"); });
-                });
-              })(el);
+              setSlot(el, dir < 0 ? "is-exit-left" : "is-exit-right", true);
+              setSlot(el, now);
             }
           } else {
             setSlot(el, now);

@@ -73,10 +73,16 @@ function installSampler() {
       const imgOp = img ? parseFloat(getComputedStyle(img).opacity) : 0;
       const painted = img ? img.complete && img.naturalWidth > 0 : false;
       const infoOp = info ? parseFloat(getComputedStyle(info).opacity) : 0;
+      const r = c.getBoundingClientRect();
       row.cards.push({
         slot: c.dataset.slot || "",
         id: c.dataset.productId || "",
         cardOp, imgOp, painted, infoOp,
+        // Geometry, for the "one dominant product" and "nothing materialises"
+        // assertions below.
+        cx: r.x + r.width / 2,
+        w: r.width,
+        visW: Math.max(0, Math.min(innerWidth, r.right) - Math.max(0, r.left)),
         name: (c.querySelector(".hero-card__name") || {}).textContent || "",
         meta: (c.querySelector(".hero-card__meta") || {}).textContent || "",
         alt: img ? img.alt : "",
@@ -211,6 +217,82 @@ async function swipe(client, from, to, y) {
   check(a.unpainted.length === 0, "no card enters the stage without its artwork",
     a.unpainted.length ? `${a.unpainted.length} frames, first @ ${a.unpainted[0].t}ms (${a.unpainted[0].slots})` : "0 frames");
 
+  // ---- ONE DOMINANT PRODUCT (phone) -------------------------------------
+  // At rest there must be exactly one card at full strength, and every other
+  // card must be a hint: low opacity AND only a sliver actually on screen.
+  // Before the phone rebuild the flanks sat at 0.40 opacity showing 98px of a
+  // 172px card, which reads as three competing products rather than as one.
+  {
+    // "At rest" has to mean NOTHING IS MOVING, not "some card is at full
+    // opacity". The outgoing card deliberately holds ~1.0 well past the
+    // midpoint (that is --hero-ease-out doing its job), so an opacity-based
+    // test scoops up mid-transition frames, where the incoming card is of
+    // course large and bright. Rest is the absence of motion: no card's centre
+    // moved since the previous frame.
+    const rest = [];
+    for (let i = 1; i < samples.length; i++) {
+      const prev = new Map(samples[i - 1].cards.map((c) => [c.id, c]));
+      const s = samples[i];
+      if (s.cards.length < 3) continue;
+      const still = s.cards.every((c) => {
+        const p = prev.get(c.id);
+        return p && Math.abs(c.cx - p.cx) < 0.5 && Math.abs(c.cardOp - p.cardOp) < 0.005;
+      });
+      if (still) rest.push(s);
+    }
+    let worstOp = 0, worstVis = 0;
+    for (const s of rest) {
+      const act = s.cards.find((c) => c.cardOp > 0.995);
+      if (!act) continue;
+      const others = s.cards.filter((c) => c !== act && c.cardOp > 0.01);
+      for (const o of others) {
+        worstOp = Math.max(worstOp, o.cardOp);
+        worstVis = Math.max(worstVis, o.visW / act.w);
+      }
+    }
+    console.log(`  ${rest.length} settled frames sampled for dominance`);
+    check(worstOp <= 0.35, "no second product ever reaches competing opacity",
+      `loudest neighbour ${worstOp.toFixed(2)} (ceiling 0.35)`);
+    check(worstVis <= 0.30, "neighbours stay a sliver, not a card",
+      `widest neighbour showed ${(worstVis * 100).toFixed(0)}% of the active card's width (ceiling 30%)`);
+  }
+
+  // ---- NOTHING MATERIALISES ---------------------------------------------
+  // The complaint this encodes: a card used to be placed at its destination
+  // with the tween suppressed and then faded up on the spot, so the arriving
+  // plate held ONE x-position for the whole 850ms while only its opacity
+  // moved. Any card whose opacity changes meaningfully must also travel.
+  {
+    let offenders = [];
+    for (let i = 1; i < samples.length; i++) {
+      const prev = new Map(samples[i - 1].cards.map((c) => [c.id, c]));
+      for (const c of samples[i].cards) {
+        const p = prev.get(c.id);
+        if (!p) continue;
+        // Accumulate per card across the run instead of per frame.
+        c._dOp = Math.abs(c.cardOp - p.cardOp);
+        c._dX = Math.abs(c.cx - p.cx);
+      }
+    }
+    // Per transition window, per card: total opacity change vs total travel.
+    const byId = {};
+    for (const s of samples) {
+      for (const c of s.cards) {
+        const k = c.id;
+        byId[k] = byId[k] || { op: [], cx: [] };
+        byId[k].op.push(c.cardOp);
+        byId[k].cx.push(c.cx);
+      }
+    }
+    for (const [id, v] of Object.entries(byId)) {
+      const opRange = Math.max(...v.op) - Math.min(...v.op);
+      const cxRange = Math.max(...v.cx) - Math.min(...v.cx);
+      if (opRange > 0.15 && cxRange < 30) offenders.push(`${id.slice(0, 8)} faded ${opRange.toFixed(2)} but moved only ${cxRange.toFixed(0)}px`);
+    }
+    check(offenders.length === 0, "every card that fades also travels — nothing appears on the spot",
+      offenders.length ? offenders[0] : "all cards moved");
+  }
+
   // ---- 2. every card is internally consistent ----------------------------
   // The caption lives inside the card, so a mismatch would be structural — but
   // that is exactly the guarantee worth pinning, since the brief calls out
@@ -304,14 +386,21 @@ async function swipe(client, from, to, y) {
       const plate = document.querySelector(".hero-card.is-active .hero-card__media");
       const dr = deck.getBoundingClientRect();
       const pr = plate.getBoundingClientRect();
+      const ar = document.querySelector(".hero-card.is-active").getBoundingClientRect();
       return {
         deckH: dr.height,
         plateW: pr.width, plateH: pr.height,
         ratio: pr.height / pr.width,
         docW: document.documentElement.scrollWidth,
         viewW: document.documentElement.clientWidth,
-        // widest rendered box anywhere, to catch a flank card overhanging
-        maxRight: Math.max(...[...document.querySelectorAll(".hero *")].map((e) => e.getBoundingClientRect().right)),
+        // The ACTIVE card must be wholly on screen. The flanks deliberately
+        // are not — running off the edge is what makes them read as a hint
+        // rather than as a second product — so an "is any hero box outside the
+        // viewport" check would now be asserting the opposite of the design.
+        // What still matters is that none of it is REACHABLE, which is the
+        // scrollWidth check beside this one.
+        activeLeft: ar.left, activeRight: ar.right,
+        activeShare: ar.width / document.documentElement.clientWidth,
       };
     });
 
@@ -327,7 +416,11 @@ async function swipe(client, from, to, y) {
     console.log(`  ${width}px:`);
     check(ratioOk, `    plate holds a 3:4 cover`, `${g.plateW.toFixed(1)}x${g.plateH.toFixed(1)} = 1:${g.ratio.toFixed(3)}`);
     check(g.docW <= g.viewW, `    no horizontal page overflow`, `doc ${g.docW} vs view ${g.viewW}`);
-    check(g.maxRight <= g.viewW + 1, `    no hero element clipped past the viewport`, `max right edge ${g.maxRight.toFixed(1)}`);
+    check(g.activeLeft >= -0.5 && g.activeRight <= g.viewW + 0.5, `    active product wholly inside the viewport`,
+      `spans ${g.activeLeft.toFixed(0)}..${g.activeRight.toFixed(0)} of ${g.viewW}`);
+    if (width < 768) {
+      check(g.activeShare >= 0.5, `    active product dominates the width`, `${Math.round(g.activeShare * 100)}% of viewport`);
+    }
     check(heights.length === 1, `    deck height is constant through a transition`, `${heights.length} distinct: ${heights.join(", ")}`);
     await p.close();
   }

@@ -244,6 +244,32 @@ app.use(
   (req, res) => res.sendStatus(404)
 );
 
+// /.well-known/ — domain-verification files that a third party fetches over
+// plain HTTP to prove we control this domain.
+//
+// This needs its own mount because the static handler below sets
+// `dotfiles: "deny"`, which is what closes /.git/* and /.env — and it closes
+// every dot-prefixed path with them, including this one. Apple Pay is the
+// live case: Stripe verifies the domain by fetching
+//   /.well-known/apple-developer-merchantid-domain-association
+// and without this route that request 404s, so Apple Pay simply never
+// appears in the Payment Element and nothing anywhere reports why.
+//
+// Deliberately narrow, so it reopens exactly one directory and not the
+// dotfile rule in general: it serves ONLY files that already exist in
+// SITE_ROOT/.well-known, with no directory listing and no index. Anything not
+// placed there by hand still 404s.
+app.use(
+  "/.well-known",
+  express.static(path.join(SITE_ROOT, ".well-known"), {
+    dotfiles: "ignore",
+    index: false,
+    // These files are re-fetched by the verifying party on their own
+    // schedule; a long cache would strand a rotated file.
+    setHeaders: (res) => res.setHeader("Cache-Control", "public, max-age=300"),
+  })
+);
+
 // Private presentations: unlisted, link-only, and mounted BEFORE the static
 // handler so /presentation/:slug resolves here rather than 404ing against a
 // nonexistent file. Nothing links to these routes from anywhere on the

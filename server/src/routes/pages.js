@@ -1175,6 +1175,11 @@ const PAGE_META = {
   "/login": { file: "login.html", title: "Sign In", description: "Sign in to your Fitness Agency account to access your training plans.", noindex: true },
   "/register": { file: "register.html", title: "Create Account", description: "Create a Fitness Agency account to start training.", noindex: true },
   "/my-library": { file: "my-library.html", title: "My Library", description: "Your purchased training and nutrition plans, orders, and account settings.", noindex: true },
+  // Post-purchase confirmation. noindex like every other transactional page —
+  // and it carries an order id in the query string, so it must never be
+  // crawled or surfaced in search regardless of the id being unguessable and
+  // the endpoint behind it being session-scoped.
+  "/order/success": { file: "order-success.html", title: "Order Confirmed", description: "Your Fitness Agency order is confirmed.", noindex: true },
   "/blog": { file: "blog.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/grid": { file: "blog-grid.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/list": { file: "blog-list.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
@@ -1589,6 +1594,7 @@ router.get("/robots.txt", (req, res) => {
       "Disallow: /login",
       "Disallow: /register",
       "Disallow: /my-library",
+      "Disallow: /order/",
       // Private presentations are unlisted meeting decks. They're already
       // unguessable and never linked to, but a crawler that gets a link from
       // a pasted URL somewhere should still refuse it.

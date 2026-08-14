@@ -124,7 +124,12 @@ window.AdminPanels.orders = {
           '<button class="a-btn a-btn-secondary a-btn-sm" id="resendEmailBtn"><i class="fa-solid fa-paper-plane"></i> Resend Download Email</button>' +
           (order.status === "refunded"
             ? '<button class="a-btn a-btn-secondary a-btn-sm" disabled><i class="fa-solid fa-rotate-left"></i> Already Refunded</button>'
-            : '<button class="a-btn a-btn-secondary a-btn-sm" id="refundBtn"><i class="fa-solid fa-rotate-left"></i> Mark Refunded</button>') +
+            : '<button class="a-btn a-btn-secondary a-btn-sm" id="refundBtn"><i class="fa-solid fa-rotate-left"></i> Refund Order</button>' +
+              // Separate control, deliberately not a checkbox inside the
+              // refund dialog: revoking access WITHOUT returning the money is
+              // a different decision with a different consequence, and it
+              // should never be one mis-click away from the ordinary refund.
+              '<button class="a-btn a-btn-secondary a-btn-sm" id="revokeAccessBtn"><i class="fa-solid fa-ban"></i> Revoke Access Only</button>') +
           "</div>" +
           "<h6>Internal notes</h6>" +
           '<div id="notesList" style="margin-bottom:12px;">' +
@@ -160,31 +165,65 @@ window.AdminPanels.orders = {
           }).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
         });
 
+        // Both buttons end in the same place (order refunded, access gone);
+        // they differ in whether the provider is asked to return the money.
+        function applyRefund(opts) {
+          window.AdminUI.confirmDialog(opts.dialog).then(function (ok) {
+            if (!ok) return;
+            window.AdminAPI.refundOrder(order.id, opts.accessOnly).then(function (res) {
+              window.AdminUI.toast(
+                res && res.refunded
+                  ? "Refunded at " + order.provider + " — access revoked"
+                  : "Access revoked. No money was returned.",
+                "success"
+              );
+              window.AdminUI.closeModal(backdrop);
+              syncRowLocally({
+                id: order.id,
+                customerName: order.customerName,
+                customerEmail: order.customerEmail,
+                products: order.items.map(function (i) { return i.name; }),
+                amountCents: order.totalCents,
+                provider: order.provider,
+                status: "refunded",
+                deliveryStatus: order.deliveryStatus,
+                createdAt: order.createdAt,
+              }, { flash: true });
+            }).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
+          });
+        }
+
         var refundBtn = backdrop.querySelector("#refundBtn");
         if (refundBtn) {
           refundBtn.addEventListener("click", function () {
-            window.AdminUI.confirmDialog({
-              title: "Mark this order refunded?",
-              message: "This immediately revokes the customer's access to everything in this order — the gated program view, exercise media, and bonus downloads all check this before serving anything.",
-              confirmLabel: "Mark Refunded",
-              danger: true,
-            }).then(function (ok) {
-              if (!ok) return;
-              window.AdminAPI.refundOrder(order.id).then(function () {
-                window.AdminUI.toast("Order marked refunded — access revoked", "success");
-                window.AdminUI.closeModal(backdrop);
-                syncRowLocally({
-                  id: order.id,
-                  customerName: order.customerName,
-                  customerEmail: order.customerEmail,
-                  products: order.items.map(function (i) { return i.name; }),
-                  amountCents: order.totalCents,
-                  provider: order.provider,
-                  status: "refunded",
-                  deliveryStatus: order.deliveryStatus,
-                  createdAt: order.createdAt,
-                }, { flash: true });
-              }).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
+            applyRefund({
+              accessOnly: false,
+              dialog: {
+                title: "Refund " + window.AdminUI.formatCents(order.totalCents) + " to this customer?",
+                message:
+                  "This returns the money through " + order.provider +
+                  " and revokes access to everything in this order — the gated program view, exercise media, and bonus downloads all check this before serving anything. " +
+                  "The refund is issued first: if it fails, nothing is changed here.",
+                confirmLabel: "Refund and Revoke",
+                danger: true,
+              },
+            });
+          });
+        }
+
+        var revokeBtn = backdrop.querySelector("#revokeAccessBtn");
+        if (revokeBtn) {
+          revokeBtn.addEventListener("click", function () {
+            applyRefund({
+              accessOnly: true,
+              dialog: {
+                title: "Revoke access without refunding?",
+                message:
+                  "NO money is returned to the customer. Use this only when the refund was already issued in the " +
+                  order.provider + " dashboard, or when there is no charge to reverse.",
+                confirmLabel: "Revoke Access Only",
+                danger: true,
+              },
             });
           });
         }

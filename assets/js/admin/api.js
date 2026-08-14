@@ -199,7 +199,12 @@ window.AdminAPI = (function () {
     listOrders: function (params) { return get("/api/admin/orders?" + new URLSearchParams(params || {})); },
     getOrder: function (id) { return get("/api/admin/orders/" + id); },
     resendOrderEmail: function (id) { return post("/api/admin/orders/" + id + "/resend-email"); },
-    refundOrder: function (id) { return post("/api/admin/orders/" + id + "/refund"); },
+    // accessOnly true = revoke the customer's access WITHOUT asking the
+    // payment provider to return the money (the charge was already refunded
+    // out-of-band, or there is no charge to reverse).
+    refundOrder: function (id, accessOnly) {
+      return post("/api/admin/orders/" + id + "/refund", { accessOnly: accessOnly === true });
+    },
     addOrderNote: function (id, body) { return post("/api/admin/orders/" + id + "/notes", { body: body }); },
 
     listProducts: function (params) { return get("/api/admin/products?" + new URLSearchParams(params || {})); },

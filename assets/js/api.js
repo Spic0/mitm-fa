@@ -113,7 +113,16 @@ window.ProFitAPI = (function () {
         promoCode: promoCode,
       });
     },
-    finalizeStripe: function (paymentIntentId) { return post("/checkout/stripe/finalize", { paymentIntentId: paymentIntentId }); },
+    // The clientSecret is required, not decorative: the server treats it as
+    // proof that this browser is the one that created the PaymentIntent
+    // before it mints a logged-in session. The bare intent id travels in the
+    // URL on redirect-based payment methods and is not a secret.
+    finalizeStripe: function (paymentIntentId, clientSecret) {
+      return post("/checkout/stripe/finalize", {
+        paymentIntentId: paymentIntentId,
+        clientSecret: clientSecret,
+      });
+    },
     createPaypalOrder: function (items, customer, promoCode) {
       return post("/checkout/paypal/create-order", {
         items: items,
@@ -131,6 +140,7 @@ window.ProFitAPI = (function () {
     },
     getLibrary: function () { return get("/library"); },
     getOrders: function () { return get("/library/orders"); },
+    getOrder: function (orderId) { return get("/library/orders/" + encodeURIComponent(orderId)); },
     getProgram: function (productIdOrSlug) { return get("/library/program/" + encodeURIComponent(productIdOrSlug)); },
     // Deliberately not routed through get()'s page-lifetime cache: progress
     // is written repeatedly during a single page view, so a cached response

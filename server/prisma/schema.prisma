@@ -302,8 +302,17 @@ model OrderItem {
   priceCents Int
 }
 
-// Short-lived record bridging a checkout attempt to its PayPal order, since
-// PayPal's custom_id field is too small to carry a full cart + email payload.
+// One row per checkout attempt, for BOTH providers — the single server-side
+// record of what the buyer was actually quoted and charged for.
+//
+// Originally PayPal-only (its custom_id field is too small to carry a cart +
+// email payload, so the id is round-tripped instead). Stripe used to carry
+// the same payload in PaymentIntent metadata, which capped the cart at
+// roughly ten line items: Stripe limits each metadata VALUE to 500
+// characters, and a serialized cart passes that at ~11 items, failing the
+// whole create-intent call. Both providers now write a row here and carry
+// only its id, so the two paths share one snapshot format and one size
+// limit — the cart cap in checkoutItems.js.
 model PendingCheckout {
   id         String   @id @default(cuid())
   email      String
@@ -313,17 +322,39 @@ model PendingCheckout {
   customerName    String?
   customerPhone   String?
   customerCountry String?
-  itemsJson  String
+  itemsJson  String // JSON: the raw [{ productId, qty }] the browser sent
+  // The PRICED snapshot — JSON: [{ productId, priceCents }], one entry per
+  // unit, exactly as resolveCheckoutItems() computed it at the moment the
+  // payment was created. This is what fulfillment builds the order from.
+  //
+  // Fulfillment used to re-resolve itemsJson against the live catalog
+  // instead, which meant an admin editing a price, or unpublishing a product,
+  // between "customer pays" and "webhook arrives" either recorded an order
+  // total that disagreed with the amount actually charged or — for an
+  // unpublished product — threw "Unknown product" and permanently failed to
+  // fulfill a payment that had already succeeded. Nullable only because rows
+  // written before this column existed have no snapshot; both fulfillment
+  // paths fall back to the old re-resolve for those.
+  resolvedItemsJson String?
+  subtotalCents Int @default(0) // pre-discount, for reconciliation
   totalCents Int
-  // Discount decision locked in at create-order time (mirrors how Stripe's
-  // PaymentIntent metadata carries the same fields) — read back verbatim at
+  // Discount decision locked in at create-order time — read back verbatim at
   // capture time rather than re-validated, so a promotion that legitimately
-  // applied when the PayPal order was created can't retroactively block
+  // applied when the payment was created can't retroactively block
   // fulfillment of a payment that already completed.
   discountCents Int @default(0)
   promotionId   String?
   appliedPromotionsJson String? // JSON: [{ promotionId, discountCents }]
+  // Which provider claimed this snapshot, and its id for that provider
+  // (Stripe PaymentIntent id / PayPal order id). Audit trail only —
+  // fulfillment is keyed off Order.providerRef, not this.
+  provider    String?
+  providerRef String?
+  consumedAt  DateTime? // set when an order was fulfilled from this snapshot
   createdAt  DateTime @default(now())
+
+  @@index([providerRef])
+  @@index([createdAt])
 }
 
 model MagicLinkToken {

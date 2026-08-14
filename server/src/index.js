@@ -18,6 +18,7 @@ const productsRoutes = require("./routes/products");
 const checkoutRoutes = require("./routes/checkout");
 const libraryRoutes = require("./routes/library");
 const stripeWebhookRoutes = require("./routes/webhooksStripe");
+const paypalWebhookRoutes = require("./routes/webhooksPaypal");
 const configRoutes = require("./routes/config");
 const adminRoutes = require("./routes/admin");
 const taxonomyRoutes = require("./routes/taxonomy");
@@ -36,6 +37,47 @@ if (!process.env.CSRF_SECRET) {
   // confusing 500s from real users.
   throw new Error("CSRF_SECRET is not set — see server/.env.example");
 }
+
+// Payment configuration is reported at boot rather than left to be discovered
+// by a customer at the moment they try to pay. Deliberately a warning and not
+// a throw: the storefront, library and admin are all perfectly usable without
+// payments configured, and refusing to boot would turn a checkout
+// misconfiguration into a total outage. The routes themselves answer 503 with
+// customer-facing copy, and the checkout UI marks the method unavailable.
+function reportPaymentConfig() {
+  const missing = [];
+  if (!/^sk_(test|live)_/.test(process.env.STRIPE_SECRET_KEY || "")) missing.push("STRIPE_SECRET_KEY");
+  if (!/^pk_(test|live)_/.test(process.env.STRIPE_PUBLISHABLE_KEY || "")) missing.push("STRIPE_PUBLISHABLE_KEY");
+  if (!/^whsec_/.test(process.env.STRIPE_WEBHOOK_SECRET || "")) missing.push("STRIPE_WEBHOOK_SECRET");
+  if (missing.length) {
+    console.warn(`[payments] Stripe is NOT operational — missing/invalid: ${missing.join(", ")}`);
+  } else {
+    const live = process.env.STRIPE_SECRET_KEY.startsWith("sk_live_");
+    console.log(`[payments] Stripe configured (${live ? "LIVE" : "test"} mode)`);
+  }
+
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+    console.warn("[payments] PayPal is NOT operational — missing PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET");
+  } else if (!process.env.PAYPAL_WEBHOOK_ID) {
+    // Without this the PayPal webhook fails closed on every delivery, so a
+    // buyer whose browser never returns after approving is never fulfilled —
+    // the exact gap the webhook exists to cover. Worth its own line.
+    console.warn("[payments] PayPal webhook DISABLED — PAYPAL_WEBHOOK_ID is not set");
+  } else {
+    const sandbox = (process.env.PAYPAL_API_BASE || "").includes("sandbox");
+    console.log(`[payments] PayPal configured (${sandbox ? "sandbox" : "LIVE"} mode)`);
+  }
+
+  // A live Stripe key against a sandbox PayPal base (or vice versa) means one
+  // provider is taking real money and the other is not — always a
+  // misconfiguration, and invisible until someone reconciles the books.
+  const stripeLive = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live_");
+  const paypalLive = process.env.PAYPAL_CLIENT_ID && !(process.env.PAYPAL_API_BASE || "").includes("sandbox");
+  if (process.env.PAYPAL_CLIENT_ID && process.env.STRIPE_SECRET_KEY && stripeLive !== paypalLive) {
+    console.warn("[payments] MODE MISMATCH — Stripe and PayPal are not both in live mode. Check STRIPE_SECRET_KEY and PAYPAL_API_BASE.");
+  }
+}
+reportPaymentConfig();
 
 const app = express();
 const SITE_ROOT = path.join(__dirname, "..", "..");
@@ -134,9 +176,13 @@ app.use(
 // at full uncompressed size on every request.
 app.use(compression());
 
-// Stripe requires the raw, unparsed body to verify webhook signatures, so this
-// must be mounted before the global express.json() below.
+// Both providers verify their webhook signature against the exact bytes they
+// sent, so these must be mounted before the global express.json() below.
+// Neither goes through cookieParser/attachUser either, which is why both are
+// out of scope for CSRF — they're authenticated by provider signature, not by
+// an ambient cookie.
 app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRoutes);
+app.use("/api/webhooks/paypal", express.raw({ type: "application/json" }), paypalWebhookRoutes);
 
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));

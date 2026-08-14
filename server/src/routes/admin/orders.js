@@ -3,6 +3,9 @@ const { prisma } = require("../../db");
 const { createMagicLinkToken, buildMagicLinkUrl } = require("../../lib/magicLink");
 const { sendPurchaseReceiptEmail } = require("../../lib/email");
 const { logEvent } = require("../../lib/adminLog");
+const { logPaymentEvent } = require("../../lib/paymentLog");
+const { stripe, isStripeConfigured } = require("../../lib/stripe");
+const paypal = require("../../lib/paypal");
 
 const router = express.Router();
 
@@ -124,26 +127,109 @@ router.post("/:id/resend-email", async (req, res) => {
   }
 });
 
-// Revokes the customer's access to everything in this order — entitlement
-// (server/src/lib/entitlements.js) checks status: "paid" specifically, so
-// this alone is sufficient to cut off the gated program view, media, and
-// resource downloads immediately, with no separate "access" flag to keep in
-// sync. Idempotent: refunding an already-refunded order just re-confirms
-// the state rather than erroring, since an admin retrying after a flaky
-// connection shouldn't be punished with a 409.
+// Refunds the money at the payment provider AND revokes access.
+//
+// This endpoint used to do only the second half: it set status "refunded",
+// which cut off the gated program view, media and resource downloads
+// (entitlement checks status "paid" specifically), and stopped there. The
+// customer's money was never returned. An admin pressing "Refund", seeing the
+// order go green and the access disappear, had every reason to believe the
+// refund had happened — so the failure mode was a customer chasing a refund
+// that the dashboard already showed as complete.
+//
+// Order of operations matters: the provider call comes FIRST, and a failure
+// there aborts without touching the local record. Revoking access for a
+// refund that didn't actually go through would leave the customer with
+// neither their money nor their product.
+//
+// `accessOnly: true` is the deliberate escape hatch for orders with no
+// provider charge to reverse (provider "manual"/"dev"), and for a refund
+// already issued out-of-band in the Stripe or PayPal dashboard — where
+// calling the API again would either error or double-refund.
 router.post("/:id/refund", async (req, res) => {
   const order = await prisma.order.findUnique({ where: { id: req.params.id } });
   if (!order) return res.status(404).json({ error: "Order not found" });
-  if (order.status === "refunded") return res.json({ order });
+  // Idempotent: an admin retrying after a flaky connection shouldn't be
+  // punished with a 409, and must not be able to fire a second provider
+  // refund at an order that is already refunded.
+  if (order.status === "refunded") return res.json({ order, alreadyRefunded: true });
+
+  const accessOnly = req.body && req.body.accessOnly === true;
+  let providerRefund = null;
+
+  if (!accessOnly) {
+    try {
+      providerRefund = await refundAtProvider(order);
+    } catch (err) {
+      await logPaymentEvent({
+        provider: order.provider,
+        eventType: "admin.refund",
+        status: "failed",
+        providerRef: order.providerRef,
+        orderId: order.id,
+        providerResponse: { error: err.message },
+      });
+      return res.status(502).json({
+        error: `The refund was not issued: ${err.message}. Nothing has been changed — the customer still has access and has not been refunded.`,
+      });
+    }
+  }
 
   const updated = await prisma.order.update({ where: { id: order.id }, data: { status: "refunded" } });
+
+  await logPaymentEvent({
+    provider: order.provider,
+    eventType: "admin.refund",
+    status: "succeeded",
+    providerRef: order.providerRef,
+    orderId: order.id,
+    providerResponse: accessOnly
+      ? { accessOnly: true, note: "Access revoked without a provider refund" }
+      : providerRefund,
+  });
   await logEvent({
     category: "order",
-    message: `Order ${order.id} marked refunded — access revoked`,
+    message: accessOnly
+      ? `Order ${order.id} access revoked (no provider refund issued)`
+      : `Order ${order.id} refunded via ${order.provider} — $${(order.totalCents / 100).toFixed(2)} returned, access revoked`,
     actorId: req.user.id,
   });
-  res.json({ order: updated });
+  res.json({ order: updated, refunded: !accessOnly });
 });
+
+// Issues the actual refund. Throws with a message meant for the admin UI.
+async function refundAtProvider(order) {
+  if (!order.providerRef) {
+    throw new Error("this order has no provider transaction to refund");
+  }
+
+  if (order.provider === "stripe") {
+    if (!isStripeConfigured) throw new Error("Stripe is not configured on this server");
+    const refund = await stripe.refunds.create(
+      { payment_intent: order.providerRef },
+      // Retrying the same order never issues a second refund.
+      { idempotencyKey: `refund_order_${order.id}` }
+    );
+    return { id: refund.id, amount: refund.amount, currency: refund.currency, status: refund.status };
+  }
+
+  if (order.provider === "paypal") {
+    if (!paypal.isPaypalConfigured) throw new Error("PayPal is not configured on this server");
+    // Order.providerRef is the CHECKOUT order id; refunds act on the capture
+    // inside it, so the capture id is read back from PayPal rather than
+    // stored separately and risking drift.
+    const paypalOrder = await paypal.getOrder(order.providerRef);
+    const unit = paypalOrder.purchase_units && paypalOrder.purchase_units[0];
+    const capture = unit && unit.payments && unit.payments.captures && unit.payments.captures[0];
+    if (!capture || !capture.id) throw new Error("no completed PayPal capture found for this order");
+    const refund = await paypal.refundCapture(capture.id);
+    return { id: refund.id, status: refund.status, captureId: capture.id };
+  }
+
+  throw new Error(
+    `orders paid via "${order.provider}" have no automatic refund — issue it manually, then use Revoke Access`
+  );
+}
 
 router.post("/:id/notes", async (req, res) => {
   const body = String(req.body.body || "").trim();

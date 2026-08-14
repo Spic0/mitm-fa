@@ -34,13 +34,14 @@ router.post("/", async (req, res) => {
   // log rows and has no uniqueness of its own, so without this a duplicate
   // delivery would silently double up the payment/system logs.
   //
-  // Trade-off, deliberate: if processing an event fails after it's been
-  // claimed here, a later Stripe retry of that same event.id will be seen
-  // as a duplicate and skipped, not reprocessed. That's acceptable only
-  // because payment_intent.succeeded fulfillment has a fully independent
-  // second path (the browser's POST /stripe/finalize, called right after
-  // Stripe confirms payment client-side) that isn't gated by this table at
-  // all — so a webhook-side failure doesn't strand the order.
+  // The claim is RELEASED if processing then fails (see the catch blocks
+  // below), so Stripe's retry of that same event.id reprocesses it properly
+  // instead of being swallowed as a duplicate. Without that release, a single
+  // transient failure — a database blip during fulfillment — would
+  // permanently strand the event, and the only thing standing between the
+  // customer and a payment with no order would be the browser's independent
+  // /stripe/finalize call, which by definition doesn't happen in exactly the
+  // case the webhook exists to cover (the buyer never came back).
   try {
     await prisma.webhookEvent.create({
       data: { provider: "stripe", eventId: event.id, eventType: event.type },
@@ -52,19 +53,32 @@ router.post("/", async (req, res) => {
     throw err;
   }
 
+  // Lets Stripe's retry of this event actually reprocess it rather than
+  // hitting the duplicate check above and being dropped.
+  async function releaseClaim() {
+    await prisma.webhookEvent
+      .deleteMany({ where: { provider: "stripe", eventId: event.id } })
+      .catch(() => {});
+  }
+
   if (event.type === "payment_intent.succeeded") {
     const intent = event.data.object;
     try {
-      const { order } = await fulfillFromPaymentIntent(intent);
-      await logPaymentEvent({
-        provider: "stripe",
-        eventType: event.type,
-        status: "succeeded",
-        providerRef: intent.id,
-        customerEmail: intent.metadata && intent.metadata.email,
-        orderId: order.id,
-        providerResponse: { status: intent.status, amount: intent.amount, currency: intent.currency },
-      });
+      const { order, alreadyFulfilled } = await fulfillFromPaymentIntent(intent);
+      // The browser's /stripe/finalize almost always wins this race, and a
+      // "succeeded" row per delivery for an order that already existed just
+      // pads the payment log with events that record no state change.
+      if (!alreadyFulfilled) {
+        await logPaymentEvent({
+          provider: "stripe",
+          eventType: event.type,
+          status: "succeeded",
+          providerRef: intent.id,
+          customerEmail: intent.metadata && intent.metadata.email,
+          orderId: order.id,
+          providerResponse: { status: intent.status, amount: intent.amount, currency: intent.currency },
+        });
+      }
     } catch (err) {
       console.error("Failed to fulfill order from webhook:", err);
       await logPaymentEvent({
@@ -75,6 +89,7 @@ router.post("/", async (req, res) => {
         customerEmail: intent.metadata && intent.metadata.email,
         providerResponse: { error: err.message },
       });
+      await releaseClaim();
       return res.status(500).send("Fulfillment failed");
     }
   }

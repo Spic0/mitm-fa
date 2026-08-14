@@ -262,6 +262,46 @@ router.get("/orders", async (req, res) => {
   });
 });
 
+// One order, for the post-purchase confirmation page. Scoped to the session
+// user by the where clause, not by filtering after the fact — an order id
+// belonging to somebody else is a 404 here, the same as one that doesn't
+// exist, so this can't be used to probe whether an id is real.
+//
+// Deliberately NOT limited to status "paid": a buyer who lands here after a
+// refund, or during the brief window before a slow webhook lands, should see
+// the real state of their order rather than a "not found" page for a purchase
+// they know they made.
+router.get("/orders/:id", async (req, res) => {
+  const order = await prisma.order.findFirst({
+    where: { id: req.params.id, userId: req.user.id },
+    include: { items: { include: { product: true } } },
+  });
+  if (!order) return res.status(404).json({ error: "Order not found" });
+
+  res.json({
+    order: {
+      id: order.id,
+      // provider is the payment method's NAME only ("stripe"/"paypal") — the
+      // provider's own transaction id (Order.providerRef) is deliberately not
+      // serialized to the browser. It's an internal reconciliation handle
+      // that, for Stripe, is also the value the checkout finalize endpoint
+      // keys off; there is no reason for the customer's page to carry it.
+      provider: order.provider,
+      status: order.status,
+      totalCents: order.totalCents,
+      discountCents: order.discountCents,
+      createdAt: order.createdAt,
+      items: order.items.map((item) => ({
+        productId: item.product.id,
+        slug: item.product.slug,
+        name: item.product.name,
+        imageUrl: normalizeImageUrl(item.product.imageUrl),
+        priceCents: item.priceCents,
+      })),
+    },
+  });
+});
+
 // The gated "open program" view: full structured content for a purchased
 // product, rendered inside the platform instead of downloaded as a file.
 //

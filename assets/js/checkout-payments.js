@@ -11,6 +11,11 @@
   var elements = null;
   var paymentElementMounted = false;
   var currentPaymentIntentId = null;
+  // Held for the finalize call, which requires it as proof this browser owns
+  // the PaymentIntent before the server will mint a session. On a redirect
+  // return the intent is recreated from the URL, where Stripe puts both
+  // values itself.
+  var currentClientSecret = null;
 
   // Contact & Billing is owned by checkout-customer-form.js, which validates
   // all four fields and composes the E.164 phone number. Falling back to a
@@ -96,14 +101,14 @@
     });
   }
 
-  function clearCartOrBuyNow() {
-    cart.clearBuyNow();
-    cart.saveCart([]);
-  }
-
-  function goToLibrary() {
-    clearCartOrBuyNow();
-    window.location.href = "/my-library";
+  // The cart is deliberately NOT cleared here — the success page clears it
+  // once it has confirmed the order actually exists server-side. Clearing on
+  // the way out would empty the cart of a buyer whose fulfillment went wrong,
+  // making a retry harder at exactly the worst moment.
+  function goToConfirmation(result) {
+    window.location.href =
+      (result && result.redirect) ||
+      (result && result.orderId ? "/order/success?order=" + encodeURIComponent(result.orderId) : "/my-library");
   }
 
   // The sticky bottom bar is the ONE checkout CTA at every viewport width —
@@ -125,13 +130,19 @@
     text.textContent = label || "Secure Checkout";
   }
 
-  async function finalizeStripePayment(paymentIntentId) {
+  async function finalizeStripePayment(paymentIntentId, clientSecret) {
     setPlaceOrderBusy(true, "Finalizing your order…");
     try {
-      await api.finalizeStripe(paymentIntentId);
-      goToLibrary();
+      var result = await api.finalizeStripe(paymentIntentId, clientSecret);
+      goToConfirmation(result);
     } catch (err) {
-      showError(err.message || "We couldn't finalize your order. Please contact support.");
+      // The payment itself has already succeeded at this point — only the
+      // session/redirect step failed. The webhook will still fulfill the
+      // order, so the copy must not imply the money didn't move.
+      showError(
+        err.message ||
+          "Your payment went through, but we couldn't open your library automatically. Check your email for a sign-in link."
+      );
       setPlaceOrderBusy(false);
       checkoutInFlight = false;
     }
@@ -183,6 +194,7 @@
       stripe = Stripe(config.stripePublishableKey);
       var intent = await api.createStripeIntent(items, currentCustomer(), cart.appliedPromoCode);
       currentPaymentIntentId = intent.id;
+      currentClientSecret = intent.clientSecret;
       elements = stripe.elements({ clientSecret: intent.clientSecret });
       var paymentElement = elements.create("payment");
       paymentElement.mount("#stripe-payment-element");
@@ -422,7 +434,7 @@
         checkoutInFlight = false;
         return;
       }
-      await finalizeStripePayment(result.paymentIntent.id);
+      await finalizeStripePayment(result.paymentIntent.id, currentClientSecret);
     } catch (err) {
       showError(err.message || "Payment failed. Please try again.");
       setPlaceOrderBusy(false);
@@ -538,8 +550,8 @@
           });
         },
         onApprove: function (data) {
-          return api.capturePaypalOrder(data.orderID).then(function () {
-            goToLibrary();
+          return api.capturePaypalOrder(data.orderID).then(function (result) {
+            goToConfirmation(result);
           });
         },
         onError: function (err) {
@@ -568,12 +580,19 @@
     });
   }
 
+  // Stripe puts BOTH the intent id and its client secret on the return URL
+  // for redirect-based methods (3D Secure, bank redirects), which is where
+  // the finalize proof comes from on this path. `redirect_status` is Stripe's
+  // own word and is only used to decide whether it's worth calling finalize
+  // at all — the server re-retrieves the PaymentIntent and checks its real
+  // status regardless, so a hand-edited "succeeded" in the URL buys nothing.
   async function handleStripeRedirectReturn() {
     var params = new URLSearchParams(window.location.search);
     var paymentIntentId = params.get("payment_intent");
+    var clientSecret = params.get("payment_intent_client_secret");
     var redirectStatus = params.get("redirect_status");
-    if (paymentIntentId && redirectStatus === "succeeded") {
-      await finalizeStripePayment(paymentIntentId);
+    if (paymentIntentId && clientSecret && redirectStatus === "succeeded") {
+      await finalizeStripePayment(paymentIntentId, clientSecret);
       return true;
     }
     return false;

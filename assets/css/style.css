@@ -8452,6 +8452,19 @@ button span,
   border-radius: 7px !important;
   box-shadow: none !important;
 }
+/* checkout-payments.js hides the badge for any method this store isn't
+   actually configured to take (e.g. the PayPal badge when there is no
+   PAYPAL_CLIENT_ID), by toggling the site-wide `u-hidden` utility. That
+   utility is a plain `.u-hidden { display: none }` and CANNOT win against the
+   `display: inline-flex !important` directly above, so without this the class
+   lands on the element and changes nothing — the row keeps advertising a
+   payment method the checkout can't process. Matching !important here is the
+   only thing that beats it, and is consistent with the rest of this block. */
+.co-summary-payments .card-brand.u-hidden,
+.co-brands .card-brand.u-hidden,
+.cart-drawer__payments .card-brand.u-hidden {
+  display: none !important;
+}
 .co-ssl--summary {
   display: flex !important;
   align-items: center !important;

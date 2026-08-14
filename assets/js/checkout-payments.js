@@ -454,6 +454,7 @@
   function markUnconfiguredMethods(config) {
     setMethodEnabled("paypal", !!config.paypalClientId);
     setMethodEnabled("card", !!config.stripePublishableKey);
+    syncAcceptedBadges(config);
 
     // If the active tab is the unavailable one but another method works,
     // switch to the working one rather than stranding the shopper on a dead
@@ -463,6 +464,41 @@
       var usable = document.querySelector(".pay-tab:not(.is-unavailable)");
       if (usable) usable.click();
     }
+  }
+
+  // The "accepted payment methods" badge row is reassurance copy, not a
+  // control — but it is still a claim about what this store takes, and a
+  // VISA/PayPal/Apple Pay row on a checkout that can't process any of them is
+  // a promise the page can't keep. The badges are driven off the same config
+  // the tabs are, so the two can't disagree.
+  //
+  // Card-network and wallet badges all ride on Stripe: if there's no
+  // publishable key, none of them are real. Apple Pay and Google Pay
+  // additionally depend on the shopper's device and on dashboard-side
+  // configuration that the browser can't see from here, so they're shown
+  // whenever Stripe is live and left to the Payment Element to surface or
+  // not — an accepted-methods list is allowed to be slightly broader than
+  // what one particular device offers, in a way a BUTTON would not be.
+  var BADGE_REQUIREMENTS = {
+    visa: "stripe", mc: "stripe", amex: "stripe",
+    applepay: "stripe", gpay: "stripe",
+    paypal: "paypal",
+  };
+
+  function syncAcceptedBadges(config) {
+    var available = {
+      stripe: !!config.stripePublishableKey,
+      paypal: !!config.paypalClientId,
+    };
+    document.querySelectorAll(".card-brand").forEach(function (badge) {
+      var brand = null;
+      Object.keys(BADGE_REQUIREMENTS).forEach(function (key) {
+        if (badge.classList.contains(key)) brand = key;
+      });
+      if (!brand) return;
+      var ok = available[BADGE_REQUIREMENTS[brand]];
+      badge.classList.toggle("u-hidden", !ok);
+    });
   }
 
   function setMethodEnabled(method, enabled) {

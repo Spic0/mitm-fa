@@ -76,8 +76,60 @@ function reportPaymentConfig() {
   if (process.env.PAYPAL_CLIENT_ID && process.env.STRIPE_SECRET_KEY && stripeLive !== paypalLive) {
     console.warn("[payments] MODE MISMATCH — Stripe and PayPal are not both in live mode. Check STRIPE_SECRET_KEY and PAYPAL_API_BASE.");
   }
+
+  // The secret and publishable keys must be from the same mode. A live secret
+  // paired with a test publishable key (easy to do when copying them across
+  // one at a time) fails at the browser AFTER the PaymentIntent already
+  // exists, so it looks like an intermittent client bug rather than a
+  // configuration error.
+  const skMode = /^sk_(test|live)_/.exec(process.env.STRIPE_SECRET_KEY || "");
+  const pkMode = /^pk_(test|live)_/.exec(process.env.STRIPE_PUBLISHABLE_KEY || "");
+  if (skMode && pkMode && skMode[1] !== pkMode[1]) {
+    console.warn(
+      `[payments] STRIPE KEY MODE MISMATCH — secret key is ${skMode[1]} but publishable key is ${pkMode[1]}. Payments will fail in the browser.`
+    );
+  }
+
+  // Running production against test/sandbox credentials takes no real money
+  // while looking completely healthy — orders appear, entitlements are
+  // granted, and nothing is ever settled. It must never be a silent state.
+  if (process.env.NODE_ENV === "production") {
+    if (skMode && skMode[1] === "test") {
+      console.warn("[payments] NOT TAKING REAL MONEY — NODE_ENV=production but STRIPE_SECRET_KEY is a TEST key.");
+    }
+    if (process.env.PAYPAL_CLIENT_ID && (process.env.PAYPAL_API_BASE || "").includes("sandbox")) {
+      console.warn("[payments] NOT TAKING REAL MONEY — NODE_ENV=production but PAYPAL_API_BASE points at sandbox.");
+    }
+  }
 }
 reportPaymentConfig();
+
+// Transactional email is reported the same way, and for a sharper reason than
+// it looks: magic-link sign-in is the ONLY way a customer can get back into
+// their account after the purchase session ends (a password can be set, but
+// only from inside an already-authenticated session, so a first-time buyer
+// never has one). If Resend is misconfigured, the purchase receipt AND the
+// sign-in link both vanish — and Resend's SDK resolves with an { error }
+// object rather than throwing, so nothing anywhere would say so. That
+// combination means a customer can pay, close the tab, and be permanently
+// locked out of what they bought, with no error surfaced to anyone.
+//
+// A real key is "re_" plus ~33 characters; the placeholder that shipped in
+// .env.example is far shorter, which is the case actually seen in production.
+function reportEmailConfig() {
+  const key = process.env.RESEND_API_KEY || "";
+  if (!key) {
+    console.warn("[email] DISABLED — RESEND_API_KEY is not set. Receipts and magic-link sign-in will NOT be delivered.");
+  } else if (!/^re_/.test(key) || key.length < 30) {
+    console.warn(
+      `[email] RESEND_API_KEY looks like a placeholder (length ${key.length}, expected ~36). ` +
+        "Receipts and magic-link sign-in will silently fail — customers will be unable to sign back in after purchase."
+    );
+  } else {
+    console.log("[email] Resend configured");
+  }
+}
+reportEmailConfig();
 
 const app = express();
 const SITE_ROOT = path.join(__dirname, "..", "..");

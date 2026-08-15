@@ -79,12 +79,19 @@ async function seedCart(page, product) {
 (async () => {
   if (SHOTS) fs.mkdirSync(SHOT_DIR, { recursive: true });
 
-  const res = await fetch(`${BASE}/api/products`);
+  // A server booted with NODE_ENV=production 301s anything that doesn't look
+  // like it arrived over HTTPS, and following that redirect to https://127.0.0.1
+  // fails the TLS handshake outright. The puppeteer page below sets this
+  // header for the same reason; these two setup calls need it as well so the
+  // harness works against the server however it was started.
+  const apiHeaders = { "x-forwarded-proto": "https" };
+
+  const res = await fetch(`${BASE}/api/products`, { headers: apiHeaders });
   const { products } = await res.json();
   const product = (products || []).find((p) => p.priceCents > 0);
   if (!product) throw new Error("no priced published product to build a cart from");
 
-  const config = await (await fetch(`${BASE}/api/config`)).json();
+  const config = await (await fetch(`${BASE}/api/config`, { headers: apiHeaders })).json();
 
   const browser = await puppeteer.launch({
     executablePath: findChrome(),

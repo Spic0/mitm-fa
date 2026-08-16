@@ -1,0 +1,4 @@
+# Bootstrap classes that reach the DOM in a way the static scan in
+# tools/bootstrap-class-inventory.js cannot see. One per line, # for comments.
+# Add here rather than loosening the scan: the scan is shared with the
+# verifier, and a looser scan hides the next real miss.

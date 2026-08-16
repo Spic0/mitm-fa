@@ -4,6 +4,8 @@
   "description": "Build-time asset tooling and browser tests. Not part of serving a request — see tools/README.md. Kept separate from server/package.json so a tool dependency can never end up in the production dependency tree.",
   "scripts": {
     "fontawesome": "node subset-fontawesome-css.js && node subset-fontawesome-fonts.js && node verify-fontawesome.js",
+    "bootstrap": "node subset-bootstrap-css.js",
+    "verify:bootstrap": "node verify-bootstrap-subset.js",
     "test:handbook-media": "node test-handbook-media.js",
     "test:media-x-accel": "node test-media-x-accel.js",
     "test:handbook-video": "node test-handbook-video.js",

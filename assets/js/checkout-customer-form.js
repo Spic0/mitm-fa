@@ -283,6 +283,16 @@
   }
 
   var openPanel = null;
+  var backdrop = null;
+
+  // Below 900px the panel is a viewport-pinned sheet (see .co-cpanel in
+  // style.css); above it, an anchored dropdown. The two need different
+  // affordances, so the breakpoint is read once here rather than inferred
+  // from pointer type — a narrow window on a laptop gets the sheet too,
+  // which is what the layout around it is already doing.
+  function isSheet() {
+    return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+  }
 
   function togglePanel(panel, anchor) {
     if (openPanel === panel) return closePanel(panel, anchor);
@@ -293,6 +303,24 @@
     panel.hidden = false;
     anchor.setAttribute("aria-expanded", "true");
     openPanel = panel;
+
+    // The panel lives inside .co-fieldgroup, which is `overflow: hidden` to
+    // clip its dividers to its rounded corners — and that clipped the list
+    // away entirely. The anchored dropdown needs the group to stop clipping
+    // while it is open; the sheet is position:fixed and immune either way,
+    // but releasing it for both keeps one code path.
+    var group = anchor.closest(".co-fieldgroup");
+    if (group) group.classList.add("has-cpanel-open");
+
+    if (isSheet()) {
+      backdrop = document.createElement("div");
+      backdrop.className = "co-cpanel-backdrop";
+      document.body.appendChild(backdrop);
+      // Focusing the search box here would raise the on-screen keyboard over
+      // the list the shopper just asked to see. On a sheet the list is the
+      // point; searching is a deliberate second tap.
+      return;
+    }
     // Focus lands on the search box so typing filters immediately.
     setTimeout(function () { panel._search.focus(); }, 0);
   }
@@ -300,6 +328,10 @@
   function closePanel(panel, anchor) {
     panel.hidden = true;
     if (anchor) anchor.setAttribute("aria-expanded", "false");
+    var group = anchor && anchor.closest ? anchor.closest(".co-fieldgroup") : null;
+    if (group) group.classList.remove("has-cpanel-open");
+    if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    backdrop = null;
     if (openPanel === panel) openPanel = null;
   }
 

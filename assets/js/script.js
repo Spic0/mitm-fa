@@ -744,6 +744,84 @@ CSS TABLE OF CONTENTS
 		$("#cartCount, #cartDrawerCount, #drawerCartCount").text(count);
 	}
 
+	// ---- Cart thumbnails ---------------------------------------------------
+	// The cart stores only the raw `imageUrl` a product was added with, i.e.
+	// the ORIGINAL upload. Rendering that straight into <img src> is the same
+	// bug that has now been found on four separate surfaces: every request
+	// succeeds, so nothing ever flags it. Measured on the live drawer with
+	// three items, 10/2 Mbps: 4,565,282 bytes of PNG (1290x2796, 1055x1491,
+	// 1122x1402) to fill three 60x60 boxes, the last of them landing 3.7s
+	// after the drawer opened.
+	//
+	// The 320w AVIF/WebP derivatives already exist for every raster cover —
+	// nothing here generates anything, it only asks for what is there.
+	// `listProducts()` is cached per page by api.js, so this costs at most one
+	// request per page view and usually zero (the shop grid, checkout
+	// recommendations and the drawer's own "you might also like" all prime it).
+	var cartCoverIndex = null;
+
+	function cartCoverFor(id) {
+		if (!cartCoverIndex) return null;
+		var p = cartCoverIndex[id];
+		return p && p.cover ? p.cover : null;
+	}
+
+	// Replaces each placeholder <img> with the best source set available.
+	// Deliberately falls back to the stored original for anything with no
+	// cover: SVG demo covers, GIFs and stills below the 320w tier legitimately
+	// have no derivatives, and the stored file IS the right one for those.
+	function paintCartThumbs() {
+		var rows = document.querySelectorAll("#cartItems .cart-item");
+		if (!rows.length) return;
+		Array.prototype.forEach.call(rows, function (row) {
+			var img = row.querySelector("img[data-cart-thumb]");
+			if (!img) return;
+			var stored = img.getAttribute("data-src") || "";
+			var cover = cartCoverFor(row.getAttribute("data-id"));
+			img.removeAttribute("data-cart-thumb");
+
+			if (!cover || !cover.sources || !cover.sources.length || !window.MediaContainer) {
+				if (stored) img.src = stored;
+				return;
+			}
+
+			// pictureFor() MOVES the img into the <picture> it returns, so the
+			// insertion point has to be captured first — reading img.parentNode
+			// afterwards gives the <picture> itself, not the row.
+			var parent = img.parentNode;
+			var next = img.nextSibling;
+			// 60px is the rendered box, so even a 3x screen asks for no more
+			// than the 320w tier.
+			var picture = window.MediaContainer.pictureFor(img, cover, "60px");
+
+			// src is set only now, with the <source> elements already in place,
+			// so the browser runs picture selection and takes the AVIF/WebP.
+			// Setting it while the img was still a bare child of the row would
+			// have started the original's download before the sources existed —
+			// which is the whole bug, moved a few lines later.
+			// The fallback is the narrowest derivative rather than cover.src:
+			// on the one path where a browser ignores <source> entirely, 320w
+			// WebP is still the right answer and the 2MB PNG never is.
+			img.src = window.MediaContainer.smallestDerivative(cover) || cover.src || stored;
+
+			if (picture !== img && parent) parent.insertBefore(picture, next);
+		});
+	}
+
+	function ensureCartCovers() {
+		if (cartCoverIndex) { paintCartThumbs(); return; }
+		if (!window.ProFitAPI) { paintCartThumbs(); return; }
+		window.ProFitAPI.listProducts().then(function (data) {
+			cartCoverIndex = {};
+			(data.products || []).forEach(function (p) { cartCoverIndex[p.id] = p; });
+			paintCartThumbs();
+		}).catch(function () {
+			// Falls back to the stored original rather than to no image at
+			// all — worse bytes, but a cart that still shows what is in it.
+			paintCartThumbs();
+		});
+	}
+
 	function renderCartDrawer() {
 		var cart = getCart();
 		var $body = $("#cartItems");
@@ -754,7 +832,14 @@ CSS TABLE OF CONTENTS
 			return;
 		}
 		$.each(cart, function (i, item) {
-			var img = item.img ? '<img src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.name) + '">' : '<img src="/assets/images/placeholder.jpg" alt="">';
+			// No `src` yet: setting the original here would start its download
+			// immediately, and the upgrade below would then be a second
+			// request rather than a replacement. width/height reserve the box
+			// so the row never reflows once the real bytes land.
+			var src = item.img || "/assets/images/placeholder.jpg";
+			var img = '<img data-cart-thumb data-src="' + escapeHtml(src) + '"' +
+				' alt="' + escapeHtml(item.name || "") + '" width="60" height="60"' +
+				' loading="lazy" decoding="async">';
 			var html = '<div class="cart-item" data-id="' + item.id + '">' +
 				img +
 				'<div class="cart-item-info">' +
@@ -771,6 +856,7 @@ CSS TABLE OF CONTENTS
 			$body.append(html);
 		});
 		$("#cartTotal").text(formatDollars(cartTotal(cart)));
+		ensureCartCovers();
 	}
 
 	// Compact "You might also like" row inside the cart drawer — only runs

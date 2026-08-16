@@ -178,7 +178,32 @@
     setPaymentState("pending");
   }
 
-  async function initStripeElement() {
+  // The mount is triggered by blur AND change, on four fields, and it only
+  // flips `paymentElementMounted` after two awaits — so every caller that
+  // arrives in the meantime passes the guard. Measured on production: four
+  // POSTs to /create-intent for a single checkout, four PaymentIntents on the
+  // live account, and four Payment Elements mounted into the same node, of
+  // which the shopper sees the last. Holding the in-flight promise makes the
+  // extra callers await the first attempt instead of starting their own.
+  var stripeInitPromise = null;
+
+  // The latch is released once the attempt settles UNLESS it actually mounted:
+  // a run that bailed early (details still incomplete, cart empty) or failed
+  // must be retryable, and a run that succeeded must never be repeated. Doing
+  // it here — rather than at each `return` inside the attempt — is what keeps
+  // it correct: the early returns run synchronously, before this function has
+  // even assigned the promise, so clearing it in there would be undone by the
+  // assignment below.
+  function initStripeElement() {
+    if (stripeInitPromise) return stripeInitPromise;
+    stripeInitPromise = doInitStripeElement().then(
+      function (v) { if (!paymentElementMounted) stripeInitPromise = null; return v; },
+      function (err) { stripeInitPromise = null; throw err; }
+    );
+    return stripeInitPromise;
+  }
+
+  async function doInitStripeElement() {
     var items = checkoutItemsPayload();
     if (paymentElementMounted || items.length === 0) return;
     if (stripeConfigured === false) { setPaymentState("unavailable"); return; }
@@ -570,27 +595,73 @@
     script.src = "https://www.paypal.com/sdk/js?client-id=" + encodeURIComponent(config.paypalClientId) + "&currency=USD";
     script.onload = function () {
       if (!window.paypal) return;
+
+      // Same four required fields as the card path — PayPal supplies its own
+      // email, but the order still needs a name, phone and country.
+      function detailsOk() {
+        if (customerForm) return customerForm.validate();
+        if (!EMAIL_RE.test(currentEmail())) {
+          showError("Please enter a valid email above before paying with PayPal.");
+          return false;
+        }
+        return true;
+      }
+
       window.paypal.Buttons({
-        createOrder: function () {
-          // Same four required fields as the card path — PayPal supplies its
-          // own email, but the order still needs a name, phone and country.
-          if (customerForm && !customerForm.validate()) {
-            return Promise.reject(new Error("incomplete details"));
+        // THE popup gate. PayPal opens its window synchronously inside the
+        // click — it has to, or the browser blocks it as un-gestured — and
+        // then navigates it once createOrder resolves. So rejecting in
+        // createOrder is already too late: the window is open, it never gets
+        // a URL, and the shopper is looking at about:blank with no way back.
+        // That was the reported bug, reproduced exactly: a target created at
+        // about:blank and zero calls to /api/checkout/paypal/create-order.
+        // onClick runs BEFORE the window is opened, and actions.reject()
+        // stops it being opened at all, leaving the inline field errors as
+        // the only thing that happens.
+        onClick: function (data, actions) {
+          if (!detailsOk()) {
+            showError("Please complete your details above before paying with PayPal.");
+            return actions.reject();
           }
-          if (!customerForm && !EMAIL_RE.test(currentEmail())) {
-            showError("Please enter a valid email above before paying with PayPal.");
-            return Promise.reject(new Error("invalid email"));
+          showError("");
+          return actions.resolve();
+        },
+        createOrder: function () {
+          // Still checked here: onClick is the gate, but createOrder is what
+          // actually spends money, so it does not take the gate's word for it.
+          // Rejects with copy a buyer can act on, not an internal marker:
+          // this message reaches onError, which prints it verbatim, and
+          // "incomplete details" was being shown on the live checkout.
+          if (!detailsOk()) {
+            return Promise.reject(new Error("Please complete your details above before paying with PayPal."));
           }
           return api.createPaypalOrder(checkoutItemsPayload(), currentCustomer(), cart.appliedPromoCode).then(function (data) {
             return data.orderId;
           });
         },
         onApprove: function (data) {
+          setPlaceOrderBusy(true, "Finalizing your order…");
           return api.capturePaypalOrder(data.orderID).then(function (result) {
             goToConfirmation(result);
+          }).catch(function (err) {
+            // The money may well have moved — the capture call is what
+            // failed to come back, and the webhook still fulfills. Say so
+            // rather than inviting a second payment.
+            setPlaceOrderBusy(false);
+            showError(
+              (err && err.message) ||
+                "Your payment went through, but we couldn't open your library automatically. Check your email for a sign-in link."
+            );
           });
         },
+        // Closing PayPal's window is a normal thing to do and must leave the
+        // checkout exactly as it was, not stuck behind a spinner.
+        onCancel: function () {
+          setPlaceOrderBusy(false);
+          showError("");
+        },
         onError: function (err) {
+          setPlaceOrderBusy(false);
           showError((err && err.message) || "PayPal checkout failed. Please try again.");
         },
       }).render("#paypal-button-container");

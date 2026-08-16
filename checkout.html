@@ -287,7 +287,12 @@
                         <!-- PayPal panel -->
                         <div class="pay-panel pay-panel--hidden co-redirect-panel" id="panel-paypal">
                             <div class="co-redirect-box co-pp-box">
-                                <svg viewBox="0 0 124 33" width="120" height="32" class="co-brand-logo" fill="none"><path d="M11.04 27.74l.46-2.95H7.72L10.43.8h8.02c2.66 0 4.52.55 5.5 1.64.9 1.02 1.18 2.21.92 3.91l-.03.19v.53l.48.27c.4.22.73.5 1 .83.44.52.72 1.2.83 2.02.12.85.09 1.87-.1 3.02-.22 1.33-.58 2.49-1.07 3.43a6.86 6.86 0 0 1-1.7 2.16c-.66.56-1.44.98-2.3 1.25-.85.27-1.82.4-2.88.4H18.2c-.52 0-1.03.19-1.43.52-.4.34-.67.81-.74 1.33l-.74 4.7H11.04z" fill="#253B80"/><path d="M26.26 6.7l-.05.32c-1.07 5.52-4.74 7.43-9.42 7.43h-2.39c-.57 0-1.06.42-1.15.98l-1.58 10a.61.61 0 0 0 .6.7h4.23c.5 0 .93-.37 1.01-.87l.84-5.31a1.02 1.02 0 0 1 1.01-.87h.64c4.13 0 7.36-1.68 8.3-6.53.4-2.03.19-3.72-.85-4.91a4.06 4.06 0 0 0-1.24-.86z" fill="#179BD7"/><path d="M25.1 6.2a8.4 8.4 0 0 0-1.03-.23 12.96 12.96 0 0 0-2.07-.15h-6.27c-.25 0-.49.06-.7.16-.45.22-.78.65-.86 1.17l-1.33 8.48-.04.24c.09-.56.58-.98 1.15-.98h2.39c4.68 0 8.35-1.9 9.42-7.43l.05-.32a5.7 5.7 0 0 0-.71-.94z" fill="#222D65"/></svg>
+                                <!-- viewBox cropped to the artwork's own bounding box. The mark is the
+                                     PayPal monogram alone, but the viewBox was still the 124-wide one
+                                     from the full lockup, so the ink occupied the left 16.8% of the
+                                     element and rendered 42px left of the container's centre — the
+                                     box was centred, the logo was not. Measured with getBBox():
+                                     x 7.72, y 0.80, w 20.77, h 26.94. --><svg viewBox="7.6 0.7 21.1 27.2" width="25" height="32" class="co-brand-logo" fill="none"><path d="M11.04 27.74l.46-2.95H7.72L10.43.8h8.02c2.66 0 4.52.55 5.5 1.64.9 1.02 1.18 2.21.92 3.91l-.03.19v.53l.48.27c.4.22.73.5 1 .83.44.52.72 1.2.83 2.02.12.85.09 1.87-.1 3.02-.22 1.33-.58 2.49-1.07 3.43a6.86 6.86 0 0 1-1.7 2.16c-.66.56-1.44.98-2.3 1.25-.85.27-1.82.4-2.88.4H18.2c-.52 0-1.03.19-1.43.52-.4.34-.67.81-.74 1.33l-.74 4.7H11.04z" fill="#253B80"/><path d="M26.26 6.7l-.05.32c-1.07 5.52-4.74 7.43-9.42 7.43h-2.39c-.57 0-1.06.42-1.15.98l-1.58 10a.61.61 0 0 0 .6.7h4.23c.5 0 .93-.37 1.01-.87l.84-5.31a1.02 1.02 0 0 1 1.01-.87h.64c4.13 0 7.36-1.68 8.3-6.53.4-2.03.19-3.72-.85-4.91a4.06 4.06 0 0 0-1.24-.86z" fill="#179BD7"/><path d="M25.1 6.2a8.4 8.4 0 0 0-1.03-.23 12.96 12.96 0 0 0-2.07-.15h-6.27c-.25 0-.49.06-.7.16-.45.22-.78.65-.86 1.17l-1.33 8.48-.04.24c.09-.56.58-.98 1.15-.98h2.39c4.68 0 8.35-1.9 9.42-7.43l.05-.32a5.7 5.7 0 0 0-.71-.94z" fill="#222D65"/></svg>
                                 <p>Complete your purchase securely with your PayPal account or linked card.</p>
                                 <div id="paypal-button-container"></div>
                                 <p class="co-secure-txt"><i class="fa-solid fa-lock me-1"></i>Secured by PayPal</p>
@@ -557,6 +562,7 @@
     <script src="/assets/js/pace.min.js" defer></script>
     <!-- Script Js -->
     <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/media-container.js" defer></script>
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/nav-featured.js" defer></script>

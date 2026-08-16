@@ -4830,6 +4830,20 @@ input {
   flex-shrink: 0;
   background: var(--sub-bg);
 }
+/* With derivatives the thumbnail is a <picture>, which then becomes the flex
+   item in the img's place — it has to carry the same fixed box, or the row
+   reflows when the AVIF resolves. The box is declared here (not just on the
+   img) so it is reserved before any byte arrives. */
+.cart-item picture {
+  display: block;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--sub-bg);
+}
+.cart-item picture img { border-radius: 0; }
 .cart-item-info {
   flex: 1;
   min-width: 0;
@@ -7002,9 +7016,13 @@ body.cart-open { overflow: hidden; }
   margin: 0 auto !important;
   flex-shrink: 0 !important;
 }
+/* Sized by HEIGHT only, with the width left to follow the (now correctly
+   cropped) viewBox — the same rule every other logo slot on this site
+   follows. A pinned 120px width against a 21:27 mark is what let the element
+   look centred while the artwork sat in its left quarter. */
 .co-pp-box .co-brand-logo {
-  width: 120px !important;
-  height: 32px !important;
+  width: auto !important;
+  height: 34px !important;
 }
 
 /* ---- 5. G Pay logos: protect brand colors ----
@@ -7841,13 +7859,72 @@ button span,
   font-size: 13px;
 }
 
+/* The grouped field surface is `overflow: hidden` (that is what clips the
+   hairline dividers to its rounded corners), and an absolutely-positioned
+   panel inside it is therefore CLIPPED — measured: of a 457px dial-code
+   picker only the ~110px search box survived, so the country list looked
+   like it simply failed to open. The group drops its clip only while a panel
+   is actually open; nothing inside it paints into the corners in the
+   meantime (fields are `background: transparent` within the group), so the
+   rounded surface is unchanged to look at. */
+.co-fieldgroup.has-cpanel-open { overflow: visible !important; }
+
+/* ---- Picker as a bottom sheet on touch ---------------------------------
+   Below 900px the panel stops being an anchored dropdown and becomes a
+   sheet pinned to the viewport. Two reasons, in order of importance:
+   `position: fixed` is laid out against the viewport, so NO ancestor's
+   overflow can ever clip it again — the failure above becomes structurally
+   impossible rather than fixed-by-override. And a full-width sheet with
+   44px+ rows is the control this list actually wants on a phone; the
+   anchored 358px dropdown was a desktop control being scaled down. */
 @media (max-width: 900px) {
   /* Touch targets: the dial button must match the 52px input beside it, and
      the picker gets more of the screen since there's no hover to preview. */
   .co-dial { min-height: 52px; font-size: 16px; padding: 0 12px; }
-  .co-cpanel__list { max-height: 46vh; }
-  .co-cpanel { left: -1px; right: -1px; }
   .co-field.co-valid:not(.co-invalid)::after { top: 30px; }
+
+  .co-cpanel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.22);
+    /* Clears the home indicator on iOS without eating space where there
+       isn't one. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: coSheetIn 180ms ease-out;
+  }
+  .co-cpanel__searchwrap { padding: 12px 14px; }
+  /* The list, not the sheet, owns the scroll: `overscroll-behavior: contain`
+     on it (set above) is what stops a flick at the end of the countries
+     scrolling the checkout behind the sheet. */
+  .co-cpanel__list { max-height: min(52vh, 420px); padding: 6px 8px 10px; }
+  .co-cpanel__opt { min-height: 48px; font-size: 15px; }
+
+  /* Tapping outside closes the sheet — that is handled by the existing
+     document click listener, but on touch it needs something to land on
+     that is unambiguously "not the sheet". */
+  .co-cpanel-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    background: rgba(15, 23, 42, 0.32);
+    animation: coBackdropIn 180ms ease-out;
+  }
+}
+/* Above 900px the anchored dropdown is right, and the backdrop would be
+   an unnecessary modal veil over a mouse-driven page. */
+@media (min-width: 901px) {
+  .co-cpanel-backdrop { display: none; }
+}
+@keyframes coSheetIn { from { transform: translateY(12%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes coBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .co-cpanel, .co-cpanel-backdrop { animation: none; }
 }
 
 /* Very narrow phones: let the dial button and number stack rather than
@@ -8846,8 +8923,19 @@ main.co-page ~ .footer-area {
 .co-fieldgroup .co-field.co-invalid::before { background: var(--danger); opacity: 1; }
 .co-fieldgroup .co-field.co-invalid .co-input { border: none !important; background: transparent !important; }
 
-/* Phone row inside the group: the dial button loses its own box too. */
-.co-fieldgroup .co-field--phone { gap: 0 !important; flex-wrap: nowrap !important; }
+/* Phone row inside the group: the dial button loses its own box too.
+   The row MUST stay wrappable. `.co-err` is a `flex: 1 0 100%` item, i.e. it
+   asks for the whole row and refuses to shrink; on a nowrap line it therefore
+   takes the full width and the phone field — the only shrinkable item left —
+   collapses to zero. That is not theoretical: with `flex-wrap: nowrap` here,
+   #phone measured 32px wide (its own padding, nothing else) at 375/390/430
+   and every desktop width, and at <=359px the field was pushed to x=303 in a
+   320px viewport, i.e. entirely off-screen. An unfillable phone field then
+   fails `customerForm.isComplete()`, which is the gate on BOTH payment paths,
+   so the Stripe Payment Element never mounted and PayPal's popup opened on
+   about:blank. Wrapping is what gives the error message its own line, which
+   is what it was always written for. */
+.co-fieldgroup .co-field--phone { gap: 0 !important; flex-wrap: wrap !important; }
 .co-fieldgroup .co-dial {
   min-height: 56px !important;
   border: none !important;
@@ -8855,8 +8943,26 @@ main.co-page ~ .footer-area {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  /* Inside the group the dial is a fixed-width leading segment at EVERY width.
+     The standalone design stacks it full-width under 360px (§ "International
+     phone row"), which in a bordered group would read as two separate rows;
+     `flex: 0 0 auto` here overrides that media query for the grouped layout. */
+  flex: 0 0 auto !important;
 }
 .co-fieldgroup .co-dial[aria-expanded="true"] { background: rgba(26, 26, 26, 0.03) !important; }
+/* Takes whatever the dial button leaves, and can never be squeezed out of
+   existence again.
+   `flex-basis: 0` rather than `auto` is load-bearing on a wrapping row:
+   with `auto` the basis is the input's max-content width (~280px), and
+   flexbox WRAPS before it shrinks — so at 320/375/390 the number field was
+   dropping onto its own line under the dial button. From a zero basis it
+   simply grows into the space that is left, and `min-width` is an explicit
+   floor rather than flexbox's `auto`, so a long dial code (+1268) narrows
+   the number field instead of overflowing the group. */
+.co-fieldgroup .co-field--phone .co-phone__field {
+  flex: 1 1 0 !important;
+  min-width: 8ch !important;
+}
 .co-fieldgroup .co-field--phone .co-err { flex: 1 0 100%; }
 
 /* On a single column the two-up row stacks, so its divider becomes horizontal

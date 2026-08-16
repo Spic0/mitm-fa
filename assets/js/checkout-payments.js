@@ -220,6 +220,27 @@
     return stripeInitPromise;
   }
 
+  // Stripe.js is loaded `async` (see the tag in checkout.html for why), so the
+  // `Stripe` global is not guaranteed to exist by the time a shopper has
+  // finished the four contact fields. Bare `Stripe(...)` would throw a
+  // ReferenceError into the catch below and show "Could not start checkout" for
+  // what is only a slow script. Poll instead, and give up rather than hang: if
+  // js.stripe.com is blocked outright (a shield, an extension, a corporate
+  // proxy) card payment genuinely is unavailable, and saying so is the correct
+  // outcome — PayPal is unaffected either way.
+  var STRIPE_WAIT_MS = 10000;
+  function waitForStripe() {
+    if (typeof Stripe !== "undefined") return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var deadline = Date.now() + STRIPE_WAIT_MS;
+      (function poll() {
+        if (typeof Stripe !== "undefined") return resolve(true);
+        if (Date.now() > deadline) return resolve(false);
+        setTimeout(poll, 100);
+      })();
+    });
+  }
+
   async function doInitStripeElement() {
     var items = checkoutItemsPayload();
     if (paymentElementMounted || items.length === 0) return;
@@ -230,6 +251,14 @@
       var config = await api.getConfig();
       if (!config.stripePublishableKey) {
         stripeConfigured = false;
+        setPaymentState("unavailable");
+        return;
+      }
+      if (!(await waitForStripe())) {
+        // Card only. markUnconfiguredMethods() would take PayPal down with it,
+        // and PayPal has nothing to do with js.stripe.com being unreachable.
+        stripeConfigured = false;
+        setMethodEnabled("card", false);
         setPaymentState("unavailable");
         return;
       }
@@ -610,6 +639,16 @@
 
     var script = document.createElement("script");
     script.src = "https://www.paypal.com/sdk/js?client-id=" + encodeURIComponent(config.paypalClientId) + "&currency=USD";
+    // The SDK reads this off its own tag and stamps it onto every <style> and
+    // <script> it injects into this document. Without it `style-src 'self'`
+    // blocks the lot: the button's iframes lose `position: absolute` and stack
+    // in normal flow, and the overlay that says "we opened a PayPal window,
+    // click to continue" loses `position: fixed; z-index: 2147483647` and
+    // becomes an invisible 158px block in the page — which is the difference
+    // between a shopper who can get back to a popup their browser left behind
+    // and one who is looking at what seems to be a dead window.
+    var nonceMeta = document.querySelector('meta[name="csp-nonce"]');
+    if (nonceMeta && nonceMeta.content) script.setAttribute("data-csp-nonce", nonceMeta.content);
     script.onload = function () {
       if (!window.paypal) return;
 

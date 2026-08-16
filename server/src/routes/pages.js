@@ -1194,11 +1194,30 @@ const PAGE_META = {
   "/coming-soon": { file: "error.html", title: "Coming Soon", description: "This page isn't available yet.", noindex: true },
 };
 
+// Publishes this request's CSP nonce to the page, for the ONE consumer that
+// needs it: checkout.html hands it to PayPal's SDK as `data-csp-nonce` so the
+// stylesheets the SDK injects into our document stop being blocked (see the
+// nonce middleware in src/index.js for the measurements). Only templates
+// carrying the marker get it — a plain string replace on everything else, no
+// disk access, no per-page config.
+//
+// The value is deliberately readable from the DOM. A nonce a page's own script
+// can read is weaker than one it cannot, but this policy already allows every
+// 'self' script, so the nonce was never what stood between an injected script
+// and execution; what it buys here is that PayPal's blocks are permitted and
+// nothing else inline is.
+const CSP_NONCE_MARKER = "<!--CSP_NONCE-->";
+function applyCspNonce(html, res) {
+  if (!html.includes(CSP_NONCE_MARKER)) return html;
+  return html.replace(CSP_NONCE_MARKER, `<meta name="csp-nonce" content="${res.locals.cspNonce}">`);
+}
+
 for (const [route, meta] of Object.entries(PAGE_META)) {
   router.get(route, async (req, res, next) => {
     let html = await readTemplate(meta.file);
     if (html == null) return next();
     html = await inlineHeader(html, meta.file);
+    html = applyCspNonce(html, res);
     html = applyStaticSeo(html, meta, route === "/coming-soon" ? null : route);
     // Cheap for pages with no slots: applyLandingAssets tests each slot's
     // pattern against the template and returns immediately when none match,

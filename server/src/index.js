@@ -147,6 +147,40 @@ if (isProd) {
   });
 }
 
+// Per-request CSP nonce. This exists for ONE reason: PayPal's SDK injects its
+// own <style> elements into OUR document — the rules that position the button's
+// iframes (`> iframe { position: absolute; top: 0; left: 0; width: 100%;
+// height: 100% }`, `.component-frame { z-index: 100 }`, `.invisible { opacity:
+// 0; pointer-events: none }`) and the whole of the overlay it shows while its
+// popup is open (`position: fixed; z-index: 2147483647; width: 100vw; height:
+// 100vh` plus its show/hide keyframes). Under `style-src 'self'` every one of
+// them is blocked. Measured on production before this change: three
+// securitypolicyviolation events on /checkout, all `style-src-elem`,
+// `blockedURI: "inline"`, `sourceFile: https://www.paypal.com/sdk/js` — and the
+// button host measured `position: static` with its iframes `position: static`
+// stacked in normal flow instead of overlaid, while the overlay measured
+// `position: static; z-index: auto`, transparent, 158px tall in page flow
+// rather than a fixed full-viewport layer.
+//
+// The consequence that matters: that overlay is the ONLY thing telling a
+// shopper "we opened a PayPal window" and the only way back to it if their
+// browser did not raise it. Unstyled, it is invisible, so a popup sitting
+// behind the main window is indistinguishable from a broken one.
+//
+// A hash won't work — every rule is keyed by a per-render zoid uid, so the
+// content differs on every page view. 'unsafe-inline' on style-src would work
+// but would relax the policy for the whole document. The nonce is the narrow
+// option and the one PayPal documents: their SDK reads `data-csp-nonce` off its
+// own <script> tag and stamps the value onto everything it injects, so ONLY
+// PayPal's blocks are permitted and any injected style we did not author is
+// still refused. assets/js/checkout-payments.js reads the value back out of the
+// <meta name="csp-nonce"> that routes/pages.js renders.
+const crypto = require("crypto");
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+  next();
+});
+
 // Strict CSP: no 'unsafe-inline', no 'unsafe-eval', anywhere. This was only
 // possible because every inline style="" attribute, inline <style> block,
 // and inline <script> block site-wide was eliminated first (moved to
@@ -161,8 +195,13 @@ const cspDirectives = {
   defaultSrc: ["'self'"],
   // js.stripe.com: Stripe Elements (card entry UI + fraud detection).
   // www.paypal.com: PayPal Buttons SDK, loaded dynamically at checkout.
-  scriptSrc: ["'self'", "https://js.stripe.com", "https://www.paypal.com"],
-  styleSrc: ["'self'"],
+  scriptSrc: [
+    "'self'",
+    "https://js.stripe.com",
+    "https://www.paypal.com",
+    (req, res) => `'nonce-${res.locals.cspNonce}'`,
+  ],
+  styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
   // paypalobjects.com: card-brand/PayPal logo icons rendered by the PayPal SDK.
   imgSrc: ["'self'", "data:", "https://www.paypalobjects.com"],
   // data:: swiper-bundle.min.css embeds its nav-arrow/pagination icon font

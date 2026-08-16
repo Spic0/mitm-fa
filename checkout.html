@@ -44,8 +44,25 @@
     </noscript>
     <!-- Style css -->
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
-    <!-- Stripe.js (required to be loaded directly, not bundled, per Stripe's terms) -->
-    <script src="https://js.stripe.com/v3/"></script>
+    <!-- This request's CSP nonce, rendered by server/src/routes/pages.js. Read by
+         checkout-payments.js and passed to PayPal's SDK as data-csp-nonce, which
+         is what lets the SDK's own injected <style> blocks through the policy. -->
+    <!--CSP_NONCE-->
+    <!-- Stripe.js (required to be loaded directly, not bundled, per Stripe's terms).
+         MUST stay async. Loaded synchronously — which is how it shipped — this one
+         third-party tag gates the HTML parser, so /checkout renders NOTHING until
+         js.stripe.com answers: measured with the request held open, readyState
+         stayed "loading" and the body had 0 characters of text indefinitely, while
+         the same page renders in 569ms when it answers. Server TTFB is 9-30ms cold,
+         so a shopper reporting "checkout took 30 seconds" is describing this tag,
+         not the server. It is also the only page on the site with a blocking
+         third-party script, which is why only this page was ever slow.
+         async, not defer: a deferred script that never completes still blocks every
+         later deferred script, so an ad-blocker or shield that eats js.stripe.com
+         would take PayPal and the form validation down with it. async lets the rest
+         of checkout work and degrades card payment alone — checkout-payments.js
+         waits for the global rather than assuming it (see waitForStripe). -->
+    <script src="https://js.stripe.com/v3/" async></script>
 </head>
 
 <body>

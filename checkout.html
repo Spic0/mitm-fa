@@ -20,27 +20,18 @@
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/bootstrap.min.css" data-preload-style>
     <!-- All min css -->
     <link rel="stylesheet" href="/assets/css/all.min.css">
-    <!-- Swiper bundle min css -->
-    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
-         select-widget styling only -- not needed for first paint -- loaded
-         as rel="preload" so they can't block rendering; assets/js/css-
-         preload-swap.js flips them to active stylesheets once the DOM is
-         parsed. animate.css stays render-blocking: the .wow scroll-reveal
-         system depends on its initial opacity:0 state site-wide, and
-         deferring it risks a visible flash/flicker. -->
-    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
-    <!-- Magnigic popup css -->
-    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
-    <!-- Animate css -->
-    <link rel="stylesheet" href="/assets/css/animate.css">
-    <!-- Nice select css -->
-    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <!-- Four vendor stylesheets were dropped from this page along with the JS
+         that needed them (see the script block at the end of <body>):
+         swiper-bundle.min.css, magnific-popup.css, nice-select.css and
+         animate.css. The "You may also like" module is now a native
+         scroll-snap track whose rules all live in style.css, so no part of
+         swiper's sheet is reachable here any more. animate.css is the one
+         worth calling out: it was RENDER-BLOCKING, 57,095 bytes, and the only
+         class this page used from it was `fadeInUp` on four footer columns,
+         which does nothing without wow.min.js to add `animated`. -->
     <noscript>
       <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
       <link rel="stylesheet" href="/assets/css/style.css">
-      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
-      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
-      <link rel="stylesheet" href="/assets/css/nice-select.css">
     </noscript>
     <!-- Style css -->
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
@@ -100,20 +91,14 @@
     <div class="cart-overlay" id="cartOverlay"></div>
     <!-- Cart Drawer end -->
 
-    <!-- Preloader area start -->
-    <div class="loading">
-        <span class="text-capitalize">L</span>
-        <span>o</span>
-        <span>a</span>
-        <span>d</span>
-        <span>i</span>
-        <span>n</span>
-        <span>g</span>
-    </div>
-
-    <div id="preloader">
-    </div>
-    <!-- Preloader area end -->
+    <!-- No preloader on checkout, and no pace.min.js with it. The two are a
+         PAIR and must be removed together: script.js dismisses #preloader and
+         .loading from inside Pace.on("done"), and its no-op Pace fallback never
+         fires that, so dropping the library while leaving the markup would
+         leave a full-screen overlay in front of the checkout forever.
+         program.html — the other lean page — omits both for the same reason.
+         The page now renders its first content in ~200ms, so a "Loading"
+         curtain in front of it was costing more than it explained. -->
 
     <!-- Mouse cursor area start here -->
     <div class="mouse-cursor cursor-outer"></div>
@@ -572,27 +557,57 @@
     </div>
     <!-- Back to top area end here -->
 
-    <!-- Jquery 3. 7. 1 Min Js -->
+    <!-- CHECKOUT IS A LEAN PAGE. Every deferred script here blocks
+         DOMContentLoaded, and DOMContentLoaded is what starts the order
+         summary, the Payment Element and the PayPal button — so a vendor
+         library that does nothing on this page is not free, it is latency in
+         front of the buy button.
+
+         Six were dropped after measuring them on the live page (JS coverage
+         plus a DOM-hook count):
+
+           bootstrap.min.js    60,577 b  — 0 elements with data-bs-*, and no
+                                           call site anywhere in assets/js/
+           swiper-bundle.min.js 143,281 b — the largest asset on the page, 28%
+                                           of it ever executed, and its only
+                                           job was LOOPING a below-the-fold
+                                           upsell. The "You may also like"
+                                           module now renders the native
+                                           scroll-snap track that was already
+                                           written as swiper's fallback — a
+                                           real momentum swipe, zero JS. See
+                                           renderRecommendations().
+           magnific-popup.min.js 20,216 b — 0 lightbox triggers on this page
+           nice-select.min.js    2,941 b  — 0 .nice-select elements; script.js
+                                           already excludes this page's selects
+                                           with `select:not(.co-sel)`
+           wow.min.js            8,155 b  — its 4 .wow elements are footer
+                                           columns. wow.min.js is what sets
+                                           visibility:hidden on them in the
+                                           first place (no CSS rule does), so
+                                           without it they simply render.
+           pace.min.js          12,962 b  — the preloader curtain, removed with
+                                           its markup; see the note where that
+                                           markup used to be, above
+           nav-featured.js       8,791 b  — populates the header mega-menus,
+                                           and this page renders the header
+                                           with .u-hidden (display:none). It
+                                           also cost a /api/taxonomy round trip
+                                           to fill a menu nobody can open.
+
+         This is not a new pattern: script.js already carries no-op fallbacks
+         for Pace/Swiper/WOW/magnificPopup/niceSelect precisely so that lean
+         pages (program.html, my-library.html) can omit the vendor bundle. A
+         missing library here means "skip that enhancement", never a broken
+         page — but re-check that guard block in script.js before dropping any
+         further library from any page. -->
     <script src="/assets/js/css-preload-swap.js" defer></script>
     <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
-    <!-- Bootstrap min Js -->
-    <script src="/assets/js/bootstrap.min.js" defer></script>
-    <!-- Swiper bundle min Js -->
-    <script src="/assets/js/swiper-bundle.min.js" defer></script>
-    <!-- Wow min Js -->
-    <script src="/assets/js/wow.min.js" defer></script>
-    <!-- Magnific popup min Js -->
-    <script src="/assets/js/magnific-popup.min.js" defer></script>
-    <!-- Nice select min Js -->
-    <script src="/assets/js/nice-select.min.js" defer></script>
-    <!-- Pace min Js -->
-    <script src="/assets/js/pace.min.js" defer></script>
     <!-- Script Js -->
     <script src="/assets/js/api.js" defer></script>
     <script src="/assets/js/media-container.js" defer></script>
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
-    <script src="/assets/js/nav-featured.js" defer></script>
     <!-- countries.js must precede checkout-customer-form.js (which builds the
          country select and dial picker from it), and the form module must
          precede checkout-payments.js, which reads the validated details from

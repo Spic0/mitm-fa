@@ -302,18 +302,6 @@
   // used sitewide (script.js), so adding one goes through the exact same
   // cart-mutation path as everywhere else — no bespoke logic here beyond
   // rendering the cards and re-fetching after the cart changes.
-  // The live carousel instance, kept so a re-render (the cart changed, so the
-  // picks changed) tears the old one down instead of leaking a Swiper bound to
-  // detached nodes — this function re-runs on every profit:cart-changed.
-  var recosSwiper = null;
-
-  function destroyRecosSwiper() {
-    if (recosSwiper && typeof recosSwiper.destroy === "function") {
-      try { recosSwiper.destroy(true, true); } catch (e) { /* already gone */ }
-    }
-    recosSwiper = null;
-  }
-
   // The reco card's image box is 78x59 CSS px. `p.imageUrl` is the ORIGINAL
   // upload, and rendering it straight into <img src> is the bug this codebase
   // has now hit on five separate surfaces: every request succeeds with a 200,
@@ -371,113 +359,57 @@
     );
   }
 
-  // Swiper 8 is already bundled and loaded sitewide on this page, so the
-  // looping carousel costs no new dependency. Loop mode is what makes the
-  // swipe continuous: Swiper keeps cloned slides either side of the real ones
-  // and silently repositions at the seam, so a thumb can keep flicking in one
-  // direction forever instead of hitting a dead end after six cards.
-  //
-  // The clones are why the "Add" buttons must stay delegated: script.js binds
-  // [data-add-to-cart] at the document, so a tap on a cloned card adds through
-  // exactly the same path as a tap on an original.
   // "Swipe →" is a promise the section has to keep. When every pick already
-  // fits on screen Swiper locks itself and there is nothing to swipe to, so
-  // the hint stands down rather than inviting a gesture that does nothing.
+  // fits on screen there is nothing to swipe to, so the hint stands down
+  // rather than inviting a gesture that does nothing.
   function syncSwipeHint(root, locked) {
     var wrap = root.querySelector(".co-recos");
     if (wrap) wrap.classList.toggle("co-recos--static", !!locked);
   }
 
-  function initRecosCarousel(root, count) {
-    var el = root.querySelector(".co-recos__swiper");
-    if (!el || typeof window.Swiper !== "function") return false;
-    try {
-      recosSwiper = new window.Swiper(el, {
-        slidesPerView: "auto",
-        spaceBetween: 12,
-        // Below three cards there is nothing to loop through — Swiper would be
-        // cloning one card next to itself, which reads as a bug rather than a
-        // carousel.
-        loop: count >= 3,
-        loopedSlides: count,
-        loopAdditionalSlides: count,
-        grabCursor: true,
-        watchSlidesProgress: true,
-        // Free-mode momentum is what keeps it feeling native rather than
-        // stepped: a flick coasts across several cards and can be caught
-        // mid-flight, the same as the platform's own scrolling.
-        freeMode: { enabled: true, momentum: true, momentumRatio: 0.85, momentumVelocityRatio: 0.85 },
-        // An infinite track has no ends, so the rubber-band resistance that
-        // exists to signal one is just drag.
-        resistanceRatio: 0,
-        speed: 420,
-        a11y: { enabled: false },
-        on: {
-          // Fires on init and on any resize that changes whether the track
-          // overflows — e.g. a phone turned landscape.
-          lock: function () { syncSwipeHint(root, true); },
-          unlock: function () { syncSwipeHint(root, false); },
-        },
-      });
-      syncSwipeHint(root, recosSwiper.isLocked);
-      // Loop clones are the same six products over again. Left as-is a screen
-      // reader walks the list three times, and tabbing through the section
-      // hits eighteen "Add" buttons for six products. The clones are decorative
-      // — the originals carry the semantics.
-      el.querySelectorAll(".swiper-slide-duplicate").forEach(function (clone) {
-        clone.setAttribute("aria-hidden", "true");
-        // aria-hidden over a focusable control is itself a violation, so the
-        // clone's button leaves the tab order with it.
-        clone.querySelectorAll("button").forEach(function (btn) { btn.tabIndex = -1; });
-      });
-      return true;
-    } catch (e) {
-      // A failed init must not cost the shopper the section; the caller falls
-      // back to the native scroll track.
-      recosSwiper = null;
-      return false;
-    }
-  }
-
   async function renderRecommendations() {
     var container = document.getElementById("checkoutRecommended");
     if (!container || !api) return;
-    destroyRecosSwiper();
     var items = cart.getCheckoutItems();
     if (!items.length) { container.innerHTML = ""; return; }
 
     try {
-      // 6 rather than 3: the carousel scrolls, so more picks cost no vertical
+      // 6 rather than 3: the track scrolls, so more picks cost no vertical
       // space and give the swipe somewhere to go.
       var data = await api.getRecommendations(items.map(function (i) { return i.id; }), 6);
       var products = data.products || [];
       if (!products.length) { container.innerHTML = ""; return; }
 
-      var head =
+      // A NATIVE scroll-snap track, not Swiper. This section used to init a
+      // Swiper carousel, which meant /checkout shipped swiper-bundle.min.js —
+      // 143,281 bytes, the single largest asset on the page, 28% of it ever
+      // executed — so that a below-the-fold upsell could LOOP. The track was
+      // already written and styled as Swiper's fallback and is not a
+      // downgrade to a static grid: `overflow-x: auto` +
+      // `scroll-snap-type: x mandatory` + `-webkit-overflow-scrolling: touch`
+      // is a real horizontal swipe with the platform's own momentum, and it
+      // costs zero bytes of JavaScript. What is lost is infinite looping, on
+      // the one page where nothing should compete with the buy button.
+      //
+      // The "+ Add" buttons stay delegated ([data-add-to-cart] bound at the
+      // document in script.js), so they work here exactly as they did inside
+      // Swiper's slides.
+      var html =
         '<div class="co-recos">' +
         '<div class="co-recos__head">' +
         '<p class="co-recos__ttl">You may also like</p>' +
         '<span class="co-recos__hint" aria-hidden="true">Swipe <i class="fa-solid fa-arrow-right-long"></i></span>' +
-        "</div>";
+        "</div>" +
+        '<div class="co-recos__track" role="list">';
+      products.forEach(function (p) { html += recoCardHtml(p, "co-reco"); });
+      html += "</div></div>";
 
-      var swiperHtml = head + '<div class="swiper co-recos__swiper"><div class="swiper-wrapper" role="list">';
-      products.forEach(function (p) { swiperHtml += recoCardHtml(p, "swiper-slide co-reco"); });
-      swiperHtml += "</div></div></div>";
-
-      container.innerHTML = swiperHtml;
-      if (initRecosCarousel(container, products.length)) return;
-
-      // Fallback for the case where the bundle didn't load: a native
-      // scroll-snap track. Not looping, but still a real horizontal swipe with
-      // the platform's own momentum — never a static grid of cards.
-      var trackHtml = head + '<div class="co-recos__track" role="list">';
-      products.forEach(function (p) { trackHtml += recoCardHtml(p, "co-reco"); });
-      trackHtml += "</div></div>";
-      container.innerHTML = trackHtml;
+      container.innerHTML = html;
+      // Measured after layout, so the hint is only shown when there is in fact
+      // something off-screen to swipe to.
       var track = container.querySelector(".co-recos__track");
       if (track) syncSwipeHint(container, track.scrollWidth <= track.clientWidth + 4);
     } catch (err) {
-      destroyRecosSwiper();
       container.innerHTML = "";
     }
   }

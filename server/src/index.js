@@ -219,6 +219,25 @@ app.use(
   helmet({
     contentSecurityPolicy: { directives: cspDirectives },
     hsts: isProd ? { maxAge: 15552000, includeSubDomains: true } : false,
+    // Helmet 8 defaults this to `same-origin`, which SILENTLY BREAKS PAYPAL.
+    // PayPal's SDK (zoid) opens a popup and then drives it — it navigates the
+    // window it opened and talks to it over the opener relationship. Under
+    // `same-origin`, navigating that popup to paypal.com puts it in a new
+    // browsing context group and the browser severs the link in both
+    // directions, so the window the shopper is looking at stays on
+    // about:blank forever. Measured on production: `checkoutnow` returned
+    // 200 and PayPal's app booted (it even fired UL_CHECKOUT_INPUT_EMAIL),
+    // while the visible popup reported `window.opener === null`, an empty
+    // body, and a url of about:blank. It reproduced in Chrome, Brave and
+    // Firefox alike, because all three implement COOP.
+    //
+    // `same-origin-allow-popups` is the value written for exactly this case:
+    // it keeps this document isolated from any opener that tries to reach IN
+    // (the protection COOP exists for), and only preserves the relationship
+    // with popups WE open. Stripe is unaffected either way — the Payment
+    // Element is an iframe, not a popup — so this is not a trade of one
+    // provider against the other.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   })
 );
 

@@ -7025,6 +7025,36 @@ body.cart-open { overflow: hidden; }
   height: 34px !important;
 }
 
+/* ---- PayPal: not-yet-ready state ------------------------------------
+   The SDK renders its button inside a cross-origin iframe, so there is no
+   element here to set `disabled` on and no way to restyle it. The container
+   carries the state: dimmed and desaturated so it reads as unavailable
+   before it is tapped.
+   Deliberately NOT `pointer-events: none` — an inert button that swallows a
+   tap tells the shopper nothing. A tap still runs the SDK's onClick gate,
+   which rejects before any window opens and marks the missing fields. */
+.co-pp-hint { display: none; }
+.co-pp-box.is-awaiting-details #paypal-button-container {
+  opacity: 0.45;
+  filter: grayscale(1);
+  transition: opacity 160ms ease, filter 160ms ease;
+}
+.co-pp-box.is-awaiting-details .co-pp-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--paragraph-light);
+}
+.co-pp-box.is-awaiting-details .co-pp-hint i { flex: 0 0 auto; opacity: 0.75; }
+@media (prefers-reduced-motion: reduce) {
+  .co-pp-box.is-awaiting-details #paypal-button-container { transition: none; }
+}
+
 /* ---- 5. G Pay logos: protect brand colors ----
    If the template has global svg path { fill: currentColor }
    these rules restore the correct fills via attribute selector.

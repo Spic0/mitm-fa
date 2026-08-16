@@ -169,9 +169,26 @@
     return config;
   }
 
+  // PayPal's button is rendered by the SDK inside its own cross-origin iframe,
+  // so its appearance can't be changed from here and there is no "disabled"
+  // to set on it. The container carries the state instead: dimmed, with a line
+  // saying what is missing, so the button reads as not-yet-ready before it is
+  // tapped rather than after.
+  //
+  // It stays CLICKABLE on purpose. `pointer-events: none` would make a tap do
+  // nothing at all, which is the worse failure — the shopper gets no reason.
+  // A tap now runs the onClick gate, which rejects before the SDK opens its
+  // window and marks the offending fields inline.
+  function syncPaypalReadiness() {
+    var box = document.querySelector(".co-pp-box");
+    if (!box) return;
+    box.classList.toggle("is-awaiting-details", !customerReady());
+  }
+
   // Re-evaluates the placeholder after the shopper edits their details, so the
   // "fill in your details" prompt clears the moment it stops being true.
   function refreshPaymentState() {
+    syncPaypalReadiness();
     if (paymentElementMounted) return setPaymentState("ready");
     if (stripeConfigured === false) return setPaymentState("unavailable");
     if (stripeConfigured === null) return setPaymentState("checking");
@@ -730,12 +747,17 @@
       // being the reason the fields aren't there.
       detailsForm.addEventListener("input", refreshPaymentState);
       detailsForm.addEventListener("blur", function () {
+        syncPaypalReadiness();
         if (!paymentElementMounted && customerReady()) initStripeElement();
       }, true);
       detailsForm.addEventListener("change", function () {
+        syncPaypalReadiness();
         if (!paymentElementMounted && customerReady()) initStripeElement();
       });
     }
+    // The page opens with an empty form, so the PayPal panel must start in the
+    // awaiting state rather than looking ready until the first keystroke.
+    syncPaypalReadiness();
 
     document.getElementById("coStickyCta").addEventListener("click", handlePlaceOrder);
 

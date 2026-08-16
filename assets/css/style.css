@@ -7615,6 +7615,23 @@ button span,
   border: 1px solid var(--border) !important;
   flex-shrink: 0 !important;
 }
+/* With derivatives the summary thumbnail is a <picture>, which then becomes the
+   flex item in the img's place — it has to carry the same fixed box or the row
+   reflows when the AVIF resolves. Same fix as .cart-item picture above, for the
+   checkout summary's larger 104px box. !important throughout because every
+   neighbouring rule in this block has it, and a plain declaration would lose to
+   .co-item-img on the img inside. */
+.co-order-item picture {
+  display: block !important;
+  width: 104px !important;
+  height: 104px !important;
+  flex-shrink: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  background: var(--sub-bg) !important;
+}
+.co-order-item picture img { border-radius: 0 !important; border: 0 !important; }
 .co-item-img--empty { background: var(--sub-bg); display: block; }
 .co-item-main {
   flex: 1 1 auto;
@@ -8380,6 +8397,11 @@ button span,
   background: var(--color-surface-2);
   overflow: hidden;
 }
+/* The reco card's image is a <picture> whenever the cover has derivatives.
+   .co-reco__media is a block with an aspect-ratio, so an inline <picture> in
+   between would collapse and the img's height:100% would resolve against it
+   rather than against the media box. */
+.co-reco__media picture { display: block; width: 100%; height: 100%; }
 .co-reco__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .co-reco__body { padding: 8px 9px 7px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
 .co-reco__name {

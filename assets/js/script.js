@@ -770,15 +770,22 @@ CSS TABLE OF CONTENTS
 	// Deliberately falls back to the stored original for anything with no
 	// cover: SVG demo covers, GIFs and stills below the 320w tier legitimately
 	// have no derivatives, and the stored file IS the right one for those.
-	function paintCartThumbs() {
-		var rows = document.querySelectorAll("#cartItems .cart-item");
+	//
+	// Two callers, because there are two surfaces showing the same cart items
+	// at two different box sizes: the drawer (60px) and the checkout order
+	// summary (104px). The summary was rendering `item.img` — the ORIGINAL
+	// upload — straight into <img src>, measured live at 1055x1491 / 2,245.6 KB
+	// painted into a 104x104 box, against a 16.5 KB 320w AVIF that already
+	// existed on disk. Same defect as the drawer had, one surface over.
+	function paintThumbs(rowSelector, imgAttr, sizes) {
+		var rows = document.querySelectorAll(rowSelector);
 		if (!rows.length) return;
 		Array.prototype.forEach.call(rows, function (row) {
-			var img = row.querySelector("img[data-cart-thumb]");
+			var img = row.querySelector("img[" + imgAttr + "]");
 			if (!img) return;
 			var stored = img.getAttribute("data-src") || "";
 			var cover = cartCoverFor(row.getAttribute("data-id"));
-			img.removeAttribute("data-cart-thumb");
+			img.removeAttribute(imgAttr);
 
 			if (!cover || !cover.sources || !cover.sources.length || !window.MediaContainer) {
 				if (stored) img.src = stored;
@@ -790,9 +797,9 @@ CSS TABLE OF CONTENTS
 			// afterwards gives the <picture> itself, not the row.
 			var parent = img.parentNode;
 			var next = img.nextSibling;
-			// 60px is the rendered box, so even a 3x screen asks for no more
-			// than the 320w tier.
-			var picture = window.MediaContainer.pictureFor(img, cover, "60px");
+			// The rendered box, so even a 3x screen asks for no more than the
+			// 320w tier.
+			var picture = window.MediaContainer.pictureFor(img, cover, sizes);
 
 			// src is set only now, with the <source> elements already in place,
 			// so the browser runs picture selection and takes the AVIF/WebP.
@@ -806,6 +813,11 @@ CSS TABLE OF CONTENTS
 
 			if (picture !== img && parent) parent.insertBefore(picture, next);
 		});
+	}
+
+	function paintCartThumbs() {
+		paintThumbs("#cartItems .cart-item", "data-cart-thumb", "60px");
+		paintThumbs("#checkoutOrderList .co-order-item", "data-co-thumb", "104px");
 	}
 
 	function ensureCartCovers() {
@@ -1266,8 +1278,16 @@ CSS TABLE OF CONTENTS
 				$.each(cart, function (i, item) {
 					var line = parseFloat(item.price) * item.qty;
 					subtotal += line;
+					// No `src` yet, exactly as the drawer does it: setting the stored
+					// original here would start its download immediately and the
+					// upgrade below would be a second request rather than a
+					// replacement. ensureCartCovers() -> paintThumbs() swaps in the
+					// <picture> with the AVIF/WebP srcsets once the product index is
+					// in. width/height reserve the 104px box so the summary does not
+					// reflow when the cover lands.
 					var imgHtml = item.img
-						? '<img src="' + escapeHtml(item.img) + '" class="co-item-img" alt="">'
+						? '<img data-co-thumb data-src="' + escapeHtml(item.img) + '" class="co-item-img"' +
+						  ' alt="" width="104" height="104" loading="lazy" decoding="async">'
 						: '<span class="co-item-img co-item-img--empty"></span>';
 					// Buy Now bypasses the cart, so its single item has no cart entry to
 					// increment or remove -- the controls would be writing to a cart the
@@ -1310,6 +1330,13 @@ CSS TABLE OF CONTENTS
 				$("#coDiscountRow").addClass("u-hidden");
 			}
 			$("#coTotal").text(formatDollars((subtotalCents - discountCents) / 100));
+
+			// Swap each placeholder thumbnail for its <picture>. Runs on EVERY
+			// re-render (qty change, promo, remove), not just the first, because
+			// the list is rebuilt from scratch each time and a fresh row would
+			// otherwise be left with a src-less img. The product index is fetched
+			// once and cached, so repeat calls cost nothing.
+			ensureCartCovers();
 		}
 		// Quantity and remove, inline in the order summary. These write through
 		// saveCart(), which dispatches profit:cart-changed -- the same event the

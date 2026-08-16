@@ -314,12 +314,50 @@
     recosSwiper = null;
   }
 
+  // The reco card's image box is 78x59 CSS px. `p.imageUrl` is the ORIGINAL
+  // upload, and rendering it straight into <img src> is the bug this codebase
+  // has now hit on five separate surfaces: every request succeeds with a 200,
+  // so nothing ever flags it. Measured on this carousel with the live catalog:
+  // one 1122x1402 PNG, 2,023.5 KB, painted into 78x59. The 320w AVIF for the
+  // same cover is 14.9 KB.
+  //
+  // /api/recommendations already returns `cover.sources` (avif + webp srcsets
+  // at 320/640/960) for every raster cover — nothing here generates anything,
+  // it only asks for what the API already handed over. Covers with no
+  // derivatives (the SVG demo art, stills below the 320w tier) return no
+  // sources and correctly fall through to the stored file.
+  function coverSourcesHtml(cover, sizes) {
+    if (!cover || !cover.sources || !cover.sources.length) return "";
+    return cover.sources.map(function (s) {
+      return '<source type="' + escapeAttr(s.type) + '" srcset="' + escapeAttr(s.srcset) +
+        '" sizes="' + escapeAttr(sizes) + '">';
+    }).join("");
+  }
+
   function recoCardHtml(p, cls) {
     var img = p.imageUrl || "/assets/images/placeholder.jpg";
     var price = (p.priceCents / 100).toFixed(2);
+    var cover = p.cover;
+    var sizes = "78px";
+    var sources = coverSourcesHtml(cover, sizes);
+    // The <img> fallback is the NARROWEST derivative, not cover.src: on the one
+    // path where a browser ignores <source> entirely, 320w is still the right
+    // answer for a 78px box and the 2MB PNG never is.
+    var fallback = img;
+    if (sources && window.MediaContainer && window.MediaContainer.smallestDerivative) {
+      fallback = window.MediaContainer.smallestDerivative(cover) || img;
+    }
+    // width/height reserve the box before any byte lands, so the carousel does
+    // not reflow under the shopper's thumb as the covers arrive.
+    var dims = cover && cover.width && cover.height
+      ? ' width="' + cover.width + '" height="' + cover.height + '"' : "";
+    var imgTag = '<img src="' + escapeAttr(fallback) + '" sizes="' + escapeAttr(sizes) +
+      '"' + dims + ' alt="" loading="lazy" decoding="async">';
     return (
       '<article class="' + cls + '" role="listitem">' +
-      '<div class="co-reco__media"><img src="' + escapeAttr(img) + '" alt="" loading="lazy" decoding="async"></div>' +
+      '<div class="co-reco__media">' +
+      (sources ? "<picture>" + sources + imgTag + "</picture>" : imgTag) +
+      "</div>" +
       '<div class="co-reco__body">' +
       '<span class="co-reco__name">' + escapeAttr(p.name) + "</span>" +
       '<span class="co-reco__price">$' + price + "</span>" +

@@ -818,6 +818,7 @@ CSS TABLE OF CONTENTS
 	function paintCartThumbs() {
 		paintThumbs("#cartItems .cart-item", "data-cart-thumb", "60px");
 		paintThumbs("#checkoutOrderList .co-order-item", "data-co-thumb", "104px");
+		paintThumbs("#cartPageTable .product", "data-cartpage-thumb", "70px");
 	}
 
 	function ensureCartCovers() {
@@ -1152,7 +1153,13 @@ CSS TABLE OF CONTENTS
 					: escapeHtml(item.name);
 				html += '<div class="product p-4 ' + borderClass + ' d-flex justify-content-between align-items-center" data-id="' + item.id + '" style="position:relative;">' +
 					'<div class="product-details d-flex align-items-center">' +
-					'<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.name) + '" style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0;">' +
+					// Same src-less placeholder as the drawer and the checkout summary:
+					// the stored value is the ORIGINAL upload (measured here at
+					// 1055x1491 / 2,241.9 KB inside a 70x70 box) and setting it now
+					// would start that download before paintThumbs can substitute the
+					// 320w derivative.
+					'<img data-cartpage-thumb data-src="' + escapeHtml(img) + '" class="cp-thumb"' +
+					' alt="' + escapeHtml(item.name) + '" width="70" height="70" loading="lazy" decoding="async">' +
 					'<h4 class="ps-4 text-capitalize mb-0">' + titleHtml + '</h4>' +
 					'</div>' +
 					'<div class="product-price text-white">' + formatDollars(parseFloat(item.price)) + '</div>' +
@@ -1180,6 +1187,8 @@ CSS TABLE OF CONTENTS
 				'</div>';
 
 			$table.html(html);
+			// Swaps each placeholder for its <picture>; see renderCheckoutSummary.
+			ensureCartCovers();
 		}
 
 		renderCartPage();

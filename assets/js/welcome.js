@@ -226,12 +226,22 @@
       }).catch(function () {});
     });
 
-    // Prefill from what checkout already collected — the brief is explicit
-    // that nothing already provided should be asked for twice.
-    Promise.all([
-      api.getProfile(),
-      api.getLibrary().catch(function () { return { library: [] }; }),
-    ]).then(function (r) {
+    // Session first. This page is only ever reached by redirect from the
+    // magic-link handler, so a visitor without a session has no business
+    // here — but asking /account/profile to tell us that means a 401 in the
+    // console on the way to the redirect we were going to do anyway.
+    // api.me() answers it for free (already in flight for the header).
+    api.me().then(function (me) {
+      if (!me || !me.user) {
+        window.location.href = "/login";
+        return null;
+      }
+      return Promise.all([
+        api.getProfile(),
+        api.getLibrary().catch(function () { return { library: [] }; }),
+      ]);
+    }).then(function (r) {
+      if (!r) return;
       profile = r[0].profile;
       var library = (r[1] && r[1].library) || [];
 

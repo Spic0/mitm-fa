@@ -1,0 +1,66 @@
+        <div class="ac-page">
+            <div class="ac-shell">
+
+                <!-- Signed out. Server-side there is no page gate here (the
+                     DATA is gated by the API), so this is what a logged-out
+                     visitor sees rather than a redirect. -->
+                <div id="libSignedOut" class="ac-hidden">
+                    <div class="ac-empty">
+                        <span class="ac-empty__mark"><i class="fa-regular fa-lock" aria-hidden="true"></i></span>
+                        <h1 class="ac-h2">Sign in to open your library</h1>
+                        <p class="ac-lead">Your programs are tied to the email you bought with. Sign in and they will be here.</p>
+                        <a href="/login" class="ac-btn ac-btn--primary"><span>Sign in</span></a>
+                    </div>
+                </div>
+
+                <!-- First paint. Shaped like the content it is replaced by,
+                     so the swap does not move the page. -->
+                <div id="libLoading" aria-hidden="true">
+                    <div class="ac-greet">
+                        <div class="ac-skel ac-skel--avatar"></div>
+                        <div class="ac-greet__body ac-skel-stack">
+                            <div class="ac-skel ac-skel--title"></div>
+                            <div class="ac-skel ac-skel--line"></div>
+                        </div>
+                    </div>
+                    <div class="ac-skel ac-skel--hero"></div>
+                </div>
+
+                <div id="libContent" class="ac-hidden">
+
+                    <!-- Greeting -->
+                    <header class="ac-greet ac-reveal ac-reveal--1" id="libGreet"></header>
+
+                    <!-- CONTINUE — the single most recently opened program.
+                         Order is decided server-side from real lastOpenedAt
+                         timestamps (see routes/library.js), not guessed here. -->
+                    <section class="ac-section ac-hidden" id="libContinueWrap" aria-labelledby="libContinueHeading">
+                        <h2 class="ac-eyebrow" id="libContinueHeading">Continue</h2>
+                        <div id="libContinue" class="ac-reveal ac-reveal--2"></div>
+                    </section>
+
+                    <!-- Everything owned -->
+                    <section class="ac-section ac-hidden" id="libProgramsWrap" aria-labelledby="libProgramsHeading">
+                        <div class="ac-head">
+                            <div>
+                                <h2 class="ac-h2" id="libProgramsHeading">My programs</h2>
+                                <p class="ac-lead" id="libProgramsCount"></p>
+                            </div>
+                            <a href="/shop" class="ac-btn ac-btn--ghost"><span>Browse more</span></a>
+                        </div>
+                        <div class="ac-grid" id="libGrid"></div>
+                    </section>
+
+                    <!-- Nothing owned yet -->
+                    <section class="ac-section ac-hidden" id="libEmpty">
+                        <div class="ac-empty ac-reveal ac-reveal--2">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-compass" aria-hidden="true"></i></span>
+                            <h2 class="ac-h2">Your library is waiting</h2>
+                            <p class="ac-lead">Find a program that fits your goals and it will appear here the moment you buy it.</p>
+                            <a href="/shop" class="ac-btn ac-btn--primary"><span>Explore programs</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>

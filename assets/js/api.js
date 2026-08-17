@@ -148,28 +148,68 @@ window.ProFitAPI = (function () {
     saveProgramProgress: function (productIdOrSlug, progress) {
       return put("/library/program/" + encodeURIComponent(productIdOrSlug) + "/progress", progress);
     },
+
+    // ---- The customer's own account (My Profile, setup wizard) ----
+    getProfile: function () { return get("/account/profile"); },
+    // Partial: send only the fields a card actually edits. Not cached —
+    // the response is the new state and callers re-render from it.
+    updateProfile: function (patch) { return request("/account/profile", { method: "PATCH", body: JSON.stringify(patch) }); },
+    removeAvatar: function () { return request("/account/avatar", { method: "DELETE" }); },
+    // multipart, so it bypasses request(): that helper forces a JSON
+    // Content-Type, and setting one by hand on a FormData body strips the
+    // boundary and the upload arrives unparseable. The CSRF header still
+    // has to be sent by hand for the same reason.
+    uploadAvatar: function (file) {
+      var form = new FormData();
+      form.append("avatar", file);
+      return fetch("/api/account/avatar", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-CSRF-Token": readCookie("profit_csrf") },
+        body: form,
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) throw new Error(data.error || "Upload failed");
+          return data;
+        });
+      });
+    },
   };
 })();
 
 // Header + mobile nav drawer "My Account" -> "My Library" / "Sign In" state,
 // run on every page. .js-account-link/.js-account-text match both the
 // desktop header icon (#headerAccountLink) and the drawer's row
-// (#drawerAccountLink) so one auth check drives both. .js-settings-item
-// (the drawer's "Settings" row) only ever makes sense for a signed-in user,
-// so it stays hidden (u-hidden, set in partials/header.html) until this
-// confirms a session exists.
+// (#drawerAccountLink) so one auth check drives both. .js-account-only
+// (My Profile / Orders / Sign Out) only ever makes sense for a signed-in
+// user, so those rows stay hidden until this confirms a session exists.
 document.addEventListener("DOMContentLoaded", function () {
   var links = document.querySelectorAll(".js-account-link");
   var texts = document.querySelectorAll(".js-account-text");
-  var settingsItems = document.querySelectorAll(".js-settings-item");
+  // The drawer's customer rows — My Profile, Orders, Sign Out. All three are
+  // meaningless to a signed-out visitor, so they ship hidden (u-hidden, set
+  // in partials/header.html) and are revealed only once a session is
+  // confirmed. Hiding by default rather than showing by default matters: an
+  // API failure leaves a logged-out visitor with a clean menu instead of
+  // three rows that bounce them to /login.
+  var accountOnly = document.querySelectorAll(".js-account-only");
+  var signOutBtns = document.querySelectorAll(".js-signout");
   if (!links.length && !texts.length) return;
 
   window.ProFitAPI.me().then(function (data) {
-    if (data.user) {
-      links.forEach(function (a) { a.href = "/my-library"; });
-      texts.forEach(function (t) { t.textContent = "My Library"; });
-      settingsItems.forEach(function (li) { li.classList.remove("u-hidden"); });
-    }
+    if (!data.user) return;
+    links.forEach(function (a) { a.href = "/my-library"; });
+    // The greeting name when we have one — "Sam" reads as an account,
+    // "My Library" reads as a menu item.
+    var label = data.user.greetingName || "My Library";
+    texts.forEach(function (t) { t.textContent = label; });
+    accountOnly.forEach(function (el) { el.classList.remove("u-hidden"); });
+
+    signOutBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        window.ProFitAPI.logout().then(function () { window.location.href = "/"; });
+      });
+    });
   }).catch(function () {
     // Not logged in or API unreachable — leave the default "Sign In" state.
   });

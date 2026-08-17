@@ -44,6 +44,8 @@
     </noscript>
     <!-- Style css -->
     <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <link rel="stylesheet" href="/assets/css/media-container.css">
+    <link rel="stylesheet" href="/assets/css/account.css">
 </head>
 
 <body>
@@ -103,78 +105,73 @@
 
 
     <main>
-        <!-- Page banner area start here -->
-        <section class="page-banner bg-image pt-130 pb-130">
-            <div class="container">
-                <h2 class="wow fadeInUp mb-15" data-wow-duration="1.1s" data-wow-delay=".1s">My Library</h2>
-                <div class="breadcrumb-list wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
-                    <a href="/" class="primary-hover"><i class="fa-solid fa-house me-1"></i> Home <i
-                            class="fa-regular text-white fa-angle-right"></i></a>
-                    <span>My Library</span>
-                </div>
-            </div>
-        </section>
-        <!-- Page banner area end here -->
+        <div class="ac-page">
+            <div class="ac-shell">
 
-        <section class="pt-130 pb-130">
-            <div class="container">
-
-                <!-- Shown when not signed in -->
-                <div id="libraryGuard" class="u-hidden u-text-center">
-                    <h3 class="mb-15">Sign in to view your library</h3>
-                    <p class="mb-30 u-text-body">Your purchases are tied to your email — sign in with a magic link to access them.</p>
-                    <a href="/login" class="btn-one"><span>Go to Sign In</span></a>
+                <!-- Signed out. Server-side there is no page gate here (the
+                     DATA is gated by the API), so this is what a logged-out
+                     visitor sees rather than a redirect. -->
+                <div id="libSignedOut" class="ac-hidden">
+                    <div class="ac-empty">
+                        <span class="ac-empty__mark"><i class="fa-regular fa-lock" aria-hidden="true"></i></span>
+                        <h1 class="ac-h2">Sign in to open your library</h1>
+                        <p class="ac-lead">Your programs are tied to the email you bought with. Sign in and they will be here.</p>
+                        <a href="/login" class="ac-btn ac-btn--primary"><span>Sign in</span></a>
+                    </div>
                 </div>
 
-                <!-- Shown when signed in -->
-                <div id="libraryContent" class="u-hidden">
-                    <div class="d-flex justify-content-between align-items-center mb-60 flex-wrap gap-3">
-                        <div>
-                            <h3 class="mb-1">Welcome, <span id="libraryUserEmail"></span></h3>
-                            <p class="mb-0 u-text-body">Everything you've purchased is available to access below.</p>
-                        </div>
-                        <button id="logoutBtn" type="button" class="btn-two"><span>Sign Out</span></button>
-                    </div>
-
-                    <h4 class="mb-25" id="library">Your Programs &amp; Plans</h4>
-                    <div class="row g-4 mb-70" id="libraryGrid">
-                        <p class="u-text-light" id="libraryEmptyMsg">You haven't purchased anything yet — <a href="/shop" class="primary-hover">browse plans</a>.</p>
-                    </div>
-
-                    <h4 class="mb-25" id="orders">Purchase History</h4>
-                    <div class="table-responsive mb-70">
-                        <table class="table table-borderless align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Items</th>
-                                    <th>Provider</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ordersTableBody">
-                                <tr><td colspan="4" class="u-text-light">No orders yet.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h4 class="mb-25" id="account-settings">Account Settings</h4>
-                    <div class="row">
-                        <div class="col-lg-5">
-                            <form id="setPasswordForm" class="form-area login__form">
-                                <p id="setPasswordIntro" class="mb-15 u-text-body">Optional: set a password so you can also sign in without a magic link.</p>
-                                <input id="currentPassword" type="password" placeholder="Current Password" autocomplete="current-password" class="u-hidden">
-                                <input id="newPassword" type="password" placeholder="New Password" minlength="8" required autocomplete="new-password">
-                                <button class="mt-20" type="submit" id="setPasswordSubmit">Set Password</button>
-                                <p id="setPasswordMessage" class="mt-15 u-hidden"></p>
-                            </form>
+                <!-- First paint. Shaped like the content it is replaced by,
+                     so the swap does not move the page. -->
+                <div id="libLoading" aria-hidden="true">
+                    <div class="ac-greet">
+                        <div class="ac-skel ac-skel--avatar"></div>
+                        <div class="ac-greet__body ac-skel-stack">
+                            <div class="ac-skel ac-skel--title"></div>
+                            <div class="ac-skel ac-skel--line"></div>
                         </div>
                     </div>
+                    <div class="ac-skel ac-skel--hero"></div>
                 </div>
 
+                <div id="libContent" class="ac-hidden">
+
+                    <!-- Greeting -->
+                    <header class="ac-greet ac-reveal ac-reveal--1" id="libGreet"></header>
+
+                    <!-- CONTINUE — the single most recently opened program.
+                         Order is decided server-side from real lastOpenedAt
+                         timestamps (see routes/library.js), not guessed here. -->
+                    <section class="ac-section ac-hidden" id="libContinueWrap" aria-labelledby="libContinueHeading">
+                        <h2 class="ac-eyebrow" id="libContinueHeading">Continue</h2>
+                        <div id="libContinue" class="ac-reveal ac-reveal--2"></div>
+                    </section>
+
+                    <!-- Everything owned -->
+                    <section class="ac-section ac-hidden" id="libProgramsWrap" aria-labelledby="libProgramsHeading">
+                        <div class="ac-head">
+                            <div>
+                                <h2 class="ac-h2" id="libProgramsHeading">My programs</h2>
+                                <p class="ac-lead" id="libProgramsCount"></p>
+                            </div>
+                            <a href="/shop" class="ac-btn ac-btn--ghost"><span>Browse more</span></a>
+                        </div>
+                        <div class="ac-grid" id="libGrid"></div>
+                    </section>
+
+                    <!-- Nothing owned yet -->
+                    <section class="ac-section ac-hidden" id="libEmpty">
+                        <div class="ac-empty ac-reveal ac-reveal--2">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-compass" aria-hidden="true"></i></span>
+                            <h2 class="ac-h2">Your library is waiting</h2>
+                            <p class="ac-lead">Find a program that fits your goals and it will appear here the moment you buy it.</p>
+                            <a href="/shop" class="ac-btn ac-btn--primary"><span>Explore programs</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </section>
+
+                </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </main></main>
 
     <!-- Footer area start here -->
     <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
@@ -287,6 +284,7 @@
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/nav-featured.js" defer></script>
+    <script src="/assets/js/account-common.js" defer></script>
     <script src="/assets/js/my-library.js" defer></script>
 </body>
 

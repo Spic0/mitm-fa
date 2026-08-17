@@ -84,11 +84,15 @@
                         <i class="fa-regular fa-user" aria-hidden="true"></i>
                         <span class="js-account-text" id="drawerAccountText">Sign In</span>
                     </a>
-                    <a href="/my-library#library" class="mobile-account-links__item">
+                    <a href="/my-library" class="mobile-account-links__item">
                         <i class="fa-regular fa-book-open" aria-hidden="true"></i>
                         <span>My Library</span>
                     </a>
-                    <a href="/my-library#orders" class="mobile-account-links__item">
+                    <a href="/my-profile" class="mobile-account-links__item u-hidden js-account-only" id="drawerProfileItem">
+                        <i class="fa-regular fa-id-badge" aria-hidden="true"></i>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="/orders" class="mobile-account-links__item u-hidden js-account-only" id="drawerOrdersItem">
                         <i class="fa-regular fa-receipt" aria-hidden="true"></i>
                         <span>Orders</span>
                     </a>
@@ -97,10 +101,10 @@
                         <span>Cart</span>
                         <span class="cart-badge" id="drawerCartCount">0</span>
                     </button>
-                    <a href="/my-library#account-settings" class="mobile-account-links__item u-hidden js-settings-item" id="drawerSettingsItem">
-                        <i class="fa-regular fa-gear" aria-hidden="true"></i>
-                        <span>Settings</span>
-                    </a>
+                    <button type="button" class="mobile-account-links__item u-hidden js-account-only js-signout" id="drawerSignOut">
+                        <i class="fa-regular fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                        <span>Sign Out</span>
+                    </button>
                 </li>
             </ul>
             <div class="header-actions">

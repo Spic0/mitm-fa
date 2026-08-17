@@ -29,7 +29,10 @@ const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
 const HEADER_PARTIAL_PATH = path.join(SITE_ROOT, "partials", "header.html");
 const HEADER_MARKER = "<!--SHARED_HEADER-->";
-const HIDDEN_HEADER_PAGES = new Set(["checkout.html"]);
+// Pages that render without the site header. Both are focused, single-task
+// flows where the nav drawer is an exit rather than a convenience: a
+// half-finished checkout, and a half-finished account setup.
+const HIDDEN_HEADER_PAGES = new Set(["checkout.html", "welcome.html"]);
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1193,7 +1196,14 @@ const PAGE_META = {
   "/checkout": { file: "checkout.html", title: "Checkout", description: "Complete your purchase securely.", noindex: true },
   "/login": { file: "login.html", title: "Sign In", description: "Sign in to your Fitness Agency account to access your training plans.", noindex: true },
   "/register": { file: "register.html", title: "Create Account", description: "Create a Fitness Agency account to start training.", noindex: true },
-  "/my-library": { file: "my-library.html", title: "My Library", description: "Your purchased training and nutrition plans, orders, and account settings.", noindex: true },
+  "/my-library": { file: "my-library.html", title: "My Library", description: "Your purchased training and nutrition plans.", noindex: true },
+  "/my-profile": { file: "my-profile.html", title: "My Profile", description: "Your Fitness Agency account details and password.", noindex: true },
+  "/orders": { file: "orders.html", title: "My Orders", description: "Your Fitness Agency order history.", noindex: true },
+  // The post-purchase setup wizard. Reached only by redirect from the
+  // magic-link handler, which has already consumed the single-use token and
+  // set the session — so this is an ordinary authenticated page with no
+  // token of its own. noindex like every other account page.
+  "/welcome": { file: "welcome.html", title: "Welcome", description: "Finish setting up your Fitness Agency account.", noindex: true },
   // Post-purchase confirmation. noindex like every other transactional page —
   // and it carries an order id in the query string, so it must never be
   // crawled or surfaced in search regardless of the id being unguessable and
@@ -1632,6 +1642,9 @@ router.get("/robots.txt", (req, res) => {
       "Disallow: /login",
       "Disallow: /register",
       "Disallow: /my-library",
+      "Disallow: /my-profile",
+      "Disallow: /orders",
+      "Disallow: /welcome",
       "Disallow: /order/",
       // Private presentations are unlisted meeting decks. They're already
       // unguessable and never linked to, but a crawler that gets a link from

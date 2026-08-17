@@ -17,6 +17,7 @@ const authRoutes = require("./routes/auth");
 const productsRoutes = require("./routes/products");
 const checkoutRoutes = require("./routes/checkout");
 const libraryRoutes = require("./routes/library");
+const accountRoutes = require("./routes/account");
 const stripeWebhookRoutes = require("./routes/webhooksStripe");
 const paypalWebhookRoutes = require("./routes/webhooksPaypal");
 const configRoutes = require("./routes/config");
@@ -304,6 +305,10 @@ app.use("/api/products", productsRoutes);
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/library", libraryRoutes);
+// The customer's own record. account.js applies requireAuth to its own
+// router (same as library.js), so the guard travels with the routes rather
+// than living in the mount line where it is easy to lose in a refactor.
+app.use("/api/account", accountRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/taxonomy", taxonomyRoutes);

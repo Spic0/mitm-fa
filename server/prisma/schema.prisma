@@ -21,6 +21,17 @@ model User {
   id              String           @id @default(cuid())
   email           String           @unique
   name            String?
+  // What the customer chose to be called, set in My Profile and used for the
+  // "Welcome back, X" greeting. Separate from `name`, which is the legal /
+  // billing name collected at checkout and used on receipts — a customer who
+  // wants to be greeted as "Sam" must not thereby rewrite the name on their
+  // invoices. Null means "no preference": fall back to the first word of
+  // `name`, then to the email local part.
+  displayName     String?
+  // Profile photo. Stored exactly like Product.imageUrl and Partner.avatarUrl
+  // — a bare relative path under assets/images/, so the existing derivative
+  // pipeline and normalizeImageUrl apply unchanged.
+  avatarUrl       String?
   passwordHash    String?
   role            String           @default("customer") // "customer" | "admin" | "manager"
   status          String           @default("active") // "active" | "suspended"
@@ -676,6 +687,22 @@ model ProgramProgress {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   completedKeys String[] @default([])
+
+  // How many trackable items this program had when it was last opened — the
+  // DENOMINATOR for "you are 40% through".
+  //
+  // Written by the client, which is the only thing that knows it: the
+  // trackable list is handbook chapters + training days + meals + videos, and
+  // the chapter half is produced by ProgramViewer._buildPages() in the
+  // browser. Recomputing that server-side would be a second implementation of
+  // the page builder to keep in step with the first — the exact duplication
+  // this codebase has been bitten by before. Storing what the page already
+  // computed means My Library's percentage and the program page's own
+  // progress ring can never disagree.
+  //
+  // Nullable, and that is load-bearing: a program bought but never opened has
+  // no total, so My Library shows "Not started" rather than inventing 0%.
+  totalKeys Int?
 
   // Where "Continue where you left off" resumes. lastKey is the item key;
   // lastSection is the section id the UI should open ("program", "videos",

@@ -1,0 +1,41 @@
+        <div class="ac-page">
+            <div class="ac-shell ac-shell--narrow">
+
+                <div id="orSignedOut" class="ac-hidden">
+                    <div class="ac-empty">
+                        <span class="ac-empty__mark"><i class="fa-regular fa-lock" aria-hidden="true"></i></span>
+                        <h1 class="ac-h2">Sign in to see your orders</h1>
+                        <p class="ac-lead">Your order history is tied to the email you bought with.</p>
+                        <a href="/login" class="ac-btn ac-btn--primary"><span>Sign in</span></a>
+                    </div>
+                </div>
+
+                <div id="orLoading" aria-hidden="true">
+                    <div class="ac-skel ac-skel--title"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                </div>
+
+                <div id="orContent" class="ac-hidden">
+                    <header class="ac-head ac-reveal ac-reveal--1">
+                        <div>
+                            <span class="ac-eyebrow">Account</span>
+                            <h1 class="ac-h2">My orders</h1>
+                            <p class="ac-lead">Every purchase, with what it included.</p>
+                        </div>
+                        <a href="/my-library" class="ac-btn ac-btn--ghost"><span>My library</span></a>
+                    </header>
+
+                    <div id="orList" class="ac-reveal ac-reveal--2"></div>
+
+                    <div id="orEmpty" class="ac-hidden">
+                        <div class="ac-empty">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-receipt" aria-hidden="true"></i></span>
+                            <h2 class="ac-h2">No orders yet</h2>
+                            <p class="ac-lead">When you buy a program it will appear here with its receipt.</p>
+                            <a href="/shop" class="ac-btn ac-btn--primary"><span>Explore programs</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

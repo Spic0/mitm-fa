@@ -5674,9 +5674,10 @@ body.cart-open { overflow: hidden; }
   /* The rule above's four-class specificity (needed to beat the generic
      .site-header .main-menu li > a rule, see comment above it) also
      outranks the sitewide single-class .u-hidden — which is what the
-     Settings row (#drawerSettingsItem, u-hidden until auth confirms a
-     session in assets/js/api.js) relies on to start hidden. Re-assert
-     display:none at equal-or-higher specificity so it still wins here. */
+     signed-in-only rows (.js-account-only: My Profile, Orders, Sign Out —
+     u-hidden until auth confirms a session in assets/js/api.js) rely on to
+     start hidden. Re-assert display:none at equal-or-higher specificity so
+     it still wins here. */
   .site-header .main-menu .mobile-account-links__item.u-hidden {
     display: none;
   }

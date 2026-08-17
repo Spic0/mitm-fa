@@ -181,6 +181,29 @@
     saveTimer = setTimeout(save, SAVE_DEBOUNCE_MS);
   }
 
+  // Sent once per page load, right after the trackable list is built.
+  //
+  // Without it, a customer who opens a program and ticks nothing never syncs,
+  // so ProgramProgress.totalKeys stays null and My Library can only say
+  // "Not started" forever — even on their fifth visit. Deliberately omits
+  // completedKeys: the server treats that as a position-only write, so this
+  // can never race with a real completion and wipe it.
+  //
+  // Nothing is sent when the number has not changed, so a customer who reads
+  // the handbook every morning is not posting the same integer every morning.
+  var lastSentTotal = null;
+  function recordTotals() {
+    if (!canSync) return;
+    if (trackables.length === lastSentTotal) return;
+    lastSentTotal = trackables.length;
+    window.ProFitAPI.saveProgramProgress(productRef, {
+      lastSection: lastSection,
+      totalKeys: trackables.length,
+    }).catch(function () {
+      // Best effort. A missing total costs a progress bar, not access.
+    });
+  }
+
   function save() {
     if (!canSync) return;
     clearTimeout(saveTimer);
@@ -188,6 +211,12 @@
       completedKeys: Object.keys(done),
       lastKey: lastKey,
       lastSection: lastSection,
+      // The denominator for My Library's progress bar. This page is the only
+      // thing that knows it — trackables is handbook chapters + training days
+      // + meals + videos, and the chapter half comes from ProgramViewer's
+      // page builder. Sending it here means the library and this page can
+      // never report different percentages. See ProgramProgress.totalKeys.
+      totalKeys: trackables.length,
     }).catch(function () {
       // A failed sync is not worth interrupting a workout over: the page
       // keeps its in-memory state and the next change tries again.
@@ -1466,6 +1495,7 @@
     buildNav();
     buildDock();
     refreshProgress();
+    recordTotals();
 
     $("pgBoot").classList.add("u-hidden");
     $("pgShell").classList.remove("u-hidden");

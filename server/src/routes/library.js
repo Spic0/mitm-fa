@@ -237,11 +237,65 @@ router.get("/", async (req, res) => {
           durationWeeks: item.product.durationWeeks,
         },
         purchasedAt: item.order.createdAt,
+        // Overwritten below when a progress row exists. This is the
+        // never-opened shape, and it is a real answer rather than a
+        // placeholder: nothing has been completed and nothing was measured.
+        progress: {
+          completed: 0, total: null, percent: null,
+          lastSection: null, lastOpenedAt: null, started: false,
+        },
       });
     }
   }
 
-  res.json({ library: [...byProduct.values()] });
+  // Progress for the whole library in ONE query rather than one per product —
+  // this list is the first thing a customer sees after signing in and it is
+  // rendered on a phone, so it gets two queries total however many programs
+  // they own.
+  const progressRows = byProduct.size
+    ? await prisma.programProgress.findMany({
+        where: { userId: req.user.id, productId: { in: [...byProduct.keys()] } },
+        select: {
+          productId: true, completedKeys: true, totalKeys: true,
+          lastKey: true, lastSection: true, lastOpenedAt: true,
+        },
+      })
+    : [];
+
+  for (const row of progressRows) {
+    const entry = byProduct.get(row.productId);
+    if (!entry) continue;
+    const completed = (row.completedKeys || []).length;
+    // total is null until the program has been opened once (the client is
+    // what knows it — see ProgramProgress.totalKeys in schema.prisma). When
+    // it is null we report percent: null and the UI says "Not started"
+    // rather than drawing a 0% bar that would imply we measured something.
+    const total = typeof row.totalKeys === "number" && row.totalKeys > 0 ? row.totalKeys : null;
+    entry.progress = {
+      completed,
+      total,
+      // Clamped: a program whose content shrank since it was last opened
+      // could otherwise report 7/5.
+      percent: total ? Math.min(100, Math.round((completed / total) * 100)) : null,
+      lastSection: row.lastSection || null,
+      lastOpenedAt: row.lastOpenedAt || null,
+      started: completed > 0 || !!row.lastOpenedAt,
+    };
+  }
+
+  const library = [...byProduct.values()];
+  // "Continue" order: most recently opened first, then anything never opened,
+  // then by purchase date. The client takes library[0] for the hero, so the
+  // decision about what a customer resumes is made here, server-side, from
+  // real timestamps — not guessed in the browser.
+  library.sort((a, b) => {
+    const aOpened = a.progress && a.progress.lastOpenedAt ? new Date(a.progress.lastOpenedAt).getTime() : 0;
+    const bOpened = b.progress && b.progress.lastOpenedAt ? new Date(b.progress.lastOpenedAt).getTime() : 0;
+    if (aOpened !== bOpened) return bOpened - aOpened;
+    return new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime();
+  });
+
+  res.json({ library });
 });
 
 router.get("/orders", async (req, res) => {
@@ -255,9 +309,19 @@ router.get("/orders", async (req, res) => {
     orders: orders.map((order) => ({
       id: order.id,
       provider: order.provider,
+      status: order.status,
       totalCents: order.totalCents,
+      discountCents: order.discountCents,
       createdAt: order.createdAt,
-      items: order.items.map((item) => ({ name: item.product.name, priceCents: item.priceCents })),
+      // slug + imageUrl so the orders page can show what was bought and link
+      // each line back to the program, rather than listing bare names. Same
+      // shape as the single-order endpoint below, so the two agree.
+      items: order.items.map((item) => ({
+        slug: item.product.slug,
+        name: item.product.name,
+        imageUrl: normalizeImageUrl(item.product.imageUrl),
+        priceCents: item.priceCents,
+      })),
     })),
   });
 });
@@ -296,6 +360,11 @@ router.get("/orders/:id", async (req, res) => {
         slug: item.product.slug,
         name: item.product.name,
         imageUrl: normalizeImageUrl(item.product.imageUrl),
+        // The confirmation page gives the first item a hero treatment and
+        // names who made it — the same two fields the library card shows,
+        // so the product reads the same either side of the purchase.
+        creator: item.product.creator,
+        difficulty: item.product.difficulty,
         priceCents: item.priceCents,
       })),
     },
@@ -486,6 +555,17 @@ router.put("/program/:productId/progress", async (req, res) => {
   // section change shouldn't be able to wipe completions if the two
   // requests ever race.
   if (completedKeys) data.completedKeys = completedKeys;
+
+  // The denominator My Library draws its progress bar from. Only the program
+  // page can compute it (see ProgramProgress.totalKeys), so it is accepted
+  // here and clamped to something sane rather than trusted: it comes from a
+  // browser, and a bogus total would silently distort every percentage the
+  // customer sees. Absent means "not sent" and leaves the stored value alone.
+  const rawTotal = req.body ? req.body.totalKeys : undefined;
+  if (rawTotal !== undefined) {
+    const n = Number(rawTotal);
+    if (Number.isFinite(n) && n >= 0 && n <= MAX_KEYS) data.totalKeys = Math.round(n);
+  }
 
   const saved = await prisma.programProgress.upsert({
     where: { userId_productId: { userId: req.user.id, productId: product.id } },

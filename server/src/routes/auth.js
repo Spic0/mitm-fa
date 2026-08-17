@@ -8,6 +8,8 @@ const { createSession, setSessionCookie, clearSessionCookie, SESSION_COOKIE, rev
 const { logEvent } = require("../lib/adminLog");
 const { authLimiter, magicLinkLimiter } = require("../middleware/rateLimit");
 const loginAttempts = require("../lib/loginAttempts");
+const { greetingName, initials } = require("../lib/customerProfile");
+const { normalizeImageUrl } = require("../lib/media");
 
 const router = express.Router();
 
@@ -64,8 +66,38 @@ router.get("/verify", authLimiter, async (req, res) => {
     message: `${user.role === "admin" ? "Admin login" : "Login"}: ${user.email} (magic link)`,
     actorId: user.id,
   });
-  res.redirect(user.role === "admin" ? "/admin/manage/dashboard" : "/my-library");
+  if (user.role === "admin") return res.redirect("/admin/manage/dashboard");
+  res.redirect((await needsSetup(user)) ? "/welcome" : "/my-library");
 });
+
+// Where a customer lands after a magic link: the onboarding wizard the first
+// time, their library every time after.
+//
+// "First time" is derived, not stored — there is no setup-complete flag to
+// keep in sync. Two conditions, both of which have to hold:
+//
+//   no passwordHash   the wizard's job is to set one, so an account that has
+//                     one has already been through it (or the customer set a
+//                     password some other way, which is the same thing).
+//   a paid order      this is the POST-PURCHASE claim flow. Someone who
+//                     requested a sign-in link to browse has bought nothing
+//                     to be onboarded to, and sending them through "your
+//                     program is ready" would be a lie.
+//
+// Deliberately a redirect and not a page the token lands on: the magic-link
+// token has already been consumed by the time this runs (single-use, see
+// consumeMagicLinkToken), the session cookie is already set, and the
+// redirect is what gets the token out of the address bar before the customer
+// sees any UI. The wizard itself is an ordinary authenticated page with no
+// token of its own to leak, reuse or expire.
+async function needsSetup(user) {
+  if (user.passwordHash) return false;
+  const paid = await prisma.order.findFirst({
+    where: { userId: user.id, status: "paid" },
+    select: { id: true },
+  });
+  return !!paid;
+}
 
 router.post("/logout", async (req, res) => {
   await revokeSession(req.cookies ? req.cookies[SESSION_COOKIE] : null);
@@ -73,6 +105,12 @@ router.post("/logout", async (req, res) => {
   res.json({ ok: true });
 });
 
+// Called by the header wiring on literally every page load, so it carries
+// the handful of presentation fields the customer surfaces need for their
+// first paint — the greeting name and the avatar. Adding them here rather
+// than making My Library open with a second round trip for a string it
+// needs above the fold. Nothing sensitive: the caller is the account owner
+// and every field is one they typed themselves.
 router.get("/me", (req, res) => {
   if (!req.user) return res.json({ user: null });
   res.json({
@@ -81,6 +119,10 @@ router.get("/me", (req, res) => {
       email: req.user.email,
       role: req.user.role,
       hasPassword: !!req.user.passwordHash,
+      displayName: req.user.displayName || "",
+      greetingName: greetingName(req.user),
+      avatarUrl: req.user.avatarUrl ? normalizeImageUrl(req.user.avatarUrl) : null,
+      initials: initials(req.user),
     },
   });
 });

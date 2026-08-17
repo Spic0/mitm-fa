@@ -50,3 +50,18 @@ assets/images/landing/*
 
 # Screenshots from tools/test-landing-responsive.js --shots.
 tools/.shots/
+
+# TLS material. Nothing here has ever been committed and nothing should be:
+# the production certificate and private key live at
+# /etc/ssl/fitness.agency/ (key 0600 root:root), outside the repo entirely.
+# These patterns exist so an accidental `cp` into the checkout cannot be
+# staged. The certificate itself is public, but it is versioned by the CA and
+# not by us, so it is excluded alongside the key.
+*.key
+*.pem
+*.cer
+*.crt
+*.p12
+*.pfx
+SSL/
+ssl/

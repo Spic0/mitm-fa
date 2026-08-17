@@ -39,13 +39,16 @@
     // Resuming vs starting is a real distinction and the copy should not
     // guess: `started` is set from a stored lastOpenedAt, not inferred.
     var resuming = !!prog.started;
+    var finished = prog.percent === 100;
 
     // The section above the card is already headed "Continue", so this
     // eyebrow carries recency instead of repeating the word — which is also
     // the one thing a percentage cannot say: when they were last here.
-    var eyebrow = prog.lastOpenedAt
-      ? "Last opened " + A.relativeDate(prog.lastOpenedAt)
-      : "Ready when you are";
+    var eyebrow = finished
+      ? "Completed"
+      : prog.lastOpenedAt
+        ? "Last opened " + A.relativeDate(prog.lastOpenedAt)
+        : "Ready when you are";
 
     return (
       '<a class="ac-continue" href="' + href + '">' +
@@ -62,7 +65,9 @@
       (meta ? '<span class="ac-continue__meta">' + A.esc(meta) + "</span>" : "") +
       A.progress(prog, { withOpened: true }) +
       '<span class="ac-btn ac-btn--primary"><span>' +
-      (resuming ? "Continue program" : "Open program") +
+      // "Continue" on a program at 100% is the one label that is simply
+      // wrong — there is nothing left to continue.
+      (finished ? "Review program" : resuming ? "Continue program" : "Open program") +
       '</span><i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>' +
       "</span></a>"
     );
@@ -84,7 +89,8 @@
       (p.creator ? '<span class="ac-prog__by">' + A.esc(p.creator) + "</span>" : "") +
       A.progress(prog, { withOpened: false }) +
       '<span class="ac-prog__foot">' +
-      '<span class="ac-prog__cta">' + (prog.started ? "Continue" : "Open program") +
+      '<span class="ac-prog__cta">' +
+      (prog.percent === 100 ? "Review" : prog.started ? "Continue" : "Open program") +
       '<i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>' +
       "</span></span></a>"
     );

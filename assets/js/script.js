@@ -617,8 +617,17 @@ CSS TABLE OF CONTENTS
 	// Mouse cursor area end here ***
 
 	// Nice seclect area start here ***
+	//
+	// Two opt-outs, both for the same reason: niceSelect HIDES the native
+	// <select> (display:none) and renders its own widget from whatever
+	// options exist AT INIT. Any select whose options are populated later by
+	// JS therefore renders as an empty box — the native element is correct
+	// and invisible, the widget is visible and blank, and nothing errors.
+	//   .co-sel   the checkout's country picker
+	//   .ac-select the customer area's selects (My Profile, setup wizard),
+	//              which are filled from assets/js/countries.js after load
 	$(document).ready(function () {
-		$("select:not(.co-sel)").niceSelect();
+		$("select:not(.co-sel):not(.ac-select)").niceSelect();
 	});
 	// Nice seclect area end here ***
 

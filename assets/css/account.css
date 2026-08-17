@@ -666,7 +666,12 @@
 
 @media (min-width: 768px) {
   .ac-continue { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: stretch; }
-  .ac-continue__media { aspect-ratio: auto; height: 100%; min-height: 340px; }
+  /* A defined ratio, not `auto`. Left to the image's own 4:5 the card grew
+     to ~500px tall for ~200px of copy, and the right-hand column read as
+     half empty. 4:3 keeps the cover clearly legible (a modest crop of a
+     portrait cover) while bringing the card down to a height the copy
+     actually fills. */
+  .ac-continue__media { aspect-ratio: 4 / 3; height: 100%; min-height: 300px; }
   .ac-continue__scrim { display: none; }
   .ac-continue__body {
     position: static;
@@ -785,8 +790,11 @@
   cursor: pointer;
   min-height: 60px;
 }
-.ac-order__ref { font-size: var(--ac-small); font-weight: 650; margin: 0 0 2px; overflow-wrap: anywhere; }
-.ac-order__when { font-size: var(--ac-micro); color: var(--ac-muted); margin: 0; }
+/* Both are <span> inside the row's button (a <p> would be invalid there), so
+   they need display:block or the reference and the date render as one run of
+   text: "#4RR2W3NUAugust 17, 2026". */
+.ac-order__ref { display: block; font-size: var(--ac-small); font-weight: 650; margin: 0 0 2px; overflow-wrap: anywhere; }
+.ac-order__when { display: block; font-size: var(--ac-micro); color: var(--ac-muted); margin: 0; }
 .ac-order__right { display: flex; align-items: center; gap: 10px; }
 .ac-order__total { font-size: var(--ac-small); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ac-order__chev { color: var(--ac-faint); transition: transform var(--ac-dur) var(--ac-ease); }

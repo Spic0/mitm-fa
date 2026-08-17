@@ -24,7 +24,7 @@
   var profile = null;
 
   var els = {};
-  ["wzSteps", "wzCount", "wzNext", "wzNextText", "wzBack", "wzSkip", "wzName",
+  ["wzSteps", "wzCount", "wzNext", "wzNextText", "wzBack", "wzSkip", "wzT1",
    "wzOwned", "wzPwd", "wzPwd2", "wzPwdError", "wzPwdOk", "wzStrength", "wzReq",
    "wzFullName", "wzEmail", "wzPhone", "wzCountry", "wzDetailsError",
    "wzAvatar", "wzPhotoBtn", "wzPhotoRemove", "wzPhotoInput", "wzDisplayName",
@@ -245,7 +245,13 @@
       profile = r[0].profile;
       var library = (r[1] && r[1].library) || [];
 
-      els.wzName.textContent = profile.greetingName ? ", " + profile.greetingName : "";
+      // Written as ONE text node rather than filling a nested span: an inline
+      // element boundary is a line-break opportunity that plain text does not
+      // offer, and at 390px the browser took it — ", Alex." started its own
+      // line under "Welcome to Fitness Agency".
+      els.wzT1.textContent =
+        "Welcome to Fitness Agency" +
+        (profile.greetingName ? ", " + profile.greetingName : "") + ".";
       els.wzFullName.value = profile.name || "";
       els.wzEmail.value = profile.email || "";
       els.wzPhone.value = profile.phone || "";

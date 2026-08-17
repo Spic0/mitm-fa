@@ -154,6 +154,7 @@ async function fulfillOrder({ email, customer = null, provider, providerRef, ite
       provider,
       customerName: user.name,
       magicLink: buildMagicLinkUrl(magicToken),
+      orderDate: order.createdAt,
     });
     // First purchase from a brand-new account: the receipt covers the order,
     // the welcome covers how the account itself works (magic-link sign-in,

@@ -1,19 +1,24 @@
-// Shared HTML shell for every transactional email.
+// The Fitness Agency transactional email design system.
 //
-// Email clients are not browsers: Outlook renders through Word, Gmail strips
-// <style> blocks in some contexts, and none of them can be relied on for
-// flexbox or grid. So this is deliberately table-based with inline styles —
-// the one layout approach that survives everywhere — with a <style> block
-// carrying only progressive enhancements (the mobile breakpoint) that degrade
-// harmlessly when stripped.
+// ONE shell and ONE set of components for every message the platform sends,
+// so a customer who has seen the site recognises the email before reading a
+// word of it. Nothing here is designed per-email: a template chooses an
+// eyebrow, a heading, and which of these blocks it needs.
 //
-// Brand values come from Settings (storeName, logoUrl) rather than being
-// hardcoded, so renaming the store in the admin panel renames it in email too.
+// Email clients are not browsers. Outlook renders through Word, Gmail strips
+// <style> in several contexts, and none of them can be relied on for flexbox,
+// grid, or web fonts. So this is table-based with inline styles — the one
+// approach that survives everywhere — and the <style> block carries only
+// progressive enhancement (the mobile breakpoint) that degrades harmlessly
+// when stripped. Border radius is used freely because Outlook simply ignores
+// it and renders square corners, which is a fine degradation. WebP and AVIF
+// are never used: Outlook cannot display either, which also rules out the
+// site's own product derivatives.
+//
+// Colours are the site's palette (assets/css/style.css :root), resolved to
+// solid hex because email cannot do custom properties and several clients
+// mishandle rgba() in inline styles.
 
-// Every interpolated value passes through this. Product names and store names
-// are admin-controlled, but the customer's own name now reaches these
-// templates straight from the checkout form, and an unescaped "<" there would
-// corrupt the markup of a real customer's receipt.
 function esc(value) {
   return String(value == null ? "" : value)
     .replace(/&/g, "&amp;")
@@ -28,24 +33,46 @@ function money(cents, currency) {
   return `${currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$"}${amount}`;
 }
 
+// The site's tokens. --color-border is rgba(26,26,26,0.1) over #fdfdfc, which
+// is #e8e7e4 solid; the muted/faint pair are --color-text-muted and
+// --color-text-faint verbatim.
 const BRAND = {
-  ink: "#0f172a",
-  body: "#475569",
-  muted: "#94a3b8",
-  line: "#e2e8f0",
-  bg: "#f1f5f9",
+  ink: "#1a1a1a",
+  body: "#55534f",
+  faint: "#9c9993",
+  line: "#e8e7e4",
+  bg: "#f2f1ee",
+  card: "#ffffff",
+  panel: "#faf9f7",
   accent: "#1a1a1a",
+  success: "#0d6b46",
+  successBg: "#e3efe9",
 };
 
-// A "bulletproof" button: a single-cell table rather than a styled <a>, which
-// is the only form Outlook renders with a real background colour.
-function button(label, href) {
+// No web font survives Outlook, and a font that half-loads is worse than one
+// that never tries. Inter first for the clients that have it (it is the
+// site's face), then the native UI stack, which is what the rest will use.
+const FONT = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+const COMPANY = {
+  name: "Fitness Agency",
+  city: "Winnipeg, Canada",
+};
+
+// A "bulletproof" button: a single-cell table rather than a styled <a>, the
+// only form Outlook fills with a real background colour. mso-padding-alt plus
+// the &nbsp; padding trick keeps the tap target intact there too.
+function button(label, href, variant = "primary") {
+  const solid = variant === "primary";
+  const bg = solid ? BRAND.accent : BRAND.card;
+  const fg = solid ? "#ffffff" : BRAND.ink;
+  const border = solid ? BRAND.accent : BRAND.line;
   return `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="fa-btn" style="margin:0 0 12px;">
       <tr>
-        <td align="center" bgcolor="${BRAND.accent}" style="border-radius:10px;">
-          <a href="${esc(href)}"
-             style="display:inline-block;padding:15px 34px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">
+        <td align="center" bgcolor="${bg}" style="border-radius:10px;border:1px solid ${border};mso-padding-alt:16px 30px;">
+          <a href="${esc(href)}" class="fa-btn__a"
+             style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:600;line-height:1;color:${fg};text-decoration:none;border-radius:10px;mso-line-height-rule:exactly;">
             ${esc(label)}
           </a>
         </td>
@@ -53,14 +80,128 @@ function button(label, href) {
     </table>`;
 }
 
-// preheader: the grey line clients show next to the subject in the inbox
-// list. Left unset it gets filled with whatever text comes first, which for a
-// receipt would be the logo alt text — so every template sets one.
-function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, heading, bodyHtml }) {
-  const safeStore = esc(storeName || "");
+// Primary and secondary CTAs, side by side on desktop and stacked on a phone.
+function buttonPair(primary, secondary) {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px;">
+      <tr>
+        <td class="fa-stack" style="padding-right:10px;">${button(primary.label, primary.href, "primary")}</td>
+        <td class="fa-stack">${button(secondary.label, secondary.href, "secondary")}</td>
+      </tr>
+    </table>`;
+}
+
+// Quiet surface for security notes and references. Deliberately not a tinted
+// "alert" box — nothing here is an alert.
+function panel(html) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:22px 0;">
+    <tr><td style="background:${BRAND.panel};border:1px solid ${BRAND.line};border-radius:12px;padding:16px 18px;font-family:${FONT};font-size:14px;line-height:1.6;color:${BRAND.body};">${html}</td></tr>
+  </table>`;
+}
+
+function eyebrow(text) {
+  return `<p style="margin:0 0 10px;font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${BRAND.faint};">${esc(text)}</p>`;
+}
+
+// Label/value pairs — order number, date, payment method. Right-aligned
+// values on desktop, stacked left on a phone.
+function metaRows(rows) {
+  const body = rows
+    .filter((r) => r && r.value)
+    .map(
+      (r) => `
+      <tr>
+        <td class="fa-stack" style="padding:9px 0;border-bottom:1px solid ${BRAND.line};font-family:${FONT};font-size:14px;color:${BRAND.body};">${esc(r.label)}</td>
+        <td class="fa-stack fa-stack--right" align="right" style="padding:9px 0;border-bottom:1px solid ${BRAND.line};font-family:${FONT};font-size:14px;font-weight:600;color:${BRAND.ink};white-space:nowrap;">${esc(r.value)}</td>
+      </tr>`
+    )
+    .join("");
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:20px 0 6px;">${body}</table>`;
+}
+
+// The purchased item, the way the site shows it: cover, name, creator.
+// `imageUrl` must already be an absolute, email-safe raster (see
+// lib/emailImage.js) — passing a WebP derivative here would render as a
+// broken image in Outlook.
+function productCard({ name, creator, imageUrl, priceLabel }) {
+  const cover = imageUrl
+    ? `<td width="76" style="width:76px;padding-right:16px;vertical-align:top;">
+         <img src="${esc(imageUrl)}" alt="" width="76" height="76"
+              style="display:block;width:76px;height:76px;border:0;border-radius:10px;object-fit:cover;background:${BRAND.panel};">
+       </td>`
+    : "";
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:20px 0 4px;">
+      <tr>
+        <td style="padding:16px;background:${BRAND.panel};border:1px solid ${BRAND.line};border-radius:12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+            <tr>
+              ${cover}
+              <td style="vertical-align:top;font-family:${FONT};">
+                <p style="margin:0 0 3px;font-size:16px;font-weight:700;line-height:1.3;color:${BRAND.ink};">${esc(name)}</p>
+                ${creator ? `<p style="margin:0 0 6px;font-size:14px;line-height:1.4;color:${BRAND.body};">${esc(creator)}</p>` : ""}
+                ${priceLabel ? `<p style="margin:0;font-size:14px;font-weight:600;color:${BRAND.ink};">${esc(priceLabel)}</p>` : ""}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
+}
+
+// Order lines and totals.
+function orderTable({ orderItems, totalCents, discountCents = 0, currency = "USD" }) {
+  const rows = orderItems
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:11px 0;border-bottom:1px solid ${BRAND.line};font-family:${FONT};font-size:14px;line-height:1.4;color:${BRAND.ink};">
+          ${esc(item.product ? item.product.name : item.name)}
+        </td>
+        <td align="right" style="padding:11px 0;border-bottom:1px solid ${BRAND.line};font-family:${FONT};font-size:14px;color:${BRAND.ink};white-space:nowrap;">
+          ${money(item.priceCents, currency)}
+        </td>
+      </tr>`
+    )
+    .join("");
+
+  const subtotalCents = Number(totalCents || 0) + Number(discountCents || 0);
+  const discountRow = discountCents
+    ? `<tr>
+         <td style="padding:8px 0 0;font-family:${FONT};font-size:14px;color:${BRAND.body};">Discount</td>
+         <td align="right" style="padding:8px 0 0;font-family:${FONT};font-size:14px;color:${BRAND.success};white-space:nowrap;">&minus;${money(discountCents, currency)}</td>
+       </tr>`
+    : "";
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:4px 0 0;">
+      ${rows}
+      <tr>
+        <td style="padding:12px 0 0;font-family:${FONT};font-size:14px;color:${BRAND.body};">Subtotal</td>
+        <td align="right" style="padding:12px 0 0;font-family:${FONT};font-size:14px;color:${BRAND.body};white-space:nowrap;">${money(subtotalCents, currency)}</td>
+      </tr>
+      ${discountRow}
+      <tr>
+        <td style="padding:14px 0 0;font-family:${FONT};font-size:15px;font-weight:700;color:${BRAND.ink};border-top:1px solid ${BRAND.ink};">Total paid</td>
+        <td align="right" style="padding:14px 0 0;font-family:${FONT};font-size:19px;font-weight:700;color:${BRAND.ink};white-space:nowrap;border-top:1px solid ${BRAND.ink};">${money(totalCents, currency)}</td>
+      </tr>
+    </table>`;
+}
+
+// preheader: the grey line clients show beside the subject in the inbox list.
+// Left unset it fills with whatever text comes first, which for a receipt
+// would be the logo's alt text, so every template sets one.
+function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, eyebrow: eyebrowText, heading, bodyHtml }) {
+  const safeStore = esc(storeName || COMPANY.name);
+  const site = String(appUrl || "").replace(/\/$/, "");
+
+  // The mark, never a text substitute. If the URL is ever missing, the alt
+  // text carries the name rather than a styled wordmark pretending to be one.
   const brandMark = logoUrl
-    ? `<img src="${esc(logoUrl)}" alt="${safeStore}" width="132" style="display:block;border:0;max-width:132px;height:auto;">`
-    : `<span style="font-family:Helvetica,Arial,sans-serif;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:${BRAND.ink};">${safeStore}</span>`;
+    ? `<img src="${esc(logoUrl)}" alt="${safeStore}" width="148" height="83"
+            style="display:block;width:148px;height:auto;border:0;outline:none;text-decoration:none;">`
+    : `<span style="font-family:${FONT};font-size:20px;font-weight:700;color:${BRAND.ink};">${safeStore}</span>`;
+  const markLinked = site ? `<a href="${esc(site)}" style="text-decoration:none;border:0;">${brandMark}</a>` : brandMark;
 
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -69,15 +210,23 @@ function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, hea
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>${esc(heading || safeStore)}</title>
 <style>
-  /* Stripped by some clients — everything here is an enhancement only. */
-  @media only screen and (max-width:600px) {
-    .co-wrap { width:100% !important; }
-    .co-pad { padding-left:22px !important; padding-right:22px !important; }
-    .co-h1 { font-size:23px !important; }
-    .co-stack { display:block !important; width:100% !important; text-align:left !important; }
-    .co-stack-right { text-align:left !important; padding-top:4px !important; }
+  /* Enhancement only — stripped by some clients, and nothing below is load-bearing.
+     560px, not 600: the card itself is 600 wide, and a max-width:600px query
+     matches a client rendering at exactly that, which stacked the order rows
+     on desktop. Every phone this has to hold at is 430 or narrower. */
+  @media only screen and (max-width:560px) {
+    .fa-wrap { width:100% !important; }
+    .fa-pad { padding-left:22px !important; padding-right:22px !important; }
+    .fa-h1 { font-size:24px !important; }
+    .fa-stack { display:block !important; width:100% !important; text-align:left !important; }
+    .fa-stack--right { text-align:left !important; padding-top:2px !important; padding-bottom:8px !important; }
+    /* Full-width tap targets on a phone, where the thumb is the pointer. */
+    .fa-btn { width:100% !important; }
+    .fa-btn td { display:block !important; width:100% !important; }
+    .fa-btn__a { display:block !important; width:auto !important; text-align:center !important; }
   }
 </style>
 </head>
@@ -85,26 +234,36 @@ function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, hea
   <div style="display:none;font-size:1px;color:${BRAND.bg};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${esc(preheader || "")}</div>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${BRAND.bg};">
     <tr>
-      <td align="center" style="padding:26px 12px;">
-        <table role="presentation" class="co-wrap" cellpadding="0" cellspacing="0" border="0" width="600"
-               style="width:600px;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${BRAND.line};">
+      <td align="center" style="padding:32px 12px 40px;">
+        <!-- width attribute for Outlook, which needs a fixed number; width:100%
+             with a max for everything else, so a narrow reading pane shrinks
+             the card instead of overflowing it. -->
+        <table role="presentation" class="fa-wrap" cellpadding="0" cellspacing="0" border="0" width="600"
+               style="width:100%;max-width:600px;background:${BRAND.card};border-radius:16px;border:1px solid ${BRAND.line};">
           <tr>
-            <td class="co-pad" style="padding:28px 34px 0;">${brandMark}</td>
+            <td class="fa-pad" style="padding:30px 36px 0;">${markLinked}</td>
           </tr>
           <tr>
-            <td class="co-pad" style="padding:22px 34px 30px;font-family:Helvetica,Arial,sans-serif;color:${BRAND.body};font-size:15px;line-height:1.6;">
-              ${heading ? `<h1 class="co-h1" style="margin:0 0 14px;font-size:26px;line-height:1.25;font-weight:800;letter-spacing:-0.02em;color:${BRAND.ink};">${esc(heading)}</h1>` : ""}
+            <td class="fa-pad" style="padding:26px 36px 32px;font-family:${FONT};color:${BRAND.body};font-size:15px;line-height:1.65;">
+              ${eyebrowText ? eyebrow(eyebrowText) : ""}
+              ${heading ? `<h1 class="fa-h1" style="margin:0 0 12px;font-size:27px;line-height:1.22;font-weight:700;letter-spacing:-0.02em;color:${BRAND.ink};">${esc(heading)}</h1>` : ""}
               ${bodyHtml}
             </td>
           </tr>
           <tr>
-            <td class="co-pad" style="padding:20px 34px 28px;border-top:1px solid ${BRAND.line};font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:${BRAND.muted};">
-              <p style="margin:0 0 6px;">
-                Need a hand? Email
+            <td class="fa-pad" style="padding:22px 36px 30px;border-top:1px solid ${BRAND.line};font-family:${FONT};font-size:13px;line-height:1.7;color:${BRAND.faint};">
+              <p style="margin:0 0 10px;color:${BRAND.body};">
+                Questions? Email
                 <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.ink};font-weight:600;text-decoration:underline;">${esc(supportEmail)}</a>
-                and a human will reply.
+                and a person will answer.
               </p>
-              <p style="margin:0;">&copy; ${new Date().getFullYear()} ${safeStore}${appUrl ? ` &middot; <a href="${esc(appUrl)}" style="color:${BRAND.muted};text-decoration:underline;">${esc(String(appUrl).replace(/^https?:\/\//, ""))}</a>` : ""}</p>
+              <p style="margin:0 0 2px;color:${BRAND.ink};font-weight:600;">${safeStore}</p>
+              <p style="margin:0 0 10px;">${esc(COMPANY.city)} &middot; <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(supportEmail)}</a></p>
+              <p style="margin:0;">
+                ${site ? `<a href="${esc(site)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(site.replace(/^https?:\/\//, ""))}</a> &middot; ` : ""}
+                <a href="${esc(site)}/contact" style="color:${BRAND.faint};text-decoration:underline;">Contact</a>
+                &middot; &copy; ${new Date().getFullYear()} ${safeStore}
+              </p>
             </td>
           </tr>
         </table>
@@ -115,55 +274,18 @@ function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, hea
 </html>`;
 }
 
-// Order lines + totals, shared by the purchase receipt and any admin resend
-// of it. Two columns that stack on narrow screens via .co-stack.
-function orderTable({ orderItems, totalCents, discountCents = 0, currency = "USD" }) {
-  const rows = orderItems
-    .map(
-      (item) => `
-      <tr>
-        <td style="padding:12px 0;border-bottom:1px solid ${BRAND.line};font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${BRAND.ink};font-weight:600;">
-          ${esc(item.product ? item.product.name : item.name)}
-        </td>
-        <td align="right" style="padding:12px 0;border-bottom:1px solid ${BRAND.line};font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${BRAND.ink};white-space:nowrap;">
-          ${money(item.priceCents, currency)}
-        </td>
-      </tr>`
-    )
-    .join("");
-
-  const subtotalCents = Number(totalCents || 0) + Number(discountCents || 0);
-  const discountRow = discountCents
-    ? `<tr>
-         <td style="padding:6px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:${BRAND.body};">Discount</td>
-         <td align="right" style="padding:6px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#16a34a;white-space:nowrap;">&minus;${money(discountCents, currency)}</td>
-       </tr>`
-    : "";
-
-  return `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:8px 0 4px;">
-      ${rows}
-      <tr>
-        <td style="padding:12px 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:${BRAND.body};">Subtotal</td>
-        <td align="right" style="padding:12px 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:${BRAND.body};white-space:nowrap;">${money(subtotalCents, currency)}</td>
-      </tr>
-      ${discountRow}
-      <tr>
-        <td style="padding:6px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:${BRAND.body};">Delivery</td>
-        <td align="right" style="padding:6px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#16a34a;white-space:nowrap;">Instant</td>
-      </tr>
-      <tr>
-        <td style="padding:14px 0 0;border-top:2px solid ${BRAND.ink};font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:${BRAND.ink};">Total paid</td>
-        <td align="right" style="padding:14px 0 0;border-top:2px solid ${BRAND.ink};font-family:Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;color:${BRAND.ink};white-space:nowrap;">${money(totalCents, currency)}</td>
-      </tr>
-    </table>`;
-}
-
-// Neutral info panel used for order references and security notes.
-function panel(html) {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:20px 0;">
-    <tr><td style="background:${BRAND.bg};border-radius:10px;padding:15px 18px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;color:${BRAND.body};">${html}</td></tr>
-  </table>`;
-}
-
-module.exports = { renderLayout, orderTable, button, panel, esc, money, BRAND };
+module.exports = {
+  renderLayout,
+  orderTable,
+  productCard,
+  metaRows,
+  button,
+  buttonPair,
+  panel,
+  eyebrow,
+  esc,
+  money,
+  BRAND,
+  FONT,
+  COMPANY,
+};

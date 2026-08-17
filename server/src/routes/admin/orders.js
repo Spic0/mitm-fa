@@ -112,6 +112,7 @@ router.post("/:id/resend-email", async (req, res) => {
       provider: order.provider,
       customerName: order.user.name,
       magicLink: buildMagicLinkUrl(magicToken),
+      orderDate: order.createdAt,
     });
     await prisma.order.update({ where: { id: order.id }, data: { deliveryStatus: "resent" } });
     await logEvent({

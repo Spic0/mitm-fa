@@ -1,7 +1,11 @@
 const { Resend } = require("resend");
 const { prisma } = require("../db");
 const { getSettings, getStoreName } = require("./settings");
-const { renderLayout, orderTable, button, panel, esc } = require("./emailLayout");
+const {
+  renderLayout, orderTable, productCard, metaRows,
+  button, buttonPair, panel, esc, money,
+} = require("./emailLayout");
+const { emailCoverPath } = require("./emailImage");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,14 +23,40 @@ async function getFrom() {
 
 // Collects everything the shared layout needs in one settings read, so a
 // template render is one DB round-trip rather than one per brand value.
+// The official mark, rastered for email by tools/build-email-assets.js. This
+// is a code default rather than a Settings value on purpose: Settings.logoUrl
+// is empty on this install, and an empty one used to fall through to a styled
+// text wordmark, so every email went out with type standing in for the brand.
+// An admin-set logoUrl still wins, but the floor is the real logo.
+const BRAND_LOGO_PATH = "/assets/images/logo/fa-logo-email.png";
+
 async function brandContext() {
   const settings = await getSettings();
   return {
     storeName: settings.storeName,
-    logoUrl: settings.logoUrl ? absoluteUrl(settings.logoUrl) : "",
-    appUrl: process.env.APP_URL || "",
+    logoUrl: absoluteUrl(settings.logoUrl || BRAND_LOGO_PATH),
+    appUrl: (process.env.APP_URL || "").replace(/\/$/, ""),
     supportEmail: SUPPORT_EMAIL,
   };
+}
+
+// "August 17, 2026" — the same form the confirmation page shows, so the
+// receipt and the site agree.
+function formatDate(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+}
+
+// The customer-facing order number, matching assets/js/order-success.js so a
+// customer comparing the email to the site sees one reference, not two.
+function orderRef(orderId) {
+  return orderId ? `#${String(orderId).slice(-8).toUpperCase()}` : "";
+}
+
+function firstName(name) {
+  const first = String(name || "").trim().split(/\s+/)[0];
+  return first || "";
 }
 
 // Email clients cannot resolve "/assets/images/logo.svg" — a logo has to be
@@ -68,71 +98,90 @@ async function sendAndLog({ to, subject, html }) {
 // mailbox IS the verification, proven every time this link is used. The
 // `intent` argument only changes the wording, never the mechanism — a single
 // well-tested token path is worth more than three near-identical ones.
-async function sendMagicLinkEmail(email, link, intent = "signin") {
+async function magicLinkEmail(link, intent = "signin") {
   const brand = await brandContext();
   const copy = {
     signin: {
-      subject: `Your ${brand.storeName} sign-in link`,
-      preheader: "Your secure sign-in link — expires in 15 minutes.",
-      heading: "Sign in to your account",
-      lead: `Tap the button below to sign in to ${esc(brand.storeName)}. No password needed.`,
+      subject: `Your ${brand.storeName} access link`,
+      preheader: "Your access link is ready. It expires in 15 minutes.",
+      eyebrow: "Secure sign in",
+      heading: `Your ${brand.storeName} access is ready.`,
+      lead: "Use the button below to open your account. There is no password to enter.",
+      cta: "Open my Fitness Agency account",
     },
     verify: {
       subject: `Confirm your email for ${brand.storeName}`,
-      preheader: "Confirm your email address to activate your account.",
-      heading: "Confirm your email",
-      lead: "Tap the button below to confirm this address and finish setting up your account.",
+      preheader: "Confirm your address to finish setting up your account.",
+      eyebrow: "One step left",
+      heading: "Confirm your email address.",
+      lead: "Use the button below to confirm this address and finish setting up your account.",
+      cta: "Confirm my email",
     },
     reset: {
       subject: `Reset your ${brand.storeName} password`,
-      preheader: "Use this secure link to get back into your account.",
-      heading: "Reset your password",
+      preheader: "Use this secure link to set a new password.",
+      eyebrow: "Password reset",
+      heading: "Reset your password.",
       lead:
-        "Tap the button below to sign in securely. Once you're in, you can set a new password " +
-        "from your account settings.",
+        "Use the button below to sign in securely. Once you are in, you can set a new password " +
+        "under My Profile.",
+      cta: "Reset my password",
     },
   }[intent] || {};
 
   const html = renderLayout({
     ...brand,
     preheader: copy.preheader,
+    eyebrow: copy.eyebrow,
     heading: copy.heading,
+    // The token lives in the button's href and nowhere else. Printing the URL
+    // as visible text puts a working credential into forwarded mail, quoted
+    // replies and screenshots, and the button covers every client that can
+    // open a link at all.
     bodyHtml: `
-      <p style="margin:0 0 4px;">${copy.lead}</p>
-      ${button(intent === "reset" ? "Sign in securely" : "Sign in", link)}
+      <p style="margin:0 0 20px;">${esc(copy.lead)}</p>
+      ${button(copy.cta, link)}
       ${panel(
-        `<strong style="color:#0f172a;">This link expires in 15 minutes and can only be used once.</strong><br>
-         If you didn't request it, you can safely ignore this email — nothing will change.`
-      )}
-      <p style="margin:18px 0 0;font-size:13px;color:#94a3b8;word-break:break-all;">
-        If the button doesn't work, paste this into your browser:<br>
-        <a href="${esc(link)}" style="color:#475569;">${esc(link)}</a>
-      </p>`,
+        `<strong style="color:#1a1a1a;">This link expires in 15 minutes and works once.</strong><br>
+         If you did not request it, you can ignore this email. Nothing changes until the link is used.`
+      )}`,
   });
 
-  await sendAndLog({ to: email, subject: copy.subject, html });
+  return { subject: copy.subject, html };
+}
+
+async function sendMagicLinkEmail(email, link, intent = "signin") {
+  const { subject, html } = await magicLinkEmail(link, intent);
+  return sendAndLog({ to: email, subject, html });
 }
 
 // ---------------------------------------------------------------------------
 // Welcome
 // ---------------------------------------------------------------------------
-async function sendWelcomeEmail(email, { name } = {}) {
+async function welcomeEmail({ name } = {}) {
   const brand = await brandContext();
+  const first = firstName(name);
   const html = renderLayout({
     ...brand,
-    preheader: `Welcome to ${brand.storeName} — here's how to get started.`,
-    heading: name ? `Welcome, ${esc(String(name).split(" ")[0])}` : `Welcome to ${esc(brand.storeName)}`,
+    preheader: "Your account is ready and your programs are waiting.",
+    eyebrow: "Account ready",
+    heading: first ? `Welcome to ${brand.storeName}, ${first}.` : `Welcome to ${brand.storeName}.`,
     bodyHtml: `
-      <p style="margin:0 0 14px;">Your account is ready. Everything you buy lands in your library
-      instantly and stays there for life — no subscription, no expiry.</p>
-      ${button("Go to My Library", `${brand.appUrl}/my-library`)}
+      <p style="margin:0 0 6px;">Your account is ready. Every program you buy appears in your
+      library straight away and stays there for good, with no subscription and no expiry date.</p>
+      ${button("Open my library", `${brand.appUrl}/my-library`)}
       ${panel(
-        `<strong style="color:#0f172a;">Signing in later</strong><br>
-         You don't need a password. Enter your email on the sign-in page and we'll send you a
-         secure link. You can add a password from your account settings if you'd rather.`
+        `<strong style="color:#1a1a1a;">Signing in later</strong><br>
+         You do not need a password. Enter your email on the sign in page and we will send you a
+         secure link. If you would rather have a password, you can set one under My Profile.`
       )}`,
   });
-  return sendAndLog({ to: email, subject: `Welcome to ${brand.storeName}`, html });
+  return { subject: `Welcome to ${brand.storeName}`, html };
+}
+
+async function sendWelcomeEmail(email, opts = {}) {
+  const { subject, html } = await welcomeEmail(opts);
+  return sendAndLog({ to: email, subject, html });
 }
 
 // ---------------------------------------------------------------------------
@@ -142,50 +191,96 @@ async function sendWelcomeEmail(email, { name } = {}) {
 // itemised receipt, product access and support contact: they all describe the
 // same event, and splitting them into four messages for one purchase is how
 // transactional mail ends up in spam folders.
-async function sendPurchaseReceiptEmail(
-  email,
-  { orderItems, totalCents, magicLink, orderId, discountCents = 0, customerName, provider }
+async function purchaseReceiptEmail(
+  { orderItems, totalCents, magicLink, orderId, discountCents = 0, customerName, provider, orderDate }
 ) {
   const brand = await brandContext();
   const settings = await getSettings();
   const currency = settings.currency || "USD";
   const count = orderItems.length;
+  const first = firstName(customerName);
+
+  // A single purchase gets the product itself: cover, title, creator. Several
+  // at once get the itemised table, because four covers stacked in a receipt
+  // is a catalogue, not a confirmation.
+  const single = count === 1 ? orderItems[0] : null;
+  const singleProduct = single && single.product;
+  let heroHtml = "";
+  if (singleProduct) {
+    const coverPath = await emailCoverPath(singleProduct.thumbnailUrl || singleProduct.imageUrl);
+    heroHtml = productCard({
+      name: singleProduct.name,
+      creator: singleProduct.creator,
+      imageUrl: coverPath ? absoluteUrl(coverPath) : "",
+      priceLabel: money(single.priceCents, currency),
+    });
+  } else {
+    heroHtml = orderTable({ orderItems, totalCents, discountCents, currency });
+  }
+
+  // "Open my program" only when there is exactly one thing to open and we
+  // know its address. Otherwise the library is the honest destination.
+  const programHref = singleProduct && singleProduct.slug
+    ? `${brand.appUrl}/program/${encodeURIComponent(singleProduct.slug)}`
+    : "";
+  const libraryHref = `${brand.appUrl}/my-library`;
 
   const html = renderLayout({
     ...brand,
-    preheader: `Payment confirmed — ${count} ${count === 1 ? "plan is" : "plans are"} ready in your library.`,
-    heading: "Payment confirmed",
+    preheader: single
+      ? `${singleProduct ? singleProduct.name : "Your program"} is ready in your library.`
+      : `${count} programs are ready in your library.`,
+    eyebrow: "Purchase confirmed",
+    heading: first ? `Thanks, ${first}. Your purchase is confirmed.` : "Your purchase is confirmed.",
     bodyHtml: `
-      <p style="margin:0 0 6px;">${customerName ? `Thanks, ${esc(String(customerName).split(" ")[0])}. ` : "Thanks for your purchase. "}
-      Your payment went through and ${count === 1 ? "your plan is" : "all of your plans are"} unlocked and waiting in your library.</p>
+      <p style="margin:0 0 4px;">Your payment went through and
+      ${count === 1 ? "your program is" : "all of your programs are"} unlocked in your library,
+      with lifetime access.</p>
 
-      ${button("Open My Library", `${brand.appUrl}/my-library`)}
+      ${heroHtml}
 
-      <h2 style="margin:26px 0 2px;font-size:17px;font-weight:800;color:#0f172a;">Your order</h2>
-      ${orderTable({ orderItems, totalCents, discountCents, currency })}
+      ${count === 1
+        ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:16px 0 0;">
+             <tr>
+               <td style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#1a1a1a;">Total paid</td>
+               <td align="right" style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:19px;font-weight:700;color:#1a1a1a;white-space:nowrap;">${money(totalCents, currency)}</td>
+             </tr>
+           </table>`
+        : ""}
+
+      ${metaRows([
+        { label: "Order", value: orderRef(orderId) },
+        { label: "Date", value: formatDate(orderDate) },
+        { label: "Payment", value: provider ? (provider === "paypal" ? "PayPal" : "Card") : "" },
+      ])}
+
+      ${programHref
+        ? buttonPair(
+            { label: "Open my program", href: programHref },
+            { label: "Open my library", href: libraryHref }
+          )
+        : button("Open my library", libraryHref)}
 
       ${panel(
-        `${orderId ? `<strong style="color:#0f172a;">Order reference</strong><br>${esc(orderId)}<br><br>` : ""}
-         ${provider ? `<strong style="color:#0f172a;">Paid with</strong><br>${esc(provider === "paypal" ? "PayPal" : "Card")}<br><br>` : ""}
-         <strong style="color:#0f172a;">Keep this email</strong><br>
-         It's your receipt. Lifetime access — re-download any time.`
-      )}
-
-      ${
-        magicLink
-          ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#94a3b8;">
-               Opening this on a different device? Use this one-time link to sign in:<br>
-               <a href="${esc(magicLink)}" style="color:#475569;word-break:break-all;">${esc(magicLink)}</a>
-             </p>`
-          : ""
-      }`,
+        `<strong style="color:#1a1a1a;">Keep this email</strong><br>
+         It is your receipt. Your access does not expire, so you can come back to
+         ${count === 1 ? "this program" : "these programs"} whenever you want.` +
+        (magicLink
+          ? `<br><br><strong style="color:#1a1a1a;">Opening this on another device?</strong><br>
+             <a href="${esc(magicLink)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">Sign in with a one time link</a>`
+          : "")
+      )}`,
   });
 
-  return sendAndLog({
-    to: email,
-    subject: `Your ${brand.storeName} order is ready${orderId ? ` (${String(orderId).slice(-8)})` : ""}`,
+  return {
+    subject: `Your ${brand.storeName} order is confirmed${orderId ? ` (${orderRef(orderId).replace("#", "")})` : ""}`,
     html,
-  });
+  };
+}
+
+async function sendPurchaseReceiptEmail(email, opts) {
+  const { subject, html } = await purchaseReceiptEmail(opts);
+  return sendAndLog({ to: email, subject, html });
 }
 
 // ---------------------------------------------------------------------------
@@ -194,31 +289,34 @@ async function sendPurchaseReceiptEmail(
 // Two messages: the notification to the office inbox, and an acknowledgement
 // to the person who wrote in. The notification sets replyTo to the enquirer so
 // hitting Reply in the inbox goes to them rather than to the sender identity.
-async function sendContactNotificationEmail(inbox, { name, email, lines }) {
+async function contactNotificationEmail({ name, email, lines }) {
   const brand = await brandContext();
   const html = renderLayout({
     ...brand,
     preheader: `New enquiry from ${name}`,
+    eyebrow: "Contact form",
     heading: "New enquiry",
     bodyHtml: `
       ${panel(lines.map((l) => esc(l)).join("<br>"))}
       <p style="margin:16px 0 0;font-size:14px;">Reply directly to this email to answer
-      <a href="mailto:${esc(email)}" style="color:#0f172a;font-weight:600;">${esc(email)}</a>.</p>`,
+      <a href="mailto:${esc(email)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">${esc(email)}</a>.</p>`,
   });
 
+  return { subject: `New enquiry from ${name}`, html };
+}
+
+// The office copy. replyTo is the enquirer, so hitting Reply in the inbox
+// answers them rather than the sender identity — which is why this one does
+// not go through sendAndLog.
+async function sendContactNotificationEmail(inbox, { name, email, lines }) {
+  const { subject, html } = await contactNotificationEmail({ name, email, lines });
   const from = await getFrom();
-  const result = await resend.emails.send({
-    from,
-    to: inbox,
-    replyTo: email,
-    subject: `New enquiry — ${name}`,
-    html,
-  });
+  const result = await resend.emails.send({ from, to: inbox, replyTo: email, subject, html });
   try {
     await prisma.emailLog.create({
       data: {
         recipient: inbox,
-        subject: `New enquiry — ${name}`,
+        subject,
         status: result && result.error ? "failed" : "sent",
         providerResponse: JSON.stringify((result && (result.error || result.data)) || {}),
       },
@@ -229,19 +327,26 @@ async function sendContactNotificationEmail(inbox, { name, email, lines }) {
   return result;
 }
 
-async function sendContactAcknowledgementEmail(email, { name } = {}) {
+async function contactAcknowledgementEmail({ name } = {}) {
   const brand = await brandContext();
+  const first = firstName(name);
   const html = renderLayout({
     ...brand,
-    preheader: "We've got your message and will be in touch shortly.",
-    heading: "Thanks for getting in touch",
+    preheader: "We have your message and will reply within one working day.",
+    eyebrow: "Message received",
+    heading: "Thanks for getting in touch.",
     bodyHtml: `
-      <p style="margin:0 0 12px;">${name ? `Hi ${esc(String(name).split(" ")[0])}, ` : ""}we've received your
-      message and someone will read it properly — expect a reply within one working day.</p>
-      ${panel(`Need it sooner? Reply to this email or write to
-        <a href="mailto:${esc(brand.supportEmail)}" style="color:#0f172a;font-weight:600;">${esc(brand.supportEmail)}</a>.`)}`,
+      <p style="margin:0 0 6px;">${first ? `Hi ${esc(first)}, we` : "We"} have your message.
+      Someone will read it properly and reply within one working day.</p>
+      ${panel(`Need it sooner? Reply to this email, or write to
+        <a href="mailto:${esc(brand.supportEmail)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">${esc(brand.supportEmail)}</a>.`)}`,
   });
-  return sendAndLog({ to: email, subject: `We've got your message — ${brand.storeName}`, html });
+  return { subject: `We have your message, ${brand.storeName}`, html };
+}
+
+async function sendContactAcknowledgementEmail(email, opts = {}) {
+  const { subject, html } = await contactAcknowledgementEmail(opts);
+  return sendAndLog({ to: email, subject, html });
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +356,7 @@ async function sendContactAcknowledgementEmail(email, { name } = {}) {
 // actually succeeded can check `result.error`. Resend's SDK resolves with an
 // { error } object rather than rejecting, so awaiting alone is NOT enough to
 // detect a failed send.
-async function sendAdminEmail(email, { subject, body }) {
+async function adminEmail({ subject, body }) {
   const brand = await brandContext();
   const html = renderLayout({
     ...brand,
@@ -259,10 +364,26 @@ async function sendAdminEmail(email, { subject, body }) {
     heading: subject,
     bodyHtml: `<p style="margin:0;">${esc(body).replace(/\n/g, "<br>")}</p>`,
   });
-  return sendAndLog({ to: email, subject, html });
+  return { subject, html };
+}
+
+async function sendAdminEmail(email, opts) {
+  const rendered = await adminEmail(opts);
+  return sendAndLog({ to: email, subject: rendered.subject, html: rendered.html });
 }
 
 module.exports = {
+  // Pure renderers: return { subject, html } and send nothing. tools/
+  // send-test-emails.js uses these to preview every template without a
+  // provider call, which is what makes email QA possible without mailing a
+  // real customer.
+  magicLinkEmail,
+  welcomeEmail,
+  purchaseReceiptEmail,
+  contactAcknowledgementEmail,
+  contactNotificationEmail,
+  adminEmail,
+
   sendMagicLinkEmail,
   sendWelcomeEmail,
   sendPurchaseReceiptEmail,

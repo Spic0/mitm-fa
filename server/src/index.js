@@ -425,6 +425,23 @@ app.use(
         res.setHeader("Content-Type", "image/avif");
       }
 
+      // Raster images are embeddable from other origins. helmet's default
+      // Cross-Origin-Resource-Policy is `same-origin`, which is right for
+      // this app's documents but wrong for the images in a transactional
+      // email: a mail client renders our logo and product covers from a
+      // different origin by definition, and a CORP-enforcing client blocks
+      // them outright (Chrome reports ERR_BLOCKED_BY_RESPONSE.NotSameOrigin,
+      // and the customer sees a broken image where the brand should be).
+      // These files are already public and unauthenticated; CORP governs
+      // embedding, not access, so relaxing it here grants nothing new.
+      //
+      // Deliberately NOT extended to .svg: uploaded SVG is user-supplied and
+      // scriptable, and keeps the stricter treatment set further down. Email
+      // never uses SVG anyway — no mail client renders it.
+      if (/\.(?:png|jpe?g|gif|webp|avif|ico)$/i.test(filePath)) {
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      }
+
       if (/\.(?:js|css)$/.test(filePath)) {
         // `no-cache` means "revalidate before reuse", NOT "don't store": the
         // browser still keeps the file and still gets a 304 with no body when

@@ -33,6 +33,11 @@ server/_apitest.js
 *-960.webp
 *-1280.avif
 *-1280.webp
+# Email renditions of product covers (server/src/lib/emailImage.js): the same
+# kind of derived artifact, built on first use because a cover can be uploaded
+# at any time. A missing one degrades to a receipt with no thumbnail, never to
+# a broken image.
+*-email.jpg
 
 # Landing-page marketing imagery (assets/images/landing/). Operator-supplied
 # and dropped straight onto the production box — see

@@ -4585,6 +4585,122 @@ input {
   font-size: 13px;
 }
 
+/* ---- Desktop account menu ----
+   The signed-in counterpart of the header's account slot, and the only route
+   a desktop customer has to My Profile / Orders / Sign Out (on mobile those
+   live in the drawer, which is d-lg-none). Panel matches .mega-menu — same
+   surface, border, radius family and shadow — so the header has one dropdown
+   language rather than two. Opened by click, not hover: a menu that contains
+   Sign Out should not open because a pointer crossed it. */
+.header-account-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+/* #headerAccountLink carries Bootstrap's .d-flex, i.e. `display:flex
+   !important`, which the sitewide single-class `.u-hidden { display: none }`
+   cannot beat. Without this the signed-out link keeps its box after api.js
+   hides it and the header shows TWO account icons side by side. Same fix the
+   drawer rows and the checkout card-brands already carry — re-assert
+   display:none at matching weight. */
+.header-account-wrap .header-account.u-hidden {
+  display: none !important;
+}
+.header-account--menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.header-account__caret {
+  font-size: 10px;
+  color: var(--paragraph);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.header-account-wrap.is-open .header-account__caret {
+  transform: rotate(180deg);
+}
+
+.header-account-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 9999;
+  min-width: 216px;
+  padding: 8px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.14s ease-in, visibility 0.14s ease-in, transform 0.14s ease-in;
+}
+/* [hidden] keeps it out of the tab order and off screen readers while closed;
+   the class is what animates. Both are needed — a visibility transition alone
+   still leaves the items focusable in some engines. */
+.header-account-menu[hidden] {
+  display: none;
+}
+.header-account-wrap.is-open .header-account-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--heading-color);
+  transition: background-color 0.15s ease;
+}
+/* The site sets a colour on bare spans; these rows carry their own, so the
+   span has to inherit or every label goes grey but the icon does not. */
+.header-account-menu__item span {
+  color: inherit;
+}
+.header-account-menu__item i {
+  width: 16px;
+  font-size: 13px;
+  color: var(--paragraph);
+  flex-shrink: 0;
+}
+.header-account-menu__item:hover,
+.header-account-menu__item:focus-visible {
+  background-color: var(--color-surface-2);
+}
+.header-account-menu__item--quiet {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 10px 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-account-menu,
+  .header-account__caret {
+    transition: none;
+  }
+}
+
 /* Cart button */
 .header-cart-btn {
   position: relative;

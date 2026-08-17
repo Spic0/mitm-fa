@@ -108,12 +108,49 @@
                 </li>
             </ul>
             <div class="header-actions">
-                <a href="/login" id="headerAccountLink" class="header-account d-flex align-items-center js-account-link">
-                    <div class="user-icon">
-                        <i class="fa-regular fa-user"></i>
+                <!-- Two states in one slot. Signed out it is a plain link to
+                     /login. Signed in it becomes a menu carrying the same rows
+                     the drawer shows on mobile (.mobile-account-links above) —
+                     My Library, My Profile, Orders, Sign Out. Without the menu
+                     those rows existed ONLY inside the drawer, which is
+                     d-lg-none, so a desktop customer had no route to their own
+                     account settings at all. api.js does the swap once a
+                     session is confirmed; both start in the signed-out state so
+                     an API failure leaves a clean "Sign In" header. -->
+                <div class="header-account-wrap" id="headerAccountWrap">
+                    <a href="/login" id="headerAccountLink" class="header-account d-flex align-items-center js-account-link">
+                        <div class="user-icon">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                        <span class="acc-text js-account-text" id="headerAccountText">Sign In</span>
+                    </a>
+                    <button type="button" class="header-account header-account--menu u-hidden" id="headerAccountBtn"
+                            aria-expanded="false" aria-haspopup="true" aria-controls="headerAccountMenu">
+                        <div class="user-icon">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                        <span class="acc-text" id="headerAccountBtnText">My Account</span>
+                        <i class="fa-regular fa-chevron-down header-account__caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="header-account-menu" id="headerAccountMenu" role="menu" aria-labelledby="headerAccountBtn" hidden>
+                        <a href="/my-library" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-book-open" aria-hidden="true"></i>
+                            <span>My Library</span>
+                        </a>
+                        <a href="/my-profile" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-id-badge" aria-hidden="true"></i>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="/orders" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-receipt" aria-hidden="true"></i>
+                            <span>Orders</span>
+                        </a>
+                        <button type="button" class="header-account-menu__item header-account-menu__item--quiet js-signout" role="menuitem">
+                            <i class="fa-regular fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                            <span>Sign Out</span>
+                        </button>
                     </div>
-                    <span class="acc-text js-account-text" id="headerAccountText">Sign In</span>
-                </a>
+                </div>
                 <button class="header-cart-btn" id="cartToggle" aria-label="Open cart">
                     <i class="fa-regular fa-cart-shopping"></i>
                     <span class="cart-badge" id="cartCount">0</span>

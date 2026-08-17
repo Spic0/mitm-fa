@@ -210,7 +210,76 @@ document.addEventListener("DOMContentLoaded", function () {
         window.ProFitAPI.logout().then(function () { window.location.href = "/"; });
       });
     });
+
+    wireAccountMenu(label);
   }).catch(function () {
     // Not logged in or API unreachable — leave the default "Sign In" state.
   });
+
+  // The desktop header's account slot, once a session is confirmed: the
+  // "Sign In" link steps aside for a menu holding the same four rows the
+  // mobile drawer already had. Those rows previously existed ONLY inside
+  // .mobile-account-links, which is d-lg-none, so above 991px a signed-in
+  // customer had no link to /my-profile or /orders anywhere on the site.
+  //
+  // Click to open, not hover — this menu contains Sign Out, and a pointer
+  // crossing the corner of the header should never put that under the
+  // cursor. Closes on outside click, on Escape (focus returns to the
+  // button), and on any real navigation.
+  function wireAccountMenu(label) {
+    var wrap = document.getElementById("headerAccountWrap");
+    var btn = document.getElementById("headerAccountBtn");
+    var menu = document.getElementById("headerAccountMenu");
+    var link = document.getElementById("headerAccountLink");
+    var btnText = document.getElementById("headerAccountBtnText");
+    if (!wrap || !btn || !menu || !link) return;
+
+    btnText.textContent = label;
+    link.classList.add("u-hidden");
+    btn.classList.remove("u-hidden");
+
+    function open() {
+      menu.hidden = false;
+      // Two frames: the panel must be laid out in its closed transform before
+      // the class flips, or the browser coalesces both and there is no
+      // transition at all.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { wrap.classList.add("is-open"); });
+      });
+      btn.setAttribute("aria-expanded", "true");
+      document.addEventListener("click", onDocClick, true);
+      document.addEventListener("keydown", onKeydown);
+    }
+    function close(returnFocus) {
+      wrap.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("keydown", onKeydown);
+      window.setTimeout(function () {
+        if (!wrap.classList.contains("is-open")) menu.hidden = true;
+      }, 200);
+      if (returnFocus) btn.focus();
+    }
+    function isOpen() { return wrap.classList.contains("is-open"); }
+    function onDocClick(e) {
+      if (!wrap.contains(e.target)) close(false);
+    }
+    function onKeydown(e) {
+      if (e.key === "Escape" || e.key === "Esc") {
+        e.stopPropagation();
+        close(true);
+      }
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isOpen()) close(false); else open();
+    });
+    // A chosen row navigates; leaving the panel open behind it flashes on
+    // pages that restore from bfcache.
+    menu.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function () { close(false); });
+    });
+  }
 });

@@ -158,6 +158,19 @@
                         <div class="ac-grid" id="libGrid"></div>
                     </section>
 
+                    <!-- Authenticated but the library could not be read.
+                         Distinct from the empty state below on purpose: one
+                         means "you own nothing", this means "we could not
+                         find out", and they must not look the same. -->
+                    <section class="ac-section ac-hidden" id="libLoadError">
+                        <div class="ac-empty">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-triangle-exclamation" aria-hidden="true"></i></span>
+                            <h2 class="ac-h2">We couldn't load your programs</h2>
+                            <p class="ac-lead">Your purchases are safe. Refresh the page, and if it keeps happening let us know.</p>
+                            <a href="/my-library" class="ac-btn ac-btn--primary"><span>Try again</span></a>
+                        </div>
+                    </section>
+
                     <!-- Nothing owned yet -->
                     <section class="ac-section ac-hidden" id="libEmpty">
                         <div class="ac-empty ac-reveal ac-reveal--2">

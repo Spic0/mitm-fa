@@ -117,26 +117,36 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    Promise.all([
-      api.me(),
-      api.getLibrary().catch(function () { return null; }),
-    ]).then(function (results) {
-      var me = results[0];
-      var lib = results[1];
-
+    // Session first, library second — deliberately serial.
+    //
+    // /api/library is session-scoped, so with no session it can only 401,
+    // and asking anyway puts a red error in the console of every signed-out
+    // visitor for an answer we already had. It costs nothing: api.me() is
+    // already in flight from the header's own auth check and get() shares
+    // one promise per path, so this adds no round trip.
+    api.me().then(function (me) {
       if (!me || !me.user) {
         A.panel(PANELS, "libSignedOut");
-        return;
+        return null;
       }
-
       A.$("libGreet").innerHTML = greet(me.user);
       A.panel(PANELS, "libContent");
-
       // A failed library read is not a signed-out state: the customer is
       // authenticated, something else went wrong, and showing them "sign in"
       // would send them round a loop that cannot fix it.
-      renderLibrary((lib && lib.library) || []);
-      A.reveal(A.$("libContent"));
+      return api.getLibrary().then(function (lib) {
+        renderLibrary((lib && lib.library) || []);
+        A.reveal(A.$("libContent"));
+      }).catch(function () {
+        // Authenticated, but the library read failed. Deliberately NOT the
+        // empty state: "your library is waiting" would tell a customer who
+        // owns eight programs that they own none. The greeting stays, and
+        // the sections simply do not appear.
+        A.show(A.$("libContinueWrap"), false);
+        A.show(A.$("libProgramsWrap"), false);
+        A.show(A.$("libLoadError"), true);
+        A.reveal(A.$("libContent"));
+      });
     }).catch(function () {
       A.panel(PANELS, "libSignedOut");
     });

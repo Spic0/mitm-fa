@@ -74,7 +74,17 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    api.getOrders().then(function (data) {
+    // Session first, for the same reason as My Library and My Profile: a
+    // signed-out visitor must not generate a 401 to learn something
+    // api.me() already knows.
+    api.me().then(function (me) {
+      if (!me || !me.user) {
+        A.panel(PANELS, "orSignedOut");
+        return null;
+      }
+      return api.getOrders();
+    }).then(function (data) {
+      if (!data) return;
       var orders = (data && data.orders) || [];
       A.panel(PANELS, "orContent");
 

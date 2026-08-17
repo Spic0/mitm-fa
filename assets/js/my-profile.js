@@ -149,7 +149,17 @@
       api.logout().then(function () { window.location.href = "/"; });
     });
 
-    api.getProfile().then(function (data) {
+    // Session first — /api/account/profile is session-scoped and would only
+    // 401 for a signed-out visitor, logging a console error for an answer
+    // api.me() (already in flight for the header) has for free.
+    api.me().then(function (me) {
+      if (!me || !me.user) {
+        A.panel(PANELS, "prSignedOut");
+        return null;
+      }
+      return api.getProfile();
+    }).then(function (data) {
+      if (!data) return;
       profile = data.profile;
       paint();
       A.panel(PANELS, "prContent");

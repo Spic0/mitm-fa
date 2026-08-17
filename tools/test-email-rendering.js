@@ -59,7 +59,8 @@ function findChrome() {
     check("no server filesystem path leaked", !/\/var\/www/.test(html) && !/ideja/i.test(html));
     check("no old brand name", !/ProFit|Odor/i.test(html.replace(/ProFitAPI/g, "")));
     check("has a preheader", /max-height:0/.test(html));
-    check("footer carries the company block", /Winnipeg, Canada/.test(html) && /office@fitness\.agency/.test(html));
+    check("footer carries the company block", /Winnipeg, Canada/.test(html) && /info@fitness\.agency/.test(html));
+    check("no stale support address", !/office@fitness\.agency/.test(html));
 
     for (const width of [...PHONE, ...DESKTOP]) {
       const page = await browser.newPage();

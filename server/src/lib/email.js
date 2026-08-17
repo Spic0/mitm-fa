@@ -11,7 +11,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Where customers are told to write for help. Falls back to the contact
 // wizard's inbox so there is never a template with a blank support address.
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.CONTACT_INBOX || "office@fitness.agency";
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.CONTACT_INBOX || "info@fitness.agency";
 
 // RESEND_FROM_EMAIL is an operator-controlled override; otherwise the from
 // name follows the configured store name so it stays in sync with Settings.
@@ -106,7 +106,7 @@ async function magicLinkEmail(link, intent = "signin") {
       preheader: "Your access link is ready. It expires in 15 minutes.",
       eyebrow: "Secure sign in",
       heading: `Your ${brand.storeName} access is ready.`,
-      lead: "Use the button below to open your account. There is no password to enter.",
+      lead: "No password needed.",
       cta: "Open my Fitness Agency account",
     },
     verify: {
@@ -114,7 +114,7 @@ async function magicLinkEmail(link, intent = "signin") {
       preheader: "Confirm your address to finish setting up your account.",
       eyebrow: "One step left",
       heading: "Confirm your email address.",
-      lead: "Use the button below to confirm this address and finish setting up your account.",
+      lead: "One tap and your account is set up.",
       cta: "Confirm my email",
     },
     reset: {
@@ -122,9 +122,7 @@ async function magicLinkEmail(link, intent = "signin") {
       preheader: "Use this secure link to set a new password.",
       eyebrow: "Password reset",
       heading: "Reset your password.",
-      lead:
-        "Use the button below to sign in securely. Once you are in, you can set a new password " +
-        "under My Profile.",
+      lead: "Sign in below, then set a new password under My Profile.",
       cta: "Reset my password",
     },
   }[intent] || {};
@@ -142,8 +140,7 @@ async function magicLinkEmail(link, intent = "signin") {
       <p style="margin:0 0 20px;">${esc(copy.lead)}</p>
       ${button(copy.cta, link)}
       ${panel(
-        `<strong style="color:#1a1a1a;">This link expires in 15 minutes and works once.</strong><br>
-         If you did not request it, you can ignore this email. Nothing changes until the link is used.`
+        `Expires in 15 minutes and works once. Didn't ask for this? Ignore it.`
       )}`,
   });
 
@@ -163,18 +160,13 @@ async function welcomeEmail({ name } = {}) {
   const first = firstName(name);
   const html = renderLayout({
     ...brand,
-    preheader: "Your account is ready and your programs are waiting.",
+    preheader: "Your account is ready.",
     eyebrow: "Account ready",
     heading: first ? `Welcome to ${brand.storeName}, ${first}.` : `Welcome to ${brand.storeName}.`,
     bodyHtml: `
-      <p style="margin:0 0 6px;">Your account is ready. Every program you buy appears in your
-      library straight away and stays there for good, with no subscription and no expiry date.</p>
+      <p style="margin:0 0 6px;">Everything you buy lands in your library and stays there for good.</p>
       ${button("Open my library", `${brand.appUrl}/my-library`)}
-      ${panel(
-        `<strong style="color:#1a1a1a;">Signing in later</strong><br>
-         You do not need a password. Enter your email on the sign in page and we will send you a
-         secure link. If you would rather have a password, you can set one under My Profile.`
-      )}`,
+      <p style="margin:14px 0 0;font-size:14px;color:#9c9993;">No password to remember. We email you a link whenever you sign in.</p>`,
   });
   return { subject: `Welcome to ${brand.storeName}`, html };
 }
@@ -228,14 +220,12 @@ async function purchaseReceiptEmail(
   const html = renderLayout({
     ...brand,
     preheader: single
-      ? `${singleProduct ? singleProduct.name : "Your program"} is ready in your library.`
+      ? `${singleProduct ? singleProduct.name : "Your program"} is ready.`
       : `${count} programs are ready in your library.`,
     eyebrow: "Purchase confirmed",
-    heading: first ? `Thanks, ${first}. Your purchase is confirmed.` : "Your purchase is confirmed.",
+    heading: first ? `You're in, ${first}.` : "You're in.",
     bodyHtml: `
-      <p style="margin:0 0 4px;">Your payment went through and
-      ${count === 1 ? "your program is" : "all of your programs are"} unlocked in your library,
-      with lifetime access.</p>
+      <p style="margin:0 0 4px;">${count === 1 ? "Your program is" : "Your programs are"} ready in your library.</p>
 
       ${heroHtml}
 
@@ -262,12 +252,9 @@ async function purchaseReceiptEmail(
         : button("Open my library", libraryHref)}
 
       ${panel(
-        `<strong style="color:#1a1a1a;">Keep this email</strong><br>
-         It is your receipt. Your access does not expire, so you can come back to
-         ${count === 1 ? "this program" : "these programs"} whenever you want.` +
+        `Keep this as your receipt. Your access never expires.` +
         (magicLink
-          ? `<br><br><strong style="color:#1a1a1a;">Opening this on another device?</strong><br>
-             <a href="${esc(magicLink)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">Sign in with a one time link</a>`
+          ? ` On another device, <a href="${esc(magicLink)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">sign in with a one time link</a>.`
           : "")
       )}`,
   });
@@ -298,7 +285,7 @@ async function contactNotificationEmail({ name, email, lines }) {
     heading: "New enquiry",
     bodyHtml: `
       ${panel(lines.map((l) => esc(l)).join("<br>"))}
-      <p style="margin:16px 0 0;font-size:14px;">Reply directly to this email to answer
+      <p style="margin:16px 0 0;font-size:14px;">Reply to answer
       <a href="mailto:${esc(email)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">${esc(email)}</a>.</p>`,
   });
 
@@ -332,14 +319,12 @@ async function contactAcknowledgementEmail({ name } = {}) {
   const first = firstName(name);
   const html = renderLayout({
     ...brand,
-    preheader: "We have your message and will reply within one working day.",
+    preheader: "We have your message.",
     eyebrow: "Message received",
     heading: "Thanks for getting in touch.",
     bodyHtml: `
-      <p style="margin:0 0 6px;">${first ? `Hi ${esc(first)}, we` : "We"} have your message.
-      Someone will read it properly and reply within one working day.</p>
-      ${panel(`Need it sooner? Reply to this email, or write to
-        <a href="mailto:${esc(brand.supportEmail)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">${esc(brand.supportEmail)}</a>.`)}`,
+      <p style="margin:0;">${first ? `Hi ${esc(first)}, we` : "We"} have your message and will reply within
+      a working day. Need it sooner? Just reply to this email.</p>`,
   });
   return { subject: `We have your message, ${brand.storeName}`, html };
 }

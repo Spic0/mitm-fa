@@ -41,7 +41,7 @@ const SITE_ROOT = path.join(__dirname, "..", "..", "..");
 const TEMPLATE_PATH = path.join(SITE_ROOT, "private", "presentation.html");
 const VISITOR_COOKIE = "fa_pres_visitor";
 const VISITOR_TTL_MS = 365 * 24 * 60 * 60 * 1000;
-const CONTACT_INBOX = process.env.CONTACT_INBOX || "office@fitness.agency";
+const CONTACT_INBOX = process.env.CONTACT_INBOX || "info@fitness.agency";
 
 const pageRouter = express.Router();
 const apiRouter = express.Router();

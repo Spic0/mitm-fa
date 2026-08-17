@@ -15,7 +15,7 @@ const { logEvent } = require("../lib/adminLog");
 
 const router = express.Router();
 
-const CONTACT_INBOX = process.env.CONTACT_INBOX || "office@fitness.agency";
+const CONTACT_INBOX = process.env.CONTACT_INBOX || "info@fitness.agency";
 
 // Kept in sync with the wizard's steps in assets/js/contact-wizard.js. Any
 // value outside these is stored as "Other" rather than rejected outright —

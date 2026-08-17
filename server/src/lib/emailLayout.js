@@ -250,19 +250,17 @@ function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, eye
               ${bodyHtml}
             </td>
           </tr>
+          <!-- Three short lines. An address, a way to reach us, and the
+               legal line. Anything more turns the footer into a paragraph
+               nobody reads. -->
           <tr>
-            <td class="fa-pad" style="padding:22px 36px 30px;border-top:1px solid ${BRAND.line};font-family:${FONT};font-size:13px;line-height:1.7;color:${BRAND.faint};">
-              <p style="margin:0 0 10px;color:${BRAND.body};">
-                Questions? Email
-                <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.ink};font-weight:600;text-decoration:underline;">${esc(supportEmail)}</a>
-                and a person will answer.
-              </p>
+            <td class="fa-pad" style="padding:22px 36px 28px;border-top:1px solid ${BRAND.line};font-family:${FONT};font-size:13px;line-height:1.7;color:${BRAND.faint};">
               <p style="margin:0 0 2px;color:${BRAND.ink};font-weight:600;">${safeStore}</p>
-              <p style="margin:0 0 10px;">${esc(COMPANY.city)} &middot; <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(supportEmail)}</a></p>
+              <p style="margin:0 0 8px;">${esc(COMPANY.city)}</p>
               <p style="margin:0;">
-                ${site ? `<a href="${esc(site)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(site.replace(/^https?:\/\//, ""))}</a> &middot; ` : ""}
-                <a href="${esc(site)}/contact" style="color:${BRAND.faint};text-decoration:underline;">Contact</a>
-                &middot; &copy; ${new Date().getFullYear()} ${safeStore}
+                <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(supportEmail)}</a>
+                ${site ? ` &middot; <a href="${esc(site)}" style="color:${BRAND.faint};text-decoration:underline;">${esc(site.replace(/^https?:\/\//, ""))}</a>` : ""}
+                &middot; &copy; ${new Date().getFullYear()}
               </p>
             </td>
           </tr>

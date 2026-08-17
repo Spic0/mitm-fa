@@ -12,7 +12,7 @@
     "test:program-page-media": "node test-program-page-media.js",
     "test:admin-api": "node test-admin-api-resilience.js",
     "test:presentation-picker": "node test-presentation-picker.js",
-    "test": "node test-admin-api-resilience.js && node test-free-access.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js && node test-program-page-media.js && node test-product-page-media.js && node test-landing-responsive.js && node test-hero-carousel.js && node test-service-pages.js && node test-partner-profile.js && node test-partner-admin.js && node test-new-pages-responsive.js",
+    "test": "node test-admin-api-resilience.js && node test-free-access.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js && node test-program-page-media.js && node test-product-page-media.js && node test-landing-responsive.js && node test-hero-carousel.js && node test-service-pages.js && node test-partner-profile.js && node test-partner-admin.js && node test-presentation-partner.js && node test-presentation-partner-admin.js && node test-new-pages-responsive.js",
     "test:checkout-payment": "node test-checkout-payment.js",
     "test:payment-lifecycle": "node test-payment-lifecycle.js",
     "test:hero-carousel": "node test-hero-carousel.js",

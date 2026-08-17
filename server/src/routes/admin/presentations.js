@@ -7,8 +7,48 @@ const express = require("express");
 const { prisma } = require("../../db");
 const { logEvent } = require("../../lib/adminLog");
 const { generateSlug, hashPassword, normalizeContent } = require("../../lib/presentations");
+const { typeLabel } = require("../../lib/partners");
+const { normalizeImageUrl, coverMedia } = require("../../lib/media");
 
 const router = express.Router();
+
+// One row of the Partner Profile picker: the smallest useful description of
+// a profile, plus a genuinely small avatar.
+//
+// avatarThumb is the NARROWEST derivative the pipeline generated, not the
+// original. The picker draws a 32px circle, and an admin with a list of
+// profiles open would otherwise be pulling full-size portrait uploads to fill
+// them — the same over-fetch this codebase has shipped on other surfaces and
+// the reason `sizes` is spelled out on the public profile's avatar. Falls
+// back to the original for an external URL or an image that predates the
+// derivative pipeline, exactly as coverMedia's contract requires.
+function toPartnerOption(row) {
+  const normalized = row.avatarUrl ? normalizeImageUrl(row.avatarUrl) : null;
+  let avatarThumb = null;
+  if (row.avatarUrl) {
+    const cover = coverMedia(row.avatarUrl);
+    const first = cover && cover.sources && cover.sources.length ? cover.sources[0].srcset : "";
+    // srcset is "url 320w, url 640w, …" already sorted ascending by width.
+    const smallest = first ? first.split(",")[0].trim().split(/\s+/)[0] : "";
+    avatarThumb = smallest || normalized;
+  }
+  return {
+    id: row.id,
+    slug: row.slug,
+    displayName: row.displayName,
+    handle: row.handle,
+    partnerType: row.partnerType,
+    typeLabel: typeLabel(row.partnerType),
+    status: row.status,
+    avatarUrl: normalized,
+    avatarThumb,
+    // The picker's "Preview" opens this. /partners/:slug already renders a
+    // draft for a logged-in admin behind a preview banner and 404s it for
+    // everyone else, so there is no second preview route to build and no
+    // token to leak — see the note on that decision in routes/pages.js.
+    publicUrl: `/partners/${row.slug}`,
+  };
+}
 
 const STATUSES = new Set(["enabled", "disabled"]);
 const SORTABLE_FIELDS = new Set(["createdAt", "title", "updatedAt"]);
@@ -90,6 +130,32 @@ function validatePayload(body, { partial } = { partial: false }) {
   }
 
   return data;
+}
+
+// The one thing validatePayload cannot check, because it is synchronous and
+// this needs the database: that a partnerProfileId actually names a Partner.
+//
+// It is checked on the way IN rather than only at render time on purpose.
+// The renderer already fails safe (an unknown id resolves to null and the
+// section is dropped), but failing safe silently is what lets an admin save a
+// deck, close the drawer, and find out in front of a client that the profile
+// never appeared. A 400 here means the only way to store a broken reference
+// is to delete the partner afterwards — which the renderer still survives.
+//
+// An UNPUBLISHED partner is accepted and saved, not rejected. Attaching a
+// profile before publishing it is a legitimate order of work, and refusing
+// the save would force an admin to publish early just to be able to pick it.
+// The state is instead surfaced everywhere it matters: the picker labels it,
+// the drawer warns, and the deck omits the section until it is published.
+async function validateContentReferences(data) {
+  if (!data.content) return;
+  const partnerId = data.content.partnerProfileId;
+  if (!partnerId) return;
+  const partner = await prisma.partner.findUnique({
+    where: { id: partnerId },
+    select: { id: true },
+  });
+  if (!partner) throw new Error("That partner profile no longer exists");
 }
 
 // ---------------------------------------------------------------------
@@ -228,6 +294,88 @@ router.get("/", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+// GET /partner-options — the Partner Profile picker in the Content panel.
+//
+// Deliberately NOT a call to /api/admin/partners: that endpoint returns
+// every partner with its links, socials and product counts, unbounded and
+// unpaginated, which is the wrong shape for a type-ahead that opens on
+// focus. This returns the six fields the picker draws and nothing else,
+// server-side searched and hard-capped, so the editor costs the same to
+// open with three profiles or three thousand.
+//
+// MUST stay above GET /:id — Express matches in declaration order and
+// "partner-options" is a valid :id.
+//
+// Named to match /product-options on the partners router, which is the same
+// idea pointing the other way (that picker chooses Products for a profile;
+// this one chooses Profiles for a deck).
+// ---------------------------------------------------------------------
+const PARTNER_OPTION_LIMIT = 25;
+
+router.get("/partner-options", async (req, res) => {
+  const search = String(req.query.search || "").trim();
+
+  // Archived is excluded outright: it is the state that means "taken off the
+  // internet deliberately", so offering one as new deck content would only
+  // ever be a mistake. Draft IS offered — see validateContentReferences —
+  // because attaching before publishing is a normal order of work, and the
+  // picker labels its state rather than hiding it.
+  const where = { status: { in: ["published", "draft"] } };
+  if (search) {
+    where.OR = [
+      { displayName: { contains: search, mode: "insensitive" } },
+      { slug: { contains: search, mode: "insensitive" } },
+      { handle: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  // One extra row than we return, purely to answer "is there more?" without
+  // a second count query.
+  const rows = await prisma.partner.findMany({
+    where,
+    select: {
+      id: true,
+      slug: true,
+      displayName: true,
+      handle: true,
+      partnerType: true,
+      status: true,
+      avatarUrl: true,
+    },
+    // Published first, then most recently touched: the profiles an admin is
+    // actually likely to attach surface without typing anything.
+    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+    take: PARTNER_OPTION_LIMIT + 1,
+  });
+
+  const truncated = rows.length > PARTNER_OPTION_LIMIT;
+  const partners = rows.slice(0, PARTNER_OPTION_LIMIT).map(toPartnerOption);
+
+  res.json({ partners, truncated, limit: PARTNER_OPTION_LIMIT });
+});
+
+// GET /partner-options/:id — resolve the one already-saved profile when the
+// drawer opens, so it shows a real name and state instead of a bare id.
+// Kept beside the list rather than reusing /api/admin/partners/:id for the
+// same reason: the picker needs six fields, not the whole profile graph.
+router.get("/partner-options/:id", async (req, res) => {
+  const partner = await prisma.partner.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      slug: true,
+      displayName: true,
+      handle: true,
+      partnerType: true,
+      status: true,
+      avatarUrl: true,
+    },
+  });
+  if (!partner) return res.status(404).json({ error: "Partner not found" });
+  res.json({ partner: toPartnerOption(partner) });
+});
+
+// ---------------------------------------------------------------------
 // GET /:id — one, with full analytics
 // ---------------------------------------------------------------------
 router.get("/:id", async (req, res) => {
@@ -248,6 +396,7 @@ router.post("/", async (req, res) => {
   let data;
   try {
     data = validatePayload(req.body || {});
+    await validateContentReferences(data);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -287,6 +436,7 @@ router.patch("/:id", async (req, res) => {
   let data;
   try {
     data = validatePayload(req.body || {}, { partial: true });
+    await validateContentReferences(data);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

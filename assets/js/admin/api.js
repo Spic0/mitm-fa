@@ -282,6 +282,11 @@ window.AdminAPI = (function () {
     deletePresentation: function (id) { return del("/api/admin/presentations/" + id); },
     duplicatePresentation: function (id) { return post("/api/admin/presentations/" + id + "/duplicate"); },
     regeneratePresentationLink: function (id) { return post("/api/admin/presentations/" + id + "/regenerate-link"); },
+    // The Content panel's Partner Profile picker. Trimmed, searched and
+    // capped server-side — not listPartners, which returns every profile
+    // with its full link/social graph.
+    listPresentationPartnerOptions: function (params) { return get("/api/admin/presentations/partner-options?" + new URLSearchParams(params || {})); },
+    getPresentationPartnerOption: function (id) { return get("/api/admin/presentations/partner-options/" + id); },
 
     // ---- Partner Profiles ----
     // Child collections (socials/links/products) are sent as whole ordered

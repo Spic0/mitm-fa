@@ -34,6 +34,7 @@ const {
   resolveAccess,
   normalizeContent,
 } = require("../lib/presentations");
+const { PROFILE_INCLUDE, buildPublicProfile } = require("../lib/partners");
 const { sendContactNotificationEmail } = require("../lib/email");
 
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -209,6 +210,47 @@ async function loadFeaturedProduct(productId) {
   }
 }
 
+// ---------------------------------------------------------------------
+// The partner profile
+//
+// The deck's Partner Profile section renders an EXISTING /partners/:slug
+// profile. Like the featured product above it is stored as a bare id and
+// resolved on every render, so a name, bio, link or product changed in
+// Admin -> Partner Profiles shows on the next load of every deck pointing at
+// it — the deck never holds a copy of any of it.
+//
+// Unlike the featured product, this one DOES filter on status, and the
+// asymmetry is deliberate. A product inside a deck is inert artwork: it is
+// shown, and the outbound button is withheld unless the visitor is allowed
+// to open it (see productUrl below). A profile is not inert — it is a page
+// of live outbound links and product cards, and every one of them points at
+// a public URL. Rendering an unpublished profile inside a deck would
+// therefore publish its contents to anyone holding the deck link, which is
+// precisely what "draft" means it is not ready for. /partners/:slug already
+// 404s a draft for everyone but a logged-in admin; a deck must not become
+// the way around that.
+//
+// So an unpublished (or deleted) profile resolves to null here and the
+// section is dropped. The admin is told which case they are in at the point
+// of choosing, in the picker, and again on the deck row — never left to
+// discover it mid-meeting. See partner-options in routes/admin/presentations.js.
+async function loadPartnerProfile(partnerId) {
+  if (!partnerId) return null;
+  try {
+    const partner = await prisma.partner.findFirst({
+      where: { id: String(partnerId), status: "published" },
+      include: PROFILE_INCLUDE,
+    });
+    // buildPublicProfile is the SAME shaping the public page and the admin
+    // wizard preview use. Sharing it is what keeps the in-deck profile from
+    // becoming a third renderer that drifts.
+    return partner ? buildPublicProfile(partner) : null;
+  } catch (err) {
+    console.error("Failed to load presentation partner profile:", err);
+    return null;
+  }
+}
+
 // Same paired-marker trick as stripHiddenSections, for fragments that only
 // make sense in some renders. Two conditions are in play and they are not
 // the same one: IFPRODUCT guards the "View Product" buttons (needs only a
@@ -235,7 +277,7 @@ function stripConditionalBlocks(html, name, keep) {
   return out;
 }
 
-function renderDeck(html, { presentation, content, visitId, product }) {
+function renderDeck(html, { presentation, content, visitId, product, partner }) {
   const recipient = presentation.recipient ? presentation.recipient.trim() : "";
   const boot =
     `<div id="presBoot" class="u-hidden"` +
@@ -286,14 +328,45 @@ function renderDeck(html, { presentation, content, visitId, product }) {
     ? [product.creator, "Presentation material"].filter(Boolean).join(" · ")
     : "";
 
-  let out = stripHiddenSections(html, content.sections);
+  // The Partner Profile section needs BOTH the admin's section toggle and a
+  // profile that actually resolved. Folding the second condition into the
+  // section map means the "no profile selected", "profile unpublished",
+  // "profile deleted" and "section switched off" cases all take the one
+  // path that was already proven for sections: removed server-side, never
+  // sent to the browser at all.
+  const sections = { ...content.sections, partner: content.sections.partner && !!partner };
+
+  let out = stripHiddenSections(html, sections);
   // Keyed on the URL, not on the product: the buttons exist to go somewhere,
   // and a product with nowhere public to send the visitor renders without them
   // rather than with a link into a 404 mid-meeting.
   out = stripConditionalBlocks(out, "IFPRODUCT", !!productUrl);
   out = stripConditionalBlocks(out, "IFPRODUCTIMAGE", !!productImage);
+  // Guards the profile's stylesheets in <head>. The deck is otherwise a
+  // self-contained page that loads ONE stylesheet and no icon font — every
+  // glyph in it is inline SVG. The partner design system needs three more
+  // files, so they are attached only to a deck that actually shows a
+  // profile rather than charged to every deck that doesn't.
+  out = stripConditionalBlocks(out, "IFPARTNER", !!partner);
+
+  // Rendered through routes/pages' own renderPartnerMain — the same function
+  // that draws /partners/:slug — so the in-deck profile is the public profile,
+  // not a lookalike. Required lazily to match how render404 is taken from the
+  // same module below.
+  let partnerHtml = "";
+  if (partner) {
+    const { renderPartnerMain } = require("./pages");
+    // headingOffset 2: the section already contributes an <h2>, so the
+    // profile's name becomes an h3 and its own section titles h4, keeping the
+    // deck's outline monotonic.
+    partnerHtml = renderPartnerMain(partner, { tag: "div", headingOffset: 2 });
+  }
 
   return out
+    // A function replacement, not a string: profile copy is admin-authored
+    // free text and a bio containing "$&" or "$1" would otherwise be
+    // rewritten by String.replace's own substitution patterns.
+    .replace(/<!--PRES_PARTNER-->/g, () => partnerHtml)
     .replace(/<!--PRES_PRODUCT_URL-->/g, escapeHtml(productUrl))
     .replace(/<!--PRES_PRODUCT_NAME-->/g, escapeHtml(product ? product.name : "Your product"))
     .replace(/<!--PRES_PRODUCT_META-->/g, escapeHtml(productMeta))
@@ -579,7 +652,13 @@ pageRouter.get("/presentation/:slug", async (req, res) => {
   if (html == null) return notFound(req, res);
 
   const content = normalizeContent(presentation.content);
-  const product = await loadFeaturedProduct(content.featuredProductId);
+  // Both references resolved in parallel — they are independent lookups and
+  // a deck that has both should not pay for them serially in front of a
+  // waiting visitor.
+  const [product, partner] = await Promise.all([
+    loadFeaturedProduct(content.featuredProductId),
+    loadPartnerProfile(content.partnerProfileId),
+  ]);
 
   // One visit row per page load, created before the HTML goes out so its id
   // can ride along in the boot element — the client never has to round-trip
@@ -603,7 +682,7 @@ pageRouter.get("/presentation/:slug", async (req, res) => {
     console.error("Failed to record presentation visit:", err);
   }
 
-  res.type("html").send(renderDeck(html, { presentation, content, visitId, product }));
+  res.type("html").send(renderDeck(html, { presentation, content, visitId, product, partner }));
 });
 
 // ---------------------------------------------------------------------

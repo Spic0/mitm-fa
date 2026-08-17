@@ -1342,6 +1342,46 @@ body.a-modal-body-lock { overflow: hidden; }
     color: var(--a-text-muted);
 }
 
+/* ---- Partner profile picker additions ----
+   The partner picker is the product picker with an avatar and two extra
+   affordances; everything above is shared, and only what a profile needs
+   beyond a product is declared here. */
+
+/* 32px, and the markup requests the pipeline's narrowest derivative — see
+   toPartnerOption in routes/admin/presentations.js. Vertically centred with
+   the name rather than floated, so a row with no avatar (initials) and a row
+   with one line up on the same baseline. */
+.pres-picker__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--a-surface-hover, rgba(127, 127, 127, 0.12));
+    /* Initials only; harmless on the <img>. */
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--a-text-muted);
+}
+
+/* A draft selection is not an error — it saves — but it is the one state
+   where what the admin sees here and what the visitor sees differ, so it
+   gets the warning colour rather than the muted one. */
+.pres-picker__link-note--warn { color: var(--a-warning, #b45309); }
+
+.pres-picker__preview {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
 /* Status is the thing an admin most needs to see here, because it decides
    whether the deck can link out at all. Colour follows the badges already used
    in the products table so the two read as the same vocabulary. */

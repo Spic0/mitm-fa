@@ -26,6 +26,28 @@
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-600-normal.woff2" crossorigin>
     <link rel="stylesheet" href="/assets/css/presentation.css">
 
+    <!--IFPARTNER-->
+    <!-- Attached ONLY when this deck has a Partner Profile selected — the
+         server strips this whole block otherwise (IFPARTNER in
+         routes/presentation.js), so a deck without a profile still pays for
+         exactly the two files described above.
+
+         These are the real partner design system, unmodified: the profile
+         inside the deck is the same markup and the same CSS as
+         /partners/:slug, which is what keeps the two from drifting.
+           partner.css         .pprofile — the profile itself
+           media-container.css .pmedia   — the fixed-ratio product media box
+                                           partner.css expects around covers
+           all.min.css         the subsetted Font Awesome the profile's
+                                           social, link and badge icons need.
+                                           The deck's own glyphs are all
+                                           inline SVG, so this is the one
+                                           surface here that needs the font. -->
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/media-container.css">
+    <link rel="stylesheet" href="/assets/css/partner.css">
+    <!--/IFPARTNER-->
+
     <!-- Render-blocking on purpose, and the only thing on this page that is.
          It sets html.pres-js, which is what arms the scroll-reveal system's
          initial hidden state. Deferring it would let the deck paint fully
@@ -1518,6 +1540,59 @@
             </div>
         </section>
         <!--/SECTION:showcase-->
+
+        <!--SECTION:partner-->
+        <!-- ============================================================
+             7b. THE PARTNER PROFILE
+
+             Placed straight after the Product Showcase on purpose: the deck
+             has just shown WHAT is sold, and this shows the public page that
+             sells it. Together they are the two halves of the same demo.
+
+             Everything inside .pres-partner__frame is rendered server-side by
+             renderPartnerMain() in routes/pages.js — the identical function
+             behind the public /partners/:slug page. Nothing about the profile
+             is authored here or stored on the presentation: the deck holds
+             only the partner's id, so a profile edited in Admin -> Partner
+             Profiles is updated here on the next load.
+
+             The whole section is removed server-side unless a profile is
+             selected AND published AND the section is switched on.
+             ============================================================ -->
+        <section class="pres-section pres-section--deep" id="pres-partner" data-section-id="partner" data-section-label="Partner profile">
+            <div class="pres-aura" aria-hidden="true" data-parallax="-0.05">
+                <span class="pres-aura__orb pres-aura__orb--b"></span>
+            </div>
+
+            <div class="pres-container">
+                <!-- Centred, using the deck's existing pres-head--center
+                     modifier, because the profile below it is a centred
+                     column — a left-aligned head over a centred body is the
+                     one place this section would read as bolted on. -->
+                <header class="pres-head pres-head--center">
+                    <p class="pres-eyebrow" data-reveal>Partner profile</p>
+                    <h2 class="pres-h2" data-reveal>Your audience gets one link.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Every program, every offer and every channel behind a single
+                        address you own — the page that turns a following into a
+                        storefront. This is the live profile, exactly as it appears
+                        to your audience.
+                    </p>
+                </header>
+
+                <!-- The frame is the ONLY presentation-side styling. It supplies
+                     the design tokens partner.css reads from style.css (absent
+                     on this page, which runs its own --p-* scale) and drops the
+                     profile's fixed-header clearance to zero, because the deck
+                     has no fixed header to clear. It changes no colour, radius,
+                     type ramp or spacing INSIDE the profile — see
+                     presentation.css, "Partner profile frame". -->
+                <div class="pres-partner__frame" data-reveal>
+                    <!--PRES_PARTNER-->
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:partner-->
 
         <!--SECTION:catalogue-->
         <!-- ============================================================

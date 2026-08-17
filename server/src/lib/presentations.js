@@ -147,6 +147,7 @@ const SECTION_KEYS = [
   "process",
   "why",
   "showcase",
+  "partner",
   "catalogue",
   "journey",
   "value",
@@ -172,6 +173,22 @@ const DEFAULT_CONTENT = {
   // meeting. Empty means "no product picked": the buttons don't render and
   // the showcase falls back to its generic copy.
   featuredProductId: "",
+  // Which Partner Profile the deck's "Partner Profile" section renders.
+  //
+  // A Partner id, stored and resolved exactly like featuredProductId above
+  // and for the same reason: the deck holds a REFERENCE, never a copy. None
+  // of the profile's name, bio, avatar, socials, links or products is written
+  // here, so editing the profile in Admin -> Partner Profiles changes every
+  // deck that points at it on the next request, with nothing to re-save.
+  //
+  // It is deliberately a JSON pointer rather than a foreign key column: it is
+  // the exact sibling of featuredProductId in the same "Content" panel, and
+  // storing one as a relation and the other as a pointer would split a single
+  // concept across two mechanisms. See the model comment in schema.prisma.
+  //
+  // Empty means "no profile picked": the Partner Profile section is dropped
+  // server-side, exactly like a section the admin switched off.
+  partnerProfileId: "",
 };
 
 function normalizeContent(raw) {

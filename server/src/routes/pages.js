@@ -896,7 +896,8 @@ function renderPartnerSocials(profile) {
   return `<div class="pprofile__socials">${links}</div>`;
 }
 
-function renderPartnerFeatureCard(product, ctaLabel) {
+function renderPartnerFeatureCard(product, ctaLabel, h) {
+  const heading = h || ((level) => `h${level}`);
   const href = `/program/${encodeURIComponent(product.slug)}`;
   // The featured cover is the largest image on the page and sits just below
   // the fold on a phone. Eager, because it is the profile's primary
@@ -915,7 +916,7 @@ function renderPartnerFeatureCard(product, ctaLabel) {
     media +
     '<div class="pprofile__feature-body">' +
     `<span class="pprofile__feature-eyebrow">${escapeHtml(eyebrow)}</span>` +
-    `<h3 class="pprofile__feature-title">${escapeHtml(product.name)}</h3>` +
+    `<${heading(3)} class="pprofile__feature-title">${escapeHtml(product.name)}</${heading(3)}>` +
     '<div class="pprofile__feature-foot">' +
     `<span class="pprofile__price">${escapeHtml(formatProductPrice(product.priceCents))}</span>` +
     `<span class="pprofile__feature-action">${escapeHtml(ctaLabel || "View program")} <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>` +
@@ -966,8 +967,26 @@ function renderPartnerLinkRow(link, index) {
 
 // The whole <main>. Order is the brief's: identity -> socials -> primary CTA
 // -> featured product -> products -> custom links -> brand mark.
+//
+// `options.tag` swaps the container element. It exists for the private
+// presentation deck, which embeds this profile inside its own <main> — two
+// nested <main> landmarks is invalid HTML and leaves a screen reader with
+// two "main" regions on one page. Everything inside is identical either way,
+// which is the point: the deck gets the real profile markup, not a copy of it.
 function renderPartnerMain(profile, opts) {
   const options = opts || {};
+  const tag = options.tag === "div" ? "div" : "main";
+
+  // Heading levels are RELATIVE, not fixed, for the same reason the container
+  // tag is. On its own page the profile owns the document outline and its
+  // name is the h1. Embedded in the presentation deck it sits underneath that
+  // section's own <h2>, where an h1 would invert the outline — a screen
+  // reader announcing "heading level 2 … heading level 1" inside one section
+  // is a real navigation bug, not a nitpick. headingOffset shifts the whole
+  // profile down together, so the internal order (name > section titles >
+  // card titles) is preserved whatever it starts from.
+  const offset = Number(options.headingOffset) || 0;
+  const heading = (level) => `h${Math.min(level + offset, 6)}`;
   const featuredLink = profile.links.find((l) => l.featured) || null;
   const otherLinks = profile.links.filter((l) => l !== featuredLink);
   const featuredProduct = profile.products.find((p) => p.featured) || null;
@@ -978,12 +997,12 @@ function renderPartnerMain(profile, opts) {
       `Admin preview — this profile is ${escapeHtml(profile.status)} and is not publicly visible.</div>`
     : "";
 
-  let out = `${previewBar}<main class="pprofile pprofile--${escapeHtml(profile.layout)}">`;
+  let out = `${previewBar}<${tag} class="pprofile pprofile--${escapeHtml(profile.layout)}">`;
 
   // ---- Identity ----
   out += '<header class="pprofile__head">';
   out += renderPartnerAvatar(profile);
-  out += `<h1 class="pprofile__name">${escapeHtml(profile.displayName)}</h1>`;
+  out += `<${heading(1)} class="pprofile__name">${escapeHtml(profile.displayName)}</${heading(1)}>`;
   out += '<div class="pprofile__meta">';
   out += `<span class="pprofile__badge"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> ${escapeHtml(profile.typeLabel)}</span>`;
   if (profile.handle) out += `<span class="pprofile__handle">@${escapeHtml(profile.handle)}</span>`;
@@ -1008,15 +1027,15 @@ function renderPartnerMain(profile, opts) {
   // ---- Featured product ----
   if (featuredProduct) {
     out += '<section class="pprofile__section">';
-    out += '<h2 class="pprofile__section-title">Featured</h2>';
-    out += `<div class="pprofile__reveal pprofile__reveal--2">${renderPartnerFeatureCard(featuredProduct, profile.ctaLabel)}</div>`;
+    out += `<${heading(2)} class="pprofile__section-title">Featured</${heading(2)}>`;
+    out += `<div class="pprofile__reveal pprofile__reveal--2">${renderPartnerFeatureCard(featuredProduct, profile.ctaLabel, heading)}</div>`;
     out += "</section>";
   }
 
   // ---- Remaining products ----
   if (otherProducts.length) {
     out += '<section class="pprofile__section">';
-    out += `<h2 class="pprofile__section-title">${featuredProduct ? "More programs" : "Programs"}</h2>`;
+    out += `<${heading(2)} class="pprofile__section-title">${featuredProduct ? "More programs" : "Programs"}</${heading(2)}>`;
     out += '<div class="pprofile__links pprofile__links--products">';
     out += otherProducts.map((p, i) => renderPartnerProductRow(p, i)).join("");
     out += "</div></section>";
@@ -1025,7 +1044,7 @@ function renderPartnerMain(profile, opts) {
   // ---- Custom links ----
   if (otherLinks.length) {
     out += '<section class="pprofile__section">';
-    out += '<h2 class="pprofile__section-title">Links</h2>';
+    out += `<${heading(2)} class="pprofile__section-title">Links</${heading(2)}>`;
     out += '<div class="pprofile__links">';
     out += otherLinks.map((l, i) => renderPartnerLinkRow(l, i)).join("");
     out += "</div></section>";
@@ -1037,7 +1056,7 @@ function renderPartnerMain(profile, opts) {
     '<img src="/assets/images/logo/fa-logo.svg" alt="" height="22" data-brand-logo aria-hidden="true">' +
     "<span>Fitness Agency</span></a></div>";
 
-  out += "</main>";
+  out += `</${tag}>`;
   return out;
 }
 
@@ -1760,4 +1779,11 @@ router.get("/program.html", (req, res) => {
   res.redirect(301, `/my-library/${encodeURIComponent(product)}`);
 });
 
-module.exports = { router, render404, escapeHtml, appUrl };
+// renderPartnerMain is exported so the private presentation deck can render a
+// Partner Profile through the SAME function this page uses, rather than
+// growing a second profile renderer that would drift out of step (the exact
+// mistake buildPublicProfile already exists to prevent for the wizard
+// preview). Callers outside this file must pass a profile built by
+// lib/partners' buildPublicProfile and are responsible for their own access
+// check — this function renders, it does not authorise.
+module.exports = { router, render404, escapeHtml, appUrl, renderPartnerMain };

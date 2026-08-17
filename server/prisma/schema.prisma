@@ -569,7 +569,7 @@ model PrivatePresentation {
   // which sections to show). Adding a new override must never need a
   // migration. Shape:
   //   { heroEyebrow, heroTitle, heroSubtitle, welcomeNote,
-  //     featuredProductId,
+  //     featuredProductId, partnerProfileId,
   //     ctaMeetingUrl, ctaDemoUrl, ctaPartnershipUrl,
   //     sections: { who: true, services: true, ... } }
   // featuredProductId is a Product id, not a relation: it is one optional
@@ -578,6 +578,16 @@ model PrivatePresentation {
   // product does to every deck that mentions it. It is resolved (and
   // silently dropped if missing or unpublished) at render time in
   // routes/presentation.js.
+  //
+  // partnerProfileId is a Partner id and follows that decision exactly — it
+  // is the sibling of featuredProductId in the same admin "Content" panel,
+  // so it is stored the same way for the same reasons. Both are REFERENCES:
+  // no product field and no profile field (name, bio, avatar, socials,
+  // links, products) is ever copied into this blob, so an edit in
+  // Admin -> Products or Admin -> Partner Profiles shows on every deck that
+  // points at it on the very next request. Deleting a Partner leaves a
+  // dangling id that resolves to null and simply drops the section, which is
+  // the same graceful miss featuredProductId already has.
   content Json?
 
   createdById String?

@@ -232,6 +232,7 @@ window.AdminPanels.presentations = (function () {
     { key: "process", label: "How It Works" },
     { key: "why", label: "Why Fitness Agency" },
     { key: "showcase", label: "Product Showcase" },
+    { key: "partner", label: "Partner Profile" },
     { key: "catalogue", label: "What You Sell" },
     { key: "journey", label: "Customer Journey" },
     { key: "value", label: "What It's Worth" },
@@ -392,6 +393,30 @@ window.AdminPanels.presentations = (function () {
       '<p class="pres-form-hint">Swap this at any time — the deck picks the new product up on its next load, with nothing to rebuild. ' +
       'Choose "No product" to hide the View Product buttons entirely.</p>' +
       "</div>" +
+      // ---- Partner profile ----
+      // A peer of the product above, not a replacement for it: a deck can
+      // carry either, both or neither. Same heading, same picker component,
+      // same hint voice — it is the same panel doing the same job for a
+      // second kind of content.
+      '<h6 class="pres-form-heading">Partner profile</h6>' +
+      '<p class="pres-form-hint u-mb-16">Adds the Partner Profile section to the deck, showing an existing profile from ' +
+      '<strong>Partner Profiles</strong> exactly as it appears at its public address. ' +
+      "The deck stores only a reference — edit the profile there and every presentation using it updates on its next load. " +
+      "Search by name, slug or handle.</p>" +
+      '<div class="pres-form-row">' +
+      '<label for="presPartnerSearch">Partner</label>' +
+      '<div class="pres-picker" data-partner-picker>' +
+      '<input type="hidden" id="presPartnerProfile" value="' + esc(content.partnerProfileId || "") + '">' +
+      '<div class="pres-picker__current" data-picker-current>Loading…</div>' +
+      '<input type="text" id="presPartnerSearch" class="pres-picker__search" autocomplete="off" spellcheck="false"' +
+      ' placeholder="Search by name, slug or handle…" role="combobox" aria-expanded="false"' +
+      ' aria-controls="presPartnerList" aria-autocomplete="list">' +
+      '<ul class="pres-picker__list" id="presPartnerList" role="listbox" aria-label="Partner profiles" hidden></ul>' +
+      '<p class="pres-picker__meta" data-picker-meta></p>' +
+      "</div>" +
+      '<p class="pres-form-hint">Choose "No partner profile" to remove it — the section disappears from the deck. ' +
+      "The section is also listed under <strong>Sections</strong> below, so it can be switched off for one audience without losing the selection.</p>" +
+      "</div>" +
       '<h6 class="pres-form-heading">Call-to-action links</h6>' +
       '<p class="pres-form-hint u-mb-16">Leave a field empty and that button scrolls to the enquiry form instead of opening a link.</p>' +
       fieldRow("presCtaPartnershipUrl", "Continue Partnership", content.ctaPartnershipUrl, "", "url") +
@@ -411,6 +436,7 @@ window.AdminPanels.presentations = (function () {
 
     // ---- Wiring ----
     populateProductPicker(backdrop);
+    populatePartnerPicker(backdrop);
 
     backdrop.querySelectorAll("[data-drawer-action]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -609,6 +635,203 @@ window.AdminPanels.presentations = (function () {
       .catch(function () { renderCurrent(null); });
   }
 
+  // ---------------------------------------------------------------------
+  // Partner profile picker
+  //
+  // Same component, same keyboard contract and the same out-of-order request
+  // guard as the product picker above — an admin should not have to learn a
+  // second control for the second thing on the same panel.
+  //
+  // Two things it does that the product picker does not, both because a
+  // profile is a page rather than an object:
+  //
+  //   * It states the consequence of an unpublished selection instead of
+  //     just labelling it. A draft profile saves fine, but the deck will not
+  //     render it, and the admin needs to know that at the moment they pick
+  //     it rather than mid-meeting.
+  //   * It offers Preview, which opens the profile's real public URL. An
+  //     admin session already sees drafts there behind a banner, so this
+  //     needs no preview route, no token and no second renderer.
+  // ---------------------------------------------------------------------
+  function partnerStateNote(status) {
+    if (status === "published") return "live — the deck will show this profile";
+    if (status === "draft") return "draft — the deck will NOT show it until this profile is published";
+    if (status === "archived") return "archived — the deck will not show it";
+    return "unknown state — the deck will not show it";
+  }
+
+  function populatePartnerPicker(backdrop) {
+    var root = backdrop.querySelector("[data-partner-picker]");
+    if (!root) return;
+    var hidden = root.querySelector("#presPartnerProfile");
+    var searchInput = root.querySelector("#presPartnerSearch");
+    var list = root.querySelector("#presPartnerList");
+    var current = root.querySelector("[data-picker-current]");
+    var meta = root.querySelector("[data-picker-meta]");
+
+    var debounce = null;
+    var requestSeq = 0;
+    var rows = [];
+    var activeIndex = -1;
+
+    // 32px circle. Rendered from avatarThumb (the pipeline's narrowest
+    // derivative) so opening the drawer never pulls a full-size portrait.
+    function avatar(p) {
+      var src = p.avatarThumb || p.avatarUrl;
+      if (src) {
+        return '<img class="pres-picker__avatar" src="' + esc(src) + '" alt="" width="32" height="32" loading="lazy" decoding="async">';
+      }
+      // Initials, matching what the profile itself draws with no image.
+      var initials = String(p.displayName || "")
+        .split(/\s+/).filter(Boolean).slice(0, 2)
+        .map(function (w) { return w[0]; }).join("").toUpperCase();
+      return '<span class="pres-picker__avatar pres-picker__avatar--initials">' + esc(initials) + "</span>";
+    }
+
+    function renderCurrent(partner) {
+      var id = hidden.value;
+      if (!id) {
+        current.innerHTML = '<span class="pres-picker__none">No partner profile — the section is hidden</span>';
+        return;
+      }
+      if (!partner) {
+        // Same rule as the product picker: never silently clear a saved
+        // reference just because this one lookup failed.
+        current.innerHTML =
+          '<span class="pres-picker__warn">Saved partner profile <code>' + esc(id) + "</code> could not be loaded — it may have been deleted. " +
+          "It stays selected until you change it.</span>";
+        return;
+      }
+      var warn = partner.status !== "published";
+      current.innerHTML =
+        avatar(partner) +
+        '<span class="pres-picker__name">' + esc(partner.displayName) + "</span>" +
+        ' <span class="pres-badge pres-badge--' + esc(partner.status || "unknown") + '">' + esc(partner.status || "unknown") + "</span>" +
+        ' <span class="pres-picker__by">' + esc(partner.typeLabel || partner.partnerType || "") + " · /" + esc(partner.slug) + "</span>" +
+        ' <span class="pres-picker__link-note' + (warn ? " pres-picker__link-note--warn" : "") + '">' + esc(partnerStateNote(partner.status)) + "</span>" +
+        ' <a class="pres-picker__preview" href="' + esc(partner.publicUrl) + '" target="_blank" rel="noopener">Preview</a>';
+    }
+
+    function closeList() {
+      list.hidden = true;
+      searchInput.setAttribute("aria-expanded", "false");
+      activeIndex = -1;
+    }
+
+    function choose(partner) {
+      hidden.value = partner ? partner.id : "";
+      renderCurrent(partner);
+      searchInput.value = "";
+      closeList();
+      render([], null, false);
+    }
+
+    function setActive(next) {
+      var items = list.querySelectorAll("[data-idx]");
+      if (!items.length) return;
+      activeIndex = (next + items.length) % items.length;
+      items.forEach(function (el, i) {
+        el.classList.toggle("is-active", i === activeIndex);
+        if (i === activeIndex) {
+          el.setAttribute("aria-selected", "true");
+          if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+        } else el.removeAttribute("aria-selected");
+      });
+    }
+
+    // rows[0] is the explicit "no profile" choice, so removing the profile is
+    // an ordinary selection rather than a special gesture — the same shape the
+    // product picker uses.
+    function render(partners, total, truncated) {
+      rows = [{ id: "", displayName: "No partner profile — hide the section", none: true }].concat(partners);
+      list.innerHTML = rows
+        .map(function (p, i) {
+          if (p.none) {
+            return '<li class="pres-picker__opt pres-picker__opt--none" role="option" data-idx="' + i + '">' + esc(p.displayName) + "</li>";
+          }
+          return (
+            '<li class="pres-picker__opt" role="option" data-idx="' + i + '" title="' + esc(p.id) + '">' +
+            avatar(p) +
+            '<span class="pres-picker__name">' + esc(p.displayName) + "</span>" +
+            ' <span class="pres-badge pres-badge--' + esc(p.status || "unknown") + '">' + esc(p.status || "unknown") + "</span>" +
+            '<span class="pres-picker__by">' + esc(p.typeLabel || p.partnerType || "") + " · /" + esc(p.slug) + "</span>" +
+            "</li>"
+          );
+        })
+        .join("");
+
+      if (total == null) { meta.textContent = ""; return; }
+      meta.textContent = truncated
+        ? "Showing the first " + partners.length + " profiles — keep typing to narrow it down."
+        : partners.length + (partners.length === 1 ? " profile" : " profiles");
+    }
+
+    function search(term) {
+      var seq = ++requestSeq;
+      var params = {};
+      if (term) params.search = term;
+      return window.AdminAPI.listPresentationPartnerOptions(params)
+        .then(function (data) {
+          if (seq !== requestSeq) return;
+          var partners = window.AdminAPI.rows(data, "partners");
+          render(partners, partners.length, !!data.truncated);
+          list.hidden = false;
+          searchInput.setAttribute("aria-expanded", "true");
+          setActive(0);
+        })
+        .catch(function (err) {
+          if (seq !== requestSeq) return;
+          list.innerHTML = '<li class="pres-picker__opt pres-picker__opt--error">' + esc(err.message) + "</li>";
+          list.hidden = false;
+          meta.textContent = "";
+        });
+    }
+
+    searchInput.addEventListener("input", function () {
+      clearTimeout(debounce);
+      var term = searchInput.value.trim();
+      debounce = setTimeout(function () { search(term); }, PICKER_DEBOUNCE_MS);
+    });
+    searchInput.addEventListener("focus", function () {
+      if (!list.hidden) return;
+      search(searchInput.value.trim());
+    });
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) search(searchInput.value.trim()); else setActive(activeIndex + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+      else if (e.key === "Enter") {
+        if (list.hidden || activeIndex < 0) return;
+        e.preventDefault();
+        choose(rows[activeIndex].none ? null : rows[activeIndex]);
+      } else if (e.key === "Escape") {
+        if (list.hidden) return;
+        e.stopPropagation();
+        closeList();
+      }
+    });
+    list.addEventListener("mousedown", function (e) {
+      var li = e.target.closest("[data-idx]");
+      if (!li) return;
+      e.preventDefault();
+      var row = rows[parseInt(li.dataset.idx, 10)];
+      choose(row && row.none ? null : row);
+    });
+    document.addEventListener("mousedown", function (e) {
+      if (!root.contains(e.target)) closeList();
+    });
+    // Preview is a real link in the current selection; let it through rather
+    // than having the picker's own mousedown handler swallow it.
+    current.addEventListener("mousedown", function (e) {
+      if (e.target.closest(".pres-picker__preview")) e.stopPropagation();
+    });
+
+    var savedId = hidden.value;
+    if (!savedId) { renderCurrent(null); return; }
+    window.AdminAPI.getPresentationPartnerOption(savedId)
+      .then(function (data) { renderCurrent(data && data.partner); })
+      .catch(function () { renderCurrent(null); });
+  }
+
   function regenerate(backdrop, p) {
     window.AdminUI.confirmDialog({
       title: "Generate a new private link?",
@@ -670,6 +893,7 @@ window.AdminPanels.presentations = (function () {
         heroSubtitle: val("presHeroSubtitle"),
         welcomeNote: val("presWelcomeNote"),
         featuredProductId: val("presFeaturedProduct"),
+        partnerProfileId: val("presPartnerProfile"),
         ctaPartnershipUrl: val("presCtaPartnershipUrl"),
         ctaMeetingUrl: val("presCtaMeetingUrl"),
         ctaDemoUrl: val("presCtaDemoUrl"),

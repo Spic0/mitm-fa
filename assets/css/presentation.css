@@ -5176,7 +5176,99 @@ textarea:focus-visible,
 }
 
 /* -----------------------------------------------------------------------
-   24. PRINT
+   24. PARTNER PROFILE FRAME
+
+   The Partner Profile section embeds the REAL profile: the same markup from
+   renderPartnerMain() and the same assets/css/partner.css that draw the
+   public /partners/:slug page, both loaded unmodified (see the IFPARTNER
+   block in private/presentation.html). Nothing about the profile's
+   typography, buttons, imagery, spacing, card language, colours or
+   interaction is restated here — restating any of it is exactly how the
+   in-deck profile would start drifting from the public one.
+
+   What this block does is the two things that are genuinely different about
+   the deck as a HOST page, and nothing else:
+
+   1. TOKENS. partner.css reads style.css's design tokens (--color-bg,
+      --radius, --nav-ease, --span …). This deck deliberately does not load
+      style.css — it re-derives the same monochrome system under its own
+      --p-* names (see the file header). So the frame republishes the deck's
+      --p-* values under the names partner.css asks for. Same values, one
+      source: the profile inside a deck and the profile on the public site
+      resolve to identical colours, radii and shadows.
+
+   2. HEADER CLEARANCE. partner.css reserves 68px at the top of the profile
+      for the site's fixed header (see the note in partner.css and
+      [the 68px constant] used by every public inner page). The deck has no
+      fixed header — the profile sits mid-page inside a section that already
+      has its own vertical rhythm — so the clearance is zeroed. Left at 68px
+      it prints as a band of empty space above the avatar, which on a phone
+      is most of a screen of nothing.
+   -------------------------------------------------------------------- */
+.pres-partner__frame {
+  /* ---- 1. Token bridge. Values, not new colours: each right-hand side is
+     the deck's own token, which the file header already documents as being
+     style.css's value. ---- */
+  --color-bg: var(--p-bg);
+  --color-surface: var(--p-surface);
+  --color-surface-2: var(--p-surface-2);
+  --color-text: var(--p-ink);
+  --color-text-muted: var(--p-muted);
+  --color-text-faint: var(--p-faint);
+  --color-border: var(--p-border);
+  --color-primary: var(--p-ink);
+  --color-primary-hover: var(--p-ink-hover);
+  --radius: var(--p-radius);
+  --radius-pill: var(--p-radius-pill);
+  --shadow-sm: var(--p-shadow-sm);
+  --shadow-md: var(--p-shadow-md);
+  --prosto-one: var(--p-font);
+  --nav-ease: var(--p-ease);
+  --nav-dur: var(--p-dur);
+
+  /* style.css's global `span { color: var(--span) }` rule does not exist on
+     this page, so --span is undefined here and every <span> inside the
+     profile would fall back to unstyled. Bound to the profile's own text
+     colour, which is what it resolves to on the public page. See the
+     span-on-a-filled-surface trap in the project notes: partner.css already
+     sets `color: inherit` where it matters, and this keeps the rest honest. */
+  --span: var(--p-ink);
+
+  /* ---- 2. No fixed header in a deck. ---- */
+  --pprofile-header-clearance: 0px;
+
+  margin-top: clamp(28px, 4vw, 48px);
+}
+
+/* The profile is a 34rem column that centres itself (partner.css). Inside the
+   deck's wider container that is still exactly what it should be — a profile,
+   not a landing page — so the only thing needed is to keep it centred and let
+   its own padding continue to be what guarantees no horizontal overflow at
+   320px. Width is never touched here. */
+.pres-partner__frame .pprofile {
+  margin-inline: auto;
+}
+
+/* The deck sets `img { max-width: 100% }` broadly, but .pmedia boxes inside
+   the profile rely on media-container.css's own sizing; nothing to add. The
+   one deck-level rule that must not leak in is any transform on links, which
+   would fight the profile's press states. */
+.pres-partner__frame a {
+  text-decoration: none;
+}
+
+@media print {
+  /* The profile's entrance animations are a screen affordance; on paper they
+     must not leave anything at opacity 0. */
+  .pres-partner__frame .pprofile__reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* -----------------------------------------------------------------------
+   25. PRINT
    Decks get printed to PDF and emailed after the meeting — often by the
    person who was pitched, to circulate internally. Worth getting right.
    -------------------------------------------------------------------- */

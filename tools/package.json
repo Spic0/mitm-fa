@@ -31,6 +31,7 @@
     "test:email": "node send-test-emails.js && node test-email-rendering.js"
   },
   "devDependencies": {
+    "postcss": "^8.5.26",
     "puppeteer-core": "^24.43.1",
     "subset-font": "^2.5.0"
   }

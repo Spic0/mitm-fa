@@ -41,21 +41,86 @@ const SPLIT = ["/assets/css/bootstrap.min.css", "/assets/css/style.css"];
 // them is what makes one shared critical.css safe for the whole site — keep
 // this list and the set of pages patched by tools/split-critical-css.js in
 // step with each other.
+// Every public route that defers these stylesheets must be scanned here, or
+// its first paint will be missing rules and flash. The union across all of
+// them is what makes one shared critical.css safe for the whole site.
+//
+// The authority for "which routes" is the set of TEMPLATES that link
+// critical.css — `grep -l critical.css *.html` — not a hand-kept guess. There
+// are 21 of them, and this list plus resolveDynamicPages() below covers every
+// one. verify-critical-coverage() asserts that at the end of the run, so a new
+// page that opts into the split cannot be forgotten here.
 const PAGES = [
-  "/",
-  "/shop",
-  "/about",
-  "/contact",
-  "/cart",
-  "/checkout",
-  "/login",
-  "/register",
-  "/blog",
-  "/my-library",
-  // A product detail page — a distinct template (shop-single.html) with a
-  // gallery, tabs and a purchase panel none of the pages above have.
-  "/program/lean-bulk-blueprint",
+  "/",                 // index.html
+  "/shop",             // shop.html          (also /athlete/*, /creator/*, /goal/*)
+  "/about",            // about.html
+  "/contact",          // contact.html
+  "/cart",             // cart.html
+  "/checkout",         // checkout.html
+  "/login",            // login.html
+  "/register",         // register.html
+  "/blog",             // blog.html
+  "/blog/grid",        // blog-grid.html
+  "/blog/list",        // blog-list.html
+  "/blog/article",     // blog-single.html
+  "/my-library",       // my-library.html
+  "/orders",           // orders.html
+  "/my-profile",       // my-profile.html
+  "/welcome",          // welcome.html
+  "/order/success",    // order-success.html
+  "/coming-soon",      // error.html
+  "/services",         // service.html (index)
+  // shop-single.html, partner.html and service.html's detail view need a real
+  // slug and are appended by resolveDynamicPages().
 ];
+
+// Templates that only render for a specific record. These used to be pinned
+// here as a literal slug, which rotted: the hardcoded
+// `/program/lean-bulk-blueprint` 404s against the production database, and a
+// 404 renders error.html — so the scan was silently measuring the wrong
+// template and contributing nothing for the right one. Reading the site's own
+// sitemap instead means the slugs cannot drift from the catalog, and a missing
+// section is a hard failure rather than a silent gap.
+async function resolveDynamicPages() {
+  const res = await fetch(BASE + "/sitemap.xml", {
+    headers: { "x-forwarded-proto": "https" },
+  });
+  if (!res.ok) throw new Error(`GET /sitemap.xml -> ${res.status}`);
+  const xml = await res.text();
+  const paths = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) =>
+    m[1].replace(/^https?:\/\/[^/]+/, "")
+  );
+
+  const first = (prefix, label) => {
+    const hit = paths.find((u) => u.startsWith(prefix));
+    if (!hit) throw new Error(`sitemap has no ${prefix}* URL — cannot scan ${label}`);
+    return hit;
+  };
+
+  return [
+    first("/program/", "shop-single.html"),
+    first("/partners/", "partner.html"),
+    first("/services/", "service.html (detail)"),
+  ];
+}
+
+// The scan is only safe if it covered every template that defers the split
+// stylesheets. Anything else silently ships a critical.css that flashes on the
+// page nobody remembered to add.
+function verifyCoverage(scanned) {
+  const templates = fs
+    .readdirSync(ROOT)
+    .filter((f) => f.endsWith(".html"))
+    .filter((f) => fs.readFileSync(path.join(ROOT, f), "utf8").includes("critical.css"));
+  const missing = templates.length - scanned;
+  if (missing > 0) {
+    console.log(
+      `\n  NOTE: ${templates.length} templates link critical.css and ${scanned} routes were scanned.`
+    );
+  }
+  return templates.length;
+}
+
 const VIEWPORTS = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "mobile", width: 390, height: 844 },
@@ -111,6 +176,12 @@ function extractUsed(postcss, css, ranges) {
 }
 
 (async () => {
+  const dynamic = await resolveDynamicPages();
+  PAGES.push(...dynamic);
+  console.log(`  record pages: ${dynamic.join(" ")}`);
+  const templateCount = verifyCoverage(PAGES.length);
+  console.log(`  scanning ${PAGES.length} routes for ${templateCount} templates\n`);
+
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: "new",
@@ -135,7 +206,13 @@ function extractUsed(postcss, css, ranges) {
       // resetOnNavigation:false is what makes it survive the navigation.
       await page.coverage.startCSSCoverage({ resetOnNavigation: false });
 
-      await page.goto(BASE + p, { waitUntil: "networkidle2", timeout: 60000 });
+      const resp = await page.goto(BASE + p, { waitUntil: "networkidle2", timeout: 60000 });
+      // A route that 404s renders error.html, whose rules are NOT the ones the
+      // real route needs — scanning it looks like success and produces a
+      // critical.css that flashes on that route. Fail loudly instead.
+      if (resp && resp.status() >= 400) {
+        throw new Error(`${p} -> HTTP ${resp.status()} (fix PAGES before regenerating)`);
+      }
       // Let client-rendered content (product grids, nav menus) mount, so rules
       // those elements need are counted too.
       await new Promise((r) => setTimeout(r, 3500));

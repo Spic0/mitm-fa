@@ -210,59 +210,42 @@
         </section>
         <!-- Hero end here -->
 
-        <!-- Product marquee area start here: slim, continuously-scrolling strip
-             directly under the hero, showing plain product titles only — no
-             category/creator/athlete labels or icons, so it reinforces
-             product discovery without competing with the hero above it.
-             Replaces the old oversized (80px font, 105px-tall) static
-             category-name ticker that used to live much lower on the page —
-             that markup and its hardcoded labels (Strength Programs,
-             Training Plans, Cardio & HIIT, ...) are gone. Reuses the theme's
-             existing marquee CSS animation (.marquee-inner.to-left /
-             @keyframes marqueeLeft in style.css); .people-marquee below
-             (class name predates this being product-driven) only overrides
-             size/spacing, scoped so it doesn't affect any other page still
-             using the full-size ticker. Content is populated by
-             assets/js/home-dynamic.js from the same GET /api/products data
-             as the deal-cards strip further down — no hardcoded names. -->
-        <div class="marquee-wrapper text-slider people-marquee">
-            <div class="marquee-inner to-left" id="peopleMarqueeInner">
-                <ul class="marqee-list d-flex" id="peopleMarqueeList">
-                    <!-- Populated dynamically by assets/js/home-dynamic.js -->
-                </ul>
-            </div>
-        </div>
-        <!-- People marquee area end here -->
+        <!-- Featured programs area start here: real admin-managed products
+             (image, name, admin-set price). Whole card is one tap target; no
+             description text. Populated by assets/js/home-dynamic.js from
+             GET /api/products.
 
-        <!-- People strip area start here: "Shop by Athlete & Creator" —
-             slimmer card-style strip of the same admin-managed Athletes/
-             Creators data, directly below the marquee above. Populated by
-             assets/js/home-dynamic.js from GET /api/taxonomy — no hardcoded
-             names here, so a person added/renamed/removed in Admin ->
-             Navigation shows up on next load with zero HTML edits. -->
-        <section class="people-strip-area pt-20 pb-20">
-            <div class="container">
-                <div class="people-strip__head">
-                    <h3><span class="title-icon"></span> Shop by Athlete &amp; Creator</h3>
-                </div>
-                <div class="people-strip__track" id="peopleStripTrack" aria-live="polite">
-                    <!-- Populated dynamically by assets/js/home-dynamic.js -->
-                </div>
-            </div>
-        </section>
-        <!-- People strip area end here -->
+             THIS IS NOW THE FIRST SECTION AFTER THE HERO, and deliberately so.
+             Two decorative strips used to sit between them and both are gone:
+             a continuously-scrolling ticker of product TITLES (the same four
+             names this section renders as real cards, with prices and covers,
+             one screen lower), and a "Shop by Athlete & Creator" rail of
+             initials-avatar pills. That rail rendered every person TWICE —
+             once labelled ATHLETE, once CREATOR — because the same people are
+             nodes of both the `athletes` and the `creators` taxonomy and
+             home-dynamic.js flattened both lists into one strip. Athlete and
+             creator browsing was never lost: it lives in the header's Browse
+             Athletes / Browse Creators mega-menus (with product counts, covers
+             and A-Z search) on EVERY page, which is strictly more than the
+             rail offered. See changelogs/2026-08-19-hero-strip-removal.md.
 
-        <!-- Deal cards area start here: real admin-managed products (image,
-             name, admin-set price), replacing the old static "gallery-area"
-             goal tiles that lived further down the page. Whole card is one
-             tap target; no description text. Populated by
-             assets/js/home-dynamic.js from GET /api/products. -->
-        <section class="deal-cards-area pt-10 pb-60">
+             The heading's eyebrow is set by JS, not fixed here: renderDealCards
+             shows featured products when any are flagged and falls back to the
+             newest ones when none are, and the label has to stay true either
+             way. The markup default is the flagged case. -->
+        <section class="deal-cards-area">
             <div class="container">
+                <div class="section-header section-header--stacked deal-cards__head wow fadeInUp"
+                    data-wow-delay=".1s">
+                    <span class="eyebrow" data-deal-eyebrow>Featured Programs</span>
+                    <h2>Start With a Complete Plan</h2>
+                </div>
                 <div class="deal-cards__track" id="dealCardsTrack" aria-live="polite"><!--skeleton--><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><!--/skeleton--></div>
+                <a class="deal-cards__all" href="/shop">Shop All Plans <i
+                        class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
             </div>
         </section>
-        <!-- Deal cards area end here -->
+        <!-- Featured programs area end here -->
 
         <!-- Promo tiles area start here. Replaces the theme's "view-area",
              which shipped live with a vape-smoke section background, three grey

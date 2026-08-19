@@ -1162,73 +1162,154 @@
   }
 }
 
-/* ---- Value: "Everything you need to follow the plan" --------------------
-   The landing page's closing section. Replaces a trust band that counted
-   plans/coaches/sports — real numbers answering the wrong question, since
-   this page's audience is the person deciding whether to BUY a plan, not a
-   coach deciding whether to publish one.
+/* ===========================================================================
+   INSIDE EVERY PLAN — the program viewer as the argument
+   ===========================================================================
+   One idea: this is what you actually get. The program viewer preview is the
+   signature element and everything else is deliberately quiet around it —
+   a masthead, three one-line points, one button.
 
-   Deliberately NOT a SaaS feature grid: no cards, no boxes, no shadows, no
-   icons beside the headings. What carries it is editorial numbering, one
-   hairline rule per item, type weight and whitespace — the same restraint the
-   rest of this design system uses.
+   Rebuilt 2026-08-19. The previous version put a small preview beside a
+   three-line lede and then four numbered blocks under both, so the section had
+   six competing focal points and ~500px of body copy on a phone. Numbered
+   markers (01..04) imply a sequence; these were four parallel nouns, so the
+   numbers were decoration. They are gone, along with two of the four blocks.
 
-   Mobile-first. The base rules are the phone layout; columns only appear once
-   there is width for them. */
+   Still no cards, no shadows, no icons beside headings, no gradients. What
+   carries it is type weight, hairlines, whitespace and one large object —
+   the same restraint the rest of this design system uses.
+
+   Mobile-first: base rules are the phone layout; the two-column split only
+   appears once there is width for it. */
 .value-area {
   padding-top: clamp(48px, 8vw, 110px);
   padding-bottom: clamp(48px, 8vw, 110px);
 }
 
-.value__grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(28px, 5vw, 48px);
-  align-items: center;
+/* ---- Masthead ------------------------------------------------------------
+   Full width at every breakpoint. It states the idea once and gets out of the
+   way; the lede is ONE line and capped at 52ch so it never becomes a block of
+   text competing with the preview. */
+.value__masthead {
+  margin-bottom: clamp(26px, 4.5vw, 46px);
 }
 .value__title {
-  /* The section's loudest element. Sentence case, not the shouted uppercase
-     the brief sketched — uppercase at this size costs real legibility on a
-     320px screen, and the eyebrow above it already carries the tracked-caps
-     treatment that marks a section opening. */
-  font-size: clamp(28px, 6.4vw, 44px);
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-  margin: 0 0 16px;
+  /* The section's loudest text. Sentence case, not shouted uppercase —
+     uppercase at this size costs real legibility at 320px, and the eyebrow
+     above already carries the tracked-caps treatment that marks a section
+     opening. */
+  font-size: clamp(28px, 6.4vw, 46px);
+  line-height: 1.12;
+  letter-spacing: -0.022em;
+  margin: 0 0 14px;
   text-wrap: balance;
+  max-width: 18ch;
 }
 .value__lede {
-  font-size: clamp(15px, 1.6vw, 17px);
-  line-height: 1.6;
+  font-size: clamp(15px, 1.6vw, 17.5px);
+  line-height: 1.55;
   color: var(--color-text-muted);
   margin: 0;
-  max-width: 46ch;
+  /* Well inside the 65-75ch readability ceiling; this line is meant to be
+     taken in at a glance, not read. */
+  max-width: 52ch;
 }
 
-/* ---- The program preview -------------------------------------------------
-   Drawn entirely in CSS — no image request, no bytes, sharp at any density,
-   and it cannot go stale the way a screenshot would. Mirrors the real viewer:
-   week/day crumb, exercise name, a `sets × reps` pill, and a demo thumbnail.
-   Compare .pg-ex__name / .pg-ex__reps / .pg-ex__media in assets/css/program.css.
+.value__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(26px, 5vw, 44px);
+}
 
-   aria-hidden in the markup: it illustrates the interface, it is not content,
-   and a screen reader announcing three invented exercise names as though they
-   were a real program would be actively misleading. */
+/* ---- The program viewer preview -----------------------------------------
+   Drawn entirely in CSS. No image request, no bytes, sharp at any density, and
+   it cannot go stale the way a screenshot would. It mirrors the real viewer:
+   program identity, a week rail, a week/day crumb, exercise name, a
+   `sets x reps` pill and a demo thumbnail. Compare .pg-ex__name /
+   .pg-ex__reps / .pg-ex__media in assets/css/program.css.
+
+   aria-hidden in the markup: it illustrates an interface, it is not content.
+   Nothing inside it is focusable, so hiding it strands no keyboard user. */
 .value__preview { min-width: 0; }
 .vp {
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: 18px;
   background-color: var(--color-surface);
-  padding: 14px;
-  /* Fixed ratio is not wanted here — the card is sized by its own rows, and
-     because it is drawn rather than loaded there is no image to arrive late
-     and shift anything. Zero CLS with no reservation needed. */
+  padding: clamp(16px, 4vw, 26px);
+  /* Sized by its own rows. Because it is drawn rather than loaded there is no
+     image to arrive late, so this contributes zero CLS with no reservation. */
   overflow: hidden;
 }
+
+/* Identity strip: the one part fed by real data. */
 .vp__head {
-  padding-bottom: 11px;
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: clamp(13px, 2.4vw, 17px);
   border-bottom: 1px solid var(--color-border);
+}
+.vp__cover {
+  flex: 0 0 44px;
+  width: 44px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--color-surface-2);
+  display: block;
+}
+.vp__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.vp__id {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vp__creator {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+.vp__program {
+  font-size: clamp(14px, 3.4vw, 16px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--color-text);
+  /* One line. A long program name must not push the identity strip to three
+     rows and unbalance the card against the points column beside it. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Week rail: one tick per real week, the first filled. `:empty` keeps it out
+   of the layout entirely until the count arrives, so a failed products call
+   leaves no orphan gap. */
+.vp__weeks {
+  display: flex;
+  gap: 3px;
+  margin-top: 14px;
+}
+.vp__weeks:empty { display: none; }
+.vp__week {
+  flex: 1 1 0;
+  height: 3px;
+  border-radius: 2px;
+  background-color: var(--color-surface-2);
+}
+.vp__week--on { background-color: var(--color-text); }
+
+.vp__session {
+  margin-top: clamp(14px, 2.6vw, 20px);
+  margin-bottom: 2px;
 }
 .vp__crumb {
   display: block;
@@ -1241,9 +1322,9 @@
 }
 .vp__day {
   display: block;
-  font-size: 17px;
+  font-size: clamp(17px, 4.2vw, 21px);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   color: var(--color-text);
 }
 .vp__rows {
@@ -1255,16 +1336,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 0;
+  padding: clamp(9px, 1.8vw, 12px) 0;
   border-bottom: 1px solid var(--color-border);
 }
 .vp__row:last-child { border-bottom: 0; padding-bottom: 2px; }
-/* The last row fades out, so the card reads as a crop of something longer
-   rather than a complete list of three exercises. */
+/* The last row fades, so the card reads as a crop of something longer rather
+   than a complete list of four exercises. */
 .vp__row--fade { opacity: 0.42; }
 .vp__thumb {
-  flex: 0 0 44px;
-  width: 44px;
+  flex: 0 0 clamp(44px, 11vw, 54px);
+  width: clamp(44px, 11vw, 54px);
   aspect-ratio: 1;
   border-radius: 10px;
   background-color: var(--color-surface-2);
@@ -1282,7 +1363,7 @@
   align-items: flex-start;
 }
 .vp__name {
-  font-size: 14.5px;
+  font-size: clamp(14.5px, 3.6vw, 16px);
   font-weight: 650;
   line-height: 1.25;
   color: var(--color-text);
@@ -1298,71 +1379,54 @@
   color: var(--color-text);
 }
 
-/* ---- The four benefits --------------------------------------------------- */
-.value__list {
+/* ---- Three points --------------------------------------------------------
+   Verbs, not nouns, and no numbers: the label IS the structural device. Rows
+   separated by one hairline each — not cards, not boxes, not a feature grid.
+   Each is one line of copy so the whole group stays secondary to the preview
+   it sits beside. */
+.value__aside {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.value__points {
   list-style: none;
-  margin: clamp(28px, 5vw, 64px) 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0;
-  counter-reset: none;
 }
-/* Number and title share a line — "01  Your program" — rather than stacking.
-   Stacking cost a whole line of height per item, ~108px across the four on a
-   320x568 phone: the single biggest contributor to the section running long.
-   The copy drops to its own full-width row so it never loses characters to an
-   indent at narrow widths. */
-.value__item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: baseline;
-  /* Each item stretches to the tallest in its row, and a grid's `auto` rows
-     default to soaking up that leftover height — which inflated row 1 on the
-     items with shorter copy and pushed their paragraph 11px below its
-     neighbours'. `start` collects the slack at the bottom instead, so every
-     column's body copy sits on the same line. */
-  align-content: start;
-  column-gap: 10px;
-  padding: 14px 0;
+.value__point {
+  padding: clamp(13px, 2.6vw, 18px) 0;
   border-top: 1px solid var(--color-border);
 }
-.value__item:last-child { border-bottom: 1px solid var(--color-border); }
-.value__num {
-  grid-column: 1;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--color-text-faint);
-  font-variant-numeric: tabular-nums;
-}
-.value__item-title {
-  /* Uppercase via CSS, per the page's label rule — the markup keeps readable
+.value__point:last-child { border-bottom: 1px solid var(--color-border); }
+.value__point-title {
+  /* Uppercase via CSS per the page's label rule; the markup keeps readable
      Title Case for assistive tech. */
-  grid-column: 2;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 1.3;
-  margin: 0;
+  margin: 0 0 6px;
+  color: var(--color-text);
 }
-.value__item p {
-  grid-column: 1 / -1;
+.value__point p {
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--color-text-muted);
-  margin: 8px 0 0;
-  max-width: 40ch;
+  margin: 0;
+  max-width: 44ch;
 }
 
 /* ---- CTA ----------------------------------------------------------------- */
 .value__cta {
-  margin-top: clamp(22px, 4vw, 44px);
+  margin-top: clamp(22px, 3.5vw, 34px);
   display: flex;
 }
 /* Full-width on phones so the tap target spans the thumb's reach; the shared
-   .btn-one already carries the 13px vertical padding that keeps it >= 44px. */
+   .btn-one already carries the vertical padding that keeps it >= 44px. */
 .value__cta-btn {
   width: 100%;
   text-align: center;
@@ -1376,37 +1440,88 @@
   .value__cta-btn { width: auto; }
 }
 
-/* Two-up before the intro/preview split, so the benefits stop being a long
-   single column well before tablet width. */
-@media (min-width: 600px) {
-  .value__list {
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: clamp(24px, 4vw, 40px);
+/* ---- Desktop: preview leads, points read alongside it --------------------
+   NOT the old arrangement (intro left / small preview right / four columns
+   underneath). The masthead spans the full width like a title block, then the
+   preview takes the larger column and the three points sit beside it as a
+   quiet second voice. Reading order is unchanged from mobile — statement,
+   product, points, action — so the two layouts tell the same story.
+
+   1.25fr/1fr rather than an even split: the preview has to read as the bigger
+   object, and the points are one line each so they do not need the width. */
+/* 768px, not 992px: the Bootstrap container is already 720px wide here, which
+   is the same width it stays at until 992px. Leaving the split until then made
+   the tablet range the tallest rendering of the section on the whole site
+   (1261px at 768 against 882px once split), for no gain — the single column
+   was not using the 720px it had. */
+@media (min-width: 768px) {
+  /* The masthead splits on the SAME 1.25fr/1fr grid as the body below it, so
+     the title sits over the preview and the lede sits over the points. Two
+     alignments instead of a headline stranded on the left with an empty right
+     half — and the lede drops to the title's baseline rather than floating. */
+  .value__masthead {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    /* Row gap is the eyebrow-to-title distance and must stay tight; only the
+       COLUMN gap takes the section's wide gutter. */
+    row-gap: 12px;
+    column-gap: clamp(40px, 5vw, 80px);
+    align-items: end;
   }
-  /* With two columns the last-child border would underline only one cell. */
-  .value__item:last-child { border-bottom: 0; }
-  .value__item:nth-last-child(-n + 2) { border-bottom: 1px solid var(--color-border); }
+  /* Explicit placement, because the eyebrow is a sibling of the title, not a
+     wrapper around it — auto-flow would drop it into its own column. */
+  .value__masthead .eyebrow { grid-column: 1; grid-row: 1; }
+  .value__title { grid-column: 1; grid-row: 2; margin-bottom: 0; }
+  .value__lede { grid-column: 2; grid-row: 2; padding-bottom: 6px; }
+  .value__body {
+    grid-template-columns: 1.25fr 1fr;
+    gap: clamp(40px, 5vw, 80px);
+    align-items: center;
+  }
+  /* The aside is shorter than the preview beside it. Centring it against the
+     card is what stops the section ending in an empty bottom-right quadrant —
+     the failure mode of the layout this replaced. */
+  .value__aside { justify-content: center; }
+  .value__point:first-child { border-top: 0; }
+  .value__point:last-child { border-bottom: 0; }
+  .value__point p { font-size: 15px; }
+  /* Rows are the tallest thing in the card and there are four of them, so this
+     is where desktop height is won back without shrinking the type. */
+  .vp__row { padding: 11px 0; }
 }
 
-@media (min-width: 992px) {
-  .value__grid {
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: clamp(40px, 5vw, 72px);
+/* ---- Motion --------------------------------------------------------------
+   One orchestrated moment, not scattered effects: when the preview scrolls in,
+   its exercise rows land in sequence, like a session loading. WOW.js already
+   adds `.animated` to the .wow element, so this needs no observer of its own.
+
+   Opt-IN via `no-preference` rather than opt-out: if the query is unsupported
+   or motion is reduced, the rows are simply present, with no chance of being
+   left stuck at opacity 0. */
+@media (prefers-reduced-motion: no-preference) {
+  .value__preview.animated .vp__row {
+    animation: vpRowIn 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  .value__list {
-    grid-template-columns: repeat(4, 1fr);
-    column-gap: clamp(24px, 3vw, 44px);
-  }
-  /* Four columns are narrow enough at the low end of this range (~195px of
-     usable title width at 992px) that the longest label, "Your supporting
-     material", wraps to two lines while the other three do not — dropping its
-     paragraph 15px below its neighbours'. Reserving two lines for every title
-     keeps all four bodies on one line across the whole 4-up range. The cost is
-     ~17px of height, on the breakpoints that have it to spare. */
-  .value__item-title { min-height: 2.6em; }
-  .value__item:nth-last-child(-n + 2) { border-bottom: 0; }
-  .value__item:last-child { border-bottom: 0; }
-  .vp { padding: 20px; }
-  .vp__thumb { flex-basis: 52px; width: 52px; }
-  .vp__name { font-size: 15.5px; }
+  /* No delay on the first row, and 70ms between the rest. `both` holds every
+     row at opacity 0 through its own delay, so a long ladder means the card is
+     briefly EMPTY — the one thing the section's focal element must never look
+     like. Measured: the first version (160ms + 80ms steps) left all four rows
+     invisible for 560ms after the card entered. This lands the whole sequence
+     in 590ms with the first row already on screen. */
+  .value__preview.animated .vp__row:nth-child(2) { animation-delay: 70ms; }
+  .value__preview.animated .vp__row:nth-child(3) { animation-delay: 140ms; }
+  .value__preview.animated .vp__row:nth-child(4) { animation-delay: 210ms; }
+}
+@keyframes vpRowIn {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The fourth row is a crop indicator, so it must land at its faded opacity
+   rather than at 1 — otherwise the reveal ends by brightening it. */
+@media (prefers-reduced-motion: no-preference) {
+  .value__preview.animated .vp__row--fade { animation-name: vpRowInFade; }
+}
+@keyframes vpRowInFade {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 0.42; transform: none; }
 }

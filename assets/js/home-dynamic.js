@@ -20,7 +20,11 @@ document.addEventListener("DOMContentLoaded", function () {
   var dealSection = dealTrack ? dealTrack.closest(".deal-cards-area") : null;
   var dealEyebrow = dealSection ? dealSection.querySelector("[data-deal-eyebrow]") : null;
   var heroPrice = document.getElementById("heroStartingPrice");
-  if (!dealTrack && !heroPrice) return;
+  var vpCover = document.querySelector("[data-vp-cover]");
+  var vpName = document.querySelector("[data-vp-name]");
+  var vpCreator = document.querySelector("[data-vp-creator]");
+  var vpWeeks = document.querySelector("[data-vp-weeks]");
+  if (!dealTrack && !heroPrice && !vpName) return;
 
   // ---- Hero "starting price": real lowest current product price, not the
   // hardcoded (and inaccurate) "$99.00" the old hero used. Left empty
@@ -84,6 +88,63 @@ document.addEventListener("DOMContentLoaded", function () {
     return a;
   }
 
+  // ---- "Inside Every Plan" preview: the identity strip of the program-viewer
+  // illustration. Only the parts that CAN be true are filled from real data —
+  // cover, name, creator and week count, all from the public product list this
+  // function is already handed. The session rows below it stay illustrative
+  // and stay aria-hidden: real trainingContent is gated behind requireAuth +
+  // entitlement (server/src/routes/library.js), so a public page must not
+  // render it.
+  //
+  // Every write here is a no-op when the data is absent, and the markup ships
+  // neutral defaults, so a failed or empty catalog leaves a complete-looking
+  // card rather than blanks. ----
+  function renderValuePreview(products) {
+    if (!vpName) return;
+    var featured = products.filter(function (p) { return p.featured; });
+    var p = (featured.length ? featured : products)[0];
+    if (!p) return;
+
+    vpName.textContent = p.name;
+    if (vpCreator && p.creator) vpCreator.textContent = p.creator;
+
+    // smallestDerivative, not applyResponsive: this tile is never painted
+    // wider than 54px, and the smallest derivative the pipeline produces is
+    // 320px — which the featured-programs strip above has already fetched for
+    // this same product. Naming that one file directly guarantees the browser
+    // reuses it (a cache hit, zero extra bytes) instead of letting a srcset
+    // pick a larger candidate on a high-DPR screen. Falls back to the full
+    // cover only when a product has no derivatives at all.
+    var coverSrc = window.MediaContainer.smallestDerivative(p.cover) ||
+      (p.cover && p.cover.src) || p.imageUrl;
+    if (vpCover && coverSrc) {
+      var img = document.createElement("img");
+      img.src = coverSrc;
+      img.alt = "";
+      img.width = 54;
+      img.height = 54;
+      img.loading = "lazy";
+      img.decoding = "async";
+      // A cover that 404s must leave the neutral tile, not a broken-image
+      // glyph inside an otherwise finished-looking card.
+      img.onerror = function () { img.remove(); };
+      vpCover.appendChild(img);
+    }
+
+    // One tick per week of the real programme. Capped at 16 so a long plan
+    // cannot shrink the ticks into a smear; below that the rail is exact.
+    if (vpWeeks && p.durationWeeks > 0) {
+      var n = Math.min(p.durationWeeks, 16);
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < n; i++) {
+        var tick = document.createElement("span");
+        tick.className = "vp__week" + (i === 0 ? " vp__week--on" : "");
+        frag.appendChild(tick);
+      }
+      vpWeeks.appendChild(frag);
+    }
+  }
+
   function renderDealCards(products) {
     if (!dealTrack) return;
     var featured = products.filter(function (p) { return p.featured; });
@@ -104,6 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.ProFitAPI.listProducts().then(function (result) {
     var products = result.products || [];
     renderDealCards(products);
+    renderValuePreview(products);
     renderHeroPrice(products);
   }).catch(function () {
     // Real data failed to load — hide the dynamic section rather than showing

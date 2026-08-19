@@ -20,11 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var dealSection = dealTrack ? dealTrack.closest(".deal-cards-area") : null;
   var dealEyebrow = dealSection ? dealSection.querySelector("[data-deal-eyebrow]") : null;
   var heroPrice = document.getElementById("heroStartingPrice");
-  var vpCover = document.querySelector("[data-vp-cover]");
-  var vpName = document.querySelector("[data-vp-name]");
-  var vpCreator = document.querySelector("[data-vp-creator]");
-  var vpWeeks = document.querySelector("[data-vp-weeks]");
-  if (!dealTrack && !heroPrice && !vpName) return;
+  if (!dealTrack && !heroPrice && !document.getElementById("valueArea")) return;
 
   // ---- Hero "starting price": real lowest current product price, not the
   // hardcoded (and inaccurate) "$99.00" the old hero used. Left empty
@@ -88,61 +84,94 @@ document.addEventListener("DOMContentLoaded", function () {
     return a;
   }
 
-  // ---- "Inside Every Plan" preview: the identity strip of the program-viewer
-  // illustration. Only the parts that CAN be true are filled from real data —
-  // cover, name, creator and week count, all from the public product list this
-  // function is already handed. The session rows below it stay illustrative
-  // and stay aria-hidden: real trainingContent is gated behind requireAuth +
-  // entitlement (server/src/routes/library.js), so a public page must not
-  // render it.
+  // ---- "Inside Every Plan": a real product, counted ----------------------
+  // Fed by GET /api/demo, which is the only source of these numbers: they are
+  // counted server-side from stored `trainingContent`, which is gated content
+  // no public endpoint exposes. The section renders nothing it was not given —
+  // a product with no creator, no difficulty or no nutrition simply produces
+  // fewer chips and fewer rows.
   //
-  // Every write here is a no-op when the data is absent, and the markup ships
-  // neutral defaults, so a failed or empty catalog leaves a complete-looking
-  // card rather than blanks. ----
-  function renderValuePreview(products) {
-    if (!vpName) return;
-    var featured = products.filter(function (p) { return p.featured; });
-    var p = (featured.length ? featured : products)[0];
-    if (!p) return;
+  // The section starts `hidden` in the markup and is only revealed once this
+  // resolves. A failed request therefore leaves no heading, no frame and no
+  // gap: the block is either true or absent.
+  function renderValueProduct(demo) {
+    var section = document.getElementById("valueArea");
+    if (!section || !demo || !demo.product) return;
+    var p = demo.product;
+    var c = demo.contents || {};
 
-    vpName.textContent = p.name;
-    if (vpCreator && p.creator) vpCreator.textContent = p.creator;
+    var name = section.querySelector("[data-vx-name]");
+    if (name) name.textContent = p.name || "";
+    var creator = section.querySelector("[data-vx-creator]");
+    if (creator && p.creator) creator.textContent = "with " + p.creator;
 
-    // smallestDerivative, not applyResponsive: this tile is never painted
-    // wider than 54px, and the smallest derivative the pipeline produces is
-    // 320px — which the featured-programs strip above has already fetched for
-    // this same product. Naming that one file directly guarantees the browser
-    // reuses it (a cache hit, zero extra bytes) instead of letting a srcset
-    // pick a larger candidate on a high-DPR screen. Falls back to the full
-    // cover only when a product has no derivatives at all.
+    var cover = section.querySelector("[data-vx-cover]");
+    // The same cover the featured strip above already fetched, at the same
+    // derivative — a cache hit rather than a second image.
     var coverSrc = window.MediaContainer.smallestDerivative(p.cover) ||
       (p.cover && p.cover.src) || p.imageUrl;
-    if (vpCover && coverSrc) {
+    if (cover && coverSrc) {
       var img = document.createElement("img");
       img.src = coverSrc;
       img.alt = "";
-      img.width = 54;
-      img.height = 54;
       img.loading = "lazy";
       img.decoding = "async";
-      // A cover that 404s must leave the neutral tile, not a broken-image
-      // glyph inside an otherwise finished-looking card.
       img.onerror = function () { img.remove(); };
-      vpCover.appendChild(img);
+      cover.appendChild(img);
     }
 
-    // One tick per week of the real programme. Capped at 16 so a long plan
-    // cannot shrink the ticks into a smear; below that the rail is exact.
-    if (vpWeeks && p.durationWeeks > 0) {
-      var n = Math.min(p.durationWeeks, 16);
-      var frag = document.createDocumentFragment();
-      for (var i = 0; i < n; i++) {
-        var tick = document.createElement("span");
-        tick.className = "vp__week" + (i === 0 ? " vp__week--on" : "");
-        frag.appendChild(tick);
-      }
-      vpWeeks.appendChild(frag);
+    var chips = section.querySelector("[data-vx-chips]");
+    if (chips) {
+      var values = [];
+      if (p.durationWeeks) values.push(p.durationWeeks + (p.durationWeeks === 1 ? " week" : " weeks"));
+      if (p.difficulty) values.push(p.difficulty.charAt(0).toUpperCase() + p.difficulty.slice(1));
+      if (c.hasNutrition) values.push("Training + nutrition");
+      values.forEach(function (v) {
+        var li = document.createElement("li");
+        li.textContent = v;
+        chips.appendChild(li);
+      });
     }
+
+    // Counted rows only. A zero count renders nothing at all rather than
+    // "0 nutrition meals", and `demos` is held to a share of the exercises
+    // rather than merely being non-zero — 4 demos across 210 exercises is a
+    // real number and not a feature.
+    var spec = section.querySelector("[data-vx-spec]");
+    var rows = [
+      [c.weeks, "Weeks", "Structured start to finish."],
+      [c.trainingDays, "Training days", "Each a full session with its own brief."],
+      [c.exercises, "Exercises", c.movements ? "Across " + c.movements + " distinct movements." : ""],
+      [c.coachingNotes, "Coaching notes", "Setup and execution cues, per exercise."],
+      [c.swaps, "Listed swaps", "An alternative when the equipment is taken."],
+      [c.meals, "Nutrition meals", "With macros, in the same plan."],
+    ];
+    if (c.demos && c.exercises && c.demos / c.exercises >= 0.25) {
+      rows.push([c.demos, "Exercise demos", "Short demonstration clips."]);
+    }
+    if (spec) {
+      rows.forEach(function (r) {
+        if (!r[0]) return;
+        var row = document.createElement("div");
+        row.className = "value__spec-row";
+        var dt = document.createElement("dt");
+        dt.className = "value__spec-value";
+        dt.textContent = String(r[0]);
+        var dd = document.createElement("dd");
+        dd.className = "value__spec-term";
+        dd.appendChild(document.createTextNode(r[1]));
+        if (r[2]) {
+          var sub = document.createElement("span");
+          sub.textContent = r[2];
+          dd.appendChild(sub);
+        }
+        row.appendChild(dt);
+        row.appendChild(dd);
+        spec.appendChild(row);
+      });
+    }
+
+    section.hidden = false;
   }
 
   function renderDealCards(products) {
@@ -162,10 +191,18 @@ document.addEventListener("DOMContentLoaded", function () {
     picks.forEach(function (p) { dealTrack.appendChild(dealCard(p)); });
   }
 
+  // The demo payload is small (~3KB) and independent of the product list, so
+  // it is fetched alongside rather than after — and its failure is isolated:
+  // a dead /api/demo hides one section, it does not take the product strip
+  // or the hero price down with it.
+  fetch("/api/demo", { headers: { Accept: "application/json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { if (d) renderValueProduct(d); })
+    .catch(function () {});
+
   window.ProFitAPI.listProducts().then(function (result) {
     var products = result.products || [];
     renderDealCards(products);
-    renderValuePreview(products);
     renderHeroPrice(products);
   }).catch(function () {
     // Real data failed to load — hide the dynamic section rather than showing

@@ -15,6 +15,25 @@ window.AdminPanels.settings = {
         root.querySelector("#currency").value = data.settings.currency || "USD";
         root.querySelector("#taxRate").value = data.settings.taxRate || "0";
         root.querySelector("#emailFromName").value = data.settings.emailFromName || "";
+        // The demo picker is filled from the real catalog rather than being a
+        // free-text slug field, so it cannot be pointed at something that does
+        // not exist. The server re-checks that the chosen slug resolves to a
+        // PUBLISHED product anyway (lib/demo.js) — this is convenience, not the
+        // guard. A failed product fetch leaves the "Automatic" option in place
+        // rather than blocking the rest of the form.
+        var demoSelect = root.querySelector("#demoProductSlug");
+        if (demoSelect) {
+          window.AdminAPI.listProducts({ limit: 200 }).then(function (res) {
+            (res.products || []).forEach(function (prod) {
+              if (prod.status !== "published") return;
+              var opt = document.createElement("option");
+              opt.value = prod.slug;
+              opt.textContent = prod.name;
+              demoSelect.appendChild(opt);
+            });
+            demoSelect.value = data.settings.demoProductSlug || "";
+          }).catch(function () {});
+        }
         if (data.settings.logoUrl) {
           logoPreview.src = "/" + data.settings.logoUrl;
           logoPreview.style.display = "block";
@@ -33,6 +52,7 @@ window.AdminPanels.settings = {
         currency: root.querySelector("#currency").value,
         taxRate: root.querySelector("#taxRate").value,
         emailFromName: root.querySelector("#emailFromName").value,
+        demoProductSlug: root.querySelector("#demoProductSlug").value,
       }).then(function () {
         window.AdminUI.toast("Settings saved", "success");
       }).catch(function (err) {

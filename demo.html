@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#fafaf9">
+    <title data-brand-title="{brand} - Program Preview">Fitness Agency - Program Preview</title>
+    <!--PAGE_SEO-->
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+
+    <!-- THE SAME STYLESHEETS THE PURCHASED PROGRAM LOADS, and that is the
+         point of this page: there must be no visual seam between the preview
+         and the thing being previewed. program.css carries the whole pg-*
+         system — tokens, buttons, hero, chips, stats, exercise rows — and
+         re-declares the same Inter faces as style.css, so the demo is the
+         product's own interface rather than a landing-page impression of it.
+
+         program-viewer.css is NOT loaded: that is the paginated handbook
+         reader, which this page has no equivalent of. Neither is the
+         storefront's bootstrap/swiper/animate stack — same call, and same
+         reasoning, as program.html. demo.css is a small layer on top for the
+         one thing the real viewer has no concept of: a locked boundary. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-400-normal.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-600-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/css/program.css?v=20260730c">
+    <link rel="stylesheet" href="/assets/css/program-media.css?v=20260730">
+    <link rel="stylesheet" href="/assets/css/demo.css?v=20260819">
+</head>
+
+<body class="pg-body dm-body">
+
+    <header class="pg-appbar" id="dmAppbar">
+        <a class="pg-appbar__back" href="/shop" aria-label="Back to all programs">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>
+        </a>
+        <div class="pg-appbar__title" id="dmAppbarTitle" aria-hidden="true"></div>
+        <div class="pg-appbar__right">
+            <a class="pg-appbar__logo" href="/" aria-label="Home">
+                <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" data-brand-logo>
+            </a>
+        </div>
+    </header>
+
+    <!-- Skeleton, not a spinner: the shape of what is coming, so the page does
+         not jump when it arrives. Mirrors program.html's pg-boot. -->
+    <div class="pg-boot" id="dmBoot" role="status" aria-live="polite">
+        <div class="pg-boot__cover"></div>
+        <div class="pg-boot__lines">
+            <span class="pg-boot__line pg-boot__line--sm"></span>
+            <span class="pg-boot__line pg-boot__line--lg"></span>
+            <span class="pg-boot__line"></span>
+        </div>
+        <span class="u-visually-hidden">Loading program preview</span>
+    </div>
+
+    <!-- Shown only if GET /api/demo fails or no demo product is configured.
+         A dead end with a way out, never a blank page. -->
+    <div class="pg-locked u-hidden" id="dmError">
+        <div class="pg-locked__inner">
+            <h1>Preview unavailable</h1>
+            <p>We couldn&rsquo;t load the program preview just now. Every program has its full contents listed on
+                its own page.</p>
+            <div class="pg-locked__actions">
+                <a href="/shop" class="pg-btn pg-btn--primary"><span>Browse programs</span></a>
+            </div>
+        </div>
+    </div>
+
+    <main class="pg-main dm-main u-hidden" id="dmMain">
+
+        <!-- ── The product, exactly as the purchased viewer presents it ── -->
+        <section class="pg-hero">
+            <div class="pg-hero__stage">
+                <div class="pg-hero__backdrop" id="dmArt" aria-hidden="true"></div>
+                <div class="pg-hero__scrim" aria-hidden="true"></div>
+                <div class="pg-hero__inner">
+                    <div class="pg-hero__poster" id="dmPoster"></div>
+                    <div class="pg-hero__body">
+                        <p class="pg-hero__eyebrow">Free preview</p>
+                        <h1 class="pg-hero__title" id="dmTitle"></h1>
+                        <p class="pg-hero__creator" id="dmCreator"></p>
+                        <ul class="pg-hero__chips" id="dmChips"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pg-hero__deck">
+                <p class="dm-lede" id="dmLede"></p>
+            </div>
+        </section>
+
+        <!-- ── What comes with it: counted from the real stored program ──
+             Not feature copy. Every number here is produced by
+             server/src/lib/demo.js counting the actual content, so it cannot
+             describe a program that does not exist. Rows whose count is zero
+             are not rendered at all. -->
+        <section class="pg-panel is-active dm-panel">
+            <header class="pg-panel__head">
+                <p class="pg-panel__eyebrow">Section 01</p>
+                <h2>What comes with it</h2>
+            </header>
+            <dl class="dm-spec" id="dmSpec"></dl>
+        </section>
+
+        <!-- ── The sneak peek ── -->
+        <section class="pg-panel is-active dm-panel">
+            <header class="pg-panel__head">
+                <p class="pg-panel__eyebrow">Section 02</p>
+                <h2>A real session from the program</h2>
+            </header>
+
+            <div class="dm-session">
+                <p class="dm-session__week" id="dmWeek"></p>
+                <h3 class="dm-session__day" id="dmDay"></h3>
+                <p class="dm-session__notes" id="dmNotes"></p>
+            </div>
+
+            <div id="dmExercises"></div>
+
+            <!-- ── The lock boundary ──
+                 The ghost rows below carry NO content, blurred or otherwise:
+                 the server never sent the rest of the program, so there is
+                 nothing in the DOM to un-blur. They are a shape, and the
+                 counts beside them are the only claim being made. -->
+            <div class="dm-lock">
+                <div class="dm-lock__ghosts" aria-hidden="true">
+                    <span class="dm-ghost"></span>
+                    <span class="dm-ghost"></span>
+                    <span class="dm-ghost"></span>
+                </div>
+                <div class="dm-lock__panel">
+                    <p class="dm-lock__label">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="dm-lock__icon">
+                            <path d="M7 10V7a5 5 0 0 1 10 0v3"/>
+                            <rect x="4.5" y="10" width="15" height="10.5" rx="2.5"/>
+                        </svg>
+                        Rest of the program
+                    </p>
+                    <ul class="dm-lock__counts" id="dmLockCounts"></ul>
+                    <div class="dm-lock__days" id="dmLockDays"></div>
+                    <a class="pg-btn pg-btn--primary pg-btn--lg dm-lock__cta" id="dmCta" href="/shop">
+                        <span>Get the full program</span>
+                    </a>
+                    <p class="dm-lock__price" id="dmPrice"></p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="pg-foot">
+            <a href="/shop" class="pg-foot__back">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>
+                All programs
+            </a>
+            <p class="pg-foot__legal">&copy; 2026 <span data-brand-name>Fitness Agency</span>. This is a limited
+                preview &mdash; the full program is available with purchase.</p>
+        </footer>
+    </main>
+
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/media-container.js?v=20260819" defer></script>
+    <script src="/assets/js/demo.js?v=20260819" defer></script>
+</body>
+
+</html>

@@ -9,6 +9,10 @@ const { mintDownloadToken, verifyDownloadToken } = require("../lib/signedDownloa
 const { apiLimiter } = require("../middleware/rateLimit");
 const { logEvent } = require("../lib/adminLog");
 const { normalizeImageUrl } = require("../lib/media");
+// Required lazily inside the handler would be cleaner for the cycle, but there
+// is none: lib/demo.js requires only ../db, and routes/demo.js is what pulls
+// resolveMedia back out of this file.
+const { demoMediaAllowlist } = require("../lib/demo");
 
 const router = express.Router();
 const RESOURCE_DIR = path.join(__dirname, "..", "..", "storage", "resources");
@@ -199,12 +203,49 @@ function guestProductKey(pathname) {
   return null;
 }
 
+// The public /demo sneak peek needs the posters of the two exercises it
+// shows, and those live behind this router. This is a SECOND, and much
+// narrower, guest hole than the freeAccess one above:
+//
+//   * media only — /program/:id is NOT opened, so the demo product's full
+//     payload still requires a session and an entitlement even though two of
+//     its stills do not;
+//   * one product — whichever lib/demo.js resolves as the demo;
+//   * two files — recomputed from the same slice that built the response, so
+//     a third exercise from the same day is not reachable;
+//   * stills only — `poster`/`thumb`. The `anim`, `mp4` and `webm`
+//     renditions, and the bare url that serves the multi-megabyte original,
+//     are the thing being sold and stay entitlement-only.
+//
+// The result is set on the request so the handler does not repeat the lookup.
+// EXPLICIT stills only. The empty variant is deliberately NOT here: a request
+// with no `variant` serves the file as stored, which for these exercises is
+// the 12.9MB source GIF — the single most valuable asset in the program. An
+// earlier draft of this set included "" on the reasoning that "no variant
+// means the default", and it made the original anonymously downloadable.
+const DEMO_STILL_VARIANTS = new Set(["poster", "thumb"]);
+
+async function demoMediaRequest(req) {
+  if (req.method !== "GET") return false;
+  if (!/^\/media\/[^/]+\/[^/]+$/.test(req.path)) return false;
+  if (!DEMO_STILL_VARIANTS.has(String(req.query.variant || ""))) return false;
+  const parts = req.path.split("/");
+  const productId = decodeURIComponent(parts[2] || "");
+  const fileName = decodeURIComponent(parts[3] || "");
+  const allow = await demoMediaAllowlist();
+  return allow.productId === productId && allow.files.has(fileName);
+}
+
 router.use(async (req, res, next) => {
   if (req.user) return next();
   if (req.method === "GET") {
     const key = guestProductKey(req.path);
     if (key && (await isFreeAccess(key))) {
       req.isGuest = true;
+      return next();
+    }
+    if (await demoMediaRequest(req)) {
+      req.isDemoMedia = true;
       return next();
     }
   }
@@ -614,7 +655,26 @@ router.get("/media/:productId/:fileName", async (req, res) => {
   // req.user is absent for a guest on a freeAccess product; hasEntitlement is
   // what decides, and it is the same call the program route above makes.
   const entitled = await hasEntitlement(req.user ? req.user.id : null, productId);
-  if (!entitled && !(req.user && req.user.role === "admin")) {
+
+  // The public demo's sneak peek (lib/demo.js) shows two real exercises, and
+  // their posters live behind this route. The allowlist is recomputed from the
+  // same slice that built the response, so it contains exactly those files,
+  // for exactly the configured demo product, and nothing else — a third
+  // exercise from the same day, or any file from any other product, still
+  // falls through to the 403 below. `variant` is constrained too: `poster` and
+  // `thumb` are stills, which is all the demo renders. `anim`/`mp4`/`webm` are
+  // the animations the customer is paying for and stay entitlement-only.
+  // Set by the guest middleware above, which has already checked the product,
+  // the file and the variant against the demo slice. A logged-IN visitor who
+  // has not purchased never gets it — they skip that middleware entirely — so
+  // the flag is recomputed for them here rather than assumed absent.
+  const demoAllowed = req.isDemoMedia === true || (!entitled && !req.user ? false : await (async () => {
+    if (!DEMO_STILL_VARIANTS.has(String(req.query.variant || ""))) return false;
+    const allow = await demoMediaAllowlist();
+    return allow.productId === productId && allow.files.has(fileName);
+  })());
+
+  if (!entitled && !demoAllowed && !(req.user && req.user.role === "admin")) {
     return res.status(403).json({ error: "You don't have access to this media" });
   }
 

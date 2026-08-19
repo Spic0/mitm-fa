@@ -1209,6 +1209,11 @@ const PAGE_META = {
   // crawled or surfaced in search regardless of the id being unguessable and
   // the endpoint behind it being session-scoped.
   "/order/success": { file: "order-success.html", title: "Order Confirmed", description: "Your Fitness Agency order is confirmed.", noindex: true },
+  // The public sneak peek. Indexable on purpose: it is a genuine sample of a
+  // real product and a legitimate landing target, unlike the account pages
+  // above. It exposes nothing a visitor could not already see on the product
+  // page plus two exercises — see src/lib/demo.js.
+  "/demo": { file: "demo.html", title: "Program Preview", description: "See a real Fitness Agency training program before you buy — a sample week, real exercises, and exactly what comes with it." },
   "/blog": { file: "blog.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/grid": { file: "blog-grid.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/list": { file: "blog-list.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },

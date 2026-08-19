@@ -23,6 +23,7 @@ const paypalWebhookRoutes = require("./routes/webhooksPaypal");
 const configRoutes = require("./routes/config");
 const adminRoutes = require("./routes/admin");
 const taxonomyRoutes = require("./routes/taxonomy");
+const demoRoutes = require("./routes/demo");
 const recommendationsRoutes = require("./routes/recommendations");
 const promotionsRoutes = require("./routes/promotions");
 const { router: pagesRouter, render404 } = require("./routes/pages");
@@ -312,6 +313,11 @@ app.use("/api/account", accountRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/taxonomy", taxonomyRoutes);
+// Public, and deliberately not under /api/library: that router requires a
+// session and an entitlement for everything it serves. This is one narrow
+// window onto a server-sliced sneak peek of ONE paid program — see
+// src/lib/demo.js for the slice and why it is enforced there and not in CSS.
+app.use("/api/demo", demoRoutes);
 app.use("/api/recommendations", recommendationsRoutes);
 app.use("/api/promotions", promotionsRoutes);
 // Anonymous by design (unlock / engagement beacons / enquiry form from a

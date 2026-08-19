@@ -568,6 +568,20 @@
                     <label>Email "From" Name</label>
                     <input type="text" name="emailFromName" id="emailFromName">
                 </div>
+                <!-- Which published product the public /demo preview shows. The
+                     preview is a server-limited slice (one day of week one, two
+                     exercises) — see server/src/lib/demo.js — so choosing a
+                     product here never makes it free. Only products that
+                     actually have training content are offered, because a
+                     product without any has nothing to preview. -->
+                <div class="a-form-row">
+                    <label for="demoProductSlug">Public Demo Product</label>
+                    <select name="demoProductSlug" id="demoProductSlug">
+                        <option value="">Automatic (first published program with content)</option>
+                    </select>
+                    <small class="u-muted">Shown at /demo as a limited free preview. The full program stays
+                        paid.</small>
+                </div>
                 <button type="submit" class="a-btn a-btn-primary u-w-auto">Save Changes</button>
             </form>
         </div>

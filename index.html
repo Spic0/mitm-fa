@@ -163,17 +163,30 @@
                              as "for professional athletes", which is the opposite
                              of who buys here. Who those people are is already the
                              headline's job, so the sub no longer repeats it. -->
-                        <p class="hero__sub">Strength, size and nutrition programs, written for everyday
-                            lifters at any level.</p>
-                        <!-- Deliberately ONE call to action. A "Browse by goal"
-                             secondary was considered and dropped: there is no
-                             goals index page to send it to (goals exist only as
-                             /goal/:slug leaves, already in the header menu), so
-                             it would have pointed at /shop — the same place as
-                             the primary, competing with it for nothing. -->
+                        <p class="hero__sub">Strength, size and nutrition programs &mdash; written for
+                            everyday lifters.</p>
+                        <!-- TWO actions, and they are not equals.
+                             Primary: buy-path. Secondary: the low-friction
+                             discovery path — /demo opens a real, server-limited
+                             sneak peek of a real paid program.
+
+                             A secondary was previously rejected here because
+                             the only candidate ("Browse by goal") pointed at
+                             /shop, the same destination as the primary, and so
+                             competed for nothing. That objection does not apply
+                             to this one: it goes somewhere else, and it answers
+                             the question the primary cannot ("what is actually
+                             in one of these?") without asking for a commitment.
+
+                             The rank is carried by the components themselves —
+                             .btn-one is the filled sitewide primary, .btn-two
+                             the outlined secondary — not by a bespoke pair. -->
                         <div class="hero__actions">
                             <a class="btn-one hero__cta" href="/shop">
                                 <span>Explore Programs <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            </a>
+                            <a class="btn-two hero__cta-alt" href="/demo">
+                                <span>See Demo <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
                             </a>
                         </div>
                     </div>
@@ -398,134 +411,76 @@
 
         <!-- Value area start here.
              ================================================================
-             Answers one question — "what do I actually get when I buy?" — and
-             answers it by SHOWING the program viewer rather than describing it
-             in four paragraphs. No counts, no testimonials, no trust claims.
+             Answers ONE question — "what actually comes with a program?" —
+             with counted facts about a real product and a door into a real
+             preview of it. It is not a feature section and deliberately has
+             no feature copy in it at all.
 
-             Rebuilt 2026-08-19. What it replaced and why:
+             Rebuilt 2026-08-19 (second pass). What went, and why:
 
-               * A three-line lede. It restated the headline. One line now.
-               * Four numbered blocks (01 YOUR PROGRAM ... 04 YOUR ACCESS),
-                 each with its own paragraph — ~500px of copy on a phone, four
-                 equal-weight things competing with the product shot. Numbering
-                 implies a sequence, and these were not one; the numbers were
-                 decoration. Three verbs carry it now: TRAIN / WATCH / KEEP.
-               * A preview card smaller than the text beside it. It is now the
-                 largest element in the section, which is the point.
+               * TRAIN / WATCH / KEEP with a sentence each. Three short
+                 paragraphs are still three paragraphs of explanation, and
+                 "exercise demos where the creator includes them" was doing
+                 the work a number does better. The current demo product
+                 carries 4 demos across 210 exercises — a claim the data
+                 barely supports, which is exactly why prose was the wrong
+                 medium for it.
+               * The CSS-drawn program-viewer mock. It illustrated an
+                 interface with invented exercises. There is now a real
+                 preview of a real program at /demo, so an illustration of
+                 one is redundant at best and a weaker version of the truth
+                 at worst.
+               * "Everything you need to follow the work." Vague by
+                 construction — it is the sentence you write when you do not
+                 want to commit to a number.
 
-             STILL DRAWN IN CSS, deliberately. Zero requests, zero bytes, sharp
-             at any density, no image to arrive late and shift the layout. It
-             also cannot leak: real trainingContent is served only by
-             GET /api/library/program/:id behind requireAuth + entitlement, so
-             a public page must never render it. The session rows are
-             illustrative, which is why the whole block stays aria-hidden — a
-             screen reader announcing invented exercises as a real program
-             would be misleading, and the masthead plus the three points below
-             already carry the section's full meaning.
+             Everything here is now counted, server-side, from the stored
+             program: see contentsOf() in server/src/lib/demo.js. Nothing is
+             hardcoded, and a row whose count is zero is not rendered, so the
+             block cannot describe a product that does not exist. If
+             GET /api/demo fails the whole section removes itself rather than
+             showing an empty frame.
 
-             What IS real is the identity strip at the top: cover, name,
-             creator and week count come from the SAME GET /api/products
-             response the featured-programs strip above already fetched, so it
-             costs no extra request. Markup defaults are neutral, so the block
-             is never broken or empty if that call fails. See
-             changelogs/2026-08-19-value-section-redesign.md. -->
-        <section class="value-area">
+             See changelogs/2026-08-19-demo-preview.md. -->
+        <section class="value-area" id="valueArea" hidden>
             <div class="container">
-                <header class="value__masthead wow fadeInUp" data-wow-delay=".1s">
+                <!-- No `wow fadeInUp` inside this section, unlike its
+                     neighbours. The section starts `hidden` and is revealed by
+                     JS once GET /api/demo resolves; WOW.js sets its elements to
+                     visibility:hidden at init and reveals them from a scroll
+                     handler that measures bounding boxes, and a `hidden`
+                     ancestor has no box. Depending on where the visitor is when
+                     the fetch lands, that can leave the contents permanently
+                     invisible. The reveal here is the data arriving, which is
+                     the honest trigger anyway. -->
+                <header class="value__masthead">
                     <span class="eyebrow">Inside Every Plan</span>
-                    <h2 class="value__title">Everything you need to follow the work.</h2>
-                    <p class="value__lede">Workouts, guidance and resources &mdash; organized around your
-                        program.</p>
+                    <h2 class="value__title">See exactly what you get.</h2>
+                    <p class="value__lede">Here is one of the programs on sale right now, counted line by
+                        line.</p>
                 </header>
 
-                <div class="value__body">
-                    <!-- The signature element. Everything around it is kept quiet
-                         so this is the one thing the eye lands on. -->
-                    <div class="value__preview wow fadeInUp" data-wow-delay=".15s" aria-hidden="true">
-                        <div class="vp">
-                            <div class="vp__head">
-                                <span class="vp__cover pmedia" data-vp-cover></span>
-                                <span class="vp__id">
-                                    <span class="vp__creator" data-vp-creator>Your program</span>
-                                    <span class="vp__program" data-vp-name>Opened in your library</span>
-                                </span>
-                            </div>
-                            <!-- Week rail: real durationWeeks, one tick per week, the
-                                 current one filled. Pure CSS, no images. Hidden by
-                                 :empty until the real count arrives. -->
-                            <div class="vp__weeks" data-vp-weeks></div>
-                            <div class="vp__session">
-                                <span class="vp__crumb">Week 1 &middot; Day 2</span>
-                                <span class="vp__day">Upper Body</span>
-                            </div>
-                            <ul class="vp__rows">
-                                <li class="vp__row">
-                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
-                                    <span class="vp__body">
-                                        <span class="vp__name">Barbell Bench Press</span>
-                                        <span class="vp__reps">4 &times; 6</span>
-                                    </span>
-                                </li>
-                                <li class="vp__row">
-                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
-                                    <span class="vp__body">
-                                        <span class="vp__name">Incline Dumbbell Press</span>
-                                        <span class="vp__reps">3 &times; 10</span>
-                                    </span>
-                                </li>
-                                <li class="vp__row">
-                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
-                                    <span class="vp__body">
-                                        <span class="vp__name">Cable Fly</span>
-                                        <span class="vp__reps">3 &times; 12</span>
-                                    </span>
-                                </li>
-                                <li class="vp__row vp__row--fade">
-                                    <span class="vp__thumb"><i class="fa-solid fa-play"></i></span>
-                                    <span class="vp__body">
-                                        <span class="vp__name">Triceps Pushdown</span>
-                                        <span class="vp__reps">3 &times; 15</span>
-                                    </span>
-                                </li>
-                            </ul>
+                <div class="value__product">
+                    <div class="value__id">
+                        <span class="value__cover" data-vx-cover aria-hidden="true"></span>
+                        <div class="value__id-body">
+                            <span class="value__creator" data-vx-creator></span>
+                            <h3 class="value__name" data-vx-name></h3>
+                            <ul class="value__chips" data-vx-chips></ul>
                         </div>
                     </div>
 
-                    <!-- Three verbs, not four nouns. Each is one capability the
-                         schema actually backs: trainingContent (exercises with
-                         sets/reps/progression), ProductMedia + exercise demos, and
-                         a paid OrderItem that carries no expiry field. "Where the
-                         creator includes them" is doing real work in the second
-                         one — demos are per-product, not guaranteed. -->
-                    <!-- Points and CTA share one column so that on desktop they
-                         fill the space beside the tall preview instead of leaving
-                         a dead quadrant under it. Stacking order on a phone is
-                         unchanged: preview, points, button. -->
-                    <div class="value__aside">
-                        <ul class="value__points">
-                            <li class="value__point wow fadeInUp" data-wow-delay=".2s">
-                                <h3 class="value__point-title">Train</h3>
-                                <p>Every session laid out &mdash; exercises, sets, reps and progression.</p>
-                            </li>
-                            <li class="value__point wow fadeInUp" data-wow-delay=".25s">
-                                <h3 class="value__point-title">Watch</h3>
-                                <p>Exercise demonstrations and coach notes, where the creator includes them.</p>
-                            </li>
-                            <li class="value__point wow fadeInUp" data-wow-delay=".3s">
-                                <h3 class="value__point-title">Keep</h3>
-                                <p>Buy once. Your program stays in your library.</p>
-                            </li>
-                        </ul>
+                    <!-- The counts. A definition list because that is what it
+                         is: a measured value and the thing it measures. -->
+                    <dl class="value__spec" data-vx-spec></dl>
 
-                        <!-- One CTA. Not "Explore Programs" — the hero's button
-                             already carries that exact label, and two identical
-                             buttons on one page read as a repeat, not a next step. -->
-                        <div class="value__cta wow fadeInUp" data-wow-delay=".35s">
-                            <a class="btn-one value__cta-btn" href="/shop">
-                                <span>Find Your Program <i class="fa-regular fa-arrow-right"
-                                        aria-hidden="true"></i></span>
-                            </a>
-                        </div>
+                    <div class="value__act">
+                        <a class="btn-one value__cta-btn" href="/demo">
+                            <span>See the full preview <i class="fa-regular fa-arrow-right"
+                                    aria-hidden="true"></i></span>
+                        </a>
+                        <p class="value__act-note">A real session from week one, free and without an
+                            account.</p>
                     </div>
                 </div>
             </div>

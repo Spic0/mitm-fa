@@ -20,7 +20,11 @@ fs.mkdirSync(LOGO_DIR, { recursive: true });
 // DB/storage/cloud credentials, anything env-var-shaped) must never appear
 // here in any form, not even masked/read-only. Those stay exclusively in the
 // server's environment configuration.
-const EDITABLE_KEYS = ["storeName", "currency", "taxRate", "emailFromName"];
+// demoProductSlug picks the product behind the public /demo preview. It is
+// safe on this surface: lib/demo.js re-checks that the slug resolves to a
+// PUBLISHED product before showing anything, so pointing it at a draft or a
+// bad slug falls back rather than publishing something by accident.
+const EDITABLE_KEYS = ["storeName", "currency", "taxRate", "emailFromName", "demoProductSlug"];
 
 router.get("/", async (req, res) => {
   const settings = await getSettings();

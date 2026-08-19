@@ -11,6 +11,10 @@ const DEFAULTS = {
   taxRate: "0",
   emailFromName: "Fitness Agency",
   logoUrl: "",
+  // Which published product the public /demo sneak peek shows. Empty means
+  // "use the built-in fallback chain" — see lib/demo.js. A slug, not an id,
+  // so it is legible in the admin field and matches the storefront's urls.
+  demoProductSlug: "",
 };
 
 async function getSettings() {

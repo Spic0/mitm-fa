@@ -28,7 +28,8 @@ window.ProFitAPI = (function () {
   // GET responses are cached per exact path for the lifetime of the page.
   // Before this, a single homepage load fired /api/products independently
   // from 4 different scripts (hero-slideshow, home-dynamic, home-products,
-  // nav-featured) and /api/taxonomy from 3 — each parsing the full
+  // and the since-deleted nav-featured) and /api/taxonomy from 3 — each
+  // parsing the full
   // catalog/taxonomy JSON again. Caching the in-flight/resolved promise
   // means every caller after the first shares one network request. Safe
   // across this site's architecture (full page reloads between routes, not
@@ -52,7 +53,7 @@ window.ProFitAPI = (function () {
   }
 
   // Shared "$X.XX" formatter — every page that renders a product price
-  // (home, shop, nav mega-menu, cart, checkout, library) used to redefine
+  // (home, shop, cart, checkout, library) used to redefine
   // this same one-liner locally; it lives here once instead.
   function formatPrice(cents) {
     return "$" + (cents / 100).toFixed(2);

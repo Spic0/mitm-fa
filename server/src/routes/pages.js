@@ -16,6 +16,8 @@ const { prisma } = require("../db");
 const { getAllTaxonomyTrees } = require("../lib/taxonomy");
 const { normalizeImageUrl, coverMedia } = require("../lib/media");
 const { resolveSlot, SLOTS } = require("../lib/landingAssets");
+const { formatProductPrice } = require("../lib/price");
+const { getNavigationHtml } = require("../lib/navigation");
 const { PROFILE_INCLUDE, buildPublicProfile, defaultMetaDescription } = require("../lib/partners");
 const {
   ORGANIZATION,
@@ -36,16 +38,6 @@ const HIDDEN_HEADER_PAGES = new Set(["checkout.html", "welcome.html"]);
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-// Price of a PRODUCT for display. A plan at 0 is free, and rendering that as
-// "$0.00" on a storefront reads as a pricing bug rather than an offer — the
-// catalog has one such product published and featured today, so this is a
-// live case. Kept in step with ProFitAPI.formatProductPrice in
-// assets/js/api.js, which renders the same two values client-side; the SSR'd
-// hero/showcase and the JS that later re-renders them must never disagree.
-function formatProductPrice(cents) {
-  return cents === 0 ? "Free" : `$${(cents / 100).toFixed(2)}`;
 }
 
 function appUrl(pathname) {
@@ -74,7 +66,6 @@ async function safeGetAllTaxonomyTrees() {
   }
 }
 
-// Header mega-menu goal links and sport columns, generated live from the
 // SUBSTITUTING TEXT INTO A CAPTURED TEMPLATE HOLE, SAFELY.
 //
 // Every "fill this element" replacement below is the same shape: a regex that
@@ -98,22 +89,12 @@ function fillBetween(re, value) {
   return [re, (_whole, open, close) => `${open}${value}${close}`];
 }
 
-// Taxonomy tables — the exact same source of truth the admin CMS reads and
-// writes. A category/subcategory created, renamed, or deleted in Admin ->
-// Navigation is reflected here on the very next request.
-function navGoalLinksHtml(goalsTaxonomy) {
-  if (!goalsTaxonomy) return "";
-  return goalsTaxonomy.nodes
-    .map((n) => `<li><a href="/goal/${encodeURIComponent(n.slug)}">${escapeHtml(n.name)}</a></li>`)
-    .join("");
-}
-
-// The homepage's "Shop by goal" list. Same taxonomy, same /goal/<slug>
-// destinations and same escaping as the header menu above; the only
-// differences are that it carries each goal's real product count and that a
-// goal with nothing published under it is left out — on the homepage an
-// empty category is a dead end, whereas in the nav it is still a valid
-// (empty) listing the operator may be about to fill.
+// The homepage's "Shop by goal" list. Same taxonomy and same /goal/<slug>
+// destinations as the header menu (see lib/navigation.js, which owns the
+// header entirely); the only differences are that this carries each goal's
+// real product count and that a goal with nothing published under it is left
+// out — on the homepage an empty category is a dead end, whereas in the nav
+// it is still a valid (empty) listing the operator may be about to fill.
 function homeGoalsHtml(goalsTaxonomy) {
   if (!goalsTaxonomy) return "";
   return goalsTaxonomy.nodes
@@ -128,33 +109,6 @@ function homeGoalsHtml(goalsTaxonomy) {
     .join("");
 }
 
-function navSportColumnsHtml(athletesTaxonomy) {
-  if (!athletesTaxonomy) return "";
-  return athletesTaxonomy.nodes
-    .map((n) => {
-      const athleteLinks = n.children
-        .map((a) => `<li><a href="/athlete/${encodeURIComponent(a.slug)}">${escapeHtml(a.name)}</a></li>`)
-        .join("");
-      return (
-        `<div class="mega-menu__col mega-menu__col--sport" data-sport="${escapeHtml(n.slug)}">` +
-        `<span class="mega-menu__heading">${escapeHtml(n.name)}</span>` +
-        `<ul data-role="sport-athletes">${athleteLinks}</ul>` +
-        `<a href="/sport/${encodeURIComponent(n.slug)}" class="mega-menu__view-all">View All <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>` +
-        "</div>"
-      );
-    })
-    .join("");
-}
-
-async function applyNavContexts(headerHtml) {
-  const trees = await safeGetAllTaxonomyTrees();
-  const goals = trees.find((t) => t.key === "goals");
-  const athletes = trees.find((t) => t.key === "athletes");
-  return headerHtml
-    .replace("<!--NAV_GOALS_TRAINING-->", navGoalLinksHtml(goals))
-    .replace("<!--NAV_SPORTS_COLUMNS-->", navSportColumnsHtml(athletes));
-}
-
 async function inlineHeader(html, templateFile) {
   if (!html.includes(HEADER_MARKER)) return html;
   const headerRaw = await fs.promises.readFile(HEADER_PARTIAL_PATH, "utf8");
@@ -166,7 +120,19 @@ async function inlineHeader(html, templateFile) {
       '<header class="site-header u-hidden">'
     );
   }
-  headerHtml = await applyNavContexts(headerHtml);
+  // One slot, one renderer, every category — including ones that do not exist
+  // yet. See server/src/lib/navigation.js. The slot is a real empty <li>, and
+  // the pattern is anchored to its attribute, so a mention of it in the
+  // surrounding markup comments cannot be substituted into by accident — that
+  // is not hypothetical, it happened with the comment token this replaced and
+  // it took the whole menu down with no error anywhere.
+  const navSlot = /<li\s+data-nav-slot\s*><\/li>/;
+  if (navSlot.test(headerHtml)) {
+    const menus = await getNavigationHtml();
+    headerHtml = headerHtml.replace(navSlot, menus);
+  } else {
+    console.error("Header navigation slot not found in partials/header.html — rendering header with no category menus.");
+  }
   return html.replace(HEADER_MARKER, headerHtml);
 }
 
@@ -211,95 +177,122 @@ async function render404(req, res) {
 }
 
 // ---------------------------------------------------------------------
-// Shop family: /shop, /goal/:slug, /sport/:slug, /athlete/:slug, /creator/:slug
-// all render shop.html with a server-resolved context (or none, for plain
-// /shop). Mirrors the pre-existing resolveShopContext/applyShopContext
-// pattern (originally query-param driven) against path params instead.
+// Shop family — ONE resolver for every taxonomy, present and future.
+//
+// Until now this was four express routes and a chain of `if (type ===
+// "goal") ... if (type === "sport") ...`, which meant the three seeded
+// taxonomies were the only ones whose items had a reachable URL at all: a
+// category an admin added through the CMS could be tagged onto products and
+// shown in a menu, and every link to it would 404.
+//
+// Now the URL SEGMENT IS DATA. Taxonomy.nodeRoute is the segment for a leaf
+// ("athlete" -> /athlete/marcus-reyes) and Taxonomy.groupRoute the segment
+// for a branch ("sport" -> /sport/football, null where branches are not
+// listing pages). The four old paths are exactly the values seeded into
+// those columns, so every existing URL, canonical and sitemap entry is
+// byte-identical — they are simply no longer spelled out in code.
 // ---------------------------------------------------------------------
+
+// A taxonomy's label is written as a NAV ITEM ("Browse Athletes", "Shop by
+// Goal"), which is a verb phrase and reads badly inside a sentence — "plans
+// organized by browse athletes". This is the noun inside it. Deliberately a
+// small fixed list of leading verbs rather than anything clever: an admin
+// naming a category "Equipment" gets it back untouched, which is the common
+// case, and the worst failure is a slightly long phrase, never a wrong one.
+function labelNoun(label) {
+  return String(label).replace(/^(shop by|browse|shop|explore|discover|all)\s+/i, "") || label;
+}
+
+// The one description rule, keyed off the taxonomy's own layout rather than
+// its name. DUPLICATED, deliberately and minimally, in assets/js/shop.js's
+// describeNode() — the server renders this for SEO and the client re-renders
+// the same banner on an in-page filter click, and the two must not disagree.
+function describeNode(tree, node, isGroup) {
+  if (tree.navLayout === "people") {
+    return isGroup
+      ? `Training and nutrition plans across ${node.name}.`
+      : `Programs built and used by ${node.name}.`;
+  }
+  return `Training and nutrition plans built around ${node.name.toLowerCase()}.`;
+}
+
+// LEAVES only. A nodeRoute URL addresses the things products are tagged with;
+// a branch is addressed through groupRoute (/sport/football), and letting
+// /athlete/football resolve to the Football branch as well would publish two
+// indexable URLs for one listing.
+function findLeafBySlug(nodes, slug) {
+  for (const n of nodes) {
+    const isLeaf = !(n.children && n.children.length);
+    if (isLeaf && n.slug === slug) return n;
+    const found = findLeafBySlug(n.children || [], slug);
+    if (found) return found;
+  }
+  return null;
+}
+
+// Branch nodes only — a groupRoute URL must not resolve to a leaf that
+// happens to share its slug.
+function findGroupBySlug(nodes, slug) {
+  for (const n of nodes) {
+    if (n.children && n.children.length && n.slug === slug) return n;
+    const found = findGroupBySlug(n.children || [], slug);
+    if (found) return found;
+  }
+  return null;
+}
+
+// A URL segment -> which taxonomy, and whether it addresses branches or
+// leaves. Both live in one namespace (see the unique indexes on the two
+// columns), so this is a single lookup.
+function resolveSegment(trees, segment) {
+  for (const tree of trees) {
+    if (!tree) continue;
+    if (tree.nodeRoute === segment) return { tree, kind: "item" };
+    if (tree.groupRoute && tree.groupRoute === segment) return { tree, kind: "group" };
+  }
+  return null;
+}
+
 async function resolveShopContext(pathContext) {
   if (!pathContext) return null;
   const trees = await safeGetAllTaxonomyTrees();
-  const goals = trees.find((t) => t.key === "goals");
-  const athletes = trees.find((t) => t.key === "athletes");
-  const creators = trees.find((t) => t.key === "creators");
 
-  if (pathContext.type === "goal") {
-    const node = goals && goals.nodes.find((n) => n.slug === pathContext.slug);
-    if (!node) return { notFound: true };
+  // /shop/<taxonomy key> — the landing page for a whole category, and the
+  // destination of every panel's single "View all". It is the value already
+  // stored in Taxonomy.route, which until now was a column nothing read.
+  if (pathContext.type === "taxonomy") {
+    const tree = trees.find((t) => t && t.key === pathContext.key);
+    if (!tree) return { notFound: true };
     return {
-      type: "goal", nodeId: node.id, slug: node.slug,
-      title: `${node.name} Training & Nutrition Plans`,
-      description: `Training and nutrition plans built around ${node.name.toLowerCase()}, from real coaches and athletes.`,
-      heading: node.name,
-      crumb: `Shop by Goal · ${node.name}`,
-      canonicalPath: `/goal/${encodeURIComponent(node.slug)}`,
+      type: "taxonomy", nodeId: null, slug: tree.key, taxonomyKey: tree.key,
+      title: tree.label,
+      description: `Every training and nutrition plan on Fitness Agency, organized by ${labelNoun(tree.label).toLowerCase()}.`,
+      heading: tree.label,
+      crumb: tree.label,
+      canonicalPath: tree.route,
     };
   }
 
-  if (pathContext.type === "sport") {
-    const node = athletes && athletes.nodes.find((n) => n.slug === pathContext.slug);
-    if (!node) return { notFound: true };
-    return {
-      type: "sport", nodeId: node.id, slug: node.slug,
-      title: `${node.name} Training Programs`,
-      description: `Training plans built and used by ${node.name.toLowerCase()} athletes.`,
-      heading: `${node.name} Training`,
-      crumb: `Sports · ${node.name}`,
-      canonicalPath: `/sport/${encodeURIComponent(node.slug)}`,
-    };
-  }
+  const resolved = resolveSegment(trees, pathContext.segment);
+  if (!resolved) return null; // Not a taxonomy segment at all — let express fall through.
 
-  if (pathContext.type === "athlete") {
-    // TaxonomyNode.slug is unique only per parent, not globally, so a flat
-    // /athlete/:slug (matching the task's own example, no sport segment)
-    // does a best-effort match across every sport. Logs if more than one
-    // sport happens to have an athlete with this slug, so a same-name
-    // collision is visible in the logs instead of silently costing the
-    // second athlete its clean URL.
-    const matches = [];
-    if (athletes) {
-      for (const sport of athletes.nodes) {
-        const found = (sport.children || []).find((a) => a.slug === pathContext.slug);
-        if (found) matches.push({ node: found, sport });
-      }
-    }
-    if (!matches.length) return { notFound: true };
-    if (matches.length > 1) {
-      console.warn(
-        `Athlete slug "${pathContext.slug}" matches more than one athlete across different sports; serving the first. Sports: ${matches.map((m) => m.sport.slug).join(", ")}`
-      );
-    }
-    const { node, sport } = matches[0];
-    return {
-      type: "athlete", nodeId: node.id, slug: node.slug, sportSlug: sport.slug,
-      title: `${node.name} Training Plans`,
-      description: `Programs built and used by ${node.name}.`,
-      heading: node.name,
-      crumb: `Browse Athletes · ${node.name}`,
-      canonicalPath: `/athlete/${encodeURIComponent(node.slug)}`,
-    };
-  }
+  const { tree, kind } = resolved;
+  const node = kind === "group"
+    ? findGroupBySlug(tree.nodes, pathContext.slug)
+    : findLeafBySlug(tree.nodes, pathContext.slug);
+  if (!node) return { notFound: true };
 
-  if (pathContext.type === "creator") {
-    let node = null;
-    if (creators) {
-      for (const cat of creators.nodes) {
-        const found = (cat.children || []).find((c) => c.slug === pathContext.slug);
-        if (found) { node = found; break; }
-      }
-    }
-    if (!node) return { notFound: true };
-    return {
-      type: "creator", nodeId: node.id, slug: node.slug,
-      title: `${node.name} Training Plans`,
-      description: `Programs built and used by ${node.name}.`,
-      heading: node.name,
-      crumb: `Creators · ${node.name}`,
-      canonicalPath: `/creator/${encodeURIComponent(node.slug)}`,
-    };
-  }
-
-  return { notFound: true };
+  return {
+    type: kind === "group" ? "group" : "item",
+    taxonomyKey: tree.key,
+    nodeId: node.id,
+    slug: node.slug,
+    title: `${node.name} Training Plans`,
+    description: describeNode(tree, node, kind === "group"),
+    heading: node.name,
+    crumb: `${tree.label} · ${node.name}`,
+    canonicalPath: `/${encodeURIComponent(pathContext.segment)}/${encodeURIComponent(node.slug)}`,
+  };
 }
 
 async function applyShopContext(html, ctx) {
@@ -330,7 +323,9 @@ async function applyShopContext(html, ctx) {
   // above for SEO. Plain data attributes, not an inline JSON script block —
   // this site's CSP has no 'unsafe-inline' for scripts.
   const dataAttrs = ctx && !ctx.notFound
-    ? ` data-context-type="${escapeHtml(ctx.type)}" data-context-slug="${escapeHtml(ctx.slug)}" data-context-node-id="${escapeHtml(ctx.nodeId)}"${ctx.sportSlug ? ` data-context-sport-slug="${escapeHtml(ctx.sportSlug)}"` : ""}`
+    ? ` data-context-type="${escapeHtml(ctx.type)}" data-context-slug="${escapeHtml(ctx.slug)}"` +
+      (ctx.nodeId ? ` data-context-node-id="${escapeHtml(ctx.nodeId)}"` : "") +
+      (ctx.taxonomyKey ? ` data-context-taxonomy="${escapeHtml(ctx.taxonomyKey)}"` : "")
     : "";
   html = html.replace(
     '<div class="row g-4" id="shopProductGrid">',
@@ -348,8 +343,13 @@ async function applyShopContext(html, ctx) {
     .replace(...fillBetween(/(<span[^>]*data-shop-crumb[^>]*>)[^<]*(<\/span>)/, escapeHtml(ctx.crumb)));
 }
 
-async function renderShopPage(req, res, pathContext) {
+async function renderShopPage(req, res, pathContext, next) {
   const ctx = await resolveShopContext(pathContext);
+  // null (not undefined) means "this segment belongs to no taxonomy" — the
+  // generic route must then hand the URL back to express so a later route or
+  // the static mount can claim it, rather than swallowing every two-segment
+  // path on the site into a shop 404.
+  if (ctx === null && pathContext) return next ? next() : render404(req, res);
   if (ctx && ctx.notFound) return render404(req, res);
   let html = await readTemplate("shop.html");
   if (html == null) return render404(req, res);
@@ -359,10 +359,9 @@ async function renderShopPage(req, res, pathContext) {
 }
 
 router.get("/shop", (req, res) => renderShopPage(req, res, null));
-router.get("/goal/:slug", (req, res) => renderShopPage(req, res, { type: "goal", slug: req.params.slug }));
-router.get("/sport/:slug", (req, res) => renderShopPage(req, res, { type: "sport", slug: req.params.slug }));
-router.get("/athlete/:slug", (req, res) => renderShopPage(req, res, { type: "athlete", slug: req.params.slug }));
-router.get("/creator/:slug", (req, res) => renderShopPage(req, res, { type: "creator", slug: req.params.slug }));
+router.get("/shop/:key", (req, res, next) =>
+  renderShopPage(req, res, { type: "taxonomy", key: req.params.key }, next)
+);
 
 // ---------------------------------------------------------------------
 // /program/:slug — the public product sales page (today's shop-single.html
@@ -1742,33 +1741,30 @@ router.get("/sitemap.xml", async (req, res) => {
   const productUrls = products.map((p) => `/program/${encodeURIComponent(p.slug)}`);
   const partnerUrls = partners.map((p) => `/partners/${encodeURIComponent(p.slug)}`);
 
-  const goals = trees.find((t) => t.key === "goals");
-  const goalUrls = goals ? goals.nodes.map((n) => `/goal/${encodeURIComponent(n.slug)}`) : [];
-
-  const athletes = trees.find((t) => t.key === "athletes");
-  const sportUrls = [];
-  const athleteUrls = [];
-  if (athletes) {
-    athletes.nodes.forEach((sport) => {
-      sportUrls.push(`/sport/${encodeURIComponent(sport.slug)}`);
-      sport.children.forEach((athlete) => athleteUrls.push(`/athlete/${encodeURIComponent(athlete.slug)}`));
-    });
-  }
-
-  const creators = trees.find((t) => t.key === "creators");
-  const creatorUrls = [];
-  if (creators) {
-    creators.nodes.forEach((cat) => cat.children.forEach((leaf) => creatorUrls.push(`/creator/${encodeURIComponent(leaf.slug)}`)));
+  // Every taxonomy, every node, from the same columns the header nav and the
+  // route resolver read. Previously this walked the three seeded trees by
+  // name, so a category an admin added was crawlable only by accident.
+  const taxonomyUrls = [];
+  for (const tree of trees) {
+    if (!tree) continue;
+    taxonomyUrls.push(tree.route);
+    (function walk(nodes) {
+      for (const node of nodes) {
+        const isGroup = !!(node.children && node.children.length);
+        const segment = isGroup ? tree.groupRoute : tree.nodeRoute;
+        // A branch in a tree with no groupRoute is a menu heading, not a
+        // page — listing it would advertise a URL that 404s.
+        if (segment) taxonomyUrls.push(`/${encodeURIComponent(segment)}/${encodeURIComponent(node.slug)}`);
+        if (node.children) walk(node.children);
+      }
+    })(tree.nodes);
   }
 
   const allUrls = [
     ...staticUrls,
     ...serviceUrls,
     ...productUrls,
-    ...goalUrls,
-    ...sportUrls,
-    ...athleteUrls,
-    ...creatorUrls,
+    ...taxonomyUrls,
     ...partnerUrls,
   ];
 
@@ -1854,6 +1850,22 @@ router.get("/program.html", (req, res) => {
   if (!product) return res.redirect(301, "/my-library");
   res.redirect(301, `/my-library/${encodeURIComponent(product)}`);
 });
+
+// ---------------------------------------------------------------------
+// The taxonomy catch-all: /<segment>/<slug> for every taxonomy segment there
+// is or ever will be — /goal/lose-fat, /sport/football, /athlete/mbappe,
+// /creator/nadia-fischer, and whatever an admin creates next.
+//
+// Registered LAST on purpose. Every specific two-segment route in this file
+// (/program/:slug, /services/:slug, /partners/:slug, /my-library/:slug,
+// /blog/:page) is declared above and therefore matches first; anything that
+// reaches here and is not a known taxonomy segment calls next() and falls
+// through to the static mount and the 404 handler exactly as before. It
+// claims nothing it cannot resolve.
+// ---------------------------------------------------------------------
+router.get("/:segment/:slug", (req, res, next) =>
+  renderShopPage(req, res, { segment: req.params.segment, slug: req.params.slug }, next)
+);
 
 // renderPartnerMain is exported so the private presentation deck can render a
 // Partner Profile through the SAME function this page uses, rather than

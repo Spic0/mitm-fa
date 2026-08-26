@@ -589,11 +589,12 @@
            pace.min.js          12,962 b  — the preloader curtain, removed with
                                            its markup; see the note where that
                                            markup used to be, above
-           nav-featured.js       8,791 b  — populates the header mega-menus,
-                                           and this page renders the header
-                                           with .u-hidden (display:none). It
-                                           also cost a /api/taxonomy round trip
-                                           to fill a menu nobody can open.
+           nav-featured.js       8,791 b  — populated the header mega-menus
+                                           client-side. Since deleted from the
+                                           whole site: the menus are rendered
+                                           server-side from the taxonomy now
+                                           (server/src/lib/navigation.js), so
+                                           no page pays a round trip for them.
 
          This is not a new pattern: script.js already carries no-op fallbacks
          for Pace/Swiper/WOW/magnificPopup/niceSelect precisely so that lean

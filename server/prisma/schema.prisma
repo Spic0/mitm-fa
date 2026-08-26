@@ -137,6 +137,35 @@ model Taxonomy {
   // an admin just added "Cricket") would otherwise look identical to a flat
   // leaf and render with the wrong picker UI.
   hasSubcategories Boolean        @default(false)
+
+  // ---- Navigation presentation (header mega-menu + mobile drawer) ----
+  // These four columns are what makes the header a DATA-DRIVEN renderer
+  // instead of three hand-built dropdowns. lib/navigation.js reads them and
+  // nothing in the frontend knows the words "goal", "athlete" or "creator".
+  //
+  // Whether this taxonomy is offered as a top-level nav item at all. An
+  // admin can build out a taxonomy (tagging products with it) long before
+  // it is ready to be advertised, and can retire one from the header
+  // without deleting the categorization it carries.
+  showInNav Boolean @default(true)
+  // How the panel presents its items. "auto" derives from the tree's own
+  // shape (flat -> a link index; nested -> a group index), which is what a
+  // brand-new admin-created taxonomy gets for free. "people" is the one
+  // thing structure cannot tell you — that the leaves are humans and should
+  // be shown with a face — so it is stored, not guessed.
+  //   "auto" | "list" | "groups" | "people"
+  navLayout String @default("auto")
+  // URL segment for a LEAF node: "goal" -> /goal/lose-fat, "athlete" ->
+  // /athlete/marcus-reyes. Previously these three words were hardcoded as
+  // four express routes and a chain of if/else in routes/pages.js, so a new
+  // taxonomy's items had no reachable URL at all.
+  nodeRoute String @unique
+  // URL segment for a BRANCH node, when the tree has them: "sport" ->
+  // /sport/football. Null means branches organize the menu but are not
+  // themselves listing pages — which is exactly the case for the Creators
+  // tree's Fitness/Nutrition/Powerlifting groups today.
+  groupRoute String? @unique
+
   nodes            TaxonomyNode[]
 }
 

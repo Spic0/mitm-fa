@@ -5378,6 +5378,16 @@ body.cart-open { overflow: hidden; }
   text-transform: none;
 }
 
+/* Same reason, one level down and at every breakpoint: `.site-header
+   .main-menu li` sets `text-transform: capitalize`, and it inherits into
+   everything inside a panel — which rendered the plan counts as "1 Plan" and
+   the action row as "View All". Panel content is real copy and real names out
+   of the CMS, and it is shown exactly as an admin typed it. */
+.nav-panel,
+.nav-panel * {
+  text-transform: none;
+}
+
 /* Sub-menu — hidden by default */
 .site-header .main-menu li .sub-menu {
   display: none;
@@ -5435,219 +5445,403 @@ body.cart-open { overflow: hidden; }
     transition-delay: 0s;
   }
 
-  /* ---- Mega menu (Shop by Goal / Browse Athletes / Browse Creators) ----
-     Same hover/focus reveal mechanism and the same .main-menu li anchor as
-     .sub-menu above, just wider and multi-column instead of a single
-     190px list. Panels are centered under their trigger (left:50% +
-     translateX(-50%)) so the wide athletes panel never hangs off the
-     viewport's right edge; max-width clamps it on narrow desktops. The
-     base transition here is the CLOSE (fast ease-in, no delay); the
-     hover/focus rules below override duration/easing for a slightly
-     longer ease-out OPEN, with a short hover-intent delay so a mouse
-     merely passing across the nav doesn't flash panels open. Keyboard
-     focus opens with no delay — Tab is always deliberate. */
+  /* ==========================================================
+     NAV PANEL — one desktop mega-menu for every category.
+
+     Replaces three fixed-width panels (540/760/580px) whose columns
+     were `flex: 1`. That is what produced the reported "huge white
+     rectangle": a 760px box divided between four short sport columns
+     is empty by construction, and no amount of padding tuning fixes a
+     box whose size was decided before its content existed.
+
+     Here the panel is `width: max-content` — it is exactly as wide as
+     the content it was given and no wider, at every category, forever.
+     Four items make a narrow panel; twenty make a wide one. Height
+     follows for the same reason: nothing in this block sets one.
+
+     ANCHORING. The panel hangs off .header-inner (which is already
+     position:relative) rather than off its own <li>, so:
+       - `max-width: 100%` is measured against the page container, which
+         makes overflowing the viewport structurally impossible at any
+         width, with no JS measuring anything;
+       - every category's panel shares one top-left origin, so switching
+         between them reads as ONE surface changing its contents rather
+         than two panels swapping places. That is the whole trick behind
+         the continuous A -> B transition.
+     The <li> is therefore explicitly static; it is the trigger, not the
+     anchor.
+
+     OPEN/CLOSE is driven by .is-open, written by assets/js/script.js —
+     not by :hover. A CSS-only menu cannot close on Escape, cannot close
+     on an outside click, cannot keep a panel open while the pointer
+     crosses the gap into it, and cannot tell "switching categories"
+     (which must be instant) from "opening the first one" (which wants
+     a short hover-intent delay). All four are requirements here.
+     ========================================================== */
+  .site-header .main-menu > li.nav-mega { position: static; }
+
   .site-header .main-menu li .mega-menu {
     position: absolute;
     top: 100%;
-    left: 50%;
+    /* Aligned to the LEFT EDGE OF THE NAV, not to the container (which starts
+       at the logo) and not to the individual trigger. --nav-panel-left is
+       measured once by assets/js/script.js and re-measured on resize; the
+       fallback of 0 is the container edge, which is wrong-looking but never
+       broken. One shared origin for every category is what makes switching
+       read as one surface changing its contents instead of two boxes swapping
+       places — and it is why the panel cannot slide sideways mid-switch. */
+    left: var(--nav-panel-left, 0px);
     z-index: 9999;
-    display: flex !important;
-    gap: 32px;
-    width: 540px;
-    max-width: calc(100vw - 32px);
-    padding: 24px 28px;
+    display: block !important;
+    width: max-content;
+    min-width: 280px;
+    max-width: calc(100% - var(--nav-panel-left, 0px));
+    padding: 0;
     background-color: var(--color-surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.05);
     opacity: 0;
     visibility: hidden;
-    transform: translate(-50%, 8px);
-    transition: opacity 0.14s ease-in, visibility 0.14s ease-in, transform 0.14s ease-in;
+    transform: translateY(6px);
+    /* The CLOSE. Deliberately faster than the open and with no delay —
+       a menu that lingers after you have left it feels broken in a way
+       a menu that takes an extra 40ms to arrive never does. */
+    transition: opacity 0.13s ease-in, visibility 0.13s ease-in, transform 0.13s ease-in;
   }
-  .site-header .main-menu li:hover > .mega-menu {
+  .site-header .main-menu li .mega-menu.is-open {
     opacity: 1;
     visibility: visible;
-    transform: translate(-50%, 0);
-    transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    transition-delay: 120ms;
+    transform: translateY(0);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .site-header .main-menu li:focus-within > .mega-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, 0);
-    transition-delay: 0s;
+  /* Switching from an already-open category: no travel, no fade-through
+     the page ground, just a fast cross-dissolve of the two panels in
+     place. Without this the outgoing panel's 130ms close and the
+     incoming panel's 200ms open overlap into a visible blink of
+     background — the "close, blank gap, open" the brief calls out. */
+  .site-header .main-menu.is-switching li .mega-menu {
+    transition-duration: 0.11s;
+    transform: none;
   }
-  .site-header .main-menu li .mega-menu--athletes { width: 760px; gap: 28px; }
-  .site-header .main-menu li .mega-menu--creators { width: 580px; }
-  .mega-menu--creators .mega-menu__col--featured { flex: 1.25; }
-  .mega-menu__col { flex: 1; min-width: 0; }
-  .mega-menu__heading {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--color-text-faint);
-    margin-bottom: 10px;
+
+  .nav-panel__inner {
+    display: grid;
+    grid-template-columns: auto;
+    align-items: start;
+    padding: 22px 24px 16px;
+    gap: 0 32px;
   }
-  .mega-menu__heading--spaced { margin-top: 18px; }
-  .mega-menu__heading-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .mega-menu__heading-row .mega-menu__heading { margin-bottom: 0; }
-  .mega-menu__col ul {
-    list-style: none;
-    margin: 0 0 10px;
-    padding: 0;
-  }
-  .mega-menu__col ul li { margin: 0; }
-  .mega-menu__col ul li a {
+  /* A panel that has a featured card puts it in a second column, divided
+     by a real rule rather than by whitespace — the aside is a different
+     KIND of thing (one product) from the index beside it, and the site's
+     existing visual language draws that distinction with a 1px border. */
+  .nav-panel__inner:has(.nav-panel__aside) { grid-template-columns: auto minmax(0, 1fr); }
+  .nav-panel__aside {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    min-width: 216px;
+    max-width: 260px;
+    padding-left: 32px;
+    border-left: 1px solid var(--border);
+    /* The rule runs the panel's full height (that is the structure), but the
+       one card inside it does not — so it is centred against the index beside
+       it rather than pinned to the top with a column of white underneath. */
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 8px 10px;
+  }
+  .nav-panel__body { grid-column: 1; }
+
+  /* ---- The action row -------------------------------------------------
+     ONE per panel, at the bottom, on its own rule. The old menus repeated
+     a "View All" under every single column — four of them in the athletes
+     panel — which is what turned a navigation surface into a directory. */
+  .nav-panel__foot {
+    grid-column: 1;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-panel__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .nav-panel__action i {
+    font-size: 11px;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-panel__action:hover { color: var(--color-primary); }
+  .nav-panel__action:hover i { transform: translateX(3px); }
+
+  /* ---- Text index (a flat taxonomy: Shop by Goal) ---------------------
+     Balanced columns without a fixed width anywhere. grid-auto-flow:
+     column with an explicit row count fills top-to-bottom then wraps, so
+     seven goals become 4 + 3 rather than a ragged 3 + 3 + 1, and each
+     column is only as wide as its longest label. The row count comes from
+     data-cols, computed server-side from the real item count — see
+     columnsFor() in server/src/lib/navigation.js. */
+  .nav-panel__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    /* Default is a single column. `grid-auto-flow: column` is switched on
+       only by a data-rows rule below, so a taxonomy larger than any of them
+       degrades to one tall list rather than to one endless ROW — which is
+       what an unmatched `auto-flow: column` with no template would produce. */
+    grid-auto-flow: row;
+    column-gap: 28px;
+  }
+  .nav-panel__link {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
     margin: 0 -10px;
     border-radius: 8px;
     font-size: 13.5px;
     font-weight: 500;
+    line-height: 1.25;
     color: var(--color-text);
-    transition: background 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.14s ease, color 0.14s ease;
   }
-  .mega-menu__col ul li a:hover {
+  .nav-panel__link:hover {
     background: var(--color-surface-2);
     color: var(--color-primary);
   }
-  .mega-menu__avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-surface-2);
-    border: 1px solid var(--border);
+  /* style.css sets a global `span { color: var(--span) }` that beats the
+     colour on an ancestor <a>. Every span inside a nav link therefore has
+     to inherit explicitly, or a hovered/inverted row renders its label in
+     the wrong colour with no error anywhere. */
+  .nav-panel__link span,
+  .nav-panel__tile span,
+  .nav-panel__feature span,
+  .nav-panel__action span,
+  .nav-panel__rail-link span { color: inherit; }
+
+  /* ---- Group index (a nested taxonomy with no people in it) ---------- */
+  .nav-panel__groups {
+    display: flex;
+    align-items: flex-start;
+    gap: 36px;
+  }
+  .nav-panel__group { min-width: 0; }
+  .nav-panel__group-title {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  a.nav-panel__group-title:hover { color: var(--color-primary); text-decoration: underline; }
+  .nav-panel__group .nav-panel__list { grid-auto-flow: row; }
+  .nav-panel__group .nav-panel__link {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  /* ---- People (athletes, creators) -----------------------------------
+     A scannable roster, not a text dump. No "ATHLETE" chip on every row:
+     the panel is titled "Browse Athletes" and the trigger is directly
+     above it, so the tag was pure repetition. The only secondary text is
+     the plan count, and only when it is not zero. */
+  .nav-panel__rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0 0 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-panel__rail-link {
     display: inline-flex;
     align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+  }
+  .nav-panel__rail-link:hover {
+    background: var(--color-text);
+    border-color: var(--color-text);
+    color: var(--color-surface);
+  }
+  .nav-panel__rail-link:hover span { color: inherit; }
+
+  .nav-panel__tiles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-auto-flow: row;
+    column-gap: 24px;
+  }
+
+  /* The exact split, computed from the real item count by columnsFor() in
+     server/src/lib/navigation.js and handed over as data-rows. Enumerated
+     rather than calculated because CSS cannot ceil(); the range covers any
+     plausible category (twenty rows across three columns is sixty items) and
+     anything past it falls back to the single column above. */
+  .nav-panel__list--index[data-rows="2"],
+  .nav-panel__tiles[data-rows="2"] { grid-auto-flow: column; grid-template-rows: repeat(2, auto); }
+  .nav-panel__list--index[data-rows="3"],
+  .nav-panel__tiles[data-rows="3"] { grid-auto-flow: column; grid-template-rows: repeat(3, auto); }
+  .nav-panel__list--index[data-rows="4"],
+  .nav-panel__tiles[data-rows="4"] { grid-auto-flow: column; grid-template-rows: repeat(4, auto); }
+  .nav-panel__list--index[data-rows="5"],
+  .nav-panel__tiles[data-rows="5"] { grid-auto-flow: column; grid-template-rows: repeat(5, auto); }
+  .nav-panel__list--index[data-rows="6"],
+  .nav-panel__tiles[data-rows="6"] { grid-auto-flow: column; grid-template-rows: repeat(6, auto); }
+  .nav-panel__list--index[data-rows="7"],
+  .nav-panel__tiles[data-rows="7"] { grid-auto-flow: column; grid-template-rows: repeat(7, auto); }
+  .nav-panel__list--index[data-rows="8"],
+  .nav-panel__tiles[data-rows="8"] { grid-auto-flow: column; grid-template-rows: repeat(8, auto); }
+  .nav-panel__list--index[data-rows="9"],
+  .nav-panel__tiles[data-rows="9"] { grid-auto-flow: column; grid-template-rows: repeat(9, auto); }
+  .nav-panel__list--index[data-rows="10"],
+  .nav-panel__tiles[data-rows="10"] { grid-auto-flow: column; grid-template-rows: repeat(10, auto); }
+  .nav-panel__list--index[data-rows="11"],
+  .nav-panel__tiles[data-rows="11"] { grid-auto-flow: column; grid-template-rows: repeat(11, auto); }
+  .nav-panel__list--index[data-rows="12"],
+  .nav-panel__tiles[data-rows="12"] { grid-auto-flow: column; grid-template-rows: repeat(12, auto); }
+  .nav-panel__list--index[data-rows="13"],
+  .nav-panel__tiles[data-rows="13"] { grid-auto-flow: column; grid-template-rows: repeat(13, auto); }
+  .nav-panel__list--index[data-rows="14"],
+  .nav-panel__tiles[data-rows="14"] { grid-auto-flow: column; grid-template-rows: repeat(14, auto); }
+  .nav-panel__list--index[data-rows="15"],
+  .nav-panel__tiles[data-rows="15"] { grid-auto-flow: column; grid-template-rows: repeat(15, auto); }
+  .nav-panel__list--index[data-rows="16"],
+  .nav-panel__tiles[data-rows="16"] { grid-auto-flow: column; grid-template-rows: repeat(16, auto); }
+  .nav-panel__list--index[data-rows="17"],
+  .nav-panel__tiles[data-rows="17"] { grid-auto-flow: column; grid-template-rows: repeat(17, auto); }
+  .nav-panel__list--index[data-rows="18"],
+  .nav-panel__tiles[data-rows="18"] { grid-auto-flow: column; grid-template-rows: repeat(18, auto); }
+  .nav-panel__list--index[data-rows="19"],
+  .nav-panel__tiles[data-rows="19"] { grid-auto-flow: column; grid-template-rows: repeat(19, auto); }
+  .nav-panel__list--index[data-rows="20"],
+  .nav-panel__tiles[data-rows="20"] { grid-auto-flow: column; grid-template-rows: repeat(20, auto); }
+  .nav-panel__tile {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 196px;
+    padding: 6px 10px;
+    margin: 0 -10px;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.14s ease;
+  }
+  .nav-panel__tile:hover { background: var(--color-surface-2); }
+  .nav-panel__thumb-box {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-surface-2);
+    border: 1px solid var(--border);
+  }
+  .nav-panel__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .nav-panel__initials {
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--color-text-muted);
   }
-  .mega-menu__col ul li a:hover .mega-menu__avatar {
-    background: var(--color-surface);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-  }
-  .mega-menu__person-name {
+  .nav-panel__tile-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
     min-width: 0;
+  }
+  .nav-panel__tile-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .mega-menu__person-meta {
-    margin-left: auto;
-    padding-left: 8px;
-    flex-shrink: 0;
+  .nav-panel__tile-meta {
     font-size: 11.5px;
     font-weight: 500;
+    line-height: 1.2;
     color: var(--color-text-faint);
   }
-  .mega-menu__empty {
-    padding: 10px 0;
-    font-size: 13px;
-    color: var(--color-text-muted);
-  }
-  .mega-menu__search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 38px;
-    padding: 0 12px;
-    margin-bottom: 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--color-surface-2);
-    transition: border-color 0.15s ease, background 0.15s ease;
-    cursor: text;
-  }
-  .mega-menu__search:focus-within {
-    border-color: var(--color-primary);
-    background: var(--color-surface);
-  }
-  .mega-menu__search i {
-    font-size: 12px;
-    color: var(--color-text-faint);
-    flex-shrink: 0;
-  }
-  .mega-menu__search input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: transparent;
-    outline: none;
-    font-size: 13px;
-    color: var(--color-text);
-  }
-  .mega-menu__search input::placeholder { color: var(--color-text-faint); }
-  .mega-menu__view-all {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 0;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--color-primary);
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .mega-menu__view-all:hover { text-decoration: underline; color: var(--color-primary); }
-  .mega-menu__cards {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .mega-menu-card {
+
+  /* ---- The one product preview in the whole header ------------------- */
+  .nav-panel__feature {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 10px;
-    margin: 0 -10px;
-    border-radius: 10px;
-    transition: background 0.15s ease;
+    text-decoration: none;
   }
-  .mega-menu-card:hover { background: var(--color-surface-2); }
-  .mega-menu-card__thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
+  .nav-panel__feature-thumb {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
     object-fit: cover;
-    flex-shrink: 0;
+    display: block;
     background: var(--color-surface-2);
   }
-  .mega-menu-card__body { min-width: 0; }
-  .mega-menu-card__name {
-    display: block;
+  .nav-panel__aside .nav-panel__thumb-box {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+  }
+  .nav-panel__feature-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .nav-panel__feature-name {
     font-size: 13px;
     font-weight: 600;
+    line-height: 1.3;
     color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .mega-menu-card__meta {
-    display: block;
-    font-size: 12px;
+  .nav-panel__feature-meta {
+    font-size: 11.5px;
+    line-height: 1.3;
     color: var(--color-text-muted);
   }
-  .mega-menu-card__meta .mega-menu-card__price {
-    color: var(--color-text);
-    font-weight: 600;
+  .nav-panel__feature:hover .nav-panel__feature-name { color: var(--color-primary); text-decoration: underline; }
+
+  .nav-panel__empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
   }
 }
 
@@ -5889,43 +6083,37 @@ body.cart-open { overflow: hidden; }
     .mega-menu__panel-inner { transition: none; }
   }
 
+  /* ==========================================================
+     NAV PANEL — mobile.
+
+     Same markup as desktop, no second template and no JS branch. The
+     drawer flattens every layout to one column of full-width rows: a
+     goal index, a sport rail and an athlete roster are all just rows
+     here, which is why they can share a renderer at all.
+
+     The accordion mechanics above (grid-template-rows 0fr -> 1fr on
+     .open) are untouched — this only restyles what is inside.
+     ========================================================== */
+
   /* A panel is tinted one step back from the drawer surface so an expanded
      section reads as nested under its trigger, which is what lets the
      dividers be dropped from its rows without the list looking loose. */
   .mega-menu__panel-inner { background: var(--color-surface-2); }
-  .mega-menu__col { padding: 0; }
-  .mega-menu__col + .mega-menu__col { border-top: 1px solid var(--border); }
-  .mega-menu__heading {
-    display: block;
-    padding: 14px var(--nav-gutter) 6px;
-    margin-bottom: 0;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--color-text-faint);
-  }
-  .mega-menu__heading--spaced { margin-top: 6px; }
-  .mega-menu__heading-row { padding: 14px var(--nav-gutter) 6px; margin-bottom: 0; }
-  .mega-menu__col ul { margin: 0; list-style: none; padding: 0; }
-  /* Every tappable row in a panel shares one box: same gutter, same
-     minimum height, same vertical padding — so spacing between any two
-     consecutive rows is identical no matter which of the three menus
-     they came from or whether they carry an avatar/thumbnail. */
-  /* Scoped with `.site-header .main-menu` (3 classes) rather than left as
-     a bare `.mega-menu__col ul li a` (1 class, 3 elements). The generic
-     `.site-header .main-menu li > a` rule further up this file is (0,2,2)
-     and outranks (0,1,3), so it was winning `padding`, `display` and `gap`
-     on exactly the rows that matter most — every goal/athlete/creator
-     link — pinning them to its own `padding: 6px 0`. That left the real
-     link rows 24px to the left of the headings, cards and View-All rows
-     around them (which are not direct children of an <li>, so the generic
-     rule never matched them and they kept the gutter). That 24px split is
-     what made an expanded panel look ragged. Same failure mode, and same
-     fix, as the .mobile-account-links__item rule below. */
-  .site-header .main-menu .mega-menu__col ul li a,
-  .mega-menu-card,
-  .mega-menu__view-all {
+
+  .nav-panel__inner { display: flex; flex-direction: column; padding: 0; }
+  .nav-panel__body { padding: 0; }
+
+  /* EVERY tappable row in a panel shares one box: the drawer's single
+     gutter, one minimum height, one vertical padding. That is what makes
+     the spacing between any two consecutive rows identical regardless of
+     which category they came from or whether they carry a thumbnail —
+     and it is why the panel can hold four items or forty without ever
+     developing a blank area. 48px comfortably clears the 44px touch
+     target minimum. */
+  .site-header .main-menu .nav-panel__link,
+  .site-header .main-menu .nav-panel__tile,
+  .site-header .main-menu .nav-panel__feature,
+  .site-header .main-menu .nav-panel__action {
     display: flex;
     align-items: center;
     box-sizing: border-box;
@@ -5935,119 +6123,163 @@ body.cart-open { overflow: hidden; }
     margin: 0;
     border-radius: 0;
     text-align: left;
+    text-decoration: none;
   }
-  .site-header .main-menu .mega-menu__col ul li a {
+  .site-header .main-menu .nav-panel__link {
     gap: 12px;
     font-size: 14px;
     font-weight: 500;
     color: var(--color-text);
+    white-space: normal;
   }
-  .mega-menu__view-all {
+  .nav-panel__link span,
+  .nav-panel__tile span,
+  .nav-panel__feature span,
+  .nav-panel__action span,
+  .nav-panel__rail-link span { color: inherit; }
+
+  .nav-panel__list { display: block; margin: 0; padding: 0; list-style: none; }
+  .nav-panel__list li { margin: 0; }
+
+  /* Group headings inside a nested taxonomy. A real content label (the
+     sport's own name), not a decorative uppercase eyebrow — the drawer
+     has exactly one of those per group and none anywhere else. */
+  .nav-panel__groups { display: flex; flex-direction: column; }
+  .nav-panel__group + .nav-panel__group { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__group-title {
+    display: block;
+    padding: 14px var(--nav-gutter) 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-text-faint);
+    text-decoration: none;
+  }
+
+  /* The group rail becomes a wrapping chip block. Deliberately WRAPPING and
+     not a horizontal scroller: a scroller keeps the drawer narrow but hides
+     categories off the right edge with no affordance, on the one surface
+     where a customer is least likely to go looking. Wrapping costs a second
+     row and hides nothing. */
+  .nav-panel__rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 12px var(--nav-gutter);
+    list-style: none;
+    border-bottom: 1px solid var(--border);
+  }
+  /* Scoped with `.site-header .main-menu` (3 classes), not left as a bare
+     `.nav-panel__rail li` (1 class + 1 element). The drawer's generic
+     `.site-header .main-menu li { width: 100% }` is (0,2,2) and outranks
+     (0,1,2), so every chip was stretched to the full drawer width and the
+     "wrapping strip" rendered as one chip per row — a four-item strip became
+     four full-height rows. Same failure mode, and the same fix, as the
+     .mobile-account-links and panel-link rules elsewhere in this block. */
+  .site-header .main-menu .nav-panel__rail li {
+    width: auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .site-header .main-menu .nav-panel__rail-link {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--color-bg);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-panel__tiles { display: block; margin: 0; padding: 0; list-style: none; }
+  .nav-panel__tile-item { margin: 0; }
+  .site-header .main-menu .nav-panel__tile { gap: 12px; }
+  .nav-panel__thumb-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-bg);
+    border: 1px solid var(--border);
+  }
+  .nav-panel__thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .nav-panel__initials {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+  .nav-panel__tile-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .nav-panel__tile-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-panel__tile-meta { font-size: 12px; line-height: 1.2; color: var(--color-text-faint); }
+
+  .nav-panel__aside { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__feature { gap: 12px; min-height: 64px; }
+  .nav-panel__feature-thumb,
+  .nav-panel__aside .nav-panel__thumb-box {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+  }
+  .nav-panel__feature-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .nav-panel__feature-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
+  }
+  .nav-panel__feature-meta { font-size: 12px; line-height: 1.2; color: var(--color-text-muted); }
+
+  .nav-panel__foot { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__action {
     gap: 8px;
     font-size: 13px;
     font-weight: 600;
     color: var(--color-primary);
-    background: none;
-    border: none;
-    cursor: pointer;
   }
-  /* Fixed icon box, matching .nav-top-link__chevron, so the trailing arrow
-     on every "View All" row lands on the same optical column. */
-  .mega-menu__view-all i {
+  /* Fixed icon box so the trailing arrow lands on the same optical column
+     as the chevron on every trigger row above it. */
+  .nav-panel__action i {
     flex: 0 0 14px;
     width: 14px;
     text-align: center;
     font-size: 12px;
     line-height: 1;
   }
-  .mega-menu__cards { gap: 0; display: flex; flex-direction: column; }
-  .mega-menu-card { gap: 12px; }
-  .mega-menu-card__thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: var(--color-surface-2);
-  }
-  .mega-menu-card__body { min-width: 0; }
-  .mega-menu-card__name {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .mega-menu-card__meta {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-muted);
-  }
-  .mega-menu-card__meta .mega-menu-card__price {
-    color: var(--color-text);
-    font-weight: 600;
-  }
-  .mega-menu__search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-sizing: border-box;
-    height: var(--nav-row-min);
-    padding: 0 14px;
-    margin: 10px var(--nav-gutter);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--color-bg);
-  }
-  .mega-menu__search i { font-size: 13px; color: var(--color-text-faint); flex-shrink: 0; }
-  .mega-menu__search input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: transparent;
-    outline: none;
-    font-size: 16px; /* >=16px prevents iOS focus auto-zoom inside the drawer */
-    color: var(--color-text);
-  }
-  .mega-menu__empty {
+
+  .nav-panel__empty {
     display: flex;
     align-items: center;
     min-height: var(--nav-row-min);
+    margin: 0;
     padding: 10px var(--nav-gutter);
     font-size: 13px;
     color: var(--color-text-muted);
   }
-  /* Matches .mega-menu-card__thumb's 44px column so an avatar row and a
-     thumbnail row put their text on the same left edge. */
-  .mega-menu__avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-surface-2);
-    border: 1px solid var(--border);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--color-text-muted);
-  }
-  .mega-menu__person-name {
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .mega-menu__person-meta {
-    margin-left: auto;
-    padding-left: 8px;
-    flex-shrink: 0;
-    font-size: 11.5px;
-    color: var(--color-text-faint);
-  }
+
 
   /* Second-level rows: one fixed indent step in from the shared gutter,
      never an unrelated hard-coded 36px. */
@@ -7348,15 +7580,6 @@ body.cart-open { overflow: hidden; }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-  /* The nav drawer's creator-search <label> is already a 48px row; the
-     <input> inside it only occupied 26px of that, so a tap landing in the
-     row's upper or lower band missed the field. Filling the row's height
-     makes the whole visible field tappable. */
-  .mega-menu__search input {
-    align-self: stretch;
-    height: auto;
-    min-height: 44px;
   }
 }
 

@@ -1,6 +1,7 @@
 const express = require("express");
 const { requireAuth, requireAdmin } = require("../../middleware/auth");
 const { adminLimiter } = require("../../middleware/rateLimit");
+const { invalidateNavigation } = require("../../lib/navigation");
 
 const dashboardRoutes = require("./dashboard");
 const ordersRoutes = require("./orders");
@@ -29,6 +30,24 @@ const router = express.Router();
 // requirePromotionView/requirePromotionManage gating per route. Every other
 // section's access is unchanged: still admin-only.
 router.use(requireAuth, adminLimiter);
+
+// The header navigation is rendered once and cached (it is byte-identical on
+// every page of the site — see lib/navigation.js). Anything an admin WRITES
+// can change what it shows: a taxonomy edit obviously, but also a product
+// edit, because the menu carries per-category plan counts and one featured
+// card, and because publishing/unpublishing a product changes which of them
+// count at all.
+//
+// One hook on every admin mutation rather than a call in each of ~30 route
+// handlers: the failure mode of forgetting one is an admin who saves a change
+// and does not see it, which reads as a broken CMS, and it is the kind of
+// thing that only gets forgotten in the handler someone adds next year. The
+// rebuild is a handful of indexed queries on the next page render, so being
+// generous here costs nothing.
+router.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") invalidateNavigation();
+  next();
+});
 
 router.use("/dashboard", requireAdmin, dashboardRoutes);
 router.use("/orders", requireAdmin, ordersRoutes);

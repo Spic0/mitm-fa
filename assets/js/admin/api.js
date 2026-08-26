@@ -248,6 +248,11 @@ window.AdminAPI = (function () {
     createTaxonomyNode: function (taxonomyId, body) { return post("/api/admin/taxonomy/" + taxonomyId + "/nodes", body); },
     updateTaxonomyNode: function (nodeId, body) { return put("/api/admin/taxonomy/nodes/" + nodeId, body); },
     deleteTaxonomyNode: function (nodeId) { return del("/api/admin/taxonomy/nodes/" + nodeId); },
+    // Taxonomy-LEVEL operations: a whole top-level navigation category, not an
+    // item inside one. The header renders one panel per row these touch.
+    createTaxonomy: function (body) { return post("/api/admin/taxonomy", body); },
+    updateTaxonomy: function (taxonomyId, body) { return put("/api/admin/taxonomy/" + taxonomyId, body); },
+    deleteTaxonomy: function (taxonomyId) { return del("/api/admin/taxonomy/" + taxonomyId); },
 
     createProductFaq: function (id, body) { return post("/api/admin/products/" + id + "/faqs", body); },
     updateProductFaq: function (id, faqId, body) { return put("/api/admin/products/" + id + "/faqs/" + faqId, body); },

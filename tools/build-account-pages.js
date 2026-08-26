@@ -102,7 +102,7 @@ const PAGES = [
 // The shell page's own script list ends with my-library.js. Every generated
 // page replaces that ONE line with its own scripts, so all the shared
 // machinery above it (api.js, media-container.js, script.js, branding.js,
-// nav-featured.js) is inherited rather than restated.
+// cart drawer) is inherited rather than restated.
 const SHELL_PAGE_SCRIPT = '    <script src="/assets/js/my-library.js" defer></script>';
 
 function build() {

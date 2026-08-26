@@ -244,19 +244,269 @@ CSS TABLE OF CONTENTS
 		$link.attr("aria-expanded", String(opening));
 	});
 
-	// Desktop hover/focus opens the dropdown visually via CSS alone; this
-	// just keeps aria-expanded in sync with that so screen readers know
-	// the real state, since CSS :hover/:focus-within can't touch ARIA.
-	$(".site-header .main-menu > li").on("mouseenter focusin", function () {
-		$(this).children(".nav-top-link").attr("aria-expanded", "true");
-	}).on("mouseleave focusout", function () {
-		var li = $(this);
-		setTimeout(function () {
-			if (!li.is(":hover") && li.find(":focus").length === 0) {
-				li.children(".nav-top-link").attr("aria-expanded", "false");
+	// ---- Menu thumbnails: fetched on first contact, not on page load ------
+	// server/src/lib/navigation.js ships every panel thumbnail with no `src`,
+	// only `data-src`. See the long comment there for why `loading="lazy"` is
+	// not enough: a closed desktop panel sits inside the viewport, so the
+	// browser happily downloaded the whole menu's imagery on every page of the
+	// site. This promotes them once, on the first sign that a visitor is
+	// actually going to use the nav — early enough that the pictures are in
+	// place before a panel finishes opening, and never at all on the many page
+	// views where nobody touches the menu.
+	(function navThumbs() {
+		var painted = false;
+		function paint() {
+			if (painted) return;
+			painted = true;
+			// SOURCES FIRST, then the img. Inside a <picture> the img's src is
+			// only the last candidate, so promoting it before the sources
+			// would fetch the fallback original and then fetch the AVIF too.
+			var sources = document.querySelectorAll(".site-header picture source[data-srcset]");
+			Array.prototype.forEach.call(sources, function (source) {
+				source.srcset = source.getAttribute("data-srcset");
+				source.removeAttribute("data-srcset");
+			});
+			var imgs = document.querySelectorAll(".site-header img[data-nav-thumb][data-src]");
+			Array.prototype.forEach.call(imgs, function (img) {
+				img.src = img.getAttribute("data-src");
+				img.removeAttribute("data-src");
+			});
+		}
+		var header = document.querySelector(".site-header");
+		if (!header) return;
+		// Desktop: the pointer arriving anywhere in the header, or focus
+		// entering it. Mobile: the hamburger. All three are "about to look at
+		// the menu", and all three are once-only.
+		header.addEventListener("mouseenter", paint, { once: true });
+		header.addEventListener("focusin", paint, { once: true });
+		header.addEventListener("touchstart", paint, { once: true, passive: true });
+		var bar = header.querySelector(".header-bar");
+		if (bar) bar.addEventListener("click", paint, { once: true });
+	})();
+
+	// ---- Desktop mega-menu controller ------------------------------------
+	// The panels used to open on a bare CSS :hover/:focus-within, with this
+	// block doing nothing but patching aria-expanded afterwards. Four of the
+	// behaviours this menu needs are simply not expressible that way:
+	//
+	//   - Escape must close it, and an outside click must close it. CSS has
+	//     no concept of either.
+	//   - Moving from one category to another must be CONTINUOUS. With
+	//     :hover, leaving A starts A's close while B's open is still sitting
+	//     behind its hover-intent delay, so the two never overlap and the
+	//     page ground flashes between them. Here the second open is told to
+	//     skip the delay and cross-dissolve in place (.is-switching).
+	//   - A pointer travelling diagonally from the trigger toward the panel
+	//     briefly leaves both. A short close grace absorbs that instead of
+	//     snapping the panel shut under the cursor.
+	//   - Opening one panel must close the other, deterministically, rather
+	//     than relying on two independent :hover states not overlapping.
+	//
+	// Everything is state on ONE element (.is-open on the panel), so the
+	// panels stay mounted, server-rendered and identical for the whole page
+	// lifetime — nothing here creates, destroys or refetches anything, which
+	// is what makes an open feel instantaneous.
+	(function desktopMegaMenu() {
+		var OPEN_DELAY = 120;   // hover intent: a mouse crossing the nav on its
+		                        // way elsewhere must not flash panels open
+		var CLOSE_DELAY = 140;  // grace for the diagonal trigger -> panel travel
+		var SWITCH_MS = 260;    // how long "switching" suppresses the open delay
+
+		var menu = document.querySelector(".site-header .main-menu");
+		var header = document.querySelector(".site-header");
+		if (!menu || !header) return;
+
+		var openTimer = null, closeTimer = null, switchTimer = null;
+		var current = null;       // the <li> whose panel is open
+		// Escape closes the panel and returns focus to its trigger, which is
+		// the only place focus can go without stranding a keyboard user at the
+		// top of the document — but the trigger opens its panel ON FOCUS, so
+		// that same courtesy immediately re-opened what Escape just closed.
+		// This suppresses exactly one focus-open, on exactly that trigger.
+		var dismissed = null;
+
+		function isDesktop() { return window.innerWidth >= 992; }
+		function panelOf(li) { return li ? li.querySelector("[data-menu-panel]") : null; }
+		function triggerOf(li) { return li ? li.querySelector(".nav-top-link") : null; }
+
+		function clearTimers() {
+			clearTimeout(openTimer); clearTimeout(closeTimer);
+			openTimer = closeTimer = null;
+		}
+
+		function close(li) {
+			var panel = panelOf(li), trigger = triggerOf(li);
+			if (panel) panel.classList.remove("is-open");
+			if (trigger) trigger.setAttribute("aria-expanded", "false");
+		}
+
+		function closeAll(immediate) {
+			if (!current) return;
+			close(current);
+			current = null;
+			if (immediate) {
+				menu.classList.remove("is-switching");
+				clearTimeout(switchTimer);
 			}
-		}, 50);
-	});
+		}
+
+		function open(li) {
+			if (!isDesktop() || li === current) return;
+			var panel = panelOf(li);
+			if (!panel) return;
+			// Switching, not opening from cold: hold the fast cross-dissolve
+			// for long enough to cover this transition, then drop it so the
+			// NEXT cold open gets its full easing back.
+			if (current) {
+				menu.classList.add("is-switching");
+				clearTimeout(switchTimer);
+				switchTimer = setTimeout(function () {
+					menu.classList.remove("is-switching");
+				}, SWITCH_MS);
+				close(current);
+			}
+			panel.classList.add("is-open");
+			var trigger = triggerOf(li);
+			if (trigger) trigger.setAttribute("aria-expanded", "true");
+			current = li;
+		}
+
+		function scheduleOpen(li) {
+			clearTimers();
+			// Already showing a panel: the customer is clearly reading the
+			// menu, so the intent delay has been paid for. Switch now.
+			if (current) { open(li); return; }
+			openTimer = setTimeout(function () { open(li); }, OPEN_DELAY);
+		}
+
+		function scheduleClose() {
+			clearTimers();
+			closeTimer = setTimeout(function () { closeAll(true); }, CLOSE_DELAY);
+		}
+
+		var items = menu.querySelectorAll("li.nav-mega");
+
+		// Where the panels hang from. See --nav-panel-left in style.css.
+		//
+		// The panel is a child of .header-inner, so its max-width is measured
+		// against the page container and it can never overflow the viewport —
+		// but .header-inner starts at the LOGO, and a panel hanging off the
+		// logo does not read as belonging to the nav item that opened it. So
+		// the origin is the first trigger's left edge. (Not .main-menu's own
+		// box: that <ul> is a stretched flex child 1257px wide whose items are
+		// centred inside it, so its left edge is nowhere near the first link.)
+		//
+		// ONE origin, shared by every category, deliberately: that is what
+		// makes switching read as a single surface changing its contents, and
+		// it is why the panel cannot appear to jump sideways mid-switch.
+		// Clamped against the WIDEST panel so the shared origin is safe for
+		// all of them at once.
+		function measureOrigin() {
+			if (!isDesktop() || !items.length) return;
+			var inner = header.querySelector(".header-inner");
+			if (!inner) return;
+			// Measure the panels unconstrained: their max-width is derived from
+			// the very property being computed here, so leaving the previous
+			// value in place would feed the last answer back into this one.
+			inner.style.setProperty("--nav-panel-left", "0px");
+			var widest = 0;
+			Array.prototype.forEach.call(items, function (li) {
+				var panel = panelOf(li);
+				if (panel) widest = Math.max(widest, panel.offsetWidth);
+			});
+			var innerBox = inner.getBoundingClientRect();
+			var first = items[0].getBoundingClientRect().left - innerBox.left;
+			var left = Math.max(0, Math.min(Math.round(first), Math.round(innerBox.width - widest)));
+			inner.style.setProperty("--nav-panel-left", left + "px");
+		}
+		measureOrigin();
+		// Fonts landing after first paint re-flow the nav; re-measure once they
+		// do rather than leaving the panels aligned to a pre-swap layout.
+		if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureOrigin);
+		Array.prototype.forEach.call(items, function (li) {
+			li.addEventListener("mouseenter", function () {
+				if (isDesktop()) scheduleOpen(li);
+			});
+
+			var trigger = triggerOf(li);
+			if (!trigger) return;
+
+			// A keyboard user gets the panel on focus, with no delay — Tab is
+			// always deliberate, never an accident of pointer travel.
+			trigger.addEventListener("focus", function () {
+				if (!isDesktop()) return;
+				if (dismissed === li) return; // just closed with Escape
+				clearTimers();
+				open(li);
+			});
+			trigger.addEventListener("blur", function () {
+				if (dismissed === li) dismissed = null;
+			});
+
+			trigger.addEventListener("click", function (e) {
+				if (!isDesktop()) return; // mobile accordion owns the tap
+				// First click opens the panel; a second click on an already-
+				// open trigger follows the link, so the category's own landing
+				// page is never unreachable by mouse.
+				if (current !== li) {
+					e.preventDefault();
+					dismissed = null;
+					clearTimers();
+					open(li);
+				}
+			});
+
+			// Down-arrow from the trigger walks into the panel, which is the
+			// convention a screen-reader user expects from aria-haspopup.
+			trigger.addEventListener("keydown", function (e) {
+				if (!isDesktop() || e.key !== "ArrowDown") return;
+				e.preventDefault();
+				dismissed = null;
+				open(li);
+				var first = panelOf(li).querySelector("a[href]");
+				if (first) first.focus();
+			});
+		});
+
+		// One close path for the pointer leaving the whole header, rather than
+		// per-item mouseleave — the panel is a child of .header-inner, not of
+		// the <li> that triggered it, so an <li>-level mouseleave fires the
+		// moment the cursor sets off toward the panel it is about to enter.
+		header.addEventListener("mouseleave", function () {
+			if (isDesktop()) scheduleClose();
+		});
+		header.addEventListener("mouseenter", function () { clearTimers(); });
+
+		// Focus leaving the header entirely (Tab past the last panel link).
+		header.addEventListener("focusout", function () {
+			if (!isDesktop()) return;
+			setTimeout(function () {
+				if (!header.contains(document.activeElement)) closeAll(true);
+			}, 0);
+		});
+
+		document.addEventListener("keydown", function (e) {
+			if (e.key !== "Escape" || !current) return;
+			var li = current;
+			var trigger = triggerOf(li);
+			closeAll(true);
+			// Focus must come back to something, or a keyboard user is left
+			// stranded at the top of the document.
+			dismissed = li;
+			if (trigger) trigger.focus();
+		});
+
+		document.addEventListener("click", function (e) {
+			if (current && !header.contains(e.target)) closeAll(true);
+		});
+
+		// Crossing the breakpoint with a panel open would leave .is-open on a
+		// panel the drawer is now styling as an accordion section.
+		window.addEventListener("resize", function () {
+			if (!isDesktop()) closeAll(true);
+			measureOrigin();
+		});
+	})();
 
 	var fixed_top = $(".site-header");
 	$(window).on("scroll", function () {

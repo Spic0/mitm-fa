@@ -829,6 +829,22 @@ body.a-modal-body-lock { overflow: hidden; }
   background: var(--a-surface); color: var(--a-text); font-size: 14px; font-weight: 600;
 }
 .tax-empty { color: var(--a-text-muted); font-size: 13px; margin: 0; }
+/* Category-level row: layout picker + reorder/visibility/delete + add-item,
+   all on one line so the CATEGORY controls read as a different tier from the
+   per-item controls inside the card. */
+.tax-card__actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tax-select {
+  height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--a-border);
+  background: var(--a-surface); color: var(--a-text); font-size: 13px; font-weight: 500;
+}
+/* A category hidden from the storefront menu still exists and still tags
+   products — it is dimmed, never removed, so the distinction between "hidden"
+   and "deleted" stays visible at a glance. */
+.tax-card--hidden { opacity: .62; }
+.tax-checkbox {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 13px; color: var(--a-text-muted); white-space: nowrap;
+}
 
 /* ---- Product wizard: Navigation Placement taxonomy picker ---- */
 .a-wizard-tax-group { margin-bottom: 20px; }

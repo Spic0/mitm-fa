@@ -73,7 +73,7 @@ const DEMO_PRODUCT = {
         title: "Week 1",
         days: [
           { id: "d1", title: "Day 1", notes: "Day one brief", exercises: [exercise(0), exercise(1), exercise(2), exercise(3)] },
-          { id: "d2", title: "Day 2", notes: "", exercises: [exercise(0)] },
+          { id: "d2", title: "Day 2", notes: "Day two brief", exercises: [exercise(0)] },
         ],
       },
       { id: "w2", title: "Week 2", days: [{ id: "d3", title: "Day 3", exercises: [exercise(0)] }] },
@@ -196,6 +196,30 @@ function check(label, actual, expected) {
   // 400 specifically would make this test fail if the outer gate got STRICTER.
   const traversal = await get(port, `/api/library/media/${DEMO_ID}/..%2F..%2Fsecret?variant=poster`);
   check("path traversal out of the media dir is refused", traversal.status >= 400, true);
+
+  console.log("\nGET /api/demo/handbook — the viewer-shaped preview");
+  const hb = await get(port, "/api/demo/handbook");
+  check("responds 200", hb.status, 200);
+  const hbBody = JSON.parse(hb.body);
+  const weeks = hbBody.product.trainingContent.weeks;
+  check("one week only", weeks.length, 1);
+  check("one day only", weeks[0].days.length, 1);
+  check("two exercises only", weeks[0].days[0].exercises.length, 2);
+  check("exercise 3 absent from handbook payload", /Exercise 3/.test(hb.body), false);
+  check("Week 2 absent from handbook payload", /Week 2/.test(hb.body), false);
+  // "Day 2" IS allowed to appear — as a locked day TITLE, the same deliberate
+  // teaser /api/demo sends. Its CONTENT must not.
+  check("day 2's brief absent from handbook payload", /Day two brief/.test(hb.body), false);
+  check("no nutritionContent in handbook payload", /nutritionContent/.test(hb.body), false);
+  check("no anim/video renditions referenced", /variant=(anim|mp4|webm)/.test(hb.body), false);
+  // The exercise media the payload references must be exactly the two stills
+  // the /api/demo gate already opens — the handbook must not widen the
+  // allowlist by a single file.
+  const urls = (hb.body.match(/\/api\/library\/media\/[^"]+/g) || []);
+  check("every referenced media url is a poster", urls.every((u) => /variant=poster$/.test(u)), true);
+  check("no media beyond the sliced exercises is referenced", new Set(urls).size <= 2, true);
+  check("locked counts ride along", hbBody.product.preview.locked.weeks, 1);
+  check("preview CTA points at the product page", hbBody.product.preview.href, "/program/" + DEMO_SLUG);
 
   console.log("\nThe gated router is otherwise untouched");
   check("full program payload", (await get(port, `/api/library/program/${DEMO_SLUG}`)).status, 401);

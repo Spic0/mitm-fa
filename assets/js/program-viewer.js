@@ -518,6 +518,53 @@
       });
     }
 
+    // ---- Preview boundary -------------------------------------------------
+    // Present only when the payload declares itself a preview (the public
+    // handbook preview from GET /api/demo/handbook). A purchased program's
+    // payload carries no `preview`, so nothing here can appear for a
+    // customer reading what they own.
+    //
+    // The page states what was withheld as counts and day TITLES, because
+    // that is all the server sent: the preview payload's trainingContent
+    // holds exactly the pages already rendered above, so there is no hidden
+    // remainder in the DOM for this page to be concealing.
+    if (p.preview) {
+      var pre = p.preview;
+      pages.push({
+        key: "chapter:preview-end",
+        section: "Preview",
+        title: "The full program",
+        render: function () {
+          var locked = pre.locked || {};
+          var counts = [];
+          if (locked.exercisesInThisDay) counts.push(locked.exercisesInThisDay + " more exercises in this session");
+          if (locked.daysInThisWeek) counts.push(locked.daysInThisWeek + " more training days this week");
+          if (locked.weeks) counts.push(locked.weeks + " more weeks");
+          var days = (pre.lockedDayTitles || []).map(function (t) {
+            return '<li class="pv-locked__day">' + esc(t) + "</li>";
+          }).join("");
+          var price = typeof pre.priceCents === "number"
+            ? (pre.priceCents === 0 ? "Free" : "$" + (pre.priceCents / 100).toFixed(2))
+            : "";
+          return (
+            '<div class="pv-locked">' +
+            '<span class="pv-locked__badge" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="4.5" y="10" width="15" height="10.5" rx="2.5"/></svg>' +
+            "</span>" +
+            "<h2>This is where the preview ends</h2>" +
+            (pre.handbookPages ? '<p class="pv-locked__sum">The full handbook runs ' + esc(pre.handbookPages) + " pages.</p>" : "") +
+            (counts.length ? '<ul class="pv-locked__counts">' + counts.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>" : "") +
+            (days ? '<ul class="pv-locked__days">' + days + "</ul>" : "") +
+            '<a class="pv-locked__cta" href="' + esc(pre.href || "/shop") + '">' +
+            "<span>Get the full program</span>" +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>' +
+            (price ? '<p class="pv-locked__price">' + esc(price) + "</p>" : "") +
+            "</div>"
+          );
+        },
+      });
+    }
+
     return pages;
   }
 

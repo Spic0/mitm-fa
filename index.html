@@ -243,92 +243,79 @@
 
 
 
-        <!-- Program preview. THE FIRST SECTION AFTER THE HERO, and the one
-             the hero's secondary CTA points at.
+        <!-- Product showcase. THE FIRST SECTION AFTER THE HERO.
              ================================================================
-             Answers the only question a visitor can have at this point:
-             "what is actually in one of these?" It answers it with a real
-             product, counted, and with a real excerpt of that product's
-             first session — not with feature copy. There is no feature copy
-             in this section at all.
+             Third rebuild (2026-08-26): the spec-table composition is gone,
+             replaced by the product ITSELF — a device mockup whose screen is
+             the real program interface painted with real data, switchable
+             between the phone and laptop experience, plus a way into the
+             real handbook viewer. The customer looks at the product instead
+             of reading about it. There is no feature copy in this section.
 
-             It moved here from the bottom of the page (2026-08-26). The two
-             sections that used to sit between the hero and it were a
-             horizontal rail of the featured products and a set of three
-             image tiles; both are gone (see below), and the brief's ordering
-             puts real product evidence before any browsing furniture.
+             Data: one GET /api/demo — the same server-cut slice the /demo
+             page renders (1 week, 1 day, 2 exercises; the rest of the paid
+             program never leaves the server, see server/src/lib/demo.js).
+             The handbook button lazy-loads assets/js/program-viewer.js — the
+             SAME component a customer reads a purchased program in — and
+             feeds it GET /api/demo/handbook, a viewer-shaped payload cut to
+             the same slice, ending on a locked boundary page.
 
-             Everything here is counted server-side from the stored program:
-             contentsOf() and previewOf() in server/src/lib/demo.js. Nothing
-             is hardcoded, a row whose count is zero is not rendered, and the
-             excerpt is cut to `limits` (1 week, 1 day, 2 exercises) BEFORE it
-             leaves the server, so the rest of the paid program is never in
-             the response. If GET /api/demo fails the whole section removes
-             itself rather than showing an empty frame.
+             If GET /api/demo fails the whole section removes itself rather
+             than showing an empty frame.
 
-             See changelogs/2026-08-19-demo-preview.md. -->
+             See changelogs/2026-08-19-demo-preview.md for the slice, and
+             changelogs/2026-08-26-product-showcase.md for this section. -->
         <section class="value-area" id="valueArea" hidden>
             <div class="container">
-                <!-- No `wow fadeInUp` inside this section, unlike its
-                     neighbours. The section starts `hidden` and is revealed by
-                     JS once GET /api/demo resolves; WOW.js sets its elements to
-                     visibility:hidden at init and reveals them from a scroll
-                     handler that measures bounding boxes, and a `hidden`
-                     ancestor has no box. Depending on where the visitor is when
-                     the fetch lands, that can leave the contents permanently
-                     invisible. The reveal here is the data arriving, which is
-                     the honest trigger anyway. -->
                 <header class="value__masthead">
-                    <!-- The "INSIDE EVERY PLAN" tag that sat above this
-                         heading is gone. It named the section instead of
-                         telling the visitor anything, which is the definition
-                         of decoration, and the heading below already says what
-                         the block is for. -->
-                    <h2 class="value__title">See exactly what you get.</h2>
+                    <h2 class="value__title">See the program before you buy.</h2>
+                    <p class="value__sub">Workouts, coaching and the handbook, in one place.</p>
                 </header>
 
-                <div class="value__product">
-                    <div class="value__id">
-                        <span class="value__cover" data-vx-cover aria-hidden="true"></span>
-                        <div class="value__id-body">
-                            <span class="value__creator" data-vx-creator></span>
-                            <h3 class="value__name" data-vx-name></h3>
-                            <ul class="value__chips" data-vx-chips></ul>
+                <div class="dv">
+                    <!-- The product, in the device a customer will actually use it on.
+                         Everything painted inside either screen is real data from
+                         GET /api/demo — the same server-cut slice the /demo page
+                         renders (1 week, 1 day, 2 exercises; the rest of the paid
+                         program never leaves the server). home-dynamic.js builds the
+                         screens; an empty screen means the fetch failed and the whole
+                         section stays hidden. -->
+                    <div class="dv__show">
+                        <div class="dv__toggle" data-dv-toggle>
+                            <button type="button" class="dv__mode is-active" data-dv-mode="phone" aria-pressed="true">Phone</button>
+                            <button type="button" class="dv__mode" data-dv-mode="laptop" aria-pressed="false">Laptop</button>
+                        </div>
+
+                        <div class="dv__stage" data-dv-stage data-mode="phone">
+                            <div class="dv-phone" data-dv-device="phone">
+                                <span class="dv-phone__speaker" aria-hidden="true"></span>
+                                <div class="dv-phone__screen" data-dv-screen="phone"></div>
+                            </div>
+                            <div class="dv-laptop" data-dv-device="laptop" aria-hidden="true">
+                                <div class="dv-laptop__lid">
+                                    <div class="dv-laptop__screen" data-dv-screen="laptop"></div>
+                                </div>
+                                <span class="dv-laptop__base" aria-hidden="true"></span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- The counts. A definition list because that is what it
-                         is: a measured value and the thing it measures. -->
-                    <dl class="value__spec" data-vx-spec></dl>
-
-                    <!-- THE EXCERPT. A real week, a real day and the first two
-                         real exercises out of the stored program, set the way
-                         the program viewer sets them. This is the "show the
-                         interface, do not describe it" half of the section:
-                         the counts say how much there is, this says what one
-                         line of it looks like.
-
-                         It is server-cut, not CSS-hidden: GET /api/demo
-                         returns exactly what is rendered here and nothing
-                         more, so there is no full program sitting in the
-                         markup behind a blur. The trailing line states what
-                         was withheld rather than pretending this is all of
-                         it. -->
-                    <div class="value__session" data-vx-session hidden>
-                        <div class="value__session-head">
-                            <span class="value__session-week" data-vx-week></span>
-                            <span class="value__session-day" data-vx-day></span>
+                    <!-- Concrete facts only, every one read from the product row —
+                         nothing here is written by hand, so nothing here can drift
+                         from what is actually sold. -->
+                    <div class="dv__info">
+                        <p class="dv__creator" data-dv-creator></p>
+                        <h3 class="dv__name" data-dv-name></h3>
+                        <dl class="dv__facts" data-dv-facts></dl>
+                        <div class="dv__act">
+                            <button type="button" class="btn-one dv__handbook-btn" data-dv-handbook>
+                                <span>Open the handbook <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            </button>
+                            <a class="btn-two dv__product-btn" data-dv-product href="/shop">
+                                <span>Get the full program</span>
+                            </a>
                         </div>
-                        <ol class="value__session-list" data-vx-exercises></ol>
-                        <p class="value__session-rest" data-vx-rest></p>
-                    </div>
-
-                    <div class="value__act">
-                        <a class="btn-one value__cta-btn" href="/demo">
-                            <span>See the full preview <i class="fa-regular fa-arrow-right"
-                                    aria-hidden="true"></i></span>
-                        </a>
-                        <p class="value__act-note">Free, and without an account.</p>
+                        <p class="dv__note">The preview is free. The full program unlocks with purchase.</p>
                     </div>
                 </div>
             </div>

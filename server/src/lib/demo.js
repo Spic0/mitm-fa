@@ -80,6 +80,27 @@ function contentsOf(product) {
   };
 }
 
+// How many pages the handbook viewer will paginate this product into.
+// MIRRORS buildPages() in assets/js/program-viewer.js — cover, intro,
+// training notes, one page per day, nutrition notes, one page per meal, FAQs
+// four to a page, bonus — because the number is shown to the customer as a
+// fact about the product ("an 84-page handbook") and a fact must describe the
+// real object. If the viewer's pagination changes, this changes with it.
+function handbookPagesOf(product) {
+  const training = product.trainingContent || {};
+  const nutrition = product.nutritionContent || {};
+  let pages = 1; // cover
+  if (product.overview) pages += 1;
+  if (training.notes) pages += 1;
+  weeksOf(product).forEach((w) => { pages += (w.days || []).length; });
+  if (nutrition.notes) pages += 1;
+  pages += Array.isArray(nutrition.meals) ? nutrition.meals.length : 0;
+  const faqs = Array.isArray(product.faqs) ? product.faqs.length : 0;
+  pages += Math.ceil(faqs / 4);
+  if ((Array.isArray(product.resources) && product.resources.length) || product.bonusNotes) pages += 1;
+  return pages;
+}
+
 // THE slice. Everything else in this file — the payload, the media allowlist,
 // the locked counts — is derived from this one function, so the bytes that go
 // out and the files that become fetchable can never describe different
@@ -126,6 +147,9 @@ async function resolveDemoProduct() {
       include: {
         media: { select: { url: true, type: true, alt: true }, orderBy: [{ order: "asc" }, { id: "asc" }] },
         taxonomies: { include: { taxonomyNode: { select: { name: true } } } },
+        // ids only — the handbook page count needs how many, never what.
+        faqs: { select: { id: true } },
+        resources: { select: { id: true } },
       },
     });
     if (found && weeksOf(found).length) return found;
@@ -137,6 +161,8 @@ async function resolveDemoProduct() {
     include: {
       media: { select: { url: true, type: true, alt: true }, orderBy: [{ order: "asc" }, { id: "asc" }] },
       taxonomies: { include: { taxonomyNode: { select: { name: true } } } },
+      faqs: { select: { id: true } },
+      resources: { select: { id: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -184,6 +210,7 @@ module.exports = {
   DEFAULT_DEMO_SLUG,
   contentsOf,
   sliceOf,
+  handbookPagesOf,
   resolveDemoProduct,
   publicExercise,
   demoMediaAllowlist,

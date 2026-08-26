@@ -35,13 +35,19 @@ CSS TABLE OF CONTENTS
    site's CSP doesn't need a Google Fonts exception — one less third-party
    origin in scope, one less thing that can go down and take styling with
    it. Latin subset only (this site has no non-Latin content); files are
-   the exact same Inter build Google serves, just vendored locally. */
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
+   the exact same Montserrat build Google serves, just vendored locally
+   (@fontsource/montserrat 5.3.0 -> assets/fonts/montserrat/).
+
+   Montserrat is the platform's ONE primary family. Five upright weights and
+   one italic are declared because those are the weights this stylesheet and
+   its siblings actually call for; the family's other twelve faces are
+   deliberately not shipped. */
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-italic.woff2") format("woff2"); }
 :root {
   /* Shared timing for the mobile drawer and its accordion, so the drawer,
      its panels and the chevrons all move on one curve instead of three
@@ -49,11 +55,13 @@ CSS TABLE OF CONTENTS
      end, which is what reads as "native" rather than floaty. */
   --nav-dur: 240ms;
   --nav-ease: cubic-bezier(0.25, 1, 0.5, 1);
-  /* Both font variables point at Inter so every existing var(--prosto-one)/
-     var(--montserrat) reference across this file updates without hunting
-     down each call site. */
-  --prosto-one: "Inter", sans-serif;
-  --montserrat: "Inter", sans-serif;
+  /* Both font variables point at Montserrat so every existing
+     var(--prosto-one)/var(--montserrat) reference across this file updates
+     without hunting down each call site. The two names are historical (the
+     purchased template paired Prosto One with Montserrat); there is ONE
+     family on the platform and both aliases resolve to it. */
+  --prosto-one: "Montserrat", sans-serif;
+  --montserrat: "Montserrat", sans-serif;
 
   /* ---------------------------------------------------------------------
      Monochrome design system — the single source of truth for every gray,
@@ -8124,7 +8132,7 @@ button span,
    built up over several passes and lean heavily on !important, so anything
    intended to win has to be both later in the cascade AND at least as
    specific. Everything below is expressed in the existing design tokens
-   (--color-*, --radius, --shadow-*) and Inter via --montserrat, so this is
+   (--color-*, --radius, --shadow-*) and Montserrat via --montserrat, so this is
    a redesign within the existing identity, not a second design system.
    ======================================================================= */
 

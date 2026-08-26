@@ -157,10 +157,6 @@
   border-radius: 6px;
   background: #ececed;
 }
-/* The deal-cards strip builds its skeleton from <span>s (it lives inside an
-   <a>, so block-level children would be invalid markup). */
-.deal-card--skeleton,
-.deal-card--skeleton > span { display: block; }
 /* Sized from the real card's type: h4.mb-15 then a 20px price span. */
 .skel-line--title { height: 22px; margin-bottom: 15px; width: 78%; }
 .skel-line--price { height: 20px; width: 34%; }

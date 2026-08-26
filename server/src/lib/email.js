@@ -232,8 +232,8 @@ async function purchaseReceiptEmail(
       ${count === 1
         ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;margin:16px 0 0;">
              <tr>
-               <td style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#1a1a1a;">Total paid</td>
-               <td align="right" style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:19px;font-weight:700;color:#1a1a1a;white-space:nowrap;">${money(totalCents, currency)}</td>
+               <td style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Montserrat',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#1a1a1a;">Total paid</td>
+               <td align="right" style="padding:14px 0 0;border-top:1px solid #e8e7e4;font-family:'Montserrat',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:19px;font-weight:700;color:#1a1a1a;white-space:nowrap;">${money(totalCents, currency)}</td>
              </tr>
            </table>`
         : ""}

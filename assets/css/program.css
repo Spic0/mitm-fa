@@ -16,7 +16,7 @@
    warm off-white paper (#fafaf9 / #fdfdfc / #f2f1ee), the same near-black
    ink (#1a1a1a) that is deliberately never pure black, the same muted and
    faint text stops, the same 10px + 100px radius pair, the same shadow
-   ramp, the same --nav-ease curve, the same self-hosted Inter. Where this
+   ramp, the same --nav-ease curve, the same self-hosted Montserrat. Where this
    file departs it departs in one direction only: scale and depth. Bigger
    cover art, more air, longer easing, and a real elevation ramp — because
    this is the only page on the platform whose job is to feel owned.
@@ -30,14 +30,14 @@
    ======================================================================= */
 
 /* Same six faces, same paths, same font-display as style.css declares — a
-   program rendered in a fallback face while Inter loads would not be the
+   program rendered in a fallback face while Montserrat loads would not be the
    same brand for the first 200ms. */
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-italic.woff2") format("woff2"); }
 
 /* -----------------------------------------------------------------------
    1. TOKENS
@@ -57,7 +57,7 @@
   --pg-warning: #d97706;
   --pg-danger: #dc2626;
 
-  --pg-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --pg-font: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* ---- Radius: the platform's 10/100 pair, plus the two larger stops a
      cinematic cover and a bottom sheet need. Both are multiples of the

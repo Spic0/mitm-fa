@@ -94,7 +94,7 @@ router.post("/", apiLimiter, async (req, res) => {
       category: "contact",
       message: `Contact enquiry from ${email} FAILED to send: ${err.message}`,
     }).catch(() => {});
-    return res.status(502).json({ error: "We couldn't send that just now — please email us directly." });
+    return res.status(502).json({ error: "We couldn't send that just now. Please email us directly." });
   }
 
   // Acknowledgement to the enquirer. Deliberately after the 502 branch above

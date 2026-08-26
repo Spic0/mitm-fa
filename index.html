@@ -13,15 +13,18 @@
          image only — every other slide loads lazily/on-demand from the
          client. See server/src/index.js -> applyHeroContext. -->
     <!--HERO_PRELOAD-->
-    <!-- The hero <h1> is the largest text on the site and is set in Inter 700.
-         Inter is self-hosted with `font-display: swap`, so without this the
-         headline first paints in the fallback, then reflows when the real font
-         arrives — measured at 390px that moved the whole hero up 34px (the
-         headline went from three lines to two), which was the single largest
-         layout shift on the page. 24KB, fetched in parallel with the CSS that
-         declares it. Only the 700 weight: the other weights are body-sized,
-         where a swap costs a line-height, not a line. -->
-    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter/inter-latin-700-normal.woff2" crossorigin>
+    <!-- The hero <h1> is the largest text on the site and is set in Montserrat
+         800. Montserrat is self-hosted with `font-display: swap`, so without
+         this the headline first paints in the fallback, then reflows when the
+         real font arrives: measured at 390px that moved the whole hero up 34px
+         (the headline went from three lines to two), which was the single
+         largest layout shift on the page. 19KB, fetched in parallel with the
+         CSS that declares it. Only the 800 weight, which is the weight the
+         headline actually uses; the rest are body-sized, where a swap costs a
+         line-height, not a line. (This preload named the 700 file while the
+         headline was set in 800, so it was warming a face the largest text on
+         the page never asked for.) -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-800-normal.woff2" crossorigin>
     <!-- Favicon img -->
     <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
@@ -148,23 +151,36 @@
             <div class="container">
                 <div class="hero__grid">
                     <div class="hero__copy">
-                        <!-- A two-part lockup, not one line of text: the small
-                             tracked kicker over the large display line is what
-                             carries the campaign tone. Uppercasing is done in
-                             CSS so the DOM text and the accessible name stay
-                             sentence case ("Train like the ones you follow"). -->
+                        <!-- ONE headline, set at ONE display size, broken into
+                             two spans only so the line break is art-directed
+                             rather than left to the measure.
+
+                             What was here before: `.hero__title-lead` set
+                             "Train like" at 13px/0.36em tracking above
+                             "THE ONES YOU FOLLOW" at 68px. That is a small
+                             uppercase tag sitting on a big heading, which is
+                             the decorative-eyebrow pattern this pass exists to
+                             remove — and it also demoted the verb of the
+                             sentence to a caption. Both spans are now the
+                             headline, at the same size and weight.
+
+                             Uppercasing stays in CSS so the DOM text and the
+                             accessible name remain sentence case
+                             ("Train like the ones you follow"). -->
                         <h1 class="hero__title">
-                            <span class="hero__title-lead">Train like</span>
-                            <span class="hero__title-main">the ones you follow</span>
+                            <span class="hero__title-line">Train like</span>
+                            <span class="hero__title-line">the ones you follow</span>
                         </h1>
-                        <!-- One line, and it carries the one thing the headline
-                             cannot say: this is written for ordinary lifters.
-                             Without that, "train like the ones you follow" reads
-                             as "for professional athletes", which is the opposite
-                             of who buys here. Who those people are is already the
-                             headline's job, so the sub no longer repeats it. -->
-                        <p class="hero__sub">Strength, size and nutrition programs &mdash; written for
-                            everyday lifters.</p>
+                        <!-- Six words. It names the goods ("training and
+                             nutrition programs") and who they are cut for
+                             ("everyday lifters"), which is the half the
+                             headline cannot carry: without it, "train like the
+                             ones you follow" reads as "for professional
+                             athletes", the opposite of who buys here. It is now
+                             short enough to show on a phone too, where it costs
+                             one line instead of the paragraph that used to be
+                             hidden there. -->
+                        <p class="hero__sub">Training and nutrition programs for everyday lifters.</p>
                         <!-- TWO actions, and they are not equals.
                              Primary: buy-path. Secondary: the low-friction
                              discovery path — /demo opens a real, server-limited
@@ -186,7 +202,7 @@
                                 <span>Explore Programs <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
                             </a>
                             <a class="btn-two hero__cta-alt" href="/demo">
-                                <span>See Demo <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                                <span>See Demo</span>
                             </a>
                         </div>
                     </div>
@@ -223,101 +239,155 @@
         </section>
         <!-- Hero end here -->
 
-        <!-- Featured programs area start here: real admin-managed products
-             (image, name, admin-set price). Whole card is one tap target; no
-             description text. Populated by assets/js/home-dynamic.js from
-             GET /api/products.
 
-             THIS IS NOW THE FIRST SECTION AFTER THE HERO, and deliberately so.
-             Two decorative strips used to sit between them and both are gone:
-             a continuously-scrolling ticker of product TITLES (the same four
-             names this section renders as real cards, with prices and covers,
-             one screen lower), and a "Shop by Athlete & Creator" rail of
-             initials-avatar pills. That rail rendered every person TWICE —
-             once labelled ATHLETE, once CREATOR — because the same people are
-             nodes of both the `athletes` and the `creators` taxonomy and
-             home-dynamic.js flattened both lists into one strip. Athlete and
-             creator browsing was never lost: it lives in the header's Browse
-             Athletes / Browse Creators mega-menus (with product counts, covers
-             and A-Z search) on EVERY page, which is strictly more than the
-             rail offered. See changelogs/2026-08-19-hero-strip-removal.md.
 
-             The heading's eyebrow is set by JS, not fixed here: renderDealCards
-             shows featured products when any are flagged and falls back to the
-             newest ones when none are, and the label has to stay true either
-             way. The markup default is the flagged case. -->
-        <section class="deal-cards-area">
+
+
+        <!-- Program preview. THE FIRST SECTION AFTER THE HERO, and the one
+             the hero's secondary CTA points at.
+             ================================================================
+             Answers the only question a visitor can have at this point:
+             "what is actually in one of these?" It answers it with a real
+             product, counted, and with a real excerpt of that product's
+             first session — not with feature copy. There is no feature copy
+             in this section at all.
+
+             It moved here from the bottom of the page (2026-08-26). The two
+             sections that used to sit between the hero and it were a
+             horizontal rail of the featured products and a set of three
+             image tiles; both are gone (see below), and the brief's ordering
+             puts real product evidence before any browsing furniture.
+
+             Everything here is counted server-side from the stored program:
+             contentsOf() and previewOf() in server/src/lib/demo.js. Nothing
+             is hardcoded, a row whose count is zero is not rendered, and the
+             excerpt is cut to `limits` (1 week, 1 day, 2 exercises) BEFORE it
+             leaves the server, so the rest of the paid program is never in
+             the response. If GET /api/demo fails the whole section removes
+             itself rather than showing an empty frame.
+
+             See changelogs/2026-08-19-demo-preview.md. -->
+        <section class="value-area" id="valueArea" hidden>
             <div class="container">
-                <div class="section-header section-header--stacked deal-cards__head wow fadeInUp"
-                    data-wow-delay=".1s">
-                    <span class="eyebrow" data-deal-eyebrow>Featured Programs</span>
-                    <h2>Start With a Complete Plan</h2>
+                <!-- No `wow fadeInUp` inside this section, unlike its
+                     neighbours. The section starts `hidden` and is revealed by
+                     JS once GET /api/demo resolves; WOW.js sets its elements to
+                     visibility:hidden at init and reveals them from a scroll
+                     handler that measures bounding boxes, and a `hidden`
+                     ancestor has no box. Depending on where the visitor is when
+                     the fetch lands, that can leave the contents permanently
+                     invisible. The reveal here is the data arriving, which is
+                     the honest trigger anyway. -->
+                <header class="value__masthead">
+                    <!-- The "INSIDE EVERY PLAN" tag that sat above this
+                         heading is gone. It named the section instead of
+                         telling the visitor anything, which is the definition
+                         of decoration, and the heading below already says what
+                         the block is for. -->
+                    <h2 class="value__title">See exactly what you get.</h2>
+                </header>
+
+                <div class="value__product">
+                    <div class="value__id">
+                        <span class="value__cover" data-vx-cover aria-hidden="true"></span>
+                        <div class="value__id-body">
+                            <span class="value__creator" data-vx-creator></span>
+                            <h3 class="value__name" data-vx-name></h3>
+                            <ul class="value__chips" data-vx-chips></ul>
+                        </div>
+                    </div>
+
+                    <!-- The counts. A definition list because that is what it
+                         is: a measured value and the thing it measures. -->
+                    <dl class="value__spec" data-vx-spec></dl>
+
+                    <!-- THE EXCERPT. A real week, a real day and the first two
+                         real exercises out of the stored program, set the way
+                         the program viewer sets them. This is the "show the
+                         interface, do not describe it" half of the section:
+                         the counts say how much there is, this says what one
+                         line of it looks like.
+
+                         It is server-cut, not CSS-hidden: GET /api/demo
+                         returns exactly what is rendered here and nothing
+                         more, so there is no full program sitting in the
+                         markup behind a blur. The trailing line states what
+                         was withheld rather than pretending this is all of
+                         it. -->
+                    <div class="value__session" data-vx-session hidden>
+                        <div class="value__session-head">
+                            <span class="value__session-week" data-vx-week></span>
+                            <span class="value__session-day" data-vx-day></span>
+                        </div>
+                        <ol class="value__session-list" data-vx-exercises></ol>
+                        <p class="value__session-rest" data-vx-rest></p>
+                    </div>
+
+                    <div class="value__act">
+                        <a class="btn-one value__cta-btn" href="/demo">
+                            <span>See the full preview <i class="fa-regular fa-arrow-right"
+                                    aria-hidden="true"></i></span>
+                        </a>
+                        <p class="value__act-note">Free, and without an account.</p>
+                    </div>
                 </div>
-                <div class="deal-cards__track" id="dealCardsTrack" aria-live="polite"><!--skeleton--><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><span class="deal-card deal-card--skeleton" aria-hidden="true"><span class="deal-card__image pmedia--skeleton"></span><span class="deal-card__content"><span class="skel-line skel-line--title"></span><span class="skel-line skel-line--price"></span><span class="skel-line skel-cta"></span></span></span><!--/skeleton--></div>
-                <a class="deal-cards__all" href="/shop">Shop All Plans <i
-                        class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
             </div>
         </section>
-        <!-- Featured programs area end here -->
+        <!-- Program preview end -->
 
-        <!-- Promo tiles area start here. Replaces the theme's "view-area",
-             which shipped live with a vape-smoke section background, three grey
-             dimension placeholders, an orange flame icon beside a dead "GET 25%
-             OFF NOW" button, and two paragraphs of template filler. See
-             changelogs/2026-08-11-landing-brand-typography-assets.md.
+        <!-- Shop by goal.
+             ================================================================
+             REPLACES the three "promo tile" image cards that used to sit
+             here ("Browse Every Plan" / "New to Training" / "Nutrition &
+             Diet"). Why they went, rather than being restyled:
 
-             Imagery here is OPERATOR-SUPPLIED, not hardcoded: each tile declares
-             a named landing slot, and dropping assets/images/landing/<slot>.<ext>
-             fills it. An unfilled slot renders a branded FA fallback, never a
-             technical placeholder. See server/docs/landing-assets.md. -->
-        <section class="promo-tiles-area">
+               * All three linked to the SAME destination, plain /shop. Three
+                 tiles offering one choice is not navigation.
+               * Their goal names were written into the template and matched
+                 nothing in the taxonomy, so they could not filter anything
+                 even in principle.
+               * Each was mostly a `data-landing-slot` image, and those slots
+                 are EMPTY in production (assets/images/landing/ contains only
+                 a README) — so the section rendered as ~1,390px of grey
+                 placeholder with the FA mark in the middle of it. That is a
+                 large part of what read as "unfinished".
+
+             What is here now is the real `goals` taxonomy: the same rows the
+             header's "Shop by Goal" menu is built from, with each goal's real
+             product count, each linking to its real /goal/<slug> listing.
+             Server-rendered from the same helper the nav uses, so it needs no
+             fetch, cannot shift layout, and a goal renamed in Admin ->
+             Navigation is correct here on the next request. A goal with no
+             published products is not listed. -->
+        <section class="goal-nav-area">
             <div class="container">
-                <div class="section-header section-header--stacked mb-40 wow fadeInUp" data-wow-delay=".1s">
-                    <span class="eyebrow">Where To Start</span>
-                    <h2>Find the Plan That Fits Your Goal</h2>
+                <div class="goal-nav__head">
+                    <h2>Shop by goal</h2>
+                    <a class="goal-nav__all" href="/shop">All plans <i class="fa-regular fa-arrow-right"
+                            aria-hidden="true"></i></a>
                 </div>
-                <div class="promo-tiles">
-                    <a class="promo-tile promo-tile--lead wow fadeInUp" data-wow-delay=".1s" href="/shop">
-                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-primary"
-                            data-landing-alt="Fitness Agency training programmes"></div>
-                        <div class="promo-tile__body">
-                            <h3 class="promo-tile__title">Browse Every Plan</h3>
-                            <p class="promo-tile__desc">Structured training and nutrition programmes built by working
-                                coaches, delivered as a guide you keep.</p>
-                            <span class="promo-tile__cta">Shop All Plans</span>
-                        </div>
-                    </a>
-                    <a class="promo-tile wow fadeInUp" data-wow-delay=".2s" href="/shop">
-                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-secondary-a"
-                            data-landing-alt="Beginner training programmes"></div>
-                        <div class="promo-tile__body">
-                            <h3 class="promo-tile__title">New to Training</h3>
-                            <p class="promo-tile__desc">Start with a beginner block and progress from there.</p>
-                            <span class="promo-tile__cta">View Plans</span>
-                        </div>
-                    </a>
-                    <a class="promo-tile wow fadeInUp" data-wow-delay=".3s" href="/shop">
-                        <div class="landing-slot promo-tile__media" data-landing-slot="promo-secondary-b"
-                            data-landing-alt="Nutrition and diet plans"></div>
-                        <div class="promo-tile__body">
-                            <h3 class="promo-tile__title">Nutrition &amp; Diet</h3>
-                            <p class="promo-tile__desc">Eating plans that work alongside your training.</p>
-                            <span class="promo-tile__cta">View Plans</span>
-                        </div>
-                    </a>
-                </div>
+                <ul class="goal-nav"><!--HOME_GOALS--></ul>
             </div>
         </section>
-        <!-- Promo tiles area end here -->
+        <!-- Shop by goal end -->
 
         <!-- Product area start here -->
-        <section class="product-area pt-130 pb-130 mt-130">
+        <section class="product-area">
             <div class="container">
                 <div
                     class="product__wrp pb-30 mb-65 bor-bottom d-flex flex-wrap align-items-center justify-content-xl-between justify-content-center">
                     <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".1s">
-                        <span class="title-icon mr-10"></span>
-                        <h2>Latest Plans &amp; Programs</h2>
+                        <!-- The `.title-icon` dot that sat here was a filled
+                             circle in front of the heading. It labels nothing
+                             and marks nothing; it is the template's ornament,
+                             so it is gone. The bootstrap `pt-130 pb-130
+                             mt-130` on the section went with it: 130px top
+                             padding plus a 130px top MARGIN is 260px of gap
+                             above one grid, three times the rhythm every
+                             other section on this page uses. The section now
+                             takes its spacing from .product-area in
+                             home-dynamic.css like its neighbours. -->
+                        <h2>Every plan</h2>
                     </div>
                     <!-- Filter labels in Title Case so the accessible name and
                          DOM text stay readable; the uppercase treatment is CSS
@@ -383,7 +453,10 @@
                             data-landing-alt="Featured Fitness Agency plan"></div>
                     </div>
                     <div class="showcase__body wow fadeInUp" data-wow-delay=".2s">
-                        <span class="eyebrow">Featured Plan</span>
+                        <!-- No "FEATURED PLAN" tag above the title: the
+                             heading here IS a product name, and a label
+                             announcing that a product is being shown is the
+                             decoration this pass removes. -->
                         <h2 class="showcase__title" data-showcase-title></h2>
                         <p class="showcase__meta" data-showcase-meta></p>
                         <p class="showcase__desc" data-showcase-desc></p>
@@ -409,83 +482,7 @@
         </section>
         <!-- Featured plan showcase end here -->
 
-        <!-- Value area start here.
-             ================================================================
-             Answers ONE question — "what actually comes with a program?" —
-             with counted facts about a real product and a door into a real
-             preview of it. It is not a feature section and deliberately has
-             no feature copy in it at all.
 
-             Rebuilt 2026-08-19 (second pass). What went, and why:
-
-               * TRAIN / WATCH / KEEP with a sentence each. Three short
-                 paragraphs are still three paragraphs of explanation, and
-                 "exercise demos where the creator includes them" was doing
-                 the work a number does better. The current demo product
-                 carries 4 demos across 210 exercises — a claim the data
-                 barely supports, which is exactly why prose was the wrong
-                 medium for it.
-               * The CSS-drawn program-viewer mock. It illustrated an
-                 interface with invented exercises. There is now a real
-                 preview of a real program at /demo, so an illustration of
-                 one is redundant at best and a weaker version of the truth
-                 at worst.
-               * "Everything you need to follow the work." Vague by
-                 construction — it is the sentence you write when you do not
-                 want to commit to a number.
-
-             Everything here is now counted, server-side, from the stored
-             program: see contentsOf() in server/src/lib/demo.js. Nothing is
-             hardcoded, and a row whose count is zero is not rendered, so the
-             block cannot describe a product that does not exist. If
-             GET /api/demo fails the whole section removes itself rather than
-             showing an empty frame.
-
-             See changelogs/2026-08-19-demo-preview.md. -->
-        <section class="value-area" id="valueArea" hidden>
-            <div class="container">
-                <!-- No `wow fadeInUp` inside this section, unlike its
-                     neighbours. The section starts `hidden` and is revealed by
-                     JS once GET /api/demo resolves; WOW.js sets its elements to
-                     visibility:hidden at init and reveals them from a scroll
-                     handler that measures bounding boxes, and a `hidden`
-                     ancestor has no box. Depending on where the visitor is when
-                     the fetch lands, that can leave the contents permanently
-                     invisible. The reveal here is the data arriving, which is
-                     the honest trigger anyway. -->
-                <header class="value__masthead">
-                    <span class="eyebrow">Inside Every Plan</span>
-                    <h2 class="value__title">See exactly what you get.</h2>
-                    <p class="value__lede">Here is one of the programs on sale right now, counted line by
-                        line.</p>
-                </header>
-
-                <div class="value__product">
-                    <div class="value__id">
-                        <span class="value__cover" data-vx-cover aria-hidden="true"></span>
-                        <div class="value__id-body">
-                            <span class="value__creator" data-vx-creator></span>
-                            <h3 class="value__name" data-vx-name></h3>
-                            <ul class="value__chips" data-vx-chips></ul>
-                        </div>
-                    </div>
-
-                    <!-- The counts. A definition list because that is what it
-                         is: a measured value and the thing it measures. -->
-                    <dl class="value__spec" data-vx-spec></dl>
-
-                    <div class="value__act">
-                        <a class="btn-one value__cta-btn" href="/demo">
-                            <span>See the full preview <i class="fa-regular fa-arrow-right"
-                                    aria-hidden="true"></i></span>
-                        </a>
-                        <p class="value__act-note">A real session from week one, free and without an
-                            account.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Value area end here -->
     </main>
 
     <!-- Footer area start here -->

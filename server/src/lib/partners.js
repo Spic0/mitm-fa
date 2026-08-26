@@ -151,7 +151,7 @@ function validateSlug(input) {
   const slug = slugify(input);
   if (!slug) fail("Profile URL must contain at least one letter or number");
   if (slug.length < 2) fail("Profile URL must be at least 2 characters");
-  if (RESERVED_SLUGS.has(slug)) fail(`"${slug}" is reserved — choose a different profile URL`);
+  if (RESERVED_SLUGS.has(slug)) fail(`"${slug}" is reserved. Choose a different profile URL`);
   return slug;
 }
 
@@ -169,7 +169,7 @@ async function uniqueSlug(prisma, desired, excludeId) {
     const suffix = `-${n}`;
     candidate = base.slice(0, LIMITS.slug - suffix.length) + suffix;
   }
-  fail("Could not find a free profile URL — set one manually");
+  fail("Could not find a free profile URL. Set one manually");
 }
 
 // ---------------------------------------------------------------------
@@ -230,7 +230,7 @@ function validateSocialUrl(platform, input) {
   const host = new URL(normalized).hostname.toLowerCase().replace(/^www\./, "");
   const ok = meta.hosts.some((h) => host === h || host.endsWith(`.${h}`));
   if (!ok) {
-    fail(`That ${meta.label} link doesn't point at ${meta.hosts[0]} — check the URL`);
+    fail(`That ${meta.label} link doesn't point at ${meta.hosts[0]}. Check the URL`);
   }
   return normalized;
 }

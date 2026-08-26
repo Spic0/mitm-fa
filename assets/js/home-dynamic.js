@@ -1,26 +1,29 @@
-// Homepage-only dynamic sections: the "Featured Programs" product strip that
-// is now the first section after the hero, and the hero's starting price.
-// Driven entirely by real backend data (GET /api/products) — nothing here is
-// hardcoded HTML, so a product added, renamed, repriced or removed in the
-// admin panel shows up on the very next page load with no template changes.
+// Homepage-only dynamic sections: the program-preview block ("See exactly what
+// you get") and the hero's starting price. Driven entirely by real backend
+// data (GET /api/demo, GET /api/products) — nothing here is hardcoded HTML, so
+// a product added, renamed, repriced or removed in the admin panel shows up on
+// the very next page load with no template changes.
 //
 // Removed 2026-08-19: a scrolling ticker of product titles and a "Shop by
-// Athlete & Creator" pill rail, both of which sat between the hero and this
-// strip. The rail rendered every person twice (once as ATHLETE, once as
-// CREATOR) because the same people are nodes of BOTH the `athletes` and the
-// `creators` taxonomy — a duplication the data model guarantees, not a bug in
-// the loop. Dropping it also drops this file's GET /api/taxonomy call, so the
-// homepage now makes one product request instead of two parallel requests.
-// Athlete/creator browsing is unaffected: the header mega-menus own it, on
-// every page. See changelogs/2026-08-19-hero-strip-removal.md.
+// Athlete & Creator" pill rail. The rail rendered every person twice (once as
+// ATHLETE, once as CREATOR) because the same people are nodes of BOTH the
+// `athletes` and the `creators` taxonomy — a duplication the data model
+// guarantees, not a bug in the loop. Athlete/creator browsing is unaffected:
+// the header mega-menus own it, on every page.
+// See changelogs/2026-08-19-hero-strip-removal.md.
+//
+// Removed 2026-08-26: the "Featured Programs" deal-card rail and everything
+// that fed it (dealCard/renderDealCards). It rendered the same four products,
+// with the same covers and the same prices, that the product grid one screen
+// below renders — the homepage was listing the whole catalogue twice under two
+// different headings. The grid is the one that stayed: it lists every plan
+// rather than the featured subset, and it carries Add to Cart. See
+// changelogs/2026-08-26-landing-art-direction.md.
 document.addEventListener("DOMContentLoaded", function () {
   if (!window.ProFitAPI) return;
 
-  var dealTrack = document.getElementById("dealCardsTrack");
-  var dealSection = dealTrack ? dealTrack.closest(".deal-cards-area") : null;
-  var dealEyebrow = dealSection ? dealSection.querySelector("[data-deal-eyebrow]") : null;
   var heroPrice = document.getElementById("heroStartingPrice");
-  if (!dealTrack && !heroPrice && !document.getElementById("valueArea")) return;
+  if (!heroPrice && !document.getElementById("valueArea")) return;
 
   // ---- Hero "starting price": real lowest current product price, not the
   // hardcoded (and inaccurate) "$99.00" the old hero used. Left empty
@@ -30,58 +33,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!heroPrice || !products.length) return;
     var min = products.reduce(function (m, p) { return Math.min(m, p.priceCents); }, products[0].priceCents);
     heroPrice.textContent = "Plans from " + window.ProFitAPI.formatPrice(min);
-  }
-
-  // ---- Deal cards: real products, admin-set price, no description. Whole
-  // card is a single <a> (simplest possible full-card tap target on mobile —
-  // no stretched-link/z-index layering needed), with a purely visual "Shop
-  // Now" pill inside so the CTA stays visible per spec. ----
-  function dealCard(p) {
-    var a = document.createElement("a");
-    a.className = "deal-card";
-    a.href = "/program/" + encodeURIComponent(p.slug);
-
-    // A hardcoded "50% off" roundel used to be stamped on EVERY card here,
-    // regardless of the product, with no discount behind it — the price
-    // rendered below it was simply the full admin-set price. Removed rather
-    // than made conditional: nothing in the product model expresses a "was"
-    // price, so there is no honest number to compute a percentage from.
-    // Real discounts live in the Promotion table and are applied at checkout
-    // (server/src/lib/promotions.js); if a badge is wanted here later it must
-    // read from there.
-
-    var imageWrap = document.createElement("span");
-    imageWrap.className = "deal-card__image";
-    var img = document.createElement("img");
-    img.alt = p.name;
-    img.loading = "lazy";
-    img.decoding = "async";
-    // `node`, not `img` — applyResponsive returns a <picture> wrapper when
-    // derivatives exist, and appending the bare img would drop the AVIF source.
-    var node = window.MediaContainer.applyResponsive(img, p, "(min-width: 768px) 320px, 82vw");
-    imageWrap.appendChild(node);
-    a.appendChild(imageWrap);
-
-    var content = document.createElement("span");
-    content.className = "deal-card__content";
-
-    var name = document.createElement("span");
-    name.className = "deal-card__name";
-    name.textContent = p.name;
-    content.appendChild(name);
-
-    var price = document.createElement("span");
-    price.className = "deal-card__price";
-    price.textContent = window.ProFitAPI.formatProductPrice(p.priceCents);
-    content.appendChild(price);
-
-    var cta = document.createElement("span");
-    cta.className = "btn-two deal-card__cta";
-    cta.innerHTML = "<span>Shop Now</span>";
-    content.appendChild(cta);
-
-    a.appendChild(content);
-    return a;
   }
 
   // ---- "Inside Every Plan": a real product, counted ----------------------
@@ -171,24 +122,60 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    renderSession(section, demo);
     section.hidden = false;
   }
 
-  function renderDealCards(products) {
-    if (!dealTrack) return;
-    var featured = products.filter(function (p) { return p.featured; });
-    var picks = (featured.length ? featured : products).slice(0, 8);
-    if (!picks.length) {
-      if (dealSection) dealSection.style.display = "none";
-      return;
+  // ---- The excerpt -------------------------------------------------------
+  // `demo.preview` is ALREADY the whole of what the server is willing to give
+  // a signed-out visitor: one week, one day, two exercises (demo.limits). It
+  // is not a trimmed view of a larger payload that arrived — the rest of the
+  // program never left the database. So this function renders everything it
+  // is handed, and the closing line reports the difference between what is
+  // here and what `contents` counted, which is the honest way to say "there
+  // is more" without implying the rest is one CSS rule away.
+  function renderSession(section, demo) {
+    var wrap = section.querySelector("[data-vx-session]");
+    var pv = demo.preview;
+    if (!wrap || !pv || !pv.exercises || !pv.exercises.length) return;
+
+    var week = section.querySelector("[data-vx-week]");
+    if (week && pv.weekTitle) week.textContent = pv.weekTitle;
+    var day = section.querySelector("[data-vx-day]");
+    if (day && pv.dayTitle) day.textContent = pv.dayTitle;
+
+    var list = section.querySelector("[data-vx-exercises]");
+    if (list) {
+      pv.exercises.forEach(function (ex) {
+        var li = document.createElement("li");
+        li.className = "value__ex";
+        var name = document.createElement("span");
+        name.className = "value__ex-name";
+        name.textContent = ex.name || "";
+        li.appendChild(name);
+        // `reps` already reads "4x12" in the stored program; `sets` is a
+        // separate optional field and is only shown when it carries something
+        // reps does not.
+        var load = ex.reps || ex.sets || "";
+        if (load) {
+          var span = document.createElement("span");
+          span.className = "value__ex-load";
+          span.textContent = load;
+          li.appendChild(span);
+        }
+        list.appendChild(li);
+      });
     }
-    // The markup says "Featured Programs" because that is the normal case.
-    // When an operator has flagged nothing, this strip is the newest products
-    // instead, and the label has to say so rather than assert a curation that
-    // did not happen.
-    if (dealEyebrow && !featured.length) dealEyebrow.textContent = "All Programs";
-    dealTrack.innerHTML = "";
-    picks.forEach(function (p) { dealTrack.appendChild(dealCard(p)); });
+
+    var rest = section.querySelector("[data-vx-rest]");
+    var total = demo.contents && demo.contents.exercises;
+    if (rest && total && total > pv.exercises.length) {
+      rest.textContent = (total - pv.exercises.length) + " more exercises in the full plan.";
+    } else if (rest) {
+      rest.remove();
+    }
+
+    wrap.hidden = false;
   }
 
   // The demo payload is small (~3KB) and independent of the product list, so
@@ -201,12 +188,9 @@ document.addEventListener("DOMContentLoaded", function () {
     .catch(function () {});
 
   window.ProFitAPI.listProducts().then(function (result) {
-    var products = result.products || [];
-    renderDealCards(products);
-    renderHeroPrice(products);
+    renderHeroPrice(result.products || []);
   }).catch(function () {
-    // Real data failed to load — hide the dynamic section rather than showing
-    // stale/fake placeholders. The hero price is left empty; :empty hides it.
-    if (dealSection) dealSection.style.display = "none";
+    // Real data failed to load. The hero price is simply left empty; :empty
+    // hides it, so nothing stale or invented is ever shown in its place.
   });
 });

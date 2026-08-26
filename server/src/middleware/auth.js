@@ -88,7 +88,7 @@ function requirePromotionManage(req, res, next) {
       message: `Access denied (manager attempted admin-only promotion action): ${req.user.email} attempted ${req.method} ${req.originalUrl}`,
       actorId: req.user.id,
     });
-    return res.status(403).json({ error: "Forbidden — this action requires an admin account" });
+    return res.status(403).json({ error: "Forbidden. This action requires an admin account" });
   }
   next();
 }

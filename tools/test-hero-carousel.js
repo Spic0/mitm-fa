@@ -251,8 +251,18 @@ async function swipe(client, from, to, y) {
       }
     }
     console.log(`  ${rest.length} settled frames sampled for dominance`);
-    check(worstOp <= 0.35, "no second product ever reaches competing opacity",
-      `loudest neighbour ${worstOp.toFixed(2)} (ceiling 0.35)`);
+    // Ceiling raised 0.35 -> 0.60 (2026-08-26), deliberately. At 0.26 a dark
+    // cover on the #fafaf9 ground washed out to a pale ghost and read as
+    // broken rather than as "there is another program here", which is what the
+    // art-direction pass was asked to fix. Dominance is not carried by this
+    // number on its own: the neighbour is a SLIVER, and the width assertion
+    // below is what actually guarantees it cannot compete — 12% of the active
+    // card against a ceiling of 30%. A neighbour cannot be mistaken for the
+    // subject when seven-eighths of it is behind the subject, whatever its
+    // opacity. The ceiling stays well under 1.0 so a regression that makes the
+    // flanks solid is still caught.
+    check(worstOp <= 0.60, "no second product ever reaches competing opacity",
+      `loudest neighbour ${worstOp.toFixed(2)} (ceiling 0.60)`);
     check(worstVis <= 0.30, "neighbours stay a sliver, not a card",
       `widest neighbour showed ${(worstVis * 100).toFixed(0)}% of the active card's width (ceiling 30%)`);
   }
@@ -412,9 +422,15 @@ async function swipe(client, from, to, y) {
       setTimeout(() => { clearInterval(t); res([...new Set(seen)]); }, 4600);
     }));
 
-    const ratioOk = Math.abs(g.ratio - 4 / 3) < 0.02;
+    // 5:4 (i.e. height/width = 1.25), not the 4:3 this asserted before. The
+    // plate is 4:5 as of 2026-08-26 because that is what the covers in the
+    // catalogue actually measure (1024x1280 and 1122x1402 are 4:5 exactly);
+    // the plate no longer paints a mount, so the gap between box and artwork
+    // is bare ground rather than a frame, and the box wants to be as close to
+    // the artwork as one fixed ratio can get.
+    const ratioOk = Math.abs(g.ratio - 5 / 4) < 0.02;
     console.log(`  ${width}px:`);
-    check(ratioOk, `    plate holds a 3:4 cover`, `${g.plateW.toFixed(1)}x${g.plateH.toFixed(1)} = 1:${g.ratio.toFixed(3)}`);
+    check(ratioOk, `    plate holds a 4:5 cover`, `${g.plateW.toFixed(1)}x${g.plateH.toFixed(1)} = 1:${g.ratio.toFixed(3)}`);
     check(g.docW <= g.viewW, `    no horizontal page overflow`, `doc ${g.docW} vs view ${g.viewW}`);
     check(g.activeLeft >= -0.5 && g.activeRight <= g.viewW + 0.5, `    active product wholly inside the viewport`,
       `spans ${g.activeLeft.toFixed(0)}..${g.activeRight.toFixed(0)} of ${g.viewW}`);

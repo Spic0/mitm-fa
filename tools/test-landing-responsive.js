@@ -216,8 +216,21 @@ function findChrome() {
     const h = result.hero;
     if (!h.title || h.title.hidden) problems.push("hero headline is missing");
     else if (width < 992) {
-      // Phone/tablet: one column, headline -> products -> CTA, no paragraph.
-      if (!h.sub || !h.sub.hidden) problems.push("hero paragraph should be hidden below 992px");
+      // Phone/tablet: one column, headline -> supporting line -> products ->
+      // CTA.
+      //
+      // The supporting line used to be asserted HIDDEN here, because it was a
+      // 62-character sentence that pushed the products ~100px down the first
+      // viewport. It is six words now and it is shown, so the assertion is
+      // inverted — with the one exception it is still hidden for: a viewport
+      // under 700px tall, where the CTA row cannot otherwise reach the fold
+      // (see the max-height tiers in home-dynamic.css). This harness runs at
+      // 900px, so the visible case is the one exercised here; the short-screen
+      // case is covered by the fold checks in test-hero-carousel.js.
+      const shortScreen = 900 <= 700;
+      if (!h.sub || Boolean(h.sub.hidden) !== shortScreen) {
+        problems.push(`hero supporting line should be ${shortScreen ? "hidden" : "visible"} below 992px`);
+      }
       if (h.titleAlign !== "center") problems.push(`hero headline text-align is ${h.titleAlign}, expected center`);
       if (h.centreSkew > 2) problems.push(`hero headline lines are off-centre by ${h.centreSkew}px`);
       if (h.stage && h.stage.top < h.title.bottom) problems.push("product stage is not below the headline");

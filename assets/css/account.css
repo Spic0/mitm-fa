@@ -8,7 +8,7 @@
    This is NOT a new design system. Every value below is style.css's own
    token or is derived from one: the same warm off-white paper, the same
    near-black ink that is never pure black, the same 10px/100px radius pair,
-   the same --nav-ease curve, the same Inter. The prefix is --ac-.
+   the same --nav-ease curve, the same Montserrat. The prefix is --ac-.
 
    It is the same language assets/css/program.css speaks (--pg-), and that
    is deliberate: program.css is the room a customer walks into after
@@ -94,7 +94,7 @@
 .ac-page {
   background: var(--ac-bg);
   color: var(--ac-ink);
-  font-family: var(--prosto-one, "Inter", sans-serif);
+  font-family: var(--prosto-one, "Montserrat", sans-serif);
   font-size: var(--ac-body);
   line-height: 1.55;
   /* The site header is position:fixed and nothing reserves space for it

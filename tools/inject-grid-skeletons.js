@@ -26,26 +26,15 @@ const GRIDS = {
   homeGridFeatured: 4,
 };
 
-// The deal-cards strip is a horizontal scroller, not a grid, so it needs a
-// different card shape — but the same reasoning: it was the single largest
-// layout shift on the landing page (0.0505 at ~450ms), purely because the
-// track had no height until home-dynamic.js filled it.
-const STRIPS = {
-  dealCardsTrack: 3,
-};
-
-function skeletonDealCard() {
-  return (
-    `<span class="deal-card deal-card--skeleton" aria-hidden="true">` +
-    `<span class="deal-card__image pmedia--skeleton"></span>` +
-    `<span class="deal-card__content">` +
-    `<span class="skel-line skel-line--title"></span>` +
-    `<span class="skel-line skel-line--price"></span>` +
-    `<span class="skel-line skel-cta"></span>` +
-    `</span></span>`
-  );
-}
-
+// There was a second pass here for horizontal STRIPS, holding one entry:
+// `dealCardsTrack`, the featured-product rail on the landing page. That
+// section was removed on 2026-08-26 (it listed the same products as the grid
+// below it), so the pass, its card shape and its config are gone with it
+// rather than left as dead code pointing at an element that no longer exists.
+// The reasoning is worth keeping for the next rail someone adds: an element a
+// fetch fills later needs its height reserved in the markup, or it becomes the
+// page's largest layout shift — which is exactly what that one was
+// (0.0505 at ~450ms) before it got a skeleton.
 const MARK_OPEN = "<!--skeleton-->";
 const MARK_CLOSE = "<!--/skeleton-->";
 
@@ -109,20 +98,6 @@ for (const file of files) {
     const block = MARK_OPEN + Array.from({ length: count }, () => skeletonCard(colClass)).join("") + MARK_CLOSE;
     if (inner === block) continue;
 
-    html = html.slice(0, box.innerStart) + block + html.slice(box.innerEnd);
-    changed = true;
-  }
-
-  for (const [id, count] of Object.entries(STRIPS)) {
-    const box = findContainer(html, id);
-    if (!box) continue;
-    const inner = html.slice(box.innerStart, box.innerEnd);
-    // The track ships with an HTML comment inside it; treat that as empty.
-    const isEmpty = !inner.replace(/<!--(?!\/?skeleton)[\s\S]*?-->/g, "").trim();
-    if (!isEmpty && !inner.includes(MARK_OPEN)) continue;
-
-    const block = MARK_OPEN + Array.from({ length: count }, skeletonDealCard).join("") + MARK_CLOSE;
-    if (inner === block) continue;
     html = html.slice(0, box.innerStart) + block + html.slice(box.innerEnd);
     changed = true;
   }

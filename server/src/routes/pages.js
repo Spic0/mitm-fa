@@ -75,6 +75,29 @@ async function safeGetAllTaxonomyTrees() {
 }
 
 // Header mega-menu goal links and sport columns, generated live from the
+// SUBSTITUTING TEXT INTO A CAPTURED TEMPLATE HOLE, SAFELY.
+//
+// Every "fill this element" replacement below is the same shape: a regex that
+// captures the opening tag and the closing tag, and a replacement that puts
+// the new text between them. Writing that replacement as a STRING is a bug,
+// and it was a live one: `String.prototype.replace` reads `$n` in a
+// replacement string as a backreference, so a value that itself begins with
+// `$1` or `$2` is consumed as one.
+//
+// The homepage's featured-plan price was the case that surfaced it. With two
+// capture groups, `` `$1${"$19.99"}$2` `` is the string `$1$19.99$2`; V8 reads
+// `$1`, then reads `$19` (no group 19), falls back to `$1` — emitting the
+// OPENING TAG A SECOND TIME and swallowing the `$1` of the price. The
+// homepage rendered `<span ...><span ...>9.99</span>` and a $19.99 plan was
+// advertised at 9.99. Any price from $10 to $29.99 hit it, in the showcase
+// price, the showcase description and the hero's price/duration line.
+//
+// A replacer FUNCTION has no `$n` syntax at all, so the value is inserted
+// verbatim whatever it contains. Every call site below uses this.
+function fillBetween(re, value) {
+  return [re, (_whole, open, close) => `${open}${value}${close}`];
+}
+
 // Taxonomy tables — the exact same source of truth the admin CMS reads and
 // writes. A category/subcategory created, renamed, or deleted in Admin ->
 // Navigation is reflected here on the very next request.
@@ -82,6 +105,26 @@ function navGoalLinksHtml(goalsTaxonomy) {
   if (!goalsTaxonomy) return "";
   return goalsTaxonomy.nodes
     .map((n) => `<li><a href="/goal/${encodeURIComponent(n.slug)}">${escapeHtml(n.name)}</a></li>`)
+    .join("");
+}
+
+// The homepage's "Shop by goal" list. Same taxonomy, same /goal/<slug>
+// destinations and same escaping as the header menu above; the only
+// differences are that it carries each goal's real product count and that a
+// goal with nothing published under it is left out — on the homepage an
+// empty category is a dead end, whereas in the nav it is still a valid
+// (empty) listing the operator may be about to fill.
+function homeGoalsHtml(goalsTaxonomy) {
+  if (!goalsTaxonomy) return "";
+  return goalsTaxonomy.nodes
+    .filter((n) => n.productCount > 0)
+    .map(
+      (n) =>
+        `<li class="goal-nav__item"><a class="goal-nav__link" href="/goal/${encodeURIComponent(n.slug)}">` +
+        `<span class="goal-nav__name">${escapeHtml(n.name)}</span>` +
+        `<span class="goal-nav__count">${n.productCount}</span>` +
+        "</a></li>"
+    )
     .join("");
 }
 
@@ -299,10 +342,10 @@ async function applyShopContext(html, ctx) {
   const title = escapeHtml(ctx.title);
   return html
     .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
-    .replace(/(<meta name="description" data-shop-meta content=")[^"]*(")/, `$1${escapeHtml(ctx.description)}$2`)
-    .replace(/(<h2[^>]*data-shop-heading[^>]*>)[^<]*(<\/h2>)/, `$1${escapeHtml(ctx.heading)}$2`)
-    .replace(/(<p[^>]*data-shop-sub[^>]*>)[^<]*(<\/p>)/, `$1${escapeHtml(ctx.description)}$2`)
-    .replace(/(<span[^>]*data-shop-crumb[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(ctx.crumb)}$2`);
+    .replace(...fillBetween(/(<meta name="description" data-shop-meta content=")[^"]*(")/, escapeHtml(ctx.description)))
+    .replace(...fillBetween(/(<h2[^>]*data-shop-heading[^>]*>)[^<]*(<\/h2>)/, escapeHtml(ctx.heading)))
+    .replace(...fillBetween(/(<p[^>]*data-shop-sub[^>]*>)[^<]*(<\/p>)/, escapeHtml(ctx.description)))
+    .replace(...fillBetween(/(<span[^>]*data-shop-crumb[^>]*>)[^<]*(<\/span>)/, escapeHtml(ctx.crumb)));
 }
 
 async function renderShopPage(req, res, pathContext) {
@@ -329,7 +372,7 @@ router.get("/creator/:slug", (req, res) => renderShopPage(req, res, { type: "cre
 // ---------------------------------------------------------------------
 function applyProductSeo(html, product) {
   const title = escapeHtml(product.name);
-  const rawDescription = product.description || `${product.name} — a training & nutrition plan on Fitness Agency.`;
+  const rawDescription = product.description || `${product.name}: a training & nutrition plan on Fitness Agency.`;
   const description = escapeHtml(rawDescription.length > 300 ? rawDescription.slice(0, 297) + "..." : rawDescription);
   const url = appUrl(`/program/${encodeURIComponent(product.slug)}`);
   const normalizedImage = product.imageUrl ? normalizeImageUrl(product.imageUrl) : "";
@@ -564,7 +607,7 @@ function renderServiceMain(service) {
       '<section class="svc-section">' +
       '<span class="svc-section__eyebrow">See it in practice</span>' +
       '<h2 class="svc-section__title">Real products, already selling</h2>' +
-      '<div class="svc-section__body"><p>The storefront below is the same platform described on this page — every product on it was built, published and is supported by this team.</p></div>' +
+      '<div class="svc-section__body"><p>The storefront below is the same platform described on this page: every product on it was built, published and is supported by this team.</p></div>' +
       `<div class="svc-hero__actions"><a class="svc-btn svc-btn--ghost" href="${escapeHtml(service.productHint.path)}"><span>${escapeHtml(service.productHint.label)}</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a></div>` +
       "</section>";
   }
@@ -615,7 +658,7 @@ function renderServicesIndex() {
   out +=
     '<section class="svc-section">' +
     '<span class="svc-section__eyebrow">Services</span>' +
-    '<h2 class="svc-section__title">Pick the part you need — or all of it</h2>' +
+    '<h2 class="svc-section__title">Pick the part you need, or all of it</h2>' +
     '<div class="svc-grid svc-grid--3">' +
     services
       .map(
@@ -691,7 +734,7 @@ router.get("/services", async (req, res) => {
   html = applyServiceSeo(html, {
     title: "Services",
     description:
-      "Platform, production and partnership services for athletes, influencers, creators and coaches — storefront, products, payments, video, design and support as one system.",
+      "Platform, production and partnership services for athletes, influencers, creators and coaches: storefront, products, payments, video, design and support as one system.",
     canonical: appUrl("/services"),
     jsonLd,
   });
@@ -732,7 +775,7 @@ router.get("/services/:slug", async (req, res) => {
         })),
         hasOfferCatalog: {
           "@type": "OfferCatalog",
-          name: `${service.name} — what it includes`,
+          name: `${service.name}: what it includes`,
           itemListElement: service.includes.map((i) => ({
             "@type": "Offer",
             itemOffered: { "@type": "Service", name: i.title, description: i.body },
@@ -997,7 +1040,7 @@ function renderPartnerMain(profile, opts) {
 
   const previewBar = options.preview
     ? '<div class="pprofile__preview-bar"><i class="fa-solid fa-eye" aria-hidden="true"></i> ' +
-      `Admin preview — this profile is ${escapeHtml(profile.status)} and is not publicly visible.</div>`
+      `Admin preview. This profile is ${escapeHtml(profile.status)} and is not publicly visible.</div>`
     : "";
 
   let out = `${previewBar}<${tag} class="pprofile pprofile--${escapeHtml(profile.layout)}">`;
@@ -1213,7 +1256,7 @@ const PAGE_META = {
   // real product and a legitimate landing target, unlike the account pages
   // above. It exposes nothing a visitor could not already see on the product
   // page plus two exercises — see src/lib/demo.js.
-  "/demo": { file: "demo.html", title: "Program Preview", description: "See a real Fitness Agency training program before you buy — a sample week, real exercises, and exactly what comes with it." },
+  "/demo": { file: "demo.html", title: "Program Preview", description: "See a real Fitness Agency training program before you buy: a sample week, real exercises, and exactly what comes with it." },
   "/blog": { file: "blog.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/grid": { file: "blog-grid.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
   "/blog/list": { file: "blog-list.html", title: "Blog", description: "Training tips, nutrition guidance, and stories from the Fitness Agency coaching team." },
@@ -1344,13 +1387,15 @@ function applyShowcaseContext(html, product) {
   const ctaHref = `/program/${encodeURIComponent(product.slug)}`;
 
   let result = html
-    .replace(/(<section class="showcase-area[^"]*" data-showcase-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
-    .replace(/(<h2[^>]*data-showcase-title[^>]*>)[^<]*(<\/h2>)/, `$1${escapeHtml(product.name)}$2`)
-    .replace(/(<p[^>]*data-showcase-meta[^>]*>)[^<]*(<\/p>)/, `$1${meta}$2`)
-    .replace(/(<p[^>]*data-showcase-desc[^>]*>)[^<]*(<\/p>)/, `$1${escapeHtml(product.description || "")}$2`)
+    .replace(...fillBetween(/(<section class="showcase-area[^"]*" data-showcase-id=")[^"]*(")/, escapeHtml(product.id)))
+    .replace(...fillBetween(/(<h2[^>]*data-showcase-title[^>]*>)[^<]*(<\/h2>)/, escapeHtml(product.name)))
+    .replace(...fillBetween(/(<p[^>]*data-showcase-meta[^>]*>)[^<]*(<\/p>)/, meta))
+    .replace(...fillBetween(/(<p[^>]*data-showcase-desc[^>]*>)[^<]*(<\/p>)/, escapeHtml(product.description || "")))
     .replace(
-      /(<span[^>]*data-showcase-price[^>]*>)[^<]*(<\/span>)/,
-      `$1${escapeHtml(formatProductPrice(product.priceCents))}$2`
+      ...fillBetween(
+        /(<span[^>]*data-showcase-price[^>]*>)[^<]*(<\/span>)/,
+        escapeHtml(formatProductPrice(product.priceCents))
+      )
     );
 
   result = result.replace(/<a\b[^>]*data-showcase-cta[^>]*>/, (tag) =>
@@ -1463,10 +1508,10 @@ async function applyHeroContext(html, product) {
   }
 
   let result = html
-    .replace(/(<section class="hero" data-hero-id=")[^"]*(")/, `$1${escapeHtml(product.id)}$2`)
-    .replace(/(<span[^>]*data-hero-title[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(product.name)}$2`)
-    .replace(/(<span[^>]*data-hero-eyebrow[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(heroEyebrow(product))}$2`)
-    .replace(/(<span[^>]*data-hero-meta[^>]*>)[^<]*(<\/span>)/, `$1${escapeHtml(heroMeta(product))}$2`)
+    .replace(...fillBetween(/(<section class="hero" data-hero-id=")[^"]*(")/, escapeHtml(product.id)))
+    .replace(...fillBetween(/(<span[^>]*data-hero-title[^>]*>)[^<]*(<\/span>)/, escapeHtml(product.name)))
+    .replace(...fillBetween(/(<span[^>]*data-hero-eyebrow[^>]*>)[^<]*(<\/span>)/, escapeHtml(heroEyebrow(product))))
+    .replace(...fillBetween(/(<span[^>]*data-hero-meta[^>]*>)[^<]*(<\/span>)/, escapeHtml(heroMeta(product))))
     // The fit modifier goes on the CLASS LIST, not a data attribute — the
     // .pmedia rules in media-container.css key off .pmedia--cover /
     // .pmedia--contain / .pmedia--vector, and that is the same contract every
@@ -1625,6 +1670,19 @@ router.get("/", async (req, res, next) => {
   html = await applyHeroContext(html, heroProduct);
   html = applyShowcaseContext(html, showcaseProduct);
   html = applyLandingAssets(html);
+  // Server-rendered rather than fetched: the list is small, it is already in
+  // memory for the header menu on this very request, and rendering it here
+  // means the section occupies its final height in the first paint instead of
+  // growing when a fetch lands. A taxonomy failure leaves the <ul> empty and
+  // CSS hides the section, the same way every other data-driven block here
+  // degrades.
+  try {
+    const trees = await safeGetAllTaxonomyTrees();
+    html = html.replace("<!--HOME_GOALS-->", homeGoalsHtml(trees.find((t) => t.key === "goals")));
+  } catch (err) {
+    console.error("Failed to render homepage goal nav.", err);
+    html = html.replace("<!--HOME_GOALS-->", "");
+  }
   res.type("html").send(html);
 });
 

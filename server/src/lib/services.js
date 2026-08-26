@@ -26,7 +26,7 @@
 const ORGANIZATION = {
   name: "Fitness Agency",
   description:
-    "A complete digital commerce platform for athletes, influencers, creators and coaches — storefront, products, payments, production and support as one system.",
+    "A complete digital commerce platform for athletes, influencers, creators and coaches: storefront, products, payments, production and support as one system.",
   addressLocality: "Winnipeg",
   addressCountry: "CA",
   contactPath: "/contact",
@@ -46,7 +46,7 @@ const AUDIENCES = {
 const ENGAGEMENT_PROCESS = [
   { title: "Apply", body: "We review every application against one question: is there an audience here that would buy something we can build well? Fit matters more than size." },
   { title: "Strategy call", body: "A working session, not a pitch. We map the audience, the offer and the pricing, and leave with a product roadmap and an agreed launch date." },
-  { title: "Content preparation", body: "Our studio produces what the launch needs — filming, editing, photography, design and copy. Production becomes our problem." },
+  { title: "Content preparation", body: "Our studio produces what the launch needs: filming, editing, photography, design and copy. Production becomes our problem." },
   { title: "Product publishing", body: "Programs, plans and downloads are built inside the platform, priced and proofed. Checkout, delivery and accounts are wired up and tested before anyone sees them." },
   { title: "Launch", body: "The storefront goes live with the campaign already loaded: assets scheduled, emails queued, discounts configured. We monitor the first days closely." },
   { title: "Sales & growth", body: "The platform keeps selling after the launch window. We read the analytics, expand the catalogue, run promotions and support every customer." },
@@ -81,7 +81,7 @@ const SERVICES = [
     navLabel: "Digital platform",
     title: "Digital Platform for Athletes & Creators",
     description:
-      "A branded storefront, checkout, member area and admin — hosted, maintained and updated by Fitness Agency. Eleven systems running as one product.",
+      "A branded storefront, checkout, member area and admin, hosted, maintained and updated by Fitness Agency. Eleven systems running as one product.",
     heroKicker: "For athletes, creators and coaches selling their own programs",
     heroLead:
       "Eleven separate systems a creator would otherwise have to buy, integrate and maintain themselves. Here they are one product.",
@@ -101,17 +101,17 @@ const SERVICES = [
     approach: {
       heading: "How we handle it",
       body: [
-        "The storefront, the checkout and the member area already exist. There is no build phase to fund before the first sale — your products go into a system that is already running.",
+        "The storefront, the checkout and the member area already exist. There is no build phase to fund before the first sale; your products go into a system that is already running.",
         "Hosting, certificates, backups and uptime are ours to worry about. So is every support ticket: lost access, receipts, card failures and refunds reach our inbox, never yours.",
       ],
     },
     audience: ["athletes", "influencers", "creators", "coaches"],
     benefits: [
-      "You are selling immediately — no six-month website project",
+      "You are selling immediately, with no six-month website project",
       "The product lands in the customer's library the second payment clears",
       "Cards, wallets, refunds and receipts settle without a message to you",
       "The thousandth sale costs exactly what the first one did",
-      "Most of your audience buys on a phone — every screen starts there",
+      "Most of your audience buys on a phone, so every screen starts there",
     ],
     process: ENGAGEMENT_PROCESS,
     related: ["partner-services", "training-programs", "nutrition-programs"],
@@ -126,7 +126,7 @@ const SERVICES = [
       "Full post-production on launch films, program trailers and campaign cuts, produced in-house by the Fitness Agency studio.",
     heroKicker: "For creators who film more than they can edit",
     heroLead:
-      "Full post-production on launch films, program trailers and campaign cuts — so the only job left is the one that cannot be delegated.",
+      "Full post-production on launch films, program trailers and campaign cuts, so the only job left is the one that cannot be delegated.",
     valueProp:
       "Production is part of the platform, not a separate vendor. The team cutting your launch film is the team publishing the product it sells.",
     includes: [
@@ -139,14 +139,14 @@ const SERVICES = [
       heading: "How we handle it",
       body: [
         "Our in-house studio produces both the thing to sell and the thing to say. Creators stay on the one job that cannot be delegated while our team handles everything downstream of it.",
-        "Edits are cut from footage that already exists wherever possible — a launch does not have to wait on a new shoot to have something to run.",
+        "Edits are cut from footage that already exists wherever possible, so a launch does not have to wait on a new shoot to have something to run.",
       ],
     },
     audience: ["creators", "influencers", "athletes"],
     benefits: [
       "Our studio films, edits and designs every asset a launch needs",
       "Assets arrive on the launch schedule, not after it",
-      "One production team across film, design and copy — no briefing three vendors",
+      "One production team across film, design and copy, not three vendors to brief",
     ],
     related: ["social-media-content", "graphic-design", "platform"],
   },
@@ -159,7 +159,7 @@ const SERVICES = [
       "Vertical short-form edits built for reach, plus formats, captions, cadence and testing tuned to each platform.",
     heroKicker: "For audiences that already exist and need something to buy",
     heroLead:
-      "Vertical edits built for reach, cut from footage you have already shot — and the formats, captions and cadence to place them well.",
+      "Vertical edits built for reach, cut from footage you have already shot, with the formats, captions and cadence to place them well.",
     valueProp:
       "Short-form is a distribution problem, not just an editing one. We handle both halves, against a storefront that can actually convert the traffic.",
     includes: [
@@ -172,7 +172,7 @@ const SERVICES = [
       heading: "How we handle it",
       body: [
         "The commercial system only works if there is something to sell and something to say. Our studio produces both, so the publishing rhythm never has to pause for a launch.",
-        "Every short-form piece points somewhere real — a product page, a program, or a partner profile that carries all of them at once.",
+        "Every short-form piece points somewhere real: a product page, a program, or a partner profile that carries all of them at once.",
       ],
     },
     audience: ["influencers", "creators"],
@@ -192,7 +192,7 @@ const SERVICES = [
       "Covers, layouts and program artwork kept consistent across the catalogue, plus identity, type, palette and voice defined once and applied everywhere.",
     heroKicker: "For catalogues that need to look like one catalogue",
     heroLead:
-      "Covers, layouts and program artwork, consistent across everything you sell — and the identity system underneath them.",
+      "Covers, layouts and program artwork, consistent across everything you sell, plus the identity system underneath them.",
     valueProp:
       "Design defined once and applied everywhere, by the same team that publishes the products it dresses.",
     includes: [
@@ -204,7 +204,7 @@ const SERVICES = [
     approach: {
       heading: "How we handle it",
       body: [
-        "Artwork is produced against the same catalogue it will live in, so a cover is designed for the card, the product page and the profile it has to work on — not just for a portfolio.",
+        "Artwork is produced against the same catalogue it will live in, so a cover is designed for the card, the product page and the profile it has to work on, not just for a portfolio.",
         "Identity work is done once and then applied by the team that runs the storefront, which is what keeps a catalogue from drifting apart product by product.",
       ],
     },
@@ -222,12 +222,12 @@ const SERVICES = [
     navLabel: "Training programs",
     title: "Training Program Development & Publishing",
     description:
-      "Structured week-by-week programming with sets, reps, notes and substitutions — built, priced and published inside the Fitness Agency platform.",
+      "Structured week-by-week programming with sets, reps, notes and substitutions, built, priced and published inside the Fitness Agency platform.",
     heroKicker: "For coaches and athletes with a method worth packaging",
     heroLead:
       "Structured week-by-week programming with sets, reps, notes and substitutions, built into a product customers actually train from.",
     valueProp:
-      "Your programming becomes a product inside the platform — not a PDF someone loses, but a program with progress tracking, delivered the second payment clears.",
+      "Your programming becomes a product inside the platform, not a PDF someone loses, but a program with progress tracking, delivered the second payment clears.",
     includes: [
       { title: "Week-by-week structure", body: "Programming laid out by week and day, with sets, reps, notes and substitutions." },
       { title: "In-platform delivery", body: "Customers train from the program inside their library, not from a downloaded file." },
@@ -262,7 +262,7 @@ const SERVICES = [
     heroLead:
       "Meal frameworks, macros and sample plans, delivered alongside the training rather than as a separate file.",
     valueProp:
-      "Nutrition sits in the same product as the training, in the same library, on the same account — which is how customers actually use it.",
+      "Nutrition sits in the same product as the training, in the same library, on the same account, which is how customers actually use it.",
     includes: [
       { title: "Meal frameworks", body: "Structured approaches rather than one rigid menu." },
       { title: "Macros", body: "Targets that travel with the program they belong to." },
@@ -273,7 +273,7 @@ const SERVICES = [
       heading: "How we handle it",
       body: [
         "Nutrition content is authored into the same product as the training it supports, so a customer buys one thing and gets a complete method.",
-        "Everything is published, priced and proofed by our team — the practitioner supplies the method, not the production.",
+        "Everything is published, priced and proofed by our team; the practitioner supplies the method, not the production.",
       ],
     },
     audience: ["coaches", "athletes", "creators"],
@@ -323,7 +323,7 @@ const SERVICES = [
     navLabel: "Partner services",
     title: "Partnership for Athletes, Creators & Coaches",
     description:
-      "How Fitness Agency works with athletes, influencers, creators and coaches — from application and strategy call through launch and ongoing growth.",
+      "How Fitness Agency works with athletes, influencers, creators and coaches, from application and strategy call through launch and ongoing growth.",
     heroKicker: "For athletes, influencers, creators and coaches",
     heroLead:
       "Every operational job, lifted off your desk. You keep the audience, the method and the name on the door.",

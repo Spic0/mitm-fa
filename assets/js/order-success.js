@@ -92,7 +92,7 @@
       A.show(A.$("osClaimNote"), true);
       A.$("osClaimText").textContent =
         "We've emailed you a link to set up your account and open your program. " +
-        "It signs you in — no password needed the first time.";
+        "It signs you in. No password needed the first time.";
     }
   }
 
@@ -120,7 +120,7 @@
         A.show(A.$("osClaimNote"), true);
         A.$("osClaimText").textContent =
           "We've emailed you a link to set up your account and open your program. " +
-          "It signs you in — no password needed the first time.";
+          "It signs you in. No password needed the first time.";
         A.$("osProblemDetail").textContent =
           "Check your email for your receipt and sign-in link, or sign in with the address you used at checkout.";
         A.panel(PANELS, "osProblem");

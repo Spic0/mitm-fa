@@ -12,7 +12,7 @@
    assets/css/style.css — the same warm off-white paper (#fafaf9 / #fdfdfc /
    #f2f1ee), the same near-black ink (#1a1a1a) that is deliberately never
    pure black, the same muted/faint text stops, the same 10px + 100px radius
-   pair, the same shadow ramp, the same Inter. Where this file departs, it
+   pair, the same shadow ramp, the same Montserrat. Where this file departs, it
    departs in ONE direction only: scale. Bigger type, more air, longer
    easing. A deck is the same brand spoken at a different volume, and the
    things that carry brand identity — hue, weight, radius, letterspacing,
@@ -30,14 +30,14 @@
    ======================================================================= */
 
 /* Same six faces, same paths, same font-display as style.css declares —
-   a deck rendered in a fallback face while Inter loads would not be the
+   a deck rendered in a fallback face while Montserrat loads would not be the
    same brand for the first 200ms. */
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-italic.woff2") format("woff2"); }
 
 /* -----------------------------------------------------------------------
    1. TOKENS
@@ -56,7 +56,7 @@
   --p-danger: #dc2626;
   --p-success: #059669;
 
-  --p-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --p-font: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* ---- Radius + shadow: the platform's exact scale ---- */
   --p-radius: 10px;
@@ -262,7 +262,7 @@ textarea:focus-visible,
   font-size: var(--p-h2);
   font-weight: 700;
   line-height: 1.08;
-  /* Negative tracking is what stops Inter looking loose at display sizes;
+  /* Negative tracking is what stops Montserrat looking loose at display sizes;
      it scales with the type, which is why it's set here and not per-block. */
   letter-spacing: -0.03em;
   color: var(--p-ink);
@@ -4767,7 +4767,7 @@ textarea:focus-visible,
 
    It shares this stylesheet rather than the storefront's so a viewer who
    clicks out of a deck stays inside the same design — same paper, same
-   ink, same Inter, same radii. What it does NOT share is any part of the
+   ink, same Montserrat, same radii. What it does NOT share is any part of the
    storefront's buy flow: there is no cart control on this page to style,
    because the markup never contains one (see routes/presentation.js).
 

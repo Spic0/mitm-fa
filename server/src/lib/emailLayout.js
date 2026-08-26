@@ -52,7 +52,7 @@ const BRAND = {
 // No web font survives Outlook, and a font that half-loads is worse than one
 // that never tries. Inter first for the clients that have it (it is the
 // site's face), then the native UI stack, which is what the rest will use.
-const FONT = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const FONT = "'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
 const COMPANY = {
   name: "Fitness Agency",
@@ -213,7 +213,7 @@ function renderLayout({ storeName, logoUrl, appUrl, supportEmail, preheader, eye
 <meta name="supported-color-schemes" content="light">
 <title>${esc(heading || safeStore)}</title>
 <style>
-  /* Enhancement only — stripped by some clients, and nothing below is load-bearing.
+  /* Enhancement only, stripped by some clients, and nothing below is load-bearing.
      560px, not 600: the card itself is 600 wide, and a max-width:600px query
      matches a client rendering at exactly that, which stacked the order rows
      on desktop. Every phone this has to hold at is 430 or narrower. */

@@ -1681,7 +1681,7 @@
     if (setupState.services.length) {
       parts.push("Services selected: " + setupState.services.join(", "));
     }
-    parts.push("(Visitor's own wizard estimate — not a quoted rate.)");
+    parts.push("(Visitor's own wizard estimate, not a quoted rate.)");
     return parts.join("\n");
   }
 

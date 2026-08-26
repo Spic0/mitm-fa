@@ -934,7 +934,7 @@
           (day.notes ? '<div class="pg-prose"><p>' + esc(day.notes) + "</p></div>" : "") +
           (exercises.length
             ? exercises.map(function (ex, ei) { return exerciseHtml(ex, key, ei); }).join("")
-            : '<p class="pg-ex__note">Rest day — nothing scheduled.</p>') +
+            : '<p class="pg-ex__note">Rest day. Nothing scheduled.</p>') +
           checkHtml(key, isDone(key) ? "Session complete" : "Mark session complete") +
           "</div>";
       });
@@ -1319,7 +1319,7 @@
       '<div class="pg-empty__icon">' + ICON.community + "</div>" +
       "<h3>Community is coming</h3>" +
       "<p>A space to train alongside everyone else on " + esc(product.name) +
-      ", ask " + esc(product.creator || "the creator") + " questions, and post progress. It isn't open yet — " +
+      ", ask " + esc(product.creator || "the creator") + " questions, and post progress. It isn't open yet; " +
       "until it is, the fastest way to reach the team is the contact form.</p>" +
       '<div class="pg-locked__actions"><a class="pg-btn pg-btn--ghost" href="/contact"><span>Contact the team</span></a></div>' +
       "</div>";
@@ -1450,7 +1450,7 @@
       ? " · status: " + esc(payload.productStatus) + " (not purchasable yet)"
       : "";
     var bar = el(
-      '<div class="pg-preview"><span><strong>Customer preview</strong> — exactly what a buyer sees' +
+      '<div class="pg-preview"><span><strong>Customer preview</strong>: exactly what a buyer sees' +
       note + ". Progress isn't saved.</span><a href=\"/admin/manage/products\">Back to admin</a></div>"
     );
     document.body.appendChild(bar);

@@ -56,7 +56,7 @@
     [/insufficient_funds/i, "That card was declined for insufficient funds."],
     [/incorrect_number|invalid_number/i, "That card number doesn't look right. Please check it."],
     [/processing_error/i, "Your bank couldn't process that just now. Please try again in a moment."],
-    [/timeout|timed out|ETIMEDOUT/i, "That took longer than expected. Check your connection and try again — you have not been charged twice."],
+    [/timeout|timed out|ETIMEDOUT/i, "That took longer than expected. Check your connection and try again. You have not been charged twice."],
     [/failed to fetch|networkerror|network request failed|net::/i, "We couldn't reach the payment service. Check your connection and try again."],
     [/rate|too many/i, "Too many attempts. Please wait a moment and try again."],
   ];
@@ -292,7 +292,7 @@
         await elements.fetchUpdates();
       }
     } catch (err) {
-      showError(err.message || "Could not update your order total — please refresh and try again.");
+      showError(err.message || "Could not update your order total. Please refresh and try again.");
     }
   }
 
@@ -573,7 +573,7 @@
     unavailable: {
       icon: "fa-circle-exclamation",
       title: "Card payment temporarily unavailable",
-      desc: "Card payments aren't set up on this store yet. Nothing has been charged — please try another method or contact support.",
+      desc: "Card payments aren't set up on this store yet. Nothing has been charged. Please try another method or contact support.",
     },
     failed: {
       icon: "fa-circle-exclamation",

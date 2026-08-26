@@ -30,7 +30,7 @@
   flex-direction: column;
   background: var(--pm-bg);
   color: var(--pm-ink);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--pm-dur) var(--pm-ease), visibility var(--pm-dur);

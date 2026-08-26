@@ -1430,7 +1430,7 @@ CSS TABLE OF CONTENTS
 				appliedPromo = { code: data.promotion.code, name: data.promotion.name, discountCents: data.discountCents };
 				autoPromo = null;
 				window.ProFitCart.appliedPromoCode = appliedPromo.code;
-				showPromoMsg("“" + data.promotion.code + "” applied — " + formatDollars(data.discountCents / 100) + " off", false);
+				showPromoMsg("“" + data.promotion.code + "” applied: " + formatDollars(data.discountCents / 100) + " off", false);
 				renderCheckoutSummary();
 				// Keeps the live PaymentIntent's charged amount (and PayPal's
 				// next create-order call) in sync with the newly applied code —

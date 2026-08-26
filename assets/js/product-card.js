@@ -74,7 +74,7 @@ window.ProductCard = (function () {
     cta.dataset.img = p.imageUrl || "";
     cta.innerHTML =
       '<span class="product__tap-cta-default"><i class="fa-regular fa-cart-shopping me-2" aria-hidden="true"></i>Add to Cart</span>' +
-      '<span class="product__tap-cta-added" aria-hidden="true"><i class="fa-solid fa-check me-2"></i>Added &mdash; opening cart</span>';
+      '<span class="product__tap-cta-added" aria-hidden="true"><i class="fa-solid fa-check me-2"></i>Added, opening cart</span>';
     card.appendChild(cta);
 
     col.appendChild(card);

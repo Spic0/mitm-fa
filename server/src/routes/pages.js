@@ -26,6 +26,7 @@ const {
   relatedServices,
   audienceEntries,
 } = require("../lib/services");
+const { getPlanGuide, listPlanGuides } = require("../lib/plans");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -801,6 +802,203 @@ router.get("/services/:slug", async (req, res) => {
     jsonLd,
   });
   html = html.replace("<!--SERVICE_MAIN-->", renderServiceMain(service));
+  res.type("html").send(html);
+});
+
+// ---------------------------------------------------------------------
+// /plans and /plans/:slug — buyer guides for the searches people actually
+// type ("workout plans for women", "hyrox training plan", ...). Content lives
+// in lib/plans.js; the layout reuses the service page template and styles.
+// ---------------------------------------------------------------------
+function planUrl(slug) {
+  return appUrl(`/plans/${encodeURIComponent(slug)}`);
+}
+
+function renderPlanGuide(guide) {
+  let out = '<main class="svc">';
+  out +=
+    '<nav class="svc-crumb" aria-label="Breadcrumb">' +
+    '<a href="/">Home</a> <span aria-hidden="true">/</span> ' +
+    '<a href="/plans">Plans</a> <span aria-hidden="true">/</span> ' +
+    `<span>${escapeHtml(guide.navLabel)}</span></nav>`;
+
+  const first = guide.links[0];
+  out +=
+    '<header class="svc-hero">' +
+    `<span class="svc-hero__kicker">${escapeHtml(guide.kicker)}</span>` +
+    `<h1 class="svc-hero__title">${escapeHtml(guide.h1)}</h1>` +
+    `<p class="svc-hero__lead">${escapeHtml(guide.lead)}</p>` +
+    '<div class="svc-hero__actions">' +
+    `<a class="svc-btn svc-btn--primary" href="${escapeHtml(first.href)}"><span>Browse ${escapeHtml(first.label.toLowerCase())}</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>` +
+    '<a class="svc-btn svc-btn--ghost" href="/shop"><span>All plans</span></a>' +
+    "</div></header>";
+
+  for (const section of guide.sections) {
+    out +=
+      '<section class="svc-section">' +
+      `<h2 class="svc-section__title">${escapeHtml(section.heading)}</h2>` +
+      '<div class="svc-section__body">' +
+      section.body.map((p) => `<p>${escapeHtml(p)}</p>`).join("") +
+      "</div></section>";
+  }
+
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">What you get</span>' +
+    '<h2 class="svc-section__title">What every plan includes</h2>' +
+    '<div class="svc-grid">' +
+    guide.includes
+      .map((i) => `<div class="svc-card"><h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.body)}</p></div>`)
+      .join("") +
+    "</div></section>";
+
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">Find your plan</span>' +
+    '<h2 class="svc-section__title">Browse the programs</h2>' +
+    '<div class="svc-grid svc-grid--3">' +
+    guide.links
+      .map(
+        (l) =>
+          `<a class="svc-related-card" href="${escapeHtml(l.href)}">` +
+          `<span><strong>${escapeHtml(l.label)}</strong></span>` +
+          '<i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>'
+      )
+      .join("") +
+    "</div></section>";
+
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">FAQ</span>' +
+    '<h2 class="svc-section__title">Common questions</h2>' +
+    '<div class="svc-section__body">' +
+    guide.faq.map((f) => `<h3>${escapeHtml(f.q)}</h3><p>${escapeHtml(f.a)}</p>`).join("") +
+    "</div></section>";
+
+  const others = listPlanGuides().filter((g) => g.slug !== guide.slug);
+  out +=
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">More guides</span>' +
+    '<h2 class="svc-section__title">Other plans people look for</h2>' +
+    '<div class="svc-grid svc-grid--3">' +
+    others
+      .map(
+        (g) =>
+          `<a class="svc-related-card" href="/plans/${encodeURIComponent(g.slug)}">` +
+          `<span><strong>${escapeHtml(g.navLabel)}</strong><span>${escapeHtml(g.kicker)}</span></span>` +
+          '<i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>'
+      )
+      .join("") +
+    "</div></section>";
+
+  out += "</main>";
+  return out;
+}
+
+function renderPlansIndex() {
+  let out = '<main class="svc">';
+  out +=
+    '<nav class="svc-crumb" aria-label="Breadcrumb">' +
+    '<a href="/">Home</a> <span aria-hidden="true">/</span> <span>Plans</span></nav>';
+  out +=
+    '<header class="svc-hero">' +
+    '<span class="svc-hero__kicker">Training and nutrition</span>' +
+    '<h1 class="svc-hero__title">Workout and meal plans</h1>' +
+    '<p class="svc-hero__lead">Programs from athletes and fitness creators, organised by what you are training for. One-time purchase, lifetime access.</p>' +
+    '<div class="svc-hero__actions">' +
+    '<a class="svc-btn svc-btn--primary" href="/shop"><span>Shop all plans</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>' +
+    "</div></header>";
+  out +=
+    '<section class="svc-section">' +
+    '<div class="svc-grid svc-grid--3">' +
+    listPlanGuides()
+      .map(
+        (g) =>
+          `<a class="svc-index-card" href="/plans/${encodeURIComponent(g.slug)}">` +
+          `<h2>${escapeHtml(g.navLabel)}</h2>` +
+          `<p>${escapeHtml(g.lead)}</p>` +
+          '<span class="svc-index-card__more"><span>Read the guide</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>' +
+          "</a>"
+      )
+      .join("") +
+    "</div></section>";
+  out += "</main>";
+  return out;
+}
+
+router.get("/plans", async (req, res) => {
+  let html = await readTemplate("service.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "service.html");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "CollectionPage",
+        name: "Workout and Meal Plans | Fitness Agency",
+        url: appUrl("/plans"),
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: listPlanGuides().map((g, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: g.navLabel,
+            url: planUrl(g.slug),
+          })),
+        },
+      },
+    ],
+  };
+  html = applyServiceSeo(html, {
+    title: "Workout and Meal Plans from Athletes and Creators",
+    description:
+      "Workout plans for women and men, athlete programs, Hyrox, mobility and meal plans from athletes and fitness creators. One-time purchase, lifetime access.",
+    canonical: appUrl("/plans"),
+    jsonLd,
+  });
+  html = html.replace("<!--SERVICE_MAIN-->", () => renderPlansIndex());
+  res.type("html").send(html);
+});
+
+router.get("/plans/:slug", async (req, res) => {
+  const guide = getPlanGuide(req.params.slug);
+  if (!guide) return render404(req, res);
+  let html = await readTemplate("service.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "service.html");
+  const url = planUrl(guide.slug);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "WebPage",
+        name: guide.title,
+        description: guide.description,
+        url,
+        publisher: { "@id": appUrl("/#organization") },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: guide.faq.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: appUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Plans", item: appUrl("/plans") },
+          { "@type": "ListItem", position: 3, name: guide.navLabel, item: url },
+        ],
+      },
+    ],
+  };
+  html = applyServiceSeo(html, { title: guide.title, description: guide.description, canonical: url, jsonLd });
+  html = html.replace("<!--SERVICE_MAIN-->", () => renderPlanGuide(guide));
   res.type("html").send(html);
 });
 
@@ -1766,7 +1964,8 @@ router.get("/robots.txt", (req, res) => {
 });
 
 router.get("/sitemap.xml", async (req, res) => {
-  const staticUrls = ["/", "/shop", "/about", "/contact", "/blog", "/services"];
+  const staticUrls = ["/", "/shop", "/plans", "/about", "/contact", "/blog", "/services"];
+  const planUrls = listPlanGuides().map((g) => `/plans/${encodeURIComponent(g.slug)}`);
 
   // Every service page. Static content, so these come from the catalogue in
   // lib/services.js rather than the database.
@@ -1805,6 +2004,7 @@ router.get("/sitemap.xml", async (req, res) => {
   const allUrls = [
     ...staticUrls,
     ...serviceUrls,
+    ...planUrls,
     ...productUrls,
     ...taxonomyUrls,
     ...partnerUrls,

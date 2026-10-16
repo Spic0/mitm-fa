@@ -1,524 +1,1662 @@
-/* Homepage dynamic sections: a dynamic product hero slideshow (.hero-
-   slideshow), a scrolling people-marquee directly under it, an Athletes/
-   Creators people-strip, and a deal-cards product strip. Mobile-first: base
-   rules below target phones, larger screens are added via min-width media
-   queries further down. The strips are native horizontal-scroll +
-   scroll-snap (no swiper dependency) so they work with any item count the
-   backend returns, including very few or zero. */
+/* Homepage sections, in the order the page renders them: the hero (.hero, a
+   headline plus a rotating deck of real product covers), the program preview
+   (.value-area), the goal index (.goal-nav-area), the product grid
+   (.product-area) and the featured-plan trust block (.showcase-area).
+   Mobile-first: base rules below target phones, larger screens are added via
+   min-width media queries further down.
 
-/* ---- Hero slideshow: real admin-managed product data, driven by
-   assets/js/hero-slideshow.js (GET /api/products + GET /api/taxonomy).
-   Slide 0's content/background is server-rendered directly into index.html
-   (server/src/index.js -> applyHeroContext) for SEO/no-JS; this file only
-   lays out and animates what that markup (SSR'd or client-added) contains —
-   nothing here is itself hardcoded to a specific product. ---- */
-.hero-slideshow {
+   Removed 2026-08-19 (see changelogs/2026-08-19-hero-strip-removal.md): the
+   `.people-marquee` title ticker and the `.people-chip` Athlete/Creator pill
+   rail. Nothing else on the site loads them — this file is linked from
+   index.html only — so their rules are gone rather than left dead.
+
+   Removed 2026-08-26 (see changelogs/2026-08-26-landing-art-direction.md):
+   `.deal-card*` (a horizontal rail of the same products the grid below lists)
+   and `.promo-tile*` (three image tiles whose images were never supplied and
+   whose three links all pointed at /shop). Both sections are gone from the
+   markup, so their rules are gone with them rather than left dead. */
+
+/* ===========================================================================
+   HERO — brand message + a deck of real product cards
+   ===========================================================================
+   Replaces a full-bleed background treatment that ran each product cover
+   through `filter: blur(22px) brightness(0.55)` under a dark scrim, with six
+   text elements stacked over it. Two things were wrong at once: that much blur
+   destroys the product (so showing products achieved nothing), and the <h1>
+   was the product NAME, swapping every 6s, so the page never said what the
+   business sells.
+
+   The rules now: the active card is NEVER blurred, dimmed or scaled down.
+   Depth is carried entirely by the two flanking cards. The surface is the
+   brand's own light ground, so the cards are the darkest, sharpest thing in
+   the section and the eye lands on them.
+
+   Mobile-first: the base rules below are the phone layout — copy first, deck
+   under it — and the two-column composition only appears once there is width
+   for it. Desktop is not the design being scaled down.
+   ------------------------------------------------------------------------ */
+.hero {
   position: relative;
+  background-color: var(--color-bg);
+  /* The flanking cards are translated +/-38% and deliberately sit partly
+     outside the stage — that overhang is the depth cue. Without clipping here
+     they extend past the viewport edge and create horizontal overflow
+     (measured: 10 escaping elements at 320px, 5 at 1024-1440). Clipping at the
+     section keeps the overhang visible inside the layout and impossible to
+     scroll to. Bottom padding is always >= 32px, so the active card's shadow
+     is never cut. */
   overflow: hidden;
-  display: flex;
+  /* .site-header is position:fixed and 65px tall on mobile / 42px on desktop
+     (set by .main-menu and the 44px hamburger — see style.css). The hero is
+     the first element in <main>, so its top padding is the ONLY thing keeping
+     the headline out from under it: at 20px the <h1> was overlapped by 34-45px
+     and effectively invisible on every phone. Anything set here must clear the
+     header first and add breathing room second.
+
+     Beyond that it stays tight. The old hero reserved up to half a screen of
+     empty space and pushed the CTA off the fold; the point here is that
+     headline, sub, CTA and a real part of the first card all land in the
+     first viewport. Trimmed from 84px: the header is 65px, so 76px still
+     clears it with 11px to spare, and the 8px goes to the CTA row's fold
+     margin at 390x844. */
+  padding: 76px 0 clamp(32px, 6vw, 72px);
+}
+
+.hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(24px, 5vw, 40px);
   align-items: center;
-  min-height: 520px;
-  padding: 84px 0 32px;
-  background: var(--color-text); /* dark fallback while the first image loads */
 }
 
-/* Background layer: fills the section, sits behind everything else. */
-.hero-slideshow__bg-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-}
-.hero-slideshow__swiper,
-.hero-slideshow__swiper .swiper-wrapper,
-.hero-slideshow__slide {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-/* Crossfade between slides: assets/js/hero-slideshow.js toggles each
-   slide's opacity directly (plain JS, no Swiper) — this is what animates
-   that change. Duration must match the JS SPEED constant. Defaults to
-   fully opaque so the server-rendered first slide is visible with no JS
-   at all; slides added by JS start at opacity 0 via inline style. */
-.hero-slideshow__slide {
-  transition: opacity 900ms ease;
-}
-.hero-slideshow__bg-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  /* Large, slightly blurred, slightly darkened — never the focal point.
-     Scaled up so the blur's soft edge never shows inside the frame. */
-  filter: blur(22px) brightness(0.55) saturate(1.05);
-  transform: scale(1.18);
-  animation: heroSlowPan 22s ease-in-out infinite alternate;
-}
-/* Very subtle pan/zoom — a premium touch, never fast or distracting enough
-   to compete with the foreground content. Respects reduced-motion. */
-@keyframes heroSlowPan {
-  0% { transform: scale(1.18) translate(0, 0); }
-  100% { transform: scale(1.26) translate(-1.4%, -1%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-slideshow__bg-img {
-    animation: none;
-  }
-}
-.hero-slideshow__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  /* Belt-and-suspenders on top of the brightness filter above — guarantees
-     readable contrast for light text regardless of how bright/busy a given
-     admin-uploaded cover image is. */
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.55) 0%, rgba(10, 10, 10, 0.72) 100%);
-}
+/* PHONE ORDER: headline -> products -> CTA.
+   .hero__copy is a pure layout wrapper with no styles and no semantics of its
+   own, so `display: contents` dissolves it and promotes the headline, sub and
+   actions to grid items alongside the stage. That is what makes them
+   individually orderable without moving anything in the DOM — so the desktop
+   two-column composition, which needs copy and stage as two boxes, is restored
+   at 992px by simply putting the box back (`display: block`).
+   The alternative — reordering the markup — would have forced desktop to
+   reassemble the left column out of separated children, i.e. changing desktop
+   to fix mobile, which the brief rules out.
+   `display: contents` on a semantically-empty div is the safe case for it:
+   the historic a11y-tree bug dropped the element's own role, and this element
+   has none. */
+.hero__copy { display: contents; }
+.hero__title { order: 1; }
+.hero__sub { order: 2; }
+.hero__stage { order: 3; }
+.hero__actions { order: 4; }
 
-.hero-slideshow__content {
-  position: relative;
-  z-index: 2;
-  max-width: 620px;
-  color: #ffffff;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+/* The supporting line SHOWS on a phone now. It was hidden here because it used
+   to be a 62-character sentence sitting between the headline and the first
+   product, which is the one place nothing should be: the products are the
+   argument, and a paragraph delayed them by ~100px. At six words it costs one
+   19px line, and the first viewport reads headline -> promise -> product
+   instead of headline -> product with the promise only on desktop. */
+
+/* ONE headline at ONE display size, in two art-directed lines.
+   ---------------------------------------------------------------------------
+   The previous lockup set "Train like" at 13px/0.36em tracking above a 68px
+   display line. Whatever the intent, the rendered result is a small uppercase
+   tag above a big heading — the decorative-eyebrow shape — and it also
+   demoted the sentence's verb to a caption, so the headline the visitor
+   actually read was "THE ONES YOU FOLLOW", which is not a sentence.
+
+   Both spans are now the same size, weight and colour. The only thing the
+   split still does is control WHERE the line breaks, which is a typesetting
+   decision, not a hierarchy one:
+
+     phone     TRAIN LIKE / THE ONES / YOU FOLLOW   (span 2 wraps at 11ch,
+                                                     giving three lines whose
+                                                     1st and 3rd are the same
+                                                     width)
+     >=992px   TRAIN LIKE / THE ONES YOU FOLLOW     (span 2 held on one line)
+
+   Montserrat, the platform's one family, at 800. */
+.hero__title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: clamp(35px, 11.2vw, 68px);
+  font-weight: 800;
+  /* Display sizes need negative tracking and sub-1 leading; at this scale the
+     default spacing reads loose and accidental. Montserrat is a geometric
+     face with wide default sidebearings, so it wants slightly more negative
+     tracking than Inter did at the same size. */
+  letter-spacing: -0.042em;
+  line-height: 0.92;
+  color: var(--color-text);
 }
-.hero-slideshow__content--out {
-  opacity: 0;
-  transform: translateX(-14px);
+.hero__title-line {
+  display: block;
+  /* 11ch is what holds "THE ONES / YOU FOLLOW" as two balanced lines at every
+     phone width instead of reflowing per device. It applies to both spans;
+     "TRAIN LIKE" is 10 characters and never reaches it. */
+  max-width: 11ch;
+  text-wrap: balance;
 }
-.hero-slideshow__badge {
+.hero__sub {
+  font-size: clamp(14px, 3.6vw, 16px);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  /* The headline and its one supporting line are ONE block, so the grid's gap
+     must not open between them: the negative top margin cancels the gap the
+     grid puts above this item and the 10px is what is left. The gap BELOW,
+     down to the deck, is the grid's own and is meant to be there. */
+  margin: calc(10px - clamp(24px, 5vw, 40px)) auto 0;
+  max-width: 34ch;
+  text-align: center;
+}
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  /* Centred under the deck, which is itself centred. */
+  justify-content: center;
+}
+/* THE PAIR SITS ON ONE ROW, AND THE ROW IS NOT THE WIDTH OF THE SCREEN.
+   ---------------------------------------------------------------------------
+   Both buttons used to be `width: 100%`, stacked: two full-bleed pills, 56px
+   and 50px tall, 14px apart — 120px of solid button under a 76vw product.
+   That is the "oversized pills dominating the phone screen" the brief names,
+   and it cost enough height that the secondary fell out of the first viewport
+   at 390x844 (measured: its lower edge sat at 858px).
+
+   Now one row: the primary takes the free space, the secondary takes only what
+   its label needs. The rank is carried by area and by fill (.btn-one filled,
+   .btn-two outlined), which is a stronger signal than 2px of padding was, and
+   the row costs 48px instead of 120px. Both stay >= 44px tall, the touch-target
+   floor, at every width down to 320. */
+.hero__actions {
+  gap: 10px;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 360px;
+  margin-inline: auto;
+}
+.hero__cta.btn-one {
+  flex: 1 1 auto;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius-pill, 100px);
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 14px;
-  backdrop-filter: blur(4px);
+  justify-content: center;
+  text-align: center;
+  padding: 13px 20px;
+  font-size: 14.5px;
+  white-space: nowrap;
 }
-.hero-slideshow__badge img {
-  width: 14px;
-  height: 14px;
-  filter: brightness(0) invert(1); /* the fire icon is dark-line art; make it read on a dark badge */
+.hero__cta.btn-one i {
+  margin-left: 8px;
+  font-size: 0.85em;
 }
-.hero-slideshow__meta {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 0 0 8px;
-  min-height: 1.2em; /* reserves its line even before content loads/swaps, avoiding CLS */
+/* The secondary. Same button family, deliberately NOT the same weight: the
+   outlined variant, sized to its own label so it can never look like the
+   other half of a split control. The arrow is dropped — an arrow on both
+   made them read as a matched pair, which is the one thing they are not. */
+.hero__cta-alt.btn-two {
+  flex: 0 0 auto;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 13px 18px;
+  font-size: 14.5px;
+  white-space: nowrap;
 }
-.hero-slideshow h1 {
-  font-size: 26px;
-  line-height: 1.2;
+
+/* ---- The stage ----------------------------------------------------------
+   A depth composition, not a row of cards. The deck carries a `perspective`,
+   so the flanking products are pushed BACK in Z and turned on their Y axis
+   rather than merely scaled — a real vanishing point is what stops three
+   rectangles reading as a stock carousel. At most four cards exist in the DOM
+   at once (active, its two neighbours, and one mid-exit); everything else is
+   display:none, so a 300-product catalog costs the same as a 3-product one. */
+.hero {
+  /* One source of truth for the motion, shared by the CSS below and by
+     hero-slideshow.js, which reads them so the JS timers can never drift out
+     of step with the transitions. */
+  --hero-dur: 700ms;
+  --hero-dwell: 3400ms;
+  /* Decelerating, no overshoot. A card that bounces reads as a toy; this is
+     the curve of something with mass coming to rest. Used for TRANSFORM on
+     every card in every slot — departing and arriving plates must travel on
+     one shared curve or the stack stops reading as a single movement. */
+  --hero-ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+
+  /* OPACITY and FILTER are the exception, and this pair is the whole reason
+     the hand-off no longer shows a hole.
+
+     With one shared curve the outgoing card and the incoming card cross at
+     ~0.70 opacity each — measured — so for ~200ms neither plate is solid, the
+     page ground shows through both, and both are carrying half a blur. That
+     is the "everything disappears for a moment" the rebuild was asked to fix.
+
+     So the two directions get opposite curves: whatever is ARRIVING at a slot
+     rises fast and is essentially solid by the time it is a third of the way
+     across, and whatever is LEAVING holds full strength until well past the
+     midpoint before it drops. Their sum never dips below 1, so at every frame
+     there is a plate at full opacity and full sharpness. Transform is
+     deliberately NOT included — the travel stays on one curve. */
+  --hero-ease-in: cubic-bezier(0.12, 0.72, 0.28, 1);
+  --hero-ease-out: cubic-bezier(0.72, 0, 0.88, 0.28);
+
+  /* Height reserved under the plate for the three caption lines. Read by the
+     deck's sizer as well as by the caption itself, so the box the deck
+     reserves and the box the text occupies cannot disagree. */
+  --hero-caption-h: 96px;
+
+  /* How much of each neighbouring product stays visible at the viewport edge
+     on a phone. This is the whole "one dominant product" dial: enough to say
+     the deck continues in both directions and that it can be swiped, not
+     enough to read as a second product competing with the active one. */
+  --hero-hint: 34px;
+}
+.hero__stage {
+  position: relative;
+  /* ON A PHONE THIS IS THE ACTIVE PRODUCT'S WIDTH, and the whole composition
+     is sized from it. It tracks the viewport (76vw) up to a cap, so the active
+     cover is the dominant object at every phone width rather than a fixed box
+     that happens to look right on one device. The cap stops it ballooning on a
+     large phone or a portrait tablet, where a near-full-width card would push
+     the CTA off the fold. The two height tiers below trade this width for fold
+     safety on short screens. */
+  max-width: min(76vw, 284px);
+  margin: 0 auto;
+  width: 100%;
+  /* Horizontal gestures belong to the carousel, vertical ones to the page.
+     Declaring it here is what stops a swipe from panning the page sideways
+     without any JS having to fight the browser for the gesture. */
+  touch-action: pan-y;
+}
+.hero__deck {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Every card is absolutely positioned, so the deck needs its own height for
+     them to size against.
+
+     This used to be a single `aspect-ratio` for the WHOLE card, which left the
+     plate to take whatever height was left once the caption had its own — so
+     the plate's shape was a leftover, and it silently changed whenever the
+     caption height changed (it does, on the two short-screen tiers below).
+     Now the PLATE is authoritative at a fixed 4:5 and the deck derives its
+     height from it: percentage padding resolves against the containing
+     block's WIDTH, so `125%` is exactly the plate, and the caption is added
+     as a fixed strip underneath. The two can no longer disagree, at any
+     width, and no uploaded image can move either — see .hero-card__media. */
+  height: 0;
+  padding-bottom: calc(125% + var(--hero-caption-h));
+}
+.hero-card {
+  position: absolute;
+  inset: 0;
+  display: none;
+  opacity: 0;
+  /* Transform, opacity and filter only — all compositor-friendly. Nothing
+     here triggers layout, which is what keeps the sequence smooth on a
+     low-end phone while four cards move at once.
+
+     The curves are per-property and per-direction. A transition is governed by
+     the timing function of the state being transitioned TO, so a card moving
+     into the active slot picks up --hero-ease-in from the .is-active rule and
+     a card falling back to a flank picks up --hero-ease-out from the flank
+     rule. This default is the arriving case; the slot rules override it. */
+  transition:
+    transform var(--hero-dur) var(--hero-ease),
+    opacity var(--hero-dur) var(--hero-ease-in),
+    filter var(--hero-dur) var(--hero-ease-in);
+}
+/* Only the cards that are actually on stage render. */
+.hero-card.is-active,
+.hero-card.is-prev,
+.hero-card.is-next,
+.hero-card.is-exit-left,
+.hero-card.is-exit-right { display: block; }
+
+/* will-change is scoped to the cards in motion rather than sitting on every
+   .hero-card forever — a permanent hint on off-stage cards keeps compositor
+   layers alive for content that is display:none. */
+.hero-card.is-active,
+.hero-card.is-prev,
+.hero-card.is-next,
+.hero-card.is-exit-left,
+.hero-card.is-exit-right { will-change: transform, opacity; }
+
+/* ACTIVE — dominant: full scale, full opacity, sharp, nearest the viewer,
+   and the only card that is interactive. */
+.hero-card.is-active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotateY(0deg) scale(1);
+  filter: blur(0px);
+  z-index: 4;
+  pointer-events: auto;
+  /* Arriving: solid and sharp early, then it just finishes travelling.
+     `blur(0px)` rather than `none` above is load-bearing — `filter: none` is
+     not interpolatable with `blur()`, so the incoming plate would SNAP from
+     1.5px to sharp instead of resolving, which is the one thing that reads as
+     a content swap rather than a movement. */
+  transition:
+    transform var(--hero-dur) var(--hero-ease),
+    opacity calc(var(--hero-dur) * 0.72) var(--hero-ease-in),
+    filter calc(var(--hero-dur) * 0.72) var(--hero-ease-in);
+}
+/* FLANKS — a HINT, not a second product.
+   ---------------------------------------------------------------------------
+   This is the phone model, and it is deliberately not the desktop one. Desktop
+   (>=768px, further down) keeps the three-card depth stage; a phone gets ONE
+   dominant product with the neighbours tucked almost entirely behind it and
+   off the edge, because at 390px three cards at 0.4 opacity read as three
+   competing products rather than as depth — measured, the flanks sat 74px from
+   centre at 40% opacity, which is a card, not a hint.
+
+   Pushed out by 88% of the card's own width, so each neighbour is mostly
+   BEHIND the active card and mostly past the viewport edge; what is left is a
+   ~17% sliver that says "there is more here, you can swipe" and nothing more.
+   No rotateY and no Z on the phone: a flat translate plus a small scale is all
+   the depth this composition needs, and 3D rotation at this size is exactly
+   the "exaggerated effect" that reads as cheap. */
+.hero-card.is-prev,
+.hero-card.is-next {
+  /* Was 0.26 with a 1px blur. At 26% on a #fafaf9 ground a dark cover washes
+     out to a pale ghost, which reads as broken rather than as "there is
+     another program here" — and the blur on top of that made it read as a
+     rendering fault. The neighbour's job is to be recognisably a product and
+     obviously not the active one; 0.55 and no blur does that, and the active
+     card is still nearly 2x its contrast. */
+  opacity: 0.55;
+  z-index: 2;
+  pointer-events: none;
+  filter: blur(0px);
+  /* Departing: holds full strength past the midpoint, then falls away. Paired
+     with .is-active's fast rise this is what guarantees a solid, sharp plate
+     in every single frame of the hand-off. */
+  transition:
+    transform var(--hero-dur) var(--hero-ease),
+    opacity var(--hero-dur) var(--hero-ease-out),
+    filter var(--hero-dur) var(--hero-ease-out);
+}
+/* THE HINT IS ANCHORED TO THE VIEWPORT, NOT TO THE CARD.
+   A plain percentage offset is a fraction of the CARD's width, so the sliver
+   that ends up visible is really (viewport - card) / 2 — and the two vary
+   independently. On a short screen the height tiers shrink the card while the
+   viewport stays as wide as ever, and the gap grows to fill the difference:
+   measured at 375x667, a flat 88% offset left 98px of the neighbour showing,
+   which is a second product, not a hint.
+
+   Solving for the neighbour's inner edge instead pins it at exactly
+   --hero-hint from the viewport edge at every width and every card size. The
+   card's centre sits on the viewport centre, so its inner edge lands at
+   50vw + X - (scale x 50%); setting that equal to 100vw - hint gives the X
+   below. `43%` is the scale (0.86) halved — the element's own half-width after
+   scaling, since translate percentages resolve against the unscaled border
+   box.
+
+   Only valid while the deck is centred in the viewport, which is true for the
+   whole phone range; from 768px up the depth stage overrides these outright. */
+.hero-card.is-prev {
+  transform: translate3d(calc(var(--hero-hint) - 50vw - 43%), 0, 0) scale(0.86);
+}
+.hero-card.is-next {
+  transform: translate3d(calc(50vw + 43% - var(--hero-hint)), 0, 0) scale(0.86);
+}
+
+/* OFFSTAGE — the parking position on each side, fully outside the composition.
+   It is BOTH where a card finishes its exit and where an arriving card is
+   placed before it travels in, which is what makes entry and exit the same
+   movement run in opposite directions. Keeping one geometry for both is also
+   why a card can never appear at a position it could not have travelled to. */
+.hero-card.is-exit-left,
+.hero-card.is-exit-right {
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+  filter: blur(1px);
+}
+/* Same solve, one step further: the inner edge is pushed 24px PAST the
+   viewport edge, so a parked card is provably outside the composition however
+   wide the screen is and whatever the card measures. `40%` is scale 0.8
+   halved. */
+.hero-card.is-exit-left {
+  transform: translate3d(calc(-50vw - 40% - 24px), 0, 0) scale(0.8);
+}
+.hero-card.is-exit-right {
+  transform: translate3d(calc(50vw + 40% + 24px), 0, 0) scale(0.8);
+}
+
+/* Suppresses the tween for the single frame in which a card is PLACED at its
+   offstage parking position. Everything visible is a real transition; this
+   exists only so the placement itself is not one. */
+.hero-card.is-instant { transition: none !important; }
+
+.hero-card__link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+.hero-card__link:hover { color: inherit; }
+
+/* The media box IS a .pmedia container (see media-container.css) — the same
+   contract every product grid uses, so a portrait, square, vector or oddly
+   cropped upload all render inside one fixed frame without distortion and
+   without changing the layout. Only the shape is overridden here. */
+.hero-card__media.pmedia {
+  /* THERE IS NO PLATE. The box below still exists, but only as a reserved
+     rectangle for layout; nothing about it is drawn.
+
+     What it used to draw: a 3px-radius mount filled with --color-surface-2,
+     a 7%-black inset hairline and a three-part box-shadow. Covers are 4:5 and
+     5:7 against a 3:4 box, so that mount showed as pale bands above and below
+     every cover — a white frame with a rounded corner and a shadow, i.e. the
+     "normal ecommerce card" the brief asks to stop building. The cover was
+     ~86% of an object that read as 100% UI chrome.
+
+     Now the frame, the fill and the shadow all come off the box, and the
+     shadow moves onto the IMAGE (see .hero-card .pmedia__img below), where it
+     traces the artwork's real edges. What is left on screen is a printed
+     cover standing on the page — the product is the object, not the contents
+     of a card. */
+  --pmedia-radius: 0px;
+  --pmedia-bg: transparent;
+  /* The shadow now belongs to a child, so the box must stop clipping it. Safe
+     because nothing here crops any more: object-fit is `contain`, so the
+     artwork is inside its box by construction. */
+  overflow: visible;
+  /* THE PLATE IS THE AUTHORITY ON ITS OWN SHAPE. A definite width from the
+     card and a fixed ratio give it a definite height, and `flex: 0 0 auto`
+     stops the flex column from stretching it — so the deck's sizer is derived
+     from this number rather than the other way round, and neither an uploaded
+     image's dimensions nor the caption's length can move any part of the
+     carousel's geometry.
+
+     4:5, not the 3:4 it was. 3:4 was a guess; 4:5 is what the covers in the
+     catalogue actually measure (1024x1280 and 1122x1402 are 4:5 exactly,
+     1055x1491 is slightly taller). Now that the box no longer paints a mount,
+     the difference between the box and the artwork is not a frame any more —
+     it is empty ground — so the closer the box is to the real covers, the
+     less unexplained space sits around the product. It also takes 24px of
+     height out of the phone composition, which the CTA row gets back. */
+  aspect-ratio: 4 / 5;
+  flex: 0 0 auto;
+  border: 0;
+  box-shadow: none;
+}
+
+/* THE SHADOW IS THE IMAGE'S, NOT THE BOX'S.
+   ---------------------------------------------------------------------------
+   `drop-shadow()` traces the rendered content's alpha, and a `contain`-fitted
+   image leaves the rest of its box transparent — so this casts from the
+   artwork's own four edges at whatever size and ratio the upload actually is,
+   and never from the 3:4 rectangle around it. A `box-shadow` cannot do that;
+   it would draw the frame we just removed.
+
+   Two shadows, the way a real object makes two: a tight, dark contact
+   directly under the bottom edge, and one wide, weak ambient cast. Both are
+   short and both are pulled well under the object, so the cover reads as
+   standing on the page rather than hovering over it. No 60px halo, no 55%
+   black — that pairing is the "floating CSS card" look, and it is what this
+   whole section is being taken away from. */
+.hero-card .pmedia__img {
+  filter:
+    drop-shadow(0 1px 1px rgba(26, 26, 26, 0.18))
+    drop-shadow(0 14px 22px rgba(26, 26, 26, 0.17));
+}
+/* The blurred copy of the artwork that media-container.css paints behind a
+   contained image exists to fill a letterbox. There is no letterbox here any
+   more, so all it can do is put a soft rectangle back where the mount used to
+   be — the frame, redrawn in blur. Off. */
+.hero-card .pmedia__backdrop { display: none; }
+/* EVERY COVER STANDS ON THE SAME LINE.
+   A contained image centres itself in its box, so a cover that is not the
+   box's ratio floats with equal slack above and below — and since covers vary
+   (4:5, 5:7, and the square vector placeholders), the gap between the product
+   and its caption changed from product to product, which is what makes a
+   rotation read as things jumping rather than as one object being replaced.
+   Anchored to the bottom, the slack all collects above, where it merges into
+   the gap the composition already has; the artwork's bottom edge, its contact
+   shadow and the caption under it stay put for every product in the deck. */
+.hero-card .pmedia__img { object-position: 50% 100%; }
+/* The 2% inset the vector rule keeps is the last thing holding the
+   placeholder covers off that shared baseline. */
+.hero-card .pmedia--vector .pmedia__img { padding: 0; }
+/* Same reasoning for the LQIP: `object-fit: cover` + `scale(1.1)` fills (and
+   overflows) the whole reserved box, which with `overflow: visible` would
+   now spill a blurred slab past the artwork on all four sides. Contained and
+   unscaled, it sits exactly where the real image will land. */
+.hero-card .pmedia__placeholder {
+  object-fit: contain;
+  transform: none;
+  filter: blur(9px);
+}
+
+/* .pmedia--vector insets vector art by 6% because in a 280px grid card that
+   reads as deliberate framing. In the hero the card is the whole point, so the
+   same inset just makes the product smaller — tightened here only. Contained
+   RASTER covers keep their blurred backdrop and are untouched: program covers
+   carry their title in the artwork, so cropping them would cut the name off,
+   which is exactly why the server chose `contain` for them. */
+/* (The vector inset is zeroed with the baseline rules above.) */
+/* Same reasoning for a CONTAINED raster cover. media-container.css insets it
+   by 8% so an odd upload reads as deliberate framing inside a 280px grid tile;
+   in the hero the cover IS the composition, and 8% of a 264px plate is 21px of
+   dead margin on every side. Taken to zero, so the artwork runs to the plate's
+   edge and the blurred backdrop only fills the letterbox bands a non-3:4
+   upload actually leaves. Nothing is cropped — object-fit is still contain, so
+   covers that carry their title in the artwork keep it. */
+.hero-card .pmedia--contain .pmedia__img { padding: 0; }
+
+/* ---- The caption --------------------------------------------------------
+   Three tight lines under the plate, set like a magazine credit: a tracked-out
+   attribution, the title, then the commercial detail. The product name and its
+   image can never disagree because they are the SAME element — the caption
+   lives inside each card, so there is no second thing to keep in sync. */
+.hero-card__info {
+  padding-top: 14px;
+  /* Reserves all three lines before JS fills them, so the deck never shifts,
+     and it is the SAME number the deck's padding sizer adds under the plate —
+     a longer product title can never move the carousel's geometry. */
+  min-height: var(--hero-caption-h);
+  text-align: center;
+  /* Departing: holds, then falls, on the plate's own outgoing curve. */
+  opacity: 0;
+  transform: translateY(9px);
+  transition:
+    opacity calc(var(--hero-dur) * 0.6) var(--hero-ease-out),
+    transform var(--hero-dur) var(--hero-ease);
+}
+.hero-card.is-active .hero-card__info {
+  opacity: 1;
+  transform: none;
+  /* Arriving: fast, and with NO delay.
+     This rule used to carry `transition-delay: 150ms` as a deliberate micro-
+     interaction — the caption settling after the plate. It reads beautifully
+     on the first paint, when there is nothing to cross-fade against, but on
+     every rotation after that it opens a hole: the outgoing caption is already
+     gone before the incoming one has started. Measured, the strongest caption
+     anywhere on screen fell to 8.8% opacity for ~200ms, which is the missing
+     title and missing price in the brief. The stagger now lives entirely in
+     the TRANSFORM above, which carries the same "settling" character without
+     ever gating legibility. */
+  transition:
+    opacity calc(var(--hero-dur) * 0.43) var(--hero-ease-in),
+    transform var(--hero-dur) var(--hero-ease);
+  transition-delay: 0s;
+}
+.hero-card__eyebrow {
+  display: block;
+  font-size: 9.5px;
   font-weight: 700;
-  color: #ffffff;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em; /* optical centring, as on the headline kicker */
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  line-height: 1;
+  min-height: 10px;
+}
+.hero-card__name {
+  display: -webkit-box;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  color: var(--color-text);
+  /* Product names vary in length; clamping keeps every caption the same
+     height so rotation never resizes the deck. */
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hero-card__meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}
+
+/* ---- Progress -----------------------------------------------------------
+   One hairline per product; the active one fills over exactly the dwell time,
+   so the section states how much is left rather than surprising the reader.
+   Decorative and aria-hidden — the same products are reachable in the grids
+   below and through the CTA. */
+.hero__progress {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 14px;
+}
+.hero__progress-seg {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 34px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.hero__progress-seg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-text);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.hero__progress-seg.is-done::after { transform: scaleX(1); }
+.hero__progress-seg.is-active::after {
+  animation: hero-progress var(--hero-dwell) linear forwards;
+}
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Short screens trade plate size for keeping the CTA in the fold. Keyed on
+   HEIGHT, so a normal phone at the same width is unaffected, and in two tiers
+   because one threshold cannot serve both a 740px Android and a 568px SE:
+   sizing for the shorter would needlessly shrink the plate on the taller.
+   Measured against real device viewports — see tools/.fold.js in the commit
+   history; 360x740 overshot the fold by 25px before this. */
+/* The narrow-phone tier that used to sit here is gone. It existed to rein in a
+   33% flank overhang that was being sheared by the section clip — the phone
+   model no longer has one, the neighbours are supposed to run off the edge,
+   and `min(76vw, …)` already scales the card down on a narrow screen. Leaving
+   it would have re-injected rotateY into the very layout the rebuild removed
+   it from. */
+
+@media (max-height: 800px) {
+  .hero { --hero-caption-h: 92px; padding-top: 78px; }
+  .hero__stage { max-width: min(70vw, 248px); }
+}
+@media (max-height: 700px) {
+  /* Below this the caption's third line is what pushes the CTA out; the price
+     still shows, it just sits tighter. Setting the height on the variable
+     rather than on .hero-card__info is what keeps the deck's reservation in
+     step — the old rule moved the caption without telling the deck. */
+  .hero { --hero-caption-h: 86px; padding-top: 74px; }
+  .hero__stage { max-width: 200px; }
+  .hero-card__info { padding-top: 11px; }
+  .hero__progress { margin-top: 10px; }
+  /* THE SUPPORTING LINE IS THE FIRST THING TO GO, and only here.
+     On a 667px screen the first viewport has ~490px to hold headline,
+     product, caption and the CTA row; measured, everything present put the
+     CTA row 41px past the fold. Of the five, the sub is the only one that is
+     not doing structural work: the headline says what the brand is, the plate
+     and caption say what is for sale and for how much, and the buttons are
+     the point of the section. So it is dropped below 700px of height and
+     kept everywhere else. */
+  .hero__sub { display: none; }
+}
+
+/* The 640-and-under band (an SE-class phone in portrait). Hiding the sub alone still
+   left the CTA row 58px out, so the two remaining levers are used: the
+   headline steps down one size, and the plate gives up ~40px of height. The
+   product is still 53% of the screen's width and the whole hero, CTAs
+   included, lands inside 568px. */
+@media (max-height: 660px) {
+  .hero { --hero-caption-h: 82px; padding-top: 70px; }
+  .hero__title { font-size: clamp(27px, 8.4vw, 34px); }
+  .hero__stage { max-width: 172px; }
+  .hero-card__info { padding-top: 9px; }
+  /* Decorative, and the one element here whose removal costs the visitor
+     nothing: the same information is in the deck's movement. */
+  .hero__progress { display: none; }
+}
+
+@media (min-width: 480px) {
+  .hero__cta.btn-one { width: auto; }
+  .hero__cta-alt.btn-two { width: auto; }
+  /* Still the phone model — one dominant product, neighbours hinted — just
+     with more room to be big in. The depth stage does not start until 768. */
+  .hero__stage { max-width: min(64vw, 340px); }
+}
+
+/* ===========================================================================
+   FROM 768px UP: the three-card depth stage.
+   ===========================================================================
+   Everything in this block RESTORES the composition the phone rules above
+   deliberately switch off. A tablet or desktop has the width to show three
+   products at once and read them as depth rather than as competition, and
+   that composition is the existing desktop design — it is not the phone
+   layout scaled up, and the phone layout is not this one shrunk down.
+
+   `perspective` lives here rather than on .hero__deck because there is no
+   rotateY below this breakpoint; declaring a vanishing point for a flat
+   translate would do nothing but cost a stacking context. */
+@media (min-width: 768px) {
+  .hero__stage { max-width: 348px; }
+  .hero__deck {
+    perspective: 1500px;
+    perspective-origin: 50% 45%;
+  }
+  /* Set BACK in Z and turned toward the centre, rather than the phone's flat
+     translate — the perspective does the shrinking, which is what makes the
+     size difference read as distance instead of as smaller cards. */
+  .hero-card.is-prev,
+  .hero-card.is-next {
+    /* Same correction as the phone rule, held a little lower because the
+       depth stage also sets these cards back in Z: distance is already doing
+       part of the work here. 0.5px of blur is a focal cue at this scale, not
+       a veil — the 1.5px it replaces was visible as blur. */
+    opacity: 0.52;
+    filter: blur(0.5px);
+  }
+  /* Parked cards are at opacity 0 and outside the composition; the only thing
+     their blur can do is cost a filter pass on something nobody sees. */
+  .hero-card.is-exit-left,
+  .hero-card.is-exit-right { filter: blur(1.5px); }
+  .hero-card.is-prev { transform: translate3d(-38%, 0, -230px) rotateY(17deg) scale(0.97); }
+  .hero-card.is-next { transform: translate3d(38%, 0, -230px) rotateY(-17deg) scale(0.97); }
+  .hero-card.is-exit-left { transform: translate3d(-74%, 0, -420px) rotateY(26deg) scale(0.9); }
+  .hero-card.is-exit-right { transform: translate3d(74%, 0, -420px) rotateY(-26deg) scale(0.9); }
+}
+
+@media (min-width: 992px) {
+  .hero {
+    /* Header is 42px from this breakpoint up; 62px minimum clears it. */
+    padding: clamp(62px, 5vw, 88px) 0 clamp(48px, 5vw, 84px);
+  }
+  /* Reassemble the left column. From here up the hero is two boxes side by
+     side, so .hero__copy becomes a real grid item again and the per-child
+     ordering above stops applying (its children are no longer grid items).
+     Everything in this block restores a value the phone layout changed —
+     nothing here is new desktop design. */
+  /* `min-width: 0` is load-bearing, not tidying. An `fr` track's automatic
+     minimum is its content's min-content width, so a headline wider than its
+     share of the row silently overrides the 1.05fr/0.95fr split and takes the
+     space out of the other column: measured at 1280, a viewport-sized
+     headline left the copy column 917px and the STAGE 116px, i.e. a 116px
+     product on a 1280px screen. Capping the track's minimum is what makes the
+     ratio the ratio. */
+  .hero__copy { display: block; min-width: 0; }
+  .hero__title {
+    text-align: left;
+    max-width: none;
+    margin-inline: 0;
+    margin-bottom: 0;
+    /* Bigger than the phone cap. At 1440 the old 68px ceiling left the copy
+       column reading as a small block adrift in a tall row; the headline is
+       the thing that is supposed to hold that column. */
+    font-size: clamp(46px, 5.2vw, 58px);
+    line-height: 0.9;
+  }
+  /* 992-1199 keeps the phone's three-line shape, just ranged left: the column
+     here is only ~480px, and forcing "THE ONES YOU FOLLOW" onto one line in
+     that space would set the headline SMALLER than it is on a phone. */
+  .hero__title-line { max-width: 12ch; }
+  .hero__sub {
+    text-align: left;
+    /* The phone rule centres this line with `margin-inline: auto`; ranged left
+       under a flush-left headline that auto margin puts it 210px off the
+       column's left edge, which reads as a third alignment in a two-column
+       composition. */
+    margin: 18px 0 0;
+    max-width: 30ch;
+    font-size: clamp(15px, 1.25vw, 17px);
+  }
+  .hero__actions { justify-content: flex-start; margin-inline: 0; max-width: none; }
+  .hero__cta.btn-one { flex: 0 0 auto; }
+
+  .hero__grid {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(40px, 6vw, 88px);
+  }
+  .hero__stage {
+    /* THE PLATE IS CAPPED BY THE VIEWPORT'S HEIGHT, NOT ONLY BY ITS WIDTH.
+       A 3:4 plate 420px wide is 560px tall, and with the caption and progress
+       under it the stage came to 680px — on a 900px laptop that is the whole
+       screen, so the hero ended below the fold and the copy column sat in the
+       middle of 200px of empty ground above and below it. That void is the
+       "unfinished" read, and it is a height problem wearing a width problem's
+       clothes.
+
+       Solving the width from the height instead: the stage is allowed 70% of
+       the viewport height, the caption and progress take their fixed strip out
+       of that, and the 0.75 turns the plate's remaining height back into the
+       width that produces it. The composition now fits any laptop it is opened
+       on, and the copy column is never marooned. */
+    max-width: min(380px, calc((70vh - var(--hero-caption-h) - 16px) * 0.75));
+    /* Centred in its column, not right-aligned. Right-aligning pushed the
+       is-next card's 38% overhang past the viewport edge, so it was sheared
+       off by the section clip instead of tucking behind the active card —
+       it read as an accident rather than as depth. Centring keeps both
+       overhangs inside the viewport at every width from 992 up. */
+    margin: 0 auto;
+  }
+  /* Desktop is the same system, composed for the space rather than scaled up:
+     the lockup ranges left against a taller plate, and the caption ranges left
+     under it so the whole column reads as one editorial block instead of a
+     centred phone layout stretched wide. */
+  .hero__title { align-items: flex-start; text-align: left; }
+  .hero__actions { margin-top: 30px; }
+  .hero-card__info { text-align: left; }
+  .hero__progress { justify-content: flex-start; }
+  /* Desktop keeps the same 3:4 plate; only the caption strip is a little
+     taller, since it ranges left over two lines more often than it does
+     centred on a phone. The sizer follows the variable automatically. */
+  .hero { --hero-caption-h: 104px; }
+
+  /* The overhang is a percentage of the CARD, but the room for it comes from
+     the viewport — so at 992-1199, where the stage is nearly as wide as its
+     column, a wide offset puts the is-next card past the right edge and it
+     gets sheared by the section clip. Held in here and widened again once
+     there is room. */
+  .hero-card.is-prev { transform: translate3d(-23%, 0, -240px) rotateY(15deg) scale(0.96); }
+  .hero-card.is-next { transform: translate3d(23%, 0, -240px) rotateY(-15deg) scale(0.96); }
+  .hero-card.is-exit-left { transform: translate3d(-50%, 0, -430px) rotateY(24deg) scale(0.88); }
+  .hero-card.is-exit-right { transform: translate3d(50%, 0, -430px) rotateY(-24deg) scale(0.88); }
+}
+
+/* FROM 1200px: the two-line lockup the brief asks for, set to the measure.
+   ===========================================================================
+   "TRAIN LIKE / THE ONES YOU FOLLOW" only works as a lockup if the long line
+   fits the column, and the column is a fraction of a max-width container, not
+   of the viewport — so `vw` is the wrong unit for it and was what produced the
+   overflow above. `cqi` is 1% of the copy column's own inline size, so the
+   headline is sized BY its measure: the long line lands flush with the
+   column's right edge at every width from 1200 up, and the short line stacks
+   against it. That flush edge is the composition; it is not something a
+   viewport-relative size can hold.
+
+   8.35cqi is solved, not guessed: "THE ONES YOU FOLLOW" is 19 characters
+   whose average advance in Montserrat 800 at -0.042em is ~0.598em, so the run
+   is ~11.97em and 100/11.97 = 8.35. The clamp ceiling stops it running away
+   on an ultrawide, where the container has stopped growing anyway. */
+@media (min-width: 1200px) {
+  .hero__copy { container-type: inline-size; }
+  .hero__title { font-size: min(8.35cqi, 78px); }
+  .hero__title-line { max-width: none; white-space: nowrap; }
+  /* The copy column takes the extra width the lockup needs; the stage column
+     keeps more than enough for a 420px deck plus both overhangs. */
+  .hero__grid { grid-template-columns: 1.15fr 0.85fr; }
+
+  .hero-card.is-prev { transform: translate3d(-37%, 0, -250px) rotateY(18deg) scale(0.96); }
+  .hero-card.is-next { transform: translate3d(37%, 0, -250px) rotateY(-18deg) scale(0.96); }
+  .hero-card.is-exit-left { transform: translate3d(-76%, 0, -450px) rotateY(27deg) scale(0.88); }
+  .hero-card.is-exit-right { transform: translate3d(76%, 0, -450px) rotateY(-27deg) scale(0.88); }
+}
+
+@media (min-width: 1400px) {
+  .hero__stage { max-width: min(420px, calc((70vh - var(--hero-caption-h) - 16px) * 0.75)); }
+}
+
+/* Reduced motion: hero-slideshow.js already stops the rotation outright, so
+   there is nothing left to animate. Clearing the transitions too means the
+   single layout pass it does perform lands instantly rather than easing, and
+   the progress bar must not animate a fill for a rotation that never happens.
+   The blur/perspective composition is kept — it is a static picture, not
+   motion, and it is what the section looks like. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-card,
+  .hero-card__info,
+  .hero-card__media.pmedia { transition: none; }
+  .hero__progress { display: none; }
+}
+
+
+/* ===========================================================================
+   HOMEPAGE SECTION COMPOSITION
+   ===========================================================================
+   The homepage-only half of the brand/typography/asset pass. The shared half
+   (.eyebrow, .landing-slot and its branded empty state, the trust band) lives
+   in assets/css/brand-blocks.css, which about.html loads too.
+
+   This file loads AFTER brand-blocks.css, so the slot overrides below win.
+   ------------------------------------------------------------------------ */
+
+/* The section carried `pt-130 pb-130 mt-130` in the markup — 130px of top
+   padding on top of a 130px top MARGIN, i.e. 260px above one product grid,
+   against the clamp(48px, 8vw, 90px) every other section on this page uses.
+   Those classes are off the element; the rhythm is set here with its
+   neighbours. */
+.product-area {
+  padding-top: clamp(48px, 8vw, 90px);
+  padding-bottom: clamp(48px, 8vw, 90px);
+}
+
+/* The theme's header row is `justify-content-xl-between justify-content-center`
+   — i.e. below 1200px the heading and the filter tabs are CENTRED on one line
+   together. That was survivable while the heading was "Latest Plans &
+   Programs", which was long enough to take the line to itself; at "Every plan"
+   the two collide into one centred run and the tabs read as part of the
+   heading. Below 1200 they are stacked instead, heading first, and both range
+   left with everything else on the page. */
+@media (max-width: 1199.98px) {
+  .product-area .product__wrp {
+    flex-direction: column;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 14px;
+  }
+  .product-area .product__wrp .nav-pills { margin-top: 0 !important; }
+}
+
+/* Filters are navigation, not headlines: same uppercase treatment as an
+   eyebrow, deliberately smaller and lower-contrast than the <h2> they sit
+   beside, so they read as controls instead of competing with the section
+   title. The theme shipped them at the same visual weight as body copy in
+   raw lowercase. */
+.product-area .nav-pills .nav-item .nav-link {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--color-text-faint);
+}
+.product-area .nav-pills .nav-item .nav-link:hover,
+.product-area .nav-pills .nav-item .nav-link.active {
+  color: var(--color-text);
+}
+/* The theme marks the active pill with an absolutely-positioned dot at
+   left:10px/top:3px, which lands on top of the first letter once the label is
+   uppercase and tracked. An underline is unambiguous at every label length. */
+.product-area .nav-pills .nav-item .nav-link.active::after {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: -8px;
+  width: auto;
+  height: 2px;
+  border-radius: 0;
+}
+
+/* ---- Shop by goal --------------------------------------------------------
+   Replaces the three image tiles that used to sit here. It is a list of real
+   taxonomy goals with real product counts, so it is set as a list: no cards,
+   no media boxes, no borders around each row. The only ornament is the count,
+   and the count is data.
+
+   Server-rendered (see homeGoalsHtml in server/src/routes/pages.js), so the
+   <ul> is either full on the first paint or empty; an empty one takes the
+   whole section with it rather than leaving a heading over nothing. */
+.goal-nav-area {
+  padding-top: clamp(48px, 8vw, 90px);
+  padding-bottom: clamp(48px, 8vw, 90px);
+}
+.goal-nav-area:has(.goal-nav:empty) { display: none; }
+.goal-nav__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(18px, 3vw, 28px);
+}
+.goal-nav__head h2 {
+  margin: 0;
+  font-size: clamp(24px, 5.4vw, 38px);
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+}
+.goal-nav__all {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.goal-nav__all i { margin-left: 6px; font-size: 0.85em; }
+.goal-nav__all:hover { color: var(--color-text); text-decoration: underline; }
+
+.goal-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  /* A hairline between rows, drawn once by the container rather than as a
+     border on each item, so the list ends on a row and not on a rule. */
+  border-top: 1px solid var(--color-border);
+}
+.goal-nav__item { border-bottom: 1px solid var(--color-border); }
+.goal-nav__link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  /* 56px of row height: comfortably past the 44px touch-target floor without
+     turning a seven-item list into a full screen. */
+  padding: 17px 2px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.goal-nav__link:hover { color: var(--color-text); }
+.goal-nav__name {
+  font-size: clamp(17px, 4.4vw, 22px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  /* style.css sets `span { color: var(--span) }` globally and it beats the
+     colour on an ancestor anchor, so every span in here states its own. */
+  color: var(--color-text);
+  transition: transform 220ms var(--nav-ease, ease);
+}
+.goal-nav__link:hover .goal-nav__name { transform: translateX(4px); }
+.goal-nav__count {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-faint);
+}
+
+@media (min-width: 720px) {
+  /* Two columns of rows. `column-gap` alone would leave the two columns'
+     hairlines unaligned at an odd item count; they are independent rows in one
+     grid, so each keeps its own rule and the columns simply end at different
+     depths, which is what a real index does. */
+  .goal-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(28px, 5vw, 72px); }
+}
+@media (min-width: 1200px) {
+  .goal-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-nav__name { transition: none; }
+  .goal-nav__link:hover .goal-nav__name { transform: none; }
+}
+
+
+/* ---- Featured plan showcase ---------------------------------------------- */
+.showcase-area {
+  padding-top: clamp(48px, 8vw, 100px);
+  padding-bottom: clamp(48px, 8vw, 100px);
+  background-color: var(--color-surface-2);
+}
+.showcase {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+.showcase__media { min-width: 0; }
+.showcase__slot.landing-slot { border-radius: 14px; }
+.showcase__body { min-width: 0; }
+.showcase__title {
+  font-size: clamp(26px, 5vw, 36px);
+  line-height: 1.2;
   margin: 0 0 10px;
 }
-.hero-slideshow__desc {
-  font-size: 14px;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.82);
-  margin: 0 0 18px;
-  max-width: 48ch;
-  /* Fixed 2-line box regardless of a given product's description length —
-     content swaps never reflow the hero's height (no CLS between slides). */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  min-height: 2.8em;
+.showcase__meta {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin: 0 0 14px;
 }
-.hero-slideshow__cta-row {
+.showcase__desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  margin: 0 0 22px;
+  max-width: 54ch;
+}
+/* Price outranks the CTA, the same hierarchy the hero uses: the visitor
+   registers the value before being asked to act. */
+.showcase__price {
+  display: block;
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0 0 22px;
+}
+.showcase__cta-row { display: flex; }
+.showcase__cta.btn-one { width: 100%; text-align: center; }
+.showcase__assurances {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 22px 0 0;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 10px;
+}
+.showcase__assurances li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  padding-left: 22px;
+  position: relative;
+}
+.showcase__assurances li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-text);
+}
+@media (min-width: 420px) {
+  .showcase__cta.btn-one { width: auto; }
+}
+@media (min-width: 992px) {
+  .showcase {
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 56px;
+  }
+  .showcase__assurances {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+
+/* ===========================================================================
+   PRODUCT SHOWCASE — the program, in the device you will use it on
+   ===========================================================================
+   Third rebuild, 2026-08-26. The spec-table composition is gone; what
+   remains is the product itself. One device mockup (phone or laptop, the
+   customer chooses) whose screen is the real program interface painted with
+   real data from GET /api/demo, a short column of facts read from the
+   product row, and two ways in: the real handbook viewer, and the product
+   page. There are no feature cards and no benefit copy anywhere in it.
+
+   The in-device UI (.dvp-* phone, .dvl-* laptop) deliberately mirrors the
+   pg-* system the purchased program renders with (program.css /demo): dark
+   cover hero, light session sheet, poster-thumb exercise rows. It is scoped
+   under its own classes rather than loading program.css into the landing
+   page — that stylesheet assumes a pg-body page and is half the size of
+   this whole file.
+
+   Mobile-first: base rules are the phone layout; 992px+ splits info left,
+   device right.
+   ------------------------------------------------------------------------ */
+.value-area {
+  padding-top: clamp(48px, 8vw, 110px);
+  padding-bottom: clamp(48px, 8vw, 110px);
+}
+/* JS unhides this once GET /api/demo resolves. Hidden in the markup rather
+   than emptied later so a failed request leaves no frame, no heading and no
+   gap — the section is either true or absent. */
+.value-area[hidden] { display: none; }
+
+.value__masthead {
+  margin-bottom: clamp(28px, 4vw, 48px);
+}
+.value__title {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin: 0;
+  max-width: 15ch;
+}
+.value__sub {
+  margin: 12px 0 0;
+  font-size: clamp(14px, 1.6vw, 16px);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  max-width: 44ch;
+}
+
+/* ------------------------------------------------------------ composition --- */
+.dv {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(28px, 4vw, 40px);
+}
+
+/* --------------------------------------------------------------- the toggle --
+   Two real states, one pill. It changes which experience is on the stage,
+   which is the only reason it exists. */
+.dv__toggle {
+  display: inline-flex;
+  align-self: center;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--color-surface);
+  margin-bottom: clamp(18px, 2.5vw, 26px);
+}
+.dv__mode {
+  border: none;
+  background: none;
+  padding: 8px 20px;
+  border-radius: 100px;
+  font-family: var(--montserrat);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.dv__mode.is-active {
+  background: var(--color-text);
+  color: #fff;
+}
+.dv__mode:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- the stage --
+   The PHONE stays in normal flow and defines the stage's height even while
+   hidden, with the laptop absolutely centred over it — so switching device
+   never changes the section's height and nothing below it jumps. */
+.dv__show {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dv__stage {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.dv__stage [data-dv-device] {
+  transition: opacity 0.24s ease, transform 0.24s ease, visibility 0.24s;
+}
+.dv__stage[data-mode="phone"] .dv-laptop,
+.dv__stage[data-mode="laptop"] .dv-phone {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.985);
+}
+.dv-laptop {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gentle entry the first time the section scrolls into view. Pure
+   opacity/transform, removed entirely under reduced motion. */
+.dv__show .dv__stage { opacity: 0; transform: translateY(14px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.value-area.is-in .dv__stage { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .dv__show .dv__stage { opacity: 1; transform: none; transition: none; }
+  .dv__stage [data-dv-device] { transition: none; }
+}
+
+/* ---------------------------------------------------------------- the phone -- */
+.dv-phone {
+  position: relative;
+  width: clamp(248px, 78vw, 306px);
+  padding: 10px;
+  border-radius: 44px;
+  background: #101010;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.14),
+    0 24px 48px rgba(15, 23, 42, 0.22),
+    0 6px 16px rgba(15, 23, 42, 0.12);
+}
+.dv-phone__speaker {
+  position: absolute;
+  top: 21px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 74px;
+  height: 18px;
+  border-radius: 100px;
+  background: #101010;
+  z-index: 2;
+}
+.dv-phone__screen {
+  height: clamp(520px, 158vw, 620px);
+  border-radius: 34px;
+  background: var(--color-bg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.dv-phone__screen::-webkit-scrollbar { display: none; }
+
+/* --------------------------------------------------------------- the laptop -- */
+/* The laptop is sized by its own column, never the viewport: the base is
+   the widest part, set to 100% of .dv-laptop, and the lid is inset from it —
+   so the whole device can never cross the column edge, at any width. (A
+   vw-sized base measured 640px inside a 450px column at 1024 and pushed the
+   page into horizontal scroll.) */
+.dv-laptop { width: min(100%, 620px); }
+.dv-laptop__lid {
+  width: calc(100% - clamp(28px, 8%, 56px));
+  padding: 12px 12px 14px;
+  border-radius: 18px 18px 0 0;
+  background: #101010;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.14),
+    0 24px 48px rgba(15, 23, 42, 0.22);
+}
+.dv-laptop__screen {
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+.dv-laptop__base {
+  width: 100%;
+  height: 15px;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(#1d1d1d, #101010);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+}
+.dv-laptop__base::after { content: none; }
+
+/* ------------------------------------------------- in-device UI, phone (dvp) --
+   The purchased program's mobile composition at thumbnail scale: appbar,
+   dark cover hero, session sheet. Type sizes are the real page's hierarchy
+   scaled down together, so the miniature keeps the product's proportions. */
+.dvp { font-family: var(--montserrat); }
+.dvp__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 16px 10px;
+}
+.dvp__bar svg { width: 14px; height: 14px; fill: none; stroke: var(--color-text); stroke-width: 2; }
+.dvp__bar img { height: 14px; width: auto; display: block; }
+.dvp__hero {
+  margin: 4px 12px 0;
+  border-radius: 18px;
+  padding: 18px 16px 16px;
+  text-align: center;
+  color: #fff;
+  /* The stored cover colour arrives per-product from the payload and is set
+     with style.setProperty (CSP allows CSSOM, not style="") — this is only
+     the fallback ground behind it. */
+  background: #141414;
+}
+.dvp__hero-cover {
+  width: 44%;
+  margin: 0 auto 12px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dvp__hero-cover img { width: 100%; height: auto; display: block; }
+.dvp__hero-eyebrow {
+  margin: 0 0 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.66);
+}
+.dvp__hero-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+}
+.dvp__hero-creator {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.dvp__chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.dvp__chips li {
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 100px;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #fff;
+}
+.dvp__session { padding: 16px 16px 18px; }
+.dvp__week {
+  margin: 0 0 3px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+.dvp__day {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+.dvp__notes {
+  margin: 0 0 12px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dvp__ex {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.dvp__ex-media {
+  flex: 0 0 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-surface-2);
+  align-self: flex-start;
+}
+.dvp__ex-media img { width: 100%; height: auto; display: block; }
+.dvp__ex-body { min-width: 0; }
+.dvp__ex-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+.dvp__ex-load {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: var(--color-surface-2);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.dvp__ex-swap {
+  display: block;
+  margin-top: 5px;
+  font-size: 9px;
+  color: var(--color-text-faint);
+}
+/* The boundary, exactly as /demo draws it: empty shapes and a count.
+   Nothing is behind them — the server never sent it. */
+.dvp__ghosts { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+.dvp__ghost {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--color-surface-2);
+}
+.dvp__ghost:nth-child(2) { width: 82%; }
+.dvp__ghost:nth-child(3) { width: 64%; }
+.dvp__more {
+  margin: 10px 0 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--color-text-faint);
+}
+
+/* ------------------------------------------------ in-device UI, laptop (dvl) --
+   The same product at desktop composition: slim appbar, then the session
+   sheet beside the program's identity — the wide-viewport arrangement of
+   the same real content, not a second design. */
+.dvl {
+  font-family: var(--montserrat);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.dvl__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--color-surface);
+}
+.dvl__bar svg { width: 12px; height: 12px; fill: none; stroke: var(--color-text); stroke-width: 2; }
+.dvl__bar img { height: 12px; width: auto; display: block; }
+.dvl__main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 38% minmax(0, 1fr);
+}
+.dvl__id {
+  padding: 18px 16px;
+  color: #fff;
+  background: #141414;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-}
-.hero-slideshow__cta.btn-one {
-  /* Inverted from the sitewide dark .btn-one — a near-black button would
-     nearly disappear against this section's own dark, blurred backdrop. A
-     light, high-contrast button is what actually needs to pop here. */
-  width: 100%;
-  text-align: center;
-  background-color: #ffffff;
-  color: var(--color-text);
-  padding-left: 32px;
-  padding-right: 32px;
-}
-.hero-slideshow__cta.btn-one:hover {
-  background-color: #f0f0f0;
-  color: var(--color-text);
-}
-.hero-slideshow__cta.btn-one span {
-  color: inherit;
-}
-.hero-slideshow__price {
-  font-size: 15px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-@media (min-width: 420px) {
-  .hero-slideshow__cta.btn-one {
-    width: auto;
-  }
-}
-@media (min-width: 576px) {
-  .hero-slideshow {
-    min-height: 560px;
-  }
-  .hero-slideshow h1 {
-    font-size: 34px;
-  }
-  .hero-slideshow__desc {
-    font-size: 15px;
-  }
-  .hero-slideshow__cta-row {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-@media (min-width: 768px) {
-  .hero-slideshow {
-    padding: 116px 0 60px;
-    min-height: 600px;
-  }
-  .hero-slideshow h1 {
-    font-size: 44px;
-  }
-}
-@media (min-width: 992px) {
-  .hero-slideshow {
-    padding: 136px 0 70px;
-    min-height: 640px;
-  }
-  .hero-slideshow h1 {
-    font-size: 54px;
-  }
-  .hero-slideshow__desc {
-    font-size: 16px;
-    -webkit-line-clamp: 3;
-    min-height: 4.6em;
-  }
-}
-@media (min-width: 1300px) {
-  .hero-slideshow h1 {
-    font-size: 60px;
-  }
-}
-
-.people-strip-area,
-.deal-cards-area {
-  overflow: hidden; /* clip the peeking last card's shadow/edge cleanly */
-}
-
-/* ---- People marquee: slim override of the theme's .marquee-wrapper/
-   .text-slider (style.css: 105px tall, 80px font — the "oversized" ticker).
-   Combined-class selectors here (.marquee-wrapper.people-marquee etc.) beat
-   the base rules on specificity regardless of stylesheet load order, and
-   this file is only linked from index.html, so no other page that still
-   uses the full-size ticker is affected. Reuses the existing
-   .marquee-inner.to-left / @keyframes marqueeLeft animation as-is.
-
-   height MUST be an explicit px value here, never `auto`: .marquee-inner
-   (style.css) is `position: absolute` with no `top` set, so it does not
-   contribute to a `height: auto` parent's size at all — that previously
-   collapsed this wrapper down to just its padding while the real scrolling
-   text still rendered at full height and got clipped mid-line by the
-   inherited `overflow: hidden`, which is what showed up as a corrupted/
-   leaking text row jammed above "Shop by Athlete & Creator". Centering the
-   absolutely-positioned track with top:50%/translateY keeps it correct
-   regardless of exact font metrics. ---- */
-.marquee-wrapper.people-marquee {
-  height: 40px;
-  padding: 0;
-  background: var(--sub-bg, #f7f7f7);
-}
-.people-marquee .marquee-inner {
-  top: 50%;
-  transform: translateY(-50%);
-}
-.text-slider.people-marquee {
-  font-size: 13px;
-  line-height: 1.4;
-  font-family: inherit;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: none;
-}
-.people-marquee .marqee-list {
-  align-items: center;
-}
-.people-marquee .marquee-item {
-  display: flex;
-  align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0 14px;
-  white-space: nowrap;
 }
-.people-marquee .marquee-item a {
-  color: inherit;
-  text-decoration: none;
-}
-.people-marquee .marquee-item__kind {
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--primary-color);
-  opacity: 0.8;
-}
-.people-marquee .marquee-item img {
-  width: 12px;
-  height: 12px;
-  margin-top: 0;
-  opacity: 0.5;
-}
-@media (min-width: 576px) {
-  .marquee-wrapper.people-marquee {
-    height: 44px;
-  }
-  .text-slider.people-marquee {
-    font-size: 15px;
-  }
-}
-@media (min-width: 768px) {
-  .marquee-wrapper.people-marquee {
-    height: 52px;
-  }
-  .text-slider.people-marquee {
-    font-size: 18px;
-  }
-  .people-marquee .marquee-item {
-    padding: 0 20px;
-  }
-}
-
-.people-strip__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.people-strip__head h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.people-strip__track,
-.deal-cards__track {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.people-strip__track::-webkit-scrollbar,
-.deal-cards__track::-webkit-scrollbar {
-  display: none;
-}
-
-/* ---- People chips (Athletes / Creators) ---- */
-.people-strip__track {
-  gap: 10px;
-  padding: 2px 2px 10px;
-}
-.people-chip {
-  scroll-snap-align: start;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 148px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+.dvl__id-cover { width: 52%; border-radius: 8px; overflow: hidden; }
+.dvl__id-cover img { width: 100%; height: auto; display: block; }
+.dvl__id-name { margin: 2px 0 0; font-size: 13px; font-weight: 800; line-height: 1.25; color: #fff; }
+.dvl__id-creator { margin: 0; font-size: 9.5px; color: rgba(255, 255, 255, 0.72); }
+.dvl__id-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 0; padding: 0; }
+.dvl__id-chips li {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 100px;
-  padding: 7px 18px 7px 7px;
-  text-decoration: none;
-  touch-action: manipulation;
-  transition: var(--transition);
+  font-size: 7.5px;
+  font-weight: 600;
+  color: #fff;
 }
-.people-chip:hover,
-.people-chip:active {
-  border-color: var(--primary-color);
+.dvl__session { padding: 14px 18px; overflow: hidden; }
+.dvl__week {
+  margin: 0 0 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
 }
-.people-chip__avatar {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  color: #ffffff;
+.dvl__day { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--color-text); }
+.dvl__ex {
+  display: flex;
+  gap: 9px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.dvl__ex-media {
+  flex: 0 0 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-surface-2);
+  align-self: flex-start;
+}
+.dvl__ex-media img { width: 100%; height: auto; display: block; }
+.dvl__ex-body { min-width: 0; }
+.dvl__ex-name { display: block; font-size: 10px; font-weight: 700; color: var(--color-text); line-height: 1.3; }
+.dvl__ex-load {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--color-surface-2);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.dvl__ghosts { display: grid; gap: 5px; padding-top: 9px; border-top: 1px solid var(--border); }
+.dvl__ghost { height: 10px; border-radius: 5px; background: var(--color-surface-2); }
+.dvl__ghost:nth-child(2) { width: 72%; }
+.dvl__more { margin: 8px 0 0; font-size: 8.5px; font-weight: 600; color: var(--color-text-faint); }
+
+/* ------------------------------------------------------------------ the facts -
+   A definition list again, because that is what it is. Row per fact, value
+   emphasised, all of it read from the product row. */
+.dv__creator {
+  margin: 0 0 4px;
   font-size: 12px;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
 }
-.people-chip__body {
+.dv__creator:empty { display: none; }
+.dv__name {
+  margin: 0 0 18px;
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+.dv__facts {
+  margin: 0 0 24px;
+  border-top: 1px solid var(--border);
+}
+.dv__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dv__fact dt {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.dv__fact dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: right;
+}
+.dv__act {
   display: flex;
   flex-direction: column;
-  line-height: 1.3;
-  min-width: 0;
+  gap: 10px;
 }
-.people-chip__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.people-chip__kind {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(26, 26, 26, 0.55);
+.dv__handbook-btn { width: 100%; justify-content: center; }
+.dv__handbook-btn[disabled] { opacity: 0.6; cursor: wait; }
+.dv__product-btn { width: 100%; justify-content: center; }
+.dv__note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
-/* ---- Deal cards ---- */
-.deal-cards__track {
-  gap: 14px;
-  padding: 2px 2px 12px;
-}
-.deal-card {
-  scroll-snap-align: start;
-  flex: 0 0 82%; /* ~1.2 cards visible on a phone screen, signals swipeability */
-  max-width: 320px;
-  position: relative;
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: var(--shadow-sm);
-  touch-action: manipulation;
-  transition: var(--transition);
-}
-.deal-card:active {
-  transform: scale(0.98);
-}
-.deal-card__off {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 1;
-  width: 54px;
-  height: 54px;
-  line-height: 15px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: var(--shadow-sm);
-  color: var(--primary-color);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.deal-card__image {
-  display: block;
-  aspect-ratio: 4 / 3;
-  background: #f2f2f2;
-  overflow: hidden;
-}
-.deal-card__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.deal-card__content {
-  display: block;
-  padding: 14px 16px 16px;
-}
-.deal-card__name {
-  display: block;
-  font-size: 14.5px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.deal-card__price {
-  display: block;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--primary-color);
-  margin-bottom: 12px;
-}
-.deal-card__cta.btn-two {
-  display: flex;
-  width: 100%;
-  justify-content: center;
-  text-align: center;
-}
-
-/* ---- Small-phone tightening ---- */
-@media (max-width: 400px) {
-  .deal-card {
-    flex-basis: 88%;
-  }
-  .people-chip {
-    min-width: 132px;
-  }
-}
-
-/* ---- Progressively show more per row on larger screens ---- */
 @media (min-width: 480px) {
-  .deal-card {
-    flex-basis: 68%;
-  }
+  .dv__act { flex-direction: row; }
+  .dv__handbook-btn, .dv__product-btn { width: auto; }
 }
-@media (min-width: 576px) {
-  .deal-card {
-    flex-basis: 46%;
-  }
-  .people-strip__head h3 {
-    font-size: 18px;
-  }
-}
-@media (min-width: 768px) {
-  .deal-card {
-    flex-basis: 31%;
-  }
-  .people-chip {
-    min-width: 168px;
-  }
-  .people-strip__head h3 {
-    font-size: 20px;
-  }
-}
+
+/* Desktop: the editorial split — identity, facts and the way in on the
+   left, the device dominating the right. The masthead spans the top. */
 @media (min-width: 992px) {
-  .deal-card {
-    flex-basis: 23.5%;
+  .dv {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    column-gap: clamp(40px, 5vw, 88px);
+    align-items: center;
   }
-}
-@media (min-width: 1300px) {
-  .deal-card {
-    flex-basis: 18.5%;
-  }
+  .dv__info { grid-column: 1; grid-row: 1; }
+  .dv__show { grid-column: 2; grid-row: 1; }
+  .dv__facts { max-width: 420px; }
 }

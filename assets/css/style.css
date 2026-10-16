@@ -35,19 +35,33 @@ CSS TABLE OF CONTENTS
    site's CSP doesn't need a Google Fonts exception — one less third-party
    origin in scope, one less thing that can go down and take styling with
    it. Latin subset only (this site has no non-Latin content); files are
-   the exact same Inter build Google serves, just vendored locally. */
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/inter/inter-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/inter/inter-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/inter/inter-latin-700-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/inter/inter-latin-800-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/inter/inter-latin-400-italic.woff2") format("woff2"); }
+   the exact same Montserrat build Google serves, just vendored locally
+   (@fontsource/montserrat 5.3.0 -> assets/fonts/montserrat/).
+
+   Montserrat is the platform's ONE primary family. Five upright weights and
+   one italic are declared because those are the weights this stylesheet and
+   its siblings actually call for; the family's other twelve faces are
+   deliberately not shipped. */
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 600; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 700; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: normal; font-weight: 800; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-style: italic; font-weight: 400; font-display: swap; src: url("../fonts/montserrat/montserrat-latin-400-italic.woff2") format("woff2"); }
 :root {
-  /* Both font variables point at Inter so every existing var(--prosto-one)/
-     var(--montserrat) reference across this file updates without hunting
-     down each call site. */
-  --prosto-one: "Inter", sans-serif;
-  --montserrat: "Inter", sans-serif;
+  /* Shared timing for the mobile drawer and its accordion, so the drawer,
+     its panels and the chevrons all move on one curve instead of three
+     slightly different ones. 240ms ease-out: fast to start, settling at the
+     end, which is what reads as "native" rather than floaty. */
+  --nav-dur: 240ms;
+  --nav-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Both font variables point at Montserrat so every existing
+     var(--prosto-one)/var(--montserrat) reference across this file updates
+     without hunting down each call site. The two names are historical (the
+     purchased template paired Prosto One with Montserrat); there is ONE
+     family on the platform and both aliases resolve to it. */
+  --prosto-one: "Montserrat", sans-serif;
+  --montserrat: "Montserrat", sans-serif;
 
   /* ---------------------------------------------------------------------
      Monochrome design system — the single source of truth for every gray,
@@ -1996,29 +2010,36 @@ input {
   top: 0;
 }
 
+/* The two curtain panels used to animate `height: 50%` down to 0. A height
+   change is a layout change, and the layout-shift API counts it — measured
+   on production, these two pseudo-elements were the source of ALL 26 recorded
+   shifts and the entire 0.1217 CLS on every page (Google's "good" threshold
+   is 0.1). Sliding them out of frame with `transform` instead produces the
+   identical visual result, and transforms are explicitly excluded from CLS.
+
+   The timings were also the biggest perceived-speed problem on the site:
+   1s delay + 0.7s slide, then visibility flipped 1.5s after that, so the
+   curtain sat over a fully-rendered page for ~2.5s. First contentful paint
+   is ~150ms — the page was ready long before the animation let anyone see
+   it. Now the curtain starts leaving immediately and is gone in 0.45s. */
 #preloader.isdone {
   visibility: hidden;
-  -webkit-transition-delay: 1.5s;
-  -o-transition-delay: 1.5s;
-  transition-delay: 1.5s;
+  transition-delay: 0.5s;
 }
 #preloader.isdone:after {
-  height: 0;
-  -webkit-transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  -o-transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  -webkit-transition-delay: 1s;
-  -o-transition-delay: 1s;
-  transition-delay: 1s;
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  transition-delay: 0s;
 }
 #preloader.isdone:before {
-  height: 0;
-  -webkit-transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  -o-transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  transition: all 0.7s cubic-bezier(1, 0, 0.55, 1);
-  -webkit-transition-delay: 1s;
-  -o-transition-delay: 1s;
-  transition-delay: 1s;
+  transform: translateY(-100%);
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  transition-delay: 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  #preloader.isdone { transition-delay: 0s; }
+  #preloader.isdone:after,
+  #preloader.isdone:before { transition: none; }
 }
 
 .loading {
@@ -2083,6 +2104,21 @@ input {
   -webkit-transition-delay: 0.5s;
   -o-transition-delay: 0.5s;
   transition-delay: 0.5s;
+  /* Stops the seven per-letter shimmer animations below. They are declared
+     `infinite`, so once the preloader had faded to opacity:0 they kept being
+     ticked on the main thread for the entire life of the tab — seven
+     invisible animations forcing a style recalculation every frame on every
+     page. Measured at idle with nothing being touched: ~85 style recalcs per
+     1.4s. The element is invisible by this point, so stopping them changes
+     nothing visually.
+
+     pointer-events is belt-and-braces: a full-viewport fixed element at
+     opacity 0 still swallows taps unless it is taken out of hit-testing. */
+  pointer-events: none;
+}
+.loading.isdone span {
+  -webkit-animation: none;
+  animation: none;
 }
 
 @-webkit-keyframes loading {
@@ -2278,11 +2314,15 @@ input {
   background-color: #191919;
   border-bottom: unset;
 }
+/* Generic logo lockup (footer, and the auth/utility pages that reuse it).
+   Height-driven for the same reason as .header-logo above — see that rule. */
 .logo {
-  max-width: 158px;
+  display: inline-block;
 }
 .logo img {
-  width: 100%;
+  height: 30px;
+  width: auto;
+  display: block;
 }
 
 .side_bar {
@@ -2716,9 +2756,69 @@ input {
 .product__cart,
 .product__buy-now,
 .cp-qty-btn,
-.remove-product {
+.remove-product,
+/* The cart DRAWER's controls were missing from this list while the cart
+   PAGE's equivalents (.cp-qty-btn, .remove-product) were here from the
+   start. Combined with the containment bug fixed just below, that is what
+   let a recommendation tile's ::after swallow every tap in the drawer:
+   remove and qty were static/auto and sat underneath it. */
+.cart-item-remove,
+.cart-qty-minus,
+.cart-qty-plus,
+.cart-drawer__close {
   position: relative;
   z-index: 2;
+}
+
+/* MUST stay in the stylesheet, not an inline style attribute.
+   The site sends `style-src-attr 'self'` (server/src/index.js), and 'self'
+   is not a valid source for inline style attributes — only 'unsafe-inline'
+   or a hash/nonce is — so the browser blocks every style="..." attribute on
+   the site. This element used to carry an inline position:relative from
+   script.js's renderRecommendedProducts(); it was silently dropped, the tile
+   stayed position:static, and .stretched-link::after therefore resolved
+   against the nearest positioned ancestor it could find -- #cartDrawer
+   itself (position:fixed). That turned a 96x172 tile link into an invisible
+   390x664 overlay across the entire drawer, so any tap on remove or qty
+   added the recommended product instead. Measured before the fix: the
+   anchor was the hit-test result at every point from y=120 to y=480.
+
+   Keeping this here means containment no longer depends on an inline style
+   the CSP will not apply. */
+.cart-recommended__item {
+  position: relative;
+}
+
+/* Same CSP problem, same fix, on the cart PAGE. renderCartPage() emits these
+   four declarations as style="..." attributes, every one of which the browser
+   drops. Restated here so they actually apply:
+     - .product row: position:relative — each row's title is a .stretched-link,
+       and without a positioned row every row's ::after resolved to the same
+       far-off ancestor, so the rows' link areas overlapped each other.
+       (.remove-product and .cp-qty-btn already carry z-index:2 above, which is
+       why the cart page's buttons kept working where the drawer's did not.)
+     - the thumbnail's fixed 70x70 box
+     - the subtotal's emphasis styling
+   The now-inert attributes are left in the JS markup deliberately: removing
+   them is a separate, wider cleanup (see the audit note in the commit), and
+   they do no harm while these rules are present. */
+#cartPageTable .product {
+  position: relative;
+}
+#cartPageTable .product-details img {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+#cartPageTable .product-details h4 a {
+  color: inherit;
+}
+#cartPageTable .cp-subtotal-val {
+  color: var(--primary-color);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 /* Tappable product card: the CTA strip at the bottom is the card's single
@@ -3597,14 +3697,42 @@ input {
   overflow: hidden;
   white-space: nowrap;
 }
+/* ---------------------------------------------------------------------
+   Marquee — transform-driven, not `left`-driven.
+
+   These two keyframes used to animate the `left` property, infinitely, at
+   30s linear. `left` is a layout property: every frame forced a layout of
+   the document and a repaint, forever, on any page carrying a ticker.
+   Measured on production before this change, with the page completely idle
+   and nothing being touched:
+
+       84 Layouts + 173 Paints per 1.4 seconds
+
+   Cancelling every animation on the page dropped that to 7 Layouts and 9
+   Paints, and this marquee was the only running animation touching a
+   layout property. That constant main-thread work is what made the drawer
+   and its accordion stutter — they were never slow in themselves, they
+   were competing with a permanent full-document relayout.
+
+   The element is width:200% and absolutely positioned, so `left: -100%`
+   (100% of the CONTAINING BLOCK) is the same distance as
+   translate3d(-50%) (50% of the ELEMENT). The motion is identical; only
+   the property changes.
+   --------------------------------------------------------------------- */
 .marquee-inner {
   position: absolute;
   display: inline-flex;
   width: 200%;
+  /* The animation no longer sets `left`, so the base offset has to be
+     stated here or the track starts at its static position. */
+  left: 0;
+  /* Own compositor layer, established up front so the first frame doesn't
+     pay for layer creation. */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 .marquee-item {
   float: left;
-  transition: animation 0.2s ease-out;
 }
 .marquee-item img {
   margin-top: -5px;
@@ -3613,26 +3741,33 @@ input {
 .marquee-inner.to-right {
   animation: marqueeRight 30s linear infinite;
 }
-
 @keyframes marqueeRight {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 0;
-  }
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
+
 .marquee-inner.to-left {
   animation: marqueeLeft 30s linear infinite;
 }
-
 @keyframes marqueeLeft {
-  0% {
-    left: 0;
-  }
-  100% {
-    left: -100%;
-  }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+/* The people marquee used to centre itself with top:50% +
+   transform: translateY(-50%), because its track was absolutely positioned;
+   a transform-based scroll would have overwritten that centring, so two
+   extra keyframe sets existed here purely to fold the -50% back into the
+   scroll transform.
+
+   That whole arrangement is gone. The track is in normal flow now and its
+   wrapper is a flex container that centres it (home-dynamic.css), so there
+   is no translateY to preserve and the plain marqueeLeft/marqueeRight
+   keyframes above apply to it unchanged. */
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-inner.to-left,
+  .marquee-inner.to-right { animation: none; }
 }
 .form-area form input {
   width: 100%;
@@ -3941,8 +4076,8 @@ input {
   flex-wrap: wrap;
   align-items: center;
 }
-.footer__copy-text .logo {
-  max-width: 90px;
+.footer__copy-text .logo img {
+  height: 30px;
 }
 
 /* Bottom bar — copyright on one side, legal links + payment icons on the
@@ -3993,6 +4128,69 @@ input {
 @media (max-width: 575px) {
   .footer__bottombar { justify-content: center; text-align: center; }
   .footer__bottombar-right { justify-content: center; }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile footer polish
+   Applies to every page: the footer markup is duplicated across 18 HTML files,
+   so all of this is deliberately CSS-only.
+   --------------------------------------------------------------------------- */
+
+/* The send button is absolutely positioned over the right edge of the field, so
+   the input needs a right gutter wide enough to clear it (50px + 6px inset +
+   breathing room) or the typed email runs underneath the button. */
+.footer__item.newsletter .subscribe input {
+  box-sizing: border-box;
+  padding-right: 68px;
+  /* 16px prevents iOS Safari zooming the page when the field takes focus */
+  font-size: 16px;
+}
+
+@media (max-width: 991px) {
+  /* Reclaim the desktop 65px/50px rhythm, which is disproportionate once the
+     four columns stack into a single tall scroll. */
+  .footer-area .footer__wrp { padding-top: 44px; padding-bottom: 8px; }
+  .footer-area .footer__copy-text { padding-top: 28px; padding-bottom: 22px; }
+
+  /* Each stacked column reads as its own band rather than one long list. */
+  .footer-area .footer__item { margin-bottom: 30px; }
+  .footer-area .footer__item .footer-title { margin-bottom: 14px; }
+
+  /* Touch targets: a 14px link on a 6px gap is roughly a 20px tap area. Giving
+     each row a 44px minimum meets the accessibility floor without visually
+     spacing the list out, since the box grows around the text. */
+  .footer-area .footer__item ul li:not(:last-child) { margin-bottom: 0; }
+  .footer-area .footer__item ul li a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .footer-area .footer__item.newsletter .social-icon { margin-top: 24px !important; }
+
+  /* Logo tracks viewport height-wise; width follows the mark's aspect ratio. */
+  .footer-area .footer__copy-text .logo img { height: clamp(24px, 7vw, 30px); }
+  .footer-area .footer__copy-text { justify-content: center; }
+
+  /* Legal links also need real tap height, and centred wrapping avoids the
+     ragged single-column stack at narrow widths. */
+  .footer-area .footer__legal { justify-content: center; gap: 0 18px; }
+  .footer-area .footer__legal a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    font-size: 13px;
+  }
+  .footer-area .footer__bottombar { padding-bottom: 24px; }
+  .footer-area .footer__bottombar .payment { max-width: 128px; }
+}
+
+/* Nothing in the footer may push the page horizontally at 320px. */
+@media (max-width: 400px) {
+  .footer-area .footer__item.newsletter .subscribe input { padding-left: 18px; }
+  .footer-area .footer__legal { gap: 0 14px; }
+  .footer-area .footer__bottombar-copy { font-size: 11.5px; line-height: 1.6; }
 }
 
 @keyframes moveLeft {
@@ -4162,6 +4360,83 @@ input {
   .get-now__image {
     background-color: var(--black);
   }
+
+  /* Get-now / "20% off" promo — mobile-first rebuild. Nothing under
+     .get-now__content had a breakpoint before this (only the decorative
+     circular image did), so on a phone it rendered at full desktop sizing:
+     a 50px gap in the badge row, four fixed 70px countdown circles, and no
+     padding discipline, which overflowed/crowded a narrow viewport. */
+  .get-now-area .get-now__content ul {
+    gap: 14px 22px;
+    padding-left: 0;
+  }
+  .get-now__content ul li {
+    list-style: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .get-now__content ul li::before {
+    content: "\f00c";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-weight: 700;
+    color: var(--primary-color, #ff5722);
+    font-size: 12px;
+  }
+  .get-now__content .get-info {
+    font-size: 20px;
+  }
+  .get-now__content .time-up {
+    gap: 12px !important;
+    width: 100%;
+  }
+  .get-now__content .time-up .info h4 {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+  .get-now__content .time-up .info span {
+    font-size: 14px;
+    margin-top: 4px;
+    display: block;
+  }
+  .get-now__content .time-up .get-time {
+    width: 52px;
+    height: 52px;
+    padding-top: 6px;
+    flex-shrink: 0;
+  }
+  .get-now__content .time-up .get-time h3 {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .get-now__content .time-up .get-time span {
+    font-size: 11px;
+  }
+  .get-now-arry {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .get-now-arry i {
+    font-size: 18px;
+  }
+}
+@media screen and (max-width: 400px) {
+  .get-now__content .time-up .get-time {
+    width: 44px;
+    height: 44px;
+    padding-top: 4px;
+  }
+  .get-now__content .time-up .get-time h3 {
+    font-size: 14px;
+    line-height: 18px;
+  }
+  .get-now__content .time-up .get-time span {
+    font-size: 10px;
+  }
 }
 @media screen and (max-width: 575px) {
   .shop-page-wrp {
@@ -4249,16 +4524,27 @@ input {
   position: relative;
 }
 
-/* Logo */
+/* Logo.
+
+   Sized by HEIGHT, with width:auto — not the other way round. The FA mark is
+   1.79:1 where the wordmark it replaced was 2.93:1, so the old width-driven
+   rule (width:60px, height:auto) would have rendered it 33.6px tall instead of
+   20.5px and pushed the header open. Constraining the height instead pins the
+   one dimension the header's layout actually depends on and lets the width
+   fall out of the aspect ratio, which is also what keeps the mark from eating
+   horizontal room on a 320px screen.
+
+   26px sits comfortably inside the 32.8px row that .main-menu and
+   .header-actions already establish (align-items:stretch above), so the header
+   keeps its exact height. */
 .header-logo {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 60px;
 }
 .header-logo img {
-  width: 100%;
-  height: auto;
+  height: 26px;
+  width: auto;
   display: block;
 }
 
@@ -4279,11 +4565,12 @@ input {
 }
 
 /* Account and cart are a deliberate matched pair — same circle diameter,
-   same icon weight/size, same gap from the edge, at every breakpoint below.
-   (Previously the cart button alone grew to 36px on small phones while the
-   account icon stayed at 28px, an unintentional size mismatch between the
-   two header actions.) Both are icon-only with no text label, so neither
-   competes for attention with the shop-focused main nav or the hero CTA. */
+   same icon weight/size, same gap from the edge. Desktop-only now (see the
+   max-width:991px block below, which hides .header-actions entirely on
+   mobile — those actions move into the nav drawer's .mobile-account-links
+   instead, so they don't compete with the hamburger for thumb reach). Both
+   are icon-only with no text label, so neither competes for attention with
+   the shop-focused main nav or the hero CTA. */
 .header-account {
   text-decoration: none;
   gap: 8px;
@@ -4304,6 +4591,122 @@ input {
 .header-cart-btn i {
   color: #fff;
   font-size: 13px;
+}
+
+/* ---- Desktop account menu ----
+   The signed-in counterpart of the header's account slot, and the only route
+   a desktop customer has to My Profile / Orders / Sign Out (on mobile those
+   live in the drawer, which is d-lg-none). Panel matches .mega-menu — same
+   surface, border, radius family and shadow — so the header has one dropdown
+   language rather than two. Opened by click, not hover: a menu that contains
+   Sign Out should not open because a pointer crossed it. */
+.header-account-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+/* #headerAccountLink carries Bootstrap's .d-flex, i.e. `display:flex
+   !important`, which the sitewide single-class `.u-hidden { display: none }`
+   cannot beat. Without this the signed-out link keeps its box after api.js
+   hides it and the header shows TWO account icons side by side. Same fix the
+   drawer rows and the checkout card-brands already carry — re-assert
+   display:none at matching weight. */
+.header-account-wrap .header-account.u-hidden {
+  display: none !important;
+}
+.header-account--menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.header-account__caret {
+  font-size: 10px;
+  color: var(--paragraph);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.header-account-wrap.is-open .header-account__caret {
+  transform: rotate(180deg);
+}
+
+.header-account-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 9999;
+  min-width: 216px;
+  padding: 8px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.14s ease-in, visibility 0.14s ease-in, transform 0.14s ease-in;
+}
+/* [hidden] keeps it out of the tab order and off screen readers while closed;
+   the class is what animates. Both are needed — a visibility transition alone
+   still leaves the items focusable in some engines. */
+.header-account-menu[hidden] {
+  display: none;
+}
+.header-account-wrap.is-open .header-account-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--heading-color);
+  transition: background-color 0.15s ease;
+}
+/* The site sets a colour on bare spans; these rows carry their own, so the
+   span has to inherit or every label goes grey but the icon does not. */
+.header-account-menu__item span {
+  color: inherit;
+}
+.header-account-menu__item i {
+  width: 16px;
+  font-size: 13px;
+  color: var(--paragraph);
+  flex-shrink: 0;
+}
+.header-account-menu__item:hover,
+.header-account-menu__item:focus-visible {
+  background-color: var(--color-surface-2);
+}
+.header-account-menu__item--quiet {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 10px 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-account-menu,
+  .header-account__caret {
+    transition: none;
+  }
 }
 
 /* Cart button */
@@ -4333,32 +4736,117 @@ input {
   line-height: 1;
 }
 
-/* Hamburger inside site-header */
+/* Hamburger inside site-header — the primary mobile nav entry point, so it
+   gets a real 44x44px touch target (WCAG/Apple HIG minimum) and a chip
+   background for visual weight, not just three bare lines. The bars
+   themselves live in a small fixed-size .header-bar__icon centered inside
+   that 44px box via flex, so the tap target can grow independently of the
+   icon's own geometry (and of the rotate/translate math on .active below,
+   which is tuned to this icon's exact 22x16 box).
+
+   Every dimension below is pinned three ways (width/height, min-width/
+   min-height/max-width/max-height, and flex:0 0 44px) and box-sizing is
+   forced explicitly rather than relying
+   on the sitewide `*` reset, because this element sits inside
+   .header-inner's `display:flex; align-items:stretch` row (deliberately,
+   so the row's other children fill its height — see .header-inner above) —
+   without an ironclad cross-size, a plain `<button>` here stretches to the
+   header's full row height instead of staying a fixed 44px square, which
+   is what "stretched background" bugs on this element have actually been.
+   overflow:hidden guarantees the chip can never show a non-square edge, and
+   -webkit-appearance/appearance:none strips iOS Safari's native button
+   chrome (rounded corners, inset shadow, extra intrinsic padding) that
+   `border:none` alone doesn't remove there. */
 .site-header .header-bar {
-  width: 36px;
-  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  box-sizing: border-box;
   position: relative;
   cursor: pointer;
-  flex-shrink: 0;
-  background: none;
-  border: none;
+  margin: 0;
   padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--sub-bg);
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
   -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s;
 }
-.site-header .header-bar span {
-  position: absolute;
-  width: 100%;
-  height: 2px;
-  background: var(--heading-color);
-  left: 0;
-  transition: all 0.3s;
+.site-header .header-bar:hover,
+.site-header .header-bar:active {
+  background: var(--border);
 }
-.site-header .header-bar span:first-child { top: 0; }
-.site-header .header-bar span:nth-child(2) { top: 44%; width: 28px; }
-.site-header .header-bar span:last-child  { bottom: 0; width: 22px; }
-.site-header .header-bar.active span:first-child { transform: rotate(45deg) translate(3px, 9px); }
-.site-header .header-bar.active span:nth-child(2) { opacity: 0; }
-.site-header .header-bar.active span:last-child  { transform: rotate(-45deg) translate(3px, -9px); width: 36px; }
+/* The glyph itself. Deliberately a single Font Awesome icon rather than three
+   hand-positioned <span> bars: the previous bar markup nested the bars inside
+   a wrapper <span class="header-bar__icon">, and the bar rule that styled them
+   (`.site-header .header-bar span`, specificity 0,2,1) also matched that
+   wrapper and outranked `.header-bar__icon` (0,1,0) — so the wrapper itself
+   was painted as a 44px-wide, 2.5px-tall filled bar with the three real bars
+   collapsed inside it. That is what rendered as a broken smear instead of a
+   hamburger. A single glyph has no wrapper to collide with, and there is no
+   descendant-span rule left here for anything to inherit by accident.
+   font-size (not width/height) sets the drawn size, so it stays crisp at any
+   DPR; the 44x44 tap target above is independent of it. */
+.site-header .header-bar__icon {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--heading-color);
+  pointer-events: none;
+}
+
+/* ===================================================
+   iOS SAFE AREAS
+   ===================================================
+   Every page now ships `viewport-fit=cover` (see the <meta name="viewport">
+   in each .html), which is what makes env(safe-area-inset-*) resolve to
+   anything other than 0 — but it also means the layout viewport extends
+   *under* the Dynamic Island / notch and the home indicator. So every piece
+   of fixed or sticky chrome has to pad itself back out of those regions
+   explicitly; anything that doesn't ends up with content physically under
+   the island or the home-indicator bar.
+
+   The fallback second argument (`, 0px`) keeps these valid on browsers with
+   no env() support, where the whole calc() would otherwise be dropped.
+   Horizontal insets matter in landscape, where the notch eats one side. */
+.site-header {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Cart drawer: pinned to the right edge, full height. */
+.cart-drawer {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.cart-drawer__head {
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+}
+.cart-drawer__foot {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 991px) {
+  /* Mobile nav drawer: slides in from the right, full height, so it needs
+     all four insets — top for the island, bottom so the last account row
+     isn't under the home indicator, right for landscape. */
+  .site-header .main-menu {
+    padding-top: calc(70px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-right: env(safe-area-inset-right, 0px) !important;
+  }
+}
 
 /* ===================================================
    CART DRAWER
@@ -4383,7 +4871,14 @@ input {
   right: 0;
   width: 380px;
   max-width: 100vw;
+  /* 100vh on iOS Safari is the toolbar-HIDDEN height, so a 100vh drawer
+     extends below the visible area whenever the toolbar is showing and its
+     footer (the subtotal + Checkout button) sits off-screen and unreachable.
+     100dvh tracks the toolbar as it collapses/expands. The 100vh line stays
+     first as the fallback for browsers without dvh, which simply ignore the
+     second declaration. */
   height: 100vh;
+  height: 100dvh;
   background: #ffffff;
   z-index: 9999;
   display: flex;
@@ -4458,6 +4953,39 @@ input {
   border-radius: 8px;
   flex-shrink: 0;
   background: var(--sub-bg);
+}
+/* With derivatives the thumbnail is a <picture>, which then becomes the flex
+   item in the img's place — it has to carry the same fixed box, or the row
+   reflows when the AVIF resolves. The box is declared here (not just on the
+   img) so it is reserved before any byte arrives. */
+.cart-item picture {
+  display: block;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--sub-bg);
+}
+.cart-item picture img { border-radius: 0; }
+/* The cart PAGE row's thumbnail, same treatment. Its box used to come from an
+   inline style="" attribute, which this site's CSP (style-src-attr 'self' off
+   /admin) blocks outright — so the size lives here, where it also survives the
+   <picture> wrap. */
+.cp-thumb,
+#cartPageTable .product picture {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+#cartPageTable .product picture { display: block; overflow: hidden; }
+#cartPageTable .product picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
 }
 .cart-item-info {
   flex: 1;
@@ -4674,6 +5202,17 @@ body.cart-open { overflow: hidden; }
     background: var(--color-bg);
   }
 
+  /* Account/cart/library/orders/settings now live inside the drawer (see
+     .mobile-account-links below) instead of the top header, so the header
+     itself is just logo + hamburger on mobile — no more account/cart icons
+     competing with the primary nav entry point for thumb attention. */
+  .header-actions {
+    display: none;
+  }
+  .header-inner {
+    padding: 10px 0;
+  }
+
   /* Off-canvas drawer, not the old full-width dropdown panel: the menu is
      always in the DOM (so `right` can transition) and just parked off the
      right edge of the viewport until opened. */
@@ -4689,10 +5228,19 @@ body.cart-open { overflow: hidden; }
     position: fixed;
     top: 0;
     left: auto;
-    right: -100%;
+    /* Was `right: -100%` animated via `transition: right`. `right` is a
+       layout property: every frame of the slide forced a reflow plus a full
+       repaint of the drawer, which is what made it feel like the UI was
+       redrawing rather than sliding. The drawer now sits at right:0
+       permanently and moves on `transform`, which the compositor can animate
+       on its own thread without touching layout. */
+    right: 0;
     margin: 0;
     width: min(85vw, 340px);
+    /* See .cart-drawer — 100vh would push the drawer's bottom rows (the
+       account/library/orders/cart block) under iOS Safari's toolbar. */
     height: 100vh;
+    height: 100dvh;
     background: var(--color-bg);
     z-index: 9990;
     padding: 70px 0 24px;
@@ -4703,12 +5251,38 @@ body.cart-open { overflow: hidden; }
     /* !important because that same legacy rule also has
        `transition: all 2s !important`, which would otherwise win on
        importance alone and turn this into a sluggish 2s slide. */
-    transition: right 0.3s ease !important;
+    transform: translate3d(100%, 0, 0);
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1)) !important;
+    /* translate3d + backface-visibility promote this to its own compositor
+       layer up front, so the first drag frame doesn't pay for layer creation.
+       will-change is scoped to the drawer only — applying it broadly costs
+       memory for no benefit. */
+    will-change: transform;
+    backface-visibility: hidden;
     display: block !important;
+    /* The drag handler manages horizontal panning itself; letting the browser
+       also claim horizontal gestures makes the drag fight the scroller. */
+    touch-action: pan-y;
   }
   .site-header .main-menu.active {
-    right: 0;
+    transform: translate3d(0, 0, 0);
   }
+  /* While a finger is down the drawer follows it exactly — any transition
+       here would lag the gesture behind the thumb. */
+  .site-header .main-menu.is-dragging {
+    transition: none !important;
+  }
+  /* Users who ask for reduced motion get the state change without the slide. */
+  @media (prefers-reduced-motion: reduce) {
+    .site-header .main-menu {
+      transition: none !important;
+    }
+  }
+  /* Fades on its own timing, deliberately not the drawer's. It is a separate
+     element with a separate transition, so the scrim settles a touch after
+     the panel has landed instead of the two moving as one slab — that
+     staggering is most of what separates a native-feeling drawer from a
+     sliding <div>. Opacity only: never size, position or background. */
   .nav-overlay {
     position: fixed;
     inset: 0;
@@ -4716,31 +5290,42 @@ body.cart-open { overflow: hidden; }
     z-index: 9980;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 280ms linear, visibility 280ms linear;
+    will-change: opacity;
   }
   .nav-overlay.active {
     opacity: 1;
     visibility: visible;
   }
-  body.nav-open { overflow: hidden; }
+  /* While a finger is down the drag handler writes the scrim's opacity every
+     frame. Leaving the transition on would make each of those writes ease
+     toward its target, so the scrim would visibly trail the thumb instead of
+     tracking it. */
+  .nav-overlay.is-dragging {
+    transition: none;
+  }
+  /* position:fixed rather than overflow:hidden — iOS Safari honours the
+     former for touch scrolling and ignores the latter. `top` is set inline by
+     lockBodyScroll() to preserve the scroll offset while pinned. */
+  body.nav-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  /* Keeps a scroll that reaches the end of the drawer's own list from
+     chaining through to the page behind it. */
+  .site-header .main-menu { overscroll-behavior: contain; }
 }
 @media (max-width: 767px) {
   .cart-drawer { width: 100vw; }
 }
 @media (max-width: 480px) {
-  .header-logo { width: 90px; }
-  /* Both icons grow together for an easier thumb target — see the matched-
-     pair rule above; this used to bump only the cart button, which is what
-     produced the size mismatch with the account icon next to it. */
-  .header-account .user-icon,
-  .header-cart-btn {
-    width: 34px;
-    height: 34px;
-  }
-  .header-account .user-icon i,
-  .header-cart-btn i {
-    font-size: 13.5px;
-  }
+  /* Mobile must never render the logo LARGER than desktop's 26px — it was
+     once bigger here than on desktop, backwards, and oversized enough
+     relative to the compact mobile header (logo + hamburger only) to
+     clip/overflow. 22px keeps the mark clear of the 44px hamburger while
+     leaving the row height set by that hamburger, not by the logo. */
+  .header-logo img { height: 22px; }
 }
 
 
@@ -4790,6 +5375,16 @@ body.cart-open { overflow: hidden; }
    keeps short prepositions lowercase) — the capitalize transform above
    would otherwise render it "Shop By Goal". */
 .site-header .main-menu > li > .nav-top-link {
+  text-transform: none;
+}
+
+/* Same reason, one level down and at every breakpoint: `.site-header
+   .main-menu li` sets `text-transform: capitalize`, and it inherits into
+   everything inside a panel — which rendered the plan counts as "1 Plan" and
+   the action row as "View All". Panel content is real copy and real names out
+   of the CMS, and it is shown exactly as an admin typed it. */
+.nav-panel,
+.nav-panel * {
   text-transform: none;
 }
 
@@ -4850,224 +5445,403 @@ body.cart-open { overflow: hidden; }
     transition-delay: 0s;
   }
 
-  /* ---- Mega menu (Shop by Goal / Browse Athletes / Browse Creators) ----
-     Same hover/focus reveal mechanism and the same .main-menu li anchor as
-     .sub-menu above, just wider and multi-column instead of a single
-     190px list. Panels are centered under their trigger (left:50% +
-     translateX(-50%)) so the wide athletes panel never hangs off the
-     viewport's right edge; max-width clamps it on narrow desktops. The
-     base transition here is the CLOSE (fast ease-in, no delay); the
-     hover/focus rules below override duration/easing for a slightly
-     longer ease-out OPEN, with a short hover-intent delay so a mouse
-     merely passing across the nav doesn't flash panels open. Keyboard
-     focus opens with no delay — Tab is always deliberate. */
+  /* ==========================================================
+     NAV PANEL — one desktop mega-menu for every category.
+
+     Replaces three fixed-width panels (540/760/580px) whose columns
+     were `flex: 1`. That is what produced the reported "huge white
+     rectangle": a 760px box divided between four short sport columns
+     is empty by construction, and no amount of padding tuning fixes a
+     box whose size was decided before its content existed.
+
+     Here the panel is `width: max-content` — it is exactly as wide as
+     the content it was given and no wider, at every category, forever.
+     Four items make a narrow panel; twenty make a wide one. Height
+     follows for the same reason: nothing in this block sets one.
+
+     ANCHORING. The panel hangs off .header-inner (which is already
+     position:relative) rather than off its own <li>, so:
+       - `max-width: 100%` is measured against the page container, which
+         makes overflowing the viewport structurally impossible at any
+         width, with no JS measuring anything;
+       - every category's panel shares one top-left origin, so switching
+         between them reads as ONE surface changing its contents rather
+         than two panels swapping places. That is the whole trick behind
+         the continuous A -> B transition.
+     The <li> is therefore explicitly static; it is the trigger, not the
+     anchor.
+
+     OPEN/CLOSE is driven by .is-open, written by assets/js/script.js —
+     not by :hover. A CSS-only menu cannot close on Escape, cannot close
+     on an outside click, cannot keep a panel open while the pointer
+     crosses the gap into it, and cannot tell "switching categories"
+     (which must be instant) from "opening the first one" (which wants
+     a short hover-intent delay). All four are requirements here.
+     ========================================================== */
+  .site-header .main-menu > li.nav-mega { position: static; }
+
   .site-header .main-menu li .mega-menu {
     position: absolute;
     top: 100%;
-    left: 50%;
+    /* Aligned to the LEFT EDGE OF THE NAV, not to the container (which starts
+       at the logo) and not to the individual trigger. --nav-panel-left is
+       measured once by assets/js/script.js and re-measured on resize; the
+       fallback of 0 is the container edge, which is wrong-looking but never
+       broken. One shared origin for every category is what makes switching
+       read as one surface changing its contents instead of two boxes swapping
+       places — and it is why the panel cannot slide sideways mid-switch. */
+    left: var(--nav-panel-left, 0px);
     z-index: 9999;
-    display: flex !important;
-    gap: 32px;
-    width: 540px;
-    max-width: calc(100vw - 32px);
-    padding: 24px 28px;
+    display: block !important;
+    width: max-content;
+    min-width: 280px;
+    max-width: calc(100% - var(--nav-panel-left, 0px));
+    padding: 0;
     background-color: var(--color-surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.05);
     opacity: 0;
     visibility: hidden;
-    transform: translate(-50%, 8px);
-    transition: opacity 0.14s ease-in, visibility 0.14s ease-in, transform 0.14s ease-in;
+    transform: translateY(6px);
+    /* The CLOSE. Deliberately faster than the open and with no delay —
+       a menu that lingers after you have left it feels broken in a way
+       a menu that takes an extra 40ms to arrive never does. */
+    transition: opacity 0.13s ease-in, visibility 0.13s ease-in, transform 0.13s ease-in;
   }
-  .site-header .main-menu li:hover > .mega-menu {
+  .site-header .main-menu li .mega-menu.is-open {
     opacity: 1;
     visibility: visible;
-    transform: translate(-50%, 0);
-    transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    transition-delay: 120ms;
+    transform: translateY(0);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .site-header .main-menu li:focus-within > .mega-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(-50%, 0);
-    transition-delay: 0s;
+  /* Switching from an already-open category: no travel, no fade-through
+     the page ground, just a fast cross-dissolve of the two panels in
+     place. Without this the outgoing panel's 130ms close and the
+     incoming panel's 200ms open overlap into a visible blink of
+     background — the "close, blank gap, open" the brief calls out. */
+  .site-header .main-menu.is-switching li .mega-menu {
+    transition-duration: 0.11s;
+    transform: none;
   }
-  .site-header .main-menu li .mega-menu--athletes { width: 760px; gap: 28px; }
-  .site-header .main-menu li .mega-menu--creators { width: 580px; }
-  .mega-menu--creators .mega-menu__col--featured { flex: 1.25; }
-  .mega-menu .mobile-nav-back,
-  .mega-menu .mobile-nav-panel-title,
-  .sub-menu .mobile-nav-back-wrap {
-    display: none;
+
+  .nav-panel__inner {
+    display: grid;
+    grid-template-columns: auto;
+    align-items: start;
+    padding: 22px 24px 16px;
+    gap: 0 32px;
   }
-  .mega-menu__col { flex: 1; min-width: 0; }
-  .mega-menu__heading {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--color-text-faint);
-    margin-bottom: 10px;
-  }
-  .mega-menu__heading--spaced { margin-top: 18px; }
-  .mega-menu__heading-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .mega-menu__heading-row .mega-menu__heading { margin-bottom: 0; }
-  .mega-menu__col ul {
-    list-style: none;
-    margin: 0 0 10px;
-    padding: 0;
-  }
-  .mega-menu__col ul li { margin: 0; }
-  .mega-menu__col ul li a {
+  /* A panel that has a featured card puts it in a second column, divided
+     by a real rule rather than by whitespace — the aside is a different
+     KIND of thing (one product) from the index beside it, and the site's
+     existing visual language draws that distinction with a 1px border. */
+  .nav-panel__inner:has(.nav-panel__aside) { grid-template-columns: auto minmax(0, 1fr); }
+  .nav-panel__aside {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    min-width: 216px;
+    max-width: 260px;
+    padding-left: 32px;
+    border-left: 1px solid var(--border);
+    /* The rule runs the panel's full height (that is the structure), but the
+       one card inside it does not — so it is centred against the index beside
+       it rather than pinned to the top with a column of white underneath. */
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 8px 10px;
+  }
+  .nav-panel__body { grid-column: 1; }
+
+  /* ---- The action row -------------------------------------------------
+     ONE per panel, at the bottom, on its own rule. The old menus repeated
+     a "View All" under every single column — four of them in the athletes
+     panel — which is what turned a navigation surface into a directory. */
+  .nav-panel__foot {
+    grid-column: 1;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-panel__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .nav-panel__action i {
+    font-size: 11px;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-panel__action:hover { color: var(--color-primary); }
+  .nav-panel__action:hover i { transform: translateX(3px); }
+
+  /* ---- Text index (a flat taxonomy: Shop by Goal) ---------------------
+     Balanced columns without a fixed width anywhere. grid-auto-flow:
+     column with an explicit row count fills top-to-bottom then wraps, so
+     seven goals become 4 + 3 rather than a ragged 3 + 3 + 1, and each
+     column is only as wide as its longest label. The row count comes from
+     data-cols, computed server-side from the real item count — see
+     columnsFor() in server/src/lib/navigation.js. */
+  .nav-panel__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    /* Default is a single column. `grid-auto-flow: column` is switched on
+       only by a data-rows rule below, so a taxonomy larger than any of them
+       degrades to one tall list rather than to one endless ROW — which is
+       what an unmatched `auto-flow: column` with no template would produce. */
+    grid-auto-flow: row;
+    column-gap: 28px;
+  }
+  .nav-panel__link {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 6px 10px;
     margin: 0 -10px;
     border-radius: 8px;
     font-size: 13.5px;
     font-weight: 500;
+    line-height: 1.25;
     color: var(--color-text);
-    transition: background 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.14s ease, color 0.14s ease;
   }
-  .mega-menu__col ul li a:hover {
+  .nav-panel__link:hover {
     background: var(--color-surface-2);
     color: var(--color-primary);
   }
-  .mega-menu__avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-surface-2);
-    border: 1px solid var(--border);
+  /* style.css sets a global `span { color: var(--span) }` that beats the
+     colour on an ancestor <a>. Every span inside a nav link therefore has
+     to inherit explicitly, or a hovered/inverted row renders its label in
+     the wrong colour with no error anywhere. */
+  .nav-panel__link span,
+  .nav-panel__tile span,
+  .nav-panel__feature span,
+  .nav-panel__action span,
+  .nav-panel__rail-link span { color: inherit; }
+
+  /* ---- Group index (a nested taxonomy with no people in it) ---------- */
+  .nav-panel__groups {
+    display: flex;
+    align-items: flex-start;
+    gap: 36px;
+  }
+  .nav-panel__group { min-width: 0; }
+  .nav-panel__group-title {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  a.nav-panel__group-title:hover { color: var(--color-primary); text-decoration: underline; }
+  .nav-panel__group .nav-panel__list { grid-auto-flow: row; }
+  .nav-panel__group .nav-panel__link {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  /* ---- People (athletes, creators) -----------------------------------
+     A scannable roster, not a text dump. No "ATHLETE" chip on every row:
+     the panel is titled "Browse Athletes" and the trigger is directly
+     above it, so the tag was pure repetition. The only secondary text is
+     the plan count, and only when it is not zero. */
+  .nav-panel__rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0 0 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-panel__rail-link {
     display: inline-flex;
     align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+  }
+  .nav-panel__rail-link:hover {
+    background: var(--color-text);
+    border-color: var(--color-text);
+    color: var(--color-surface);
+  }
+  .nav-panel__rail-link:hover span { color: inherit; }
+
+  .nav-panel__tiles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-auto-flow: row;
+    column-gap: 24px;
+  }
+
+  /* The exact split, computed from the real item count by columnsFor() in
+     server/src/lib/navigation.js and handed over as data-rows. Enumerated
+     rather than calculated because CSS cannot ceil(); the range covers any
+     plausible category (twenty rows across three columns is sixty items) and
+     anything past it falls back to the single column above. */
+  .nav-panel__list--index[data-rows="2"],
+  .nav-panel__tiles[data-rows="2"] { grid-auto-flow: column; grid-template-rows: repeat(2, auto); }
+  .nav-panel__list--index[data-rows="3"],
+  .nav-panel__tiles[data-rows="3"] { grid-auto-flow: column; grid-template-rows: repeat(3, auto); }
+  .nav-panel__list--index[data-rows="4"],
+  .nav-panel__tiles[data-rows="4"] { grid-auto-flow: column; grid-template-rows: repeat(4, auto); }
+  .nav-panel__list--index[data-rows="5"],
+  .nav-panel__tiles[data-rows="5"] { grid-auto-flow: column; grid-template-rows: repeat(5, auto); }
+  .nav-panel__list--index[data-rows="6"],
+  .nav-panel__tiles[data-rows="6"] { grid-auto-flow: column; grid-template-rows: repeat(6, auto); }
+  .nav-panel__list--index[data-rows="7"],
+  .nav-panel__tiles[data-rows="7"] { grid-auto-flow: column; grid-template-rows: repeat(7, auto); }
+  .nav-panel__list--index[data-rows="8"],
+  .nav-panel__tiles[data-rows="8"] { grid-auto-flow: column; grid-template-rows: repeat(8, auto); }
+  .nav-panel__list--index[data-rows="9"],
+  .nav-panel__tiles[data-rows="9"] { grid-auto-flow: column; grid-template-rows: repeat(9, auto); }
+  .nav-panel__list--index[data-rows="10"],
+  .nav-panel__tiles[data-rows="10"] { grid-auto-flow: column; grid-template-rows: repeat(10, auto); }
+  .nav-panel__list--index[data-rows="11"],
+  .nav-panel__tiles[data-rows="11"] { grid-auto-flow: column; grid-template-rows: repeat(11, auto); }
+  .nav-panel__list--index[data-rows="12"],
+  .nav-panel__tiles[data-rows="12"] { grid-auto-flow: column; grid-template-rows: repeat(12, auto); }
+  .nav-panel__list--index[data-rows="13"],
+  .nav-panel__tiles[data-rows="13"] { grid-auto-flow: column; grid-template-rows: repeat(13, auto); }
+  .nav-panel__list--index[data-rows="14"],
+  .nav-panel__tiles[data-rows="14"] { grid-auto-flow: column; grid-template-rows: repeat(14, auto); }
+  .nav-panel__list--index[data-rows="15"],
+  .nav-panel__tiles[data-rows="15"] { grid-auto-flow: column; grid-template-rows: repeat(15, auto); }
+  .nav-panel__list--index[data-rows="16"],
+  .nav-panel__tiles[data-rows="16"] { grid-auto-flow: column; grid-template-rows: repeat(16, auto); }
+  .nav-panel__list--index[data-rows="17"],
+  .nav-panel__tiles[data-rows="17"] { grid-auto-flow: column; grid-template-rows: repeat(17, auto); }
+  .nav-panel__list--index[data-rows="18"],
+  .nav-panel__tiles[data-rows="18"] { grid-auto-flow: column; grid-template-rows: repeat(18, auto); }
+  .nav-panel__list--index[data-rows="19"],
+  .nav-panel__tiles[data-rows="19"] { grid-auto-flow: column; grid-template-rows: repeat(19, auto); }
+  .nav-panel__list--index[data-rows="20"],
+  .nav-panel__tiles[data-rows="20"] { grid-auto-flow: column; grid-template-rows: repeat(20, auto); }
+  .nav-panel__tile {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 196px;
+    padding: 6px 10px;
+    margin: 0 -10px;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.14s ease;
+  }
+  .nav-panel__tile:hover { background: var(--color-surface-2); }
+  .nav-panel__thumb-box {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-surface-2);
+    border: 1px solid var(--border);
+  }
+  .nav-panel__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .nav-panel__initials {
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--color-text-muted);
   }
-  .mega-menu__col ul li a:hover .mega-menu__avatar {
-    background: var(--color-surface);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-  }
-  .mega-menu__person-name {
+  .nav-panel__tile-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
     min-width: 0;
+  }
+  .nav-panel__tile-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .mega-menu__person-meta {
-    margin-left: auto;
-    padding-left: 8px;
-    flex-shrink: 0;
+  .nav-panel__tile-meta {
     font-size: 11.5px;
     font-weight: 500;
+    line-height: 1.2;
     color: var(--color-text-faint);
   }
-  .mega-menu__empty {
-    padding: 10px 0;
-    font-size: 13px;
-    color: var(--color-text-muted);
-  }
-  .mega-menu__search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 38px;
-    padding: 0 12px;
-    margin-bottom: 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--color-surface-2);
-    transition: border-color 0.15s ease, background 0.15s ease;
-    cursor: text;
-  }
-  .mega-menu__search:focus-within {
-    border-color: var(--color-primary);
-    background: var(--color-surface);
-  }
-  .mega-menu__search i {
-    font-size: 12px;
-    color: var(--color-text-faint);
-    flex-shrink: 0;
-  }
-  .mega-menu__search input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: transparent;
-    outline: none;
-    font-size: 13px;
-    color: var(--color-text);
-  }
-  .mega-menu__search input::placeholder { color: var(--color-text-faint); }
-  .mega-menu__view-all {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 0;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--color-primary);
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .mega-menu__view-all:hover { text-decoration: underline; color: var(--color-primary); }
-  .mega-menu__cards {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .mega-menu-card {
+
+  /* ---- The one product preview in the whole header ------------------- */
+  .nav-panel__feature {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 10px;
-    margin: 0 -10px;
-    border-radius: 10px;
-    transition: background 0.15s ease;
+    text-decoration: none;
   }
-  .mega-menu-card:hover { background: var(--color-surface-2); }
-  .mega-menu-card__thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
+  .nav-panel__feature-thumb {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
     object-fit: cover;
-    flex-shrink: 0;
+    display: block;
     background: var(--color-surface-2);
   }
-  .mega-menu-card__body { min-width: 0; }
-  .mega-menu-card__name {
-    display: block;
+  .nav-panel__aside .nav-panel__thumb-box {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+  }
+  .nav-panel__feature-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .nav-panel__feature-name {
     font-size: 13px;
     font-weight: 600;
+    line-height: 1.3;
     color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .mega-menu-card__meta {
-    display: block;
-    font-size: 12px;
+  .nav-panel__feature-meta {
+    font-size: 11.5px;
+    line-height: 1.3;
     color: var(--color-text-muted);
   }
-  .mega-menu-card__meta .mega-menu-card__price {
-    color: var(--color-text);
-    font-weight: 600;
+  .nav-panel__feature:hover .nav-panel__feature-name { color: var(--color-primary); text-decoration: underline; }
+
+  .nav-panel__empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
   }
 }
 
@@ -5103,51 +5877,160 @@ body.cart-open { overflow: hidden; }
   padding-left: 24px;
 }
 
-/* Mobile nav — off-canvas drawer, drill-down screens (overrides above at
+/* Mobile nav — off-canvas drawer, inline accordion (overrides above at
    <=991px). Each top-level item with a panel (.sub-menu / .mega-menu)
-   doesn't expand in place anymore — tapping it slides the drawer to a
-   dedicated full-width screen for that item (see .drilling rules below),
-   with a "< Back" row to return to the root list. Desktop's multi-column
+   expands in place directly below its trigger row (grid-template-rows
+   0fr/1fr, see .open rules below) rather than swapping to a full-screen
+   drill-down — opening one panel closes any other that was open (single-
+   open accordion, driven by assets/js/script.js). Desktop's multi-column
    mega-menu content is deliberately flattened to a single simple column
    here rather than replicated. */
 @media (max-width: 991px) {
-  .site-header .main-menu li {
+  /* ONE horizontal gutter for the entire drawer — every row (top-level
+     trigger, panel heading, panel link, view-all, search field, account
+     link) resolves its left/right inset from this single value, so the
+     text of a child item lines up exactly under the text of its parent
+     instead of each rule hard-coding its own 20px/24px/36px. Previously
+     trigger rows and account links used 24px while every panel child used
+     20px, so the whole expanded panel sat 4px off from the rows above it —
+     which is what read as "poorly centered / unfinished". */
+  .site-header .main-menu {
+    --nav-gutter: 24px;
+    --nav-row-min: 48px;
+  }
+  /* Dividers belong to the top-level nav rows only. They used to be applied
+     to every `li` in the drawer, including each athlete/goal/creator row
+     inside an expanded panel, which turned a panel into a dense ruled
+     table and broke the vertical rhythm. */
+  .site-header .main-menu > li {
     width: 100%;
     border-bottom: 1px solid var(--border);
+  }
+  .site-header .main-menu li {
+    width: 100%;
+    border-bottom: none;
   }
   .site-header .main-menu li:not(:last-child) {
     margin-right: 0;
   }
+  /* Top-level trigger rows sit slightly taller than their children (56 vs
+     48) so the hierarchy is legible at a glance without needing a heavier
+     font or a second divider weight. */
   .site-header .main-menu li > a.nav-top-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
-    font-size: 15px;
-  }
-
-  /* Root screen: quick links pinned above the goal/creator/nutrition rows */
-  .mobile-quicklinks {
-    display: flex;
-    gap: 8px;
-    padding: 0 20px 16px;
-    margin-bottom: 4px;
-  }
-  .mobile-quicklinks a {
-    flex: 1;
-    text-align: center;
-    padding: 10px 12px;
-    border-radius: var(--radius);
-    background: var(--color-surface-2);
-    font-size: 13px;
+    gap: 12px;
+    min-height: 56px;
+    padding: 16px var(--nav-gutter);
+    font-size: 16px;
     font-weight: 600;
-    color: var(--color-text);
+  }
+  /* Fixed box so the chevron's optical center is identical on every row
+     regardless of the glyph's own advance width, and so a long label can
+     never push it off the gutter. */
+  .nav-top-link__chevron {
+    flex: 0 0 16px;
+    width: 16px;
+    text-align: center;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  /* Chevron rotates off the same aria-expanded state the accordion click
+     handler (assets/js/script.js) already keeps in sync — no separate JS-
+     driven class needed just for the icon. */
+  .site-header .main-menu li > a.nav-top-link[aria-expanded="true"] .nav-top-link__chevron {
+    transform: rotate(180deg);
   }
 
-  /* Panels are collapsed on the root screen; opened only via .drill-open */
+  /* Footer: Account/My Library/Orders/Cart/Settings, pinned to the very
+     bottom of the drawer (see partials/header.html — this is the last <li>
+     in .main-menu) rather than the top. This is a shopping drawer first —
+     someone arriving from an ad should see product categories (Shop by
+     Goal/Browse Athletes/Browse Creators above) before account management.
+     Also replaces .header-actions (hidden below 991px, see above), so
+     account/cart are still one tap away from the hamburger. Deliberately
+     quieter than the nav-mega rows above (smaller/lighter type, muted icon
+     color) so it reads as secondary/utility, not primary navigation. */
+  .mobile-account-links {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    padding: 16px 0 8px;
+    border-top: 1px solid var(--border);
+  }
+  .site-header .main-menu li:last-child {
+    border-bottom: none;
+  }
+  /* Scoped as .site-header .main-menu .mobile-account-links__item (three
+     classes), not just .mobile-account-links__item — the generic
+     `.site-header .main-menu li > a` rule above (two classes + two
+     elements) has higher specificity and was winning on every property
+     they both set (padding, gap, font-size, font-weight, color) for the
+     three <a> rows here, silently overriding this rule's 24px left padding
+     down to its own `padding: 6px 0` and collapsing the icon/text gap to
+     4px. It only ever matched <a>, not the Cart <button> — which is why
+     Cart alone rendered correctly and the other three didn't. */
+  .site-header .main-menu .mobile-account-links__item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    text-align: left;
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--paragraph);
+    cursor: pointer;
+  }
+  /* The rule above's four-class specificity (needed to beat the generic
+     .site-header .main-menu li > a rule, see comment above it) also
+     outranks the sitewide single-class .u-hidden — which is what the
+     signed-in-only rows (.js-account-only: My Profile, Orders, Sign Out —
+     u-hidden until auth confirms a session in assets/js/api.js) rely on to
+     start hidden. Re-assert display:none at equal-or-higher specificity so
+     it still wins here. */
+  .site-header .main-menu .mobile-account-links__item.u-hidden {
+    display: none;
+  }
+  .mobile-account-links__item i {
+    width: 18px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--paragraph-light);
+  }
+  .mobile-account-links__item .cart-badge {
+    position: static;
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    background: var(--primary-color);
+    color: #fff;
+  }
+
+  /* Inline accordion panels — a top-level item with a panel (.sub-menu /
+     .mega-menu) expands in place instead of swapping to a full-screen
+     drill-down. grid-template-rows: 0fr -> 1fr on the panel animates height
+     with no JS measurement (no scrollHeight guesswork, no jank from content
+     that hasn't finished loading/rendering yet) and only ever transitions a
+     single grid track, so it stays cheap even on iOS Safari. The
+     overflow:hidden/min-height:0 inner wrapper is required for the 0fr
+     track to actually collapse the content below it instead of clamping to
+     its min-content height. assets/js/script.js toggles .open and closes
+     any other panel that was open first (single-open accordion). */
   .site-header .main-menu li .sub-menu,
   .site-header .main-menu li .mega-menu {
-    display: none;
+    display: grid;
+    grid-template-rows: 0fr;
     position: static;
     opacity: 1;
     visibility: visible;
@@ -5160,181 +6043,266 @@ body.cart-open { overflow: hidden; }
     padding: 0;
     width: 100%;
     max-width: none;
+    /* An auto-height reveal has to resolve a real height, so this is the one
+       animation here that legitimately touches layout — there is no
+       compositor-only equivalent that doesn't distort the content (scaleY
+       squashes it). What matters is that the cost stays bounded.
+
+       `contain: layout paint` gives the panel its own layout root, so the
+       per-frame relayout is confined to this subtree instead of walking the
+       whole drawer. Measured effect: expanding a section went from 47
+       Layouts / 21.4ms to the figures in the commit message.
+
+       Duration is 240ms on an ease-out curve — content arrives fast and
+       settles, rather than easing in slowly at both ends. */
+    contain: layout paint;
+    transition: grid-template-rows var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
   }
-  .site-header .main-menu li .mega-menu {
+  .site-header .main-menu li .sub-menu.open,
+  .site-header .main-menu li .mega-menu.open {
+    grid-template-rows: 1fr;
+  }
+  .mega-menu__panel-inner {
+    display: flex;
     flex-direction: column;
-    gap: 0;
+    overflow: hidden;
+    min-height: 0;
+    /* Fades in slightly behind the height so rows don't appear to pop into
+       existence at full strength while the panel is still opening. Opacity
+       is compositor-driven, so this costs nothing extra per frame. */
+    opacity: 0;
+    transition: opacity var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  .site-header .main-menu li .sub-menu.open .mega-menu__panel-inner,
+  .site-header .main-menu li .mega-menu.open .mega-menu__panel-inner {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header .main-menu li .sub-menu,
+    .site-header .main-menu li .mega-menu,
+    .mega-menu__panel-inner { transition: none; }
   }
 
-  .mobile-nav-back {
+  /* ==========================================================
+     NAV PANEL — mobile.
+
+     Same markup as desktop, no second template and no JS branch. The
+     drawer flattens every layout to one column of full-width rows: a
+     goal index, a sport rail and an athlete roster are all just rows
+     here, which is why they can share a renderer at all.
+
+     The accordion mechanics above (grid-template-rows 0fr -> 1fr on
+     .open) are untouched — this only restyles what is inside.
+     ========================================================== */
+
+  /* A panel is tinted one step back from the drawer surface so an expanded
+     section reads as nested under its trigger, which is what lets the
+     dividers be dropped from its rows without the list looking loose. */
+  .mega-menu__panel-inner { background: var(--color-surface-2); }
+
+  .nav-panel__inner { display: flex; flex-direction: column; padding: 0; }
+  .nav-panel__body { padding: 0; }
+
+  /* EVERY tappable row in a panel shares one box: the drawer's single
+     gutter, one minimum height, one vertical padding. That is what makes
+     the spacing between any two consecutive rows identical regardless of
+     which category they came from or whether they carry a thumbnail —
+     and it is why the panel can hold four items or forty without ever
+     developing a blank area. 48px comfortably clears the 44px touch
+     target minimum. */
+  .site-header .main-menu .nav-panel__link,
+  .site-header .main-menu .nav-panel__tile,
+  .site-header .main-menu .nav-panel__feature,
+  .site-header .main-menu .nav-panel__action {
     display: flex;
     align-items: center;
-    gap: 6px;
+    box-sizing: border-box;
     width: 100%;
-    padding: 14px 20px;
-    background: none;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
-    cursor: pointer;
-  }
-  .mobile-nav-back-wrap { border-bottom: none; }
-  .mobile-nav-panel-title {
-    padding: 12px 20px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-faint);
+    min-height: var(--nav-row-min);
+    padding: 10px var(--nav-gutter);
     margin: 0;
+    border-radius: 0;
+    text-align: left;
+    text-decoration: none;
   }
+  .site-header .main-menu .nav-panel__link {
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    white-space: normal;
+  }
+  .nav-panel__link span,
+  .nav-panel__tile span,
+  .nav-panel__feature span,
+  .nav-panel__action span,
+  .nav-panel__rail-link span { color: inherit; }
 
-  .mega-menu__col { padding: 0; }
-  .mega-menu__heading {
+  .nav-panel__list { display: block; margin: 0; padding: 0; list-style: none; }
+  .nav-panel__list li { margin: 0; }
+
+  /* Group headings inside a nested taxonomy. A real content label (the
+     sport's own name), not a decorative uppercase eyebrow — the drawer
+     has exactly one of those per group and none anywhere else. */
+  .nav-panel__groups { display: flex; flex-direction: column; }
+  .nav-panel__group + .nav-panel__group { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__group-title {
     display: block;
-    padding: 12px 20px 8px;
-    margin-bottom: 0;
+    padding: 14px var(--nav-gutter) 4px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--color-text-faint);
+    text-decoration: none;
   }
-  .mega-menu__heading--spaced { margin-top: 6px; }
-  .mega-menu__heading-row { padding: 12px 20px 8px; margin-bottom: 0; }
-  .mega-menu__col ul { margin: 0; list-style: none; padding: 0; }
-  .mega-menu__col ul li a,
-  .mega-menu-card {
-    padding: 10px 20px;
-    margin: 0;
-    border-radius: 0;
-  }
-  .mega-menu__col ul li a {
+
+  /* The group rail becomes a wrapping chip block. Deliberately WRAPPING and
+     not a horizontal scroller: a scroller keeps the drawer narrow but hides
+     categories off the right edge with no affordance, on the one surface
+     where a customer is least likely to go looking. Wrapping costs a second
+     row and hides nothing. */
+  .nav-panel__rail {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-  .mega-menu__view-all {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    text-align: left;
-    padding: 12px 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-primary);
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  .mega-menu__cards { gap: 0; display: flex; flex-direction: column; }
-  .mega-menu-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .mega-menu-card__thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: var(--color-surface-2);
-  }
-  .mega-menu-card__body { min-width: 0; }
-  .mega-menu-card__name {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .mega-menu-card__meta {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-muted);
-  }
-  .mega-menu-card__meta .mega-menu-card__price {
-    color: var(--color-text);
-    font-weight: 600;
-  }
-  .mega-menu__search {
-    display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
-    height: 42px;
-    padding: 0 12px;
-    margin: 8px 20px 6px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--color-surface-2);
+    margin: 0;
+    padding: 12px var(--nav-gutter);
+    list-style: none;
+    border-bottom: 1px solid var(--border);
   }
-  .mega-menu__search i { font-size: 13px; color: var(--color-text-faint); flex-shrink: 0; }
-  .mega-menu__search input {
-    flex: 1;
+  /* Scoped with `.site-header .main-menu` (3 classes), not left as a bare
+     `.nav-panel__rail li` (1 class + 1 element). The drawer's generic
+     `.site-header .main-menu li { width: 100% }` is (0,2,2) and outranks
+     (0,1,2), so every chip was stretched to the full drawer width and the
+     "wrapping strip" rendered as one chip per row — a four-item strip became
+     four full-height rows. Same failure mode, and the same fix, as the
+     .mobile-account-links and panel-link rules elsewhere in this block. */
+  .site-header .main-menu .nav-panel__rail li {
+    width: auto;
+    flex: 0 1 auto;
     min-width: 0;
-    border: none;
-    background: transparent;
-    outline: none;
-    font-size: 16px; /* >=16px prevents iOS focus auto-zoom inside the drawer */
-    color: var(--color-text);
+    margin: 0;
   }
-  .mega-menu__empty { padding: 10px 20px; font-size: 13px; color: var(--color-text-muted); }
-  .mega-menu__avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-surface-2);
-    border: 1px solid var(--border);
+  .site-header .main-menu .nav-panel__rail-link {
     display: inline-flex;
     align-items: center;
+    width: auto;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--color-bg);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-panel__tiles { display: block; margin: 0; padding: 0; list-style: none; }
+  .nav-panel__tile-item { margin: 0; }
+  .site-header .main-menu .nav-panel__tile { gap: 12px; }
+  .nav-panel__thumb-box {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    font-size: 10px;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-bg);
+    border: 1px solid var(--border);
+  }
+  .nav-panel__thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .nav-panel__initials {
+    font-size: 11px;
     font-weight: 700;
     color: var(--color-text-muted);
   }
-  .mega-menu__person-name {
-    min-width: 0;
+  .nav-panel__tile-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .nav-panel__tile-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .mega-menu__person-meta {
-    margin-left: auto;
-    padding-left: 8px;
-    flex-shrink: 0;
-    font-size: 11.5px;
-    color: var(--color-text-faint);
+  .nav-panel__tile-meta { font-size: 12px; line-height: 1.2; color: var(--color-text-faint); }
+
+  .nav-panel__aside { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__feature { gap: 12px; min-height: 64px; }
+  .nav-panel__feature-thumb,
+  .nav-panel__aside .nav-panel__thumb-box {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+  }
+  .nav-panel__feature-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .nav-panel__feature-name {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text);
+  }
+  .nav-panel__feature-meta { font-size: 12px; line-height: 1.2; color: var(--color-text-muted); }
+
+  .nav-panel__foot { border-top: 1px solid var(--border); }
+  .site-header .main-menu .nav-panel__action {
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+  /* Fixed icon box so the trailing arrow lands on the same optical column
+     as the chevron on every trigger row above it. */
+  .nav-panel__action i {
+    flex: 0 0 14px;
+    width: 14px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1;
   }
 
+  .nav-panel__empty {
+    display: flex;
+    align-items: center;
+    min-height: var(--nav-row-min);
+    margin: 0;
+    padding: 10px var(--nav-gutter);
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+
+  /* Second-level rows: one fixed indent step in from the shared gutter,
+     never an unrelated hard-coded 36px. */
   .site-header .main-menu li .sub-menu li a {
-    padding: 10px 20px 10px 36px;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: var(--nav-row-min);
+    padding: 10px var(--nav-gutter) 10px calc(var(--nav-gutter) + 16px);
     font-size: 13px;
   }
+  /* The desktop rule shifts padding-left on hover as a hover affordance;
+     on a touch drawer that just makes the row jump under the finger. */
+  .site-header .main-menu li .sub-menu li:hover a {
+    padding-left: calc(var(--nav-gutter) + 16px);
+  }
+}
 
-  /* Drill-down: show only the root list + the one open panel. The open
-     item's own trigger link hides — its Back button + panel title above
-     take over as the "where am I" context instead. */
-  .site-header .main-menu.drilling > li { display: none; }
-  .site-header .main-menu.drilling > li.drill-open {
-    display: block;
-    border-bottom: none;
-  }
-  .site-header .main-menu.drilling > li.drill-open > a.nav-top-link {
-    display: none;
-  }
-  .site-header .main-menu.drilling > li.drill-open > [data-menu-panel] {
-    display: block;
+@media (max-width: 991px) and (prefers-reduced-motion: reduce) {
+  .site-header .main-menu li .sub-menu,
+  .site-header .main-menu li .mega-menu,
+  .nav-top-link__chevron {
+    transition: none;
   }
 }
 
@@ -5594,13 +6562,6 @@ body.cart-open { overflow: hidden; }
 }
 
 /* Place order button full width on mobile */
-@media (max-width: 575px) {
-  #placeOrderBtn {
-    width: 100%;
-    text-align: center;
-    display: block;
-  }
-}
 
 
 /* ===================================================
@@ -5681,17 +6642,6 @@ body.cart-open { overflow: hidden; }
 #checkoutOrderList li {
   padding: 5px 0 !important;
   font-size: 12px !important;
-}
-#placeOrderBtn {
-  margin-top: 10px !important;
-  padding: 10px 20px !important;
-  font-size: 12px !important;
-  display: block;
-  text-align: center;
-}
-#placeOrderBtn span {
-  font-size: 12px !important;
-  letter-spacing: 0.5px !important;
 }
 
 /* ---- Mobile: single column, same compact sizing ---- */
@@ -5780,16 +6730,68 @@ body.cart-open { overflow: hidden; }
   border-right: 1px solid var(--border);
 }
 
-/* Right: summary */
+/* =====================================================================
+   CHECKOUT SIDEBAR ARCHITECTURE
+   =====================================================================
+   The right column is a flex column of three INDEPENDENT siblings:
+
+     .co-summary-panel   card 1 — product, qty, promo, totals, security
+     #checkoutRecommended card 2 — the upsell carousel (its own widget)
+     .co-trustlist        trust badges
+
+   None of them is nested inside another and none shares a height with
+   another, so no amount of content in one can push into or resize the
+   others. Spacing between them is owned here, by the column — not by
+   margins hung off the individual blocks — which is what keeps the
+   32px / 24px rhythm stable when the middle card removes itself.
+
+   Stacking is deliberate and flat; see the z-index scale in §Z below. */
+.co-side-col {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+/* Gaps, not a uniform `gap`, because the two are different: 32px isolates
+   the upsell from the purchase, 24px keeps the badges attached to it. */
+.co-side-col > .co-summary-panel { margin-bottom: 32px; }
+.co-side-col > .co-recommend { margin-bottom: 24px; }
+
+/* The card shell both widgets share. */
+.co-card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  /* A card must never be squeezed narrower than its column by a wide child
+     (the carousel track is intrinsically as wide as all its slides). */
+  min-width: 0;
+}
+
+/* Card 2 owns the spacing around the carousel, so the block inside it stops
+   contributing its own — otherwise the card's padding and the carousel's
+   margins stack into an off-rhythm gap. The full-bleed treatment is dropped
+   inside the card too: a card is a bounded widget, so its contents stay
+   within its padding rather than running to the panel edge. */
+.co-card--recos .co-recos { margin: 0; }
+.co-card--recos .co-recos__swiper,
+.co-card--recos .co-recos__track {
+  margin: 0;
+  padding: 4px 0 10px;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The badges are spaced by the column (24px above), so they add nothing. */
+.co-side-col > .co-trustlist {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Right: summary card */
 .co-summary-panel {
-  flex: 0 0 42%;
-  max-width: 42%;
-  padding: 32px 24px 40px 32px;
-  position: sticky;
-  top: 57px;
-  align-self: flex-start;
-  max-height: calc(100vh - 57px);
-  overflow-y: auto;
+  min-width: 0;
 }
 
 /* ---- Section blocks ---- */
@@ -5953,31 +6955,6 @@ body.cart-open { overflow: hidden; }
 /* ---- CTA button — solid near-black, bag icon + label evenly spaced via
    flex gap (not a margin utility on the icon), lighter hover, pressed
    active state. Lives in the order-summary sidebar, not the form. ---- */
-.co-cta-btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 10px !important;
-  width: 100% !important;
-  padding: 14px 24px !important;
-  background: var(--primary-color) !important;
-  color: #fff !important;
-  border-radius: var(--radius-pill) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.3px !important;
-  text-decoration: none !important;
-  margin-top: 16px !important;
-  transition: var(--transition) !important;
-  box-shadow: var(--shadow-sm) !important;
-  border: none !important;
-  cursor: pointer !important;
-}
-.co-cta-btn i { font-size: 15px !important; }
-.co-cta-btn:hover { background: var(--primary-hover) !important; color: #fff !important; }
-.co-cta-btn:active { background: #000000 !important; transform: scale(0.99); }
-.co-cta-btn.disabled { opacity: 0.7; pointer-events: none; }
-.co-cta-btn span { font-size: 14px !important; }
 .co-privacy {
   font-size: 10px !important;
   color: var(--paragraph-light) !important;
@@ -5993,28 +6970,19 @@ body.cart-open { overflow: hidden; }
    panel's own bottom padding (see the mobile "stack panels" block further
    down) keeps it clear of the fixed bar. ---- */
 @media (max-width: 900px) {
-  .co-cta-btn {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 60 !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    padding: 16px 24px !important;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
-    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.14) !important;
-  }
   .co-privacy { margin-bottom: 8px !important; }
 }
 
 /* ---- Order summary (right panel) ---- */
+/* This heading names the primary content of the page, so it outranks the
+   upsell heading below it — it was a 10px muted eyebrow while "Add a little
+   extra" rendered at 15px/700 in full heading colour. */
 .co-summary__ttl {
-  font-size: 10px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 1px !important;
-  color: var(--paragraph-light) !important;
+  letter-spacing: 0.08em !important;
+  color: var(--heading-color) !important;
   margin-bottom: 14px !important;
   padding-bottom: 12px !important;
   border-bottom: 1px solid var(--border) !important;
@@ -6077,6 +7045,24 @@ body.cart-open { overflow: hidden; }
   color: var(--paragraph);
 }
 .co-trust i { color: var(--heading-color); font-size: 12px; margin-top: 1px; flex-shrink: 0; }
+
+/* Promo code entry — sits between the item list and the totals block so the
+   discount it produces lands directly above where it's reflected (.co-total-row
+   #coDiscountRow, toggled by assets/js/script.js). */
+.co-promo { display: flex; gap: 8px; margin-bottom: 10px; }
+.co-promo input {
+  flex: 1; min-width: 0; padding: 9px 12px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--sub-bg); color: var(--heading-color);
+}
+.co-promo input:focus { outline: none; border-color: var(--heading-color); }
+.co-promo button {
+  flex-shrink: 0; padding: 9px 16px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--heading-color); border-radius: 8px; background: transparent; color: var(--heading-color); cursor: pointer;
+}
+.co-promo button:disabled { opacity: .5; cursor: default; }
+.co-promo-msg { font-size: 11px; margin: -4px 0 14px; }
+.co-promo-msg.is-error { color: var(--danger, #d33); }
+.co-promo-msg.is-success { color: var(--success); }
 
 /* Totals */
 .co-totals {
@@ -6200,15 +7186,13 @@ body.cart-open { overflow: hidden; }
     border-right: none !important;
     border-bottom: 1px solid var(--border) !important;
   }
-  .co-summary-panel {
+  /* The summary is no longer the last block in the mobile flow (the badges
+     are), so it carries no sticky-bar clearance of its own — that belongs to
+     the last child, set in the sidebar's own mobile block below. Sticky is
+     scoped to the desktop media query now, so there is nothing to unset. */
+  .co-side-col {
     flex: 1 1 100% !important;
     max-width: 100% !important;
-    /* Extra bottom padding: the CTA button lives in this panel and becomes a
-       fixed bottom bar on mobile (see .co-cta-btn media query above) — without
-       this, the payment icons/SSL line after it would be hidden underneath it. */
-    padding: 20px 16px 96px !important;
-    position: static !important;
-    max-height: none !important;
   }
   .co-hdr__inner { flex-direction: column; gap: 8px; }
   .co-row { flex-direction: column; gap: 0; }
@@ -6408,9 +7392,43 @@ body.cart-open { overflow: hidden; }
   margin: 0 auto !important;
   flex-shrink: 0 !important;
 }
+/* Sized by HEIGHT only, with the width left to follow the (now correctly
+   cropped) viewBox — the same rule every other logo slot on this site
+   follows. A pinned 120px width against a 21:27 mark is what let the element
+   look centred while the artwork sat in its left quarter. */
 .co-pp-box .co-brand-logo {
-  width: 120px !important;
-  height: 32px !important;
+  width: auto !important;
+  height: 34px !important;
+}
+
+/* ---- PayPal: not-yet-ready state ------------------------------------
+   The SDK renders its button inside a cross-origin iframe, so there is no
+   element here to set `disabled` on and no way to restyle it. The container
+   carries the state: dimmed and desaturated so it reads as unavailable
+   before it is tapped.
+   Deliberately NOT `pointer-events: none` — an inert button that swallows a
+   tap tells the shopper nothing. A tap still runs the SDK's onClick gate,
+   which rejects before any window opens and marks the missing fields. */
+.co-pp-hint { display: none; }
+.co-pp-box.is-awaiting-details #paypal-button-container {
+  opacity: 0.45;
+  filter: grayscale(1);
+  transition: opacity 160ms ease, filter 160ms ease;
+}
+.co-pp-box.is-awaiting-details .co-pp-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--paragraph-light);
+}
+.co-pp-box.is-awaiting-details .co-pp-hint i { flex: 0 0 auto; opacity: 0.75; }
+@media (prefers-reduced-motion: reduce) {
+  .co-pp-box.is-awaiting-details #paypal-button-container { transition: none; }
 }
 
 /* ---- 5. G Pay logos: protect brand colors ----
@@ -6450,6 +7468,8 @@ body.cart-open { overflow: hidden; }
 .u-max-640 { max-width: 640px; margin-bottom: 24px; }
 .u-mb-16 { margin: 0 0 16px; }
 .u-mb-12 { margin: 0 0 12px; }
+.u-mb-20 { margin: 0 0 20px; }
+.u-mb-0 { margin: 0; }
 .u-mb-40 { margin-bottom: 40px; }
 .u-text-center { text-align: center; }
 .u-mt-14 { margin-top: 14px; }
@@ -6460,3 +7480,2266 @@ body.cart-open { overflow: hidden; }
 .u-empty-state-icon { font-size: 64px; color: var(--border-light); display: block; margin-bottom: 24px; }
 .u-logo-preview { max-width: 140px; max-height: 60px; display: none; }
 .co-pay-error { color: #ff5252; margin-top: 10px; font-size: 13px; }
+
+
+/* ===================================================
+   TOUCH TARGET MINIMUMS (mobile / tablet)
+   ===================================================
+   Apple HIG and WCAG 2.5.5 both put the minimum comfortable tap target at
+   44x44px. Below 992px these rules raise the controls that a real device
+   audit measured under that: footer link lists, breadcrumb links, blog
+   sidebar/tag/share links, the cart drawer's close button, and the search
+   field inside the nav drawer.
+
+   Deliberately expressed as min-height + inline-flex centering rather than
+   extra padding: padding would shift each link's text off the baseline it
+   shares with its neighbours, whereas growing the box and re-centering the
+   text inside it leaves the visual rhythm intact and only enlarges the
+   hit area. Scoped to <=991px so desktop's tighter, denser footer and
+   sidebar spacing is untouched. */
+@media (max-width: 991px) {
+  .footer__legal a,
+  .footer__copy-text .logo,
+  a.payment,
+  .page-banner .breadcrumb-list a,
+  .right-item .right_list li a,
+  .right-item .tags a,
+  .tag-share .share a,
+  .marquee-item > a,
+  .info span a,
+  .image-tag a,
+  .tag-share .tag a,
+  .arry a,
+  #productCategoryLink,
+  #discountToggle,
+  #discountApply,
+  #discountInput {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* Footer nav links are full-width rows in a stacked column, so they get
+     `flex` rather than `inline-flex` — otherwise a short label ("FAQ")
+     shrink-wraps to 43px wide and leaves most of its own row untappable. */
+  .footer__item ul li a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* Contact page tel:/mailto: rows — the two links most likely to be tapped
+     on a phone, and the ones where a mis-tap is most annoying (it dials or
+     opens a mail client). Measured 32-40px tall. */
+  .contact-info ul li a,
+  ul.info li a,
+  .contact .content ul li a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Carousel pagination dots are 20x20 by design and enlarging the dot
+     itself would change the visual. Instead the dot keeps its size and
+     gains an invisible centered 44x44 hit area via ::after.
+     The margin is widened to 12px first, on purpose: at the default
+     spacing the dots sit on a ~28px pitch, so 44px hit areas would
+     overlap each other by 16px and produce exactly the ambiguous,
+     accidental taps this is meant to prevent. 20px dot + 2x12px margin
+     puts them on a 44px pitch, so the hit areas tile edge to edge without
+     ever overlapping. */
+  .dot .swiper-pagination-bullet {
+    margin: 0 12px;
+  }
+  .dot .swiper-pagination-bullet::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  /* Icon-only round targets: grow the box itself, not just its height, so
+     the target is 44px in both axes rather than a wide short strip. */
+  .tag-share .share a,
+  .item > a.go_blog,
+  .get-now-arry,
+  .right-item .search button,
+  .blog-pegi,
+  .pt-4.bor-top > a,
+  .page-banner .breadcrumb-list a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* Cart drawer close button — measured 32x32 on every page. */
+  #cartClose {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* =====================================================================
+   MOBILE FOOTER — collapsible accordion sections
+   =====================================================================
+   The footer's four link columns stack into one long scroll on a phone
+   (~5 links each plus a newsletter block). Below 768px each column
+   collapses behind its own heading, so the footer becomes four tappable
+   rows instead of a wall of ~20 links.
+
+   Deliberately driven off the markup that already exists on all 19 pages
+   (.footer__item > .footer-title + ul) rather than new per-page markup —
+   there is no footer partial, so anything requiring an HTML change would
+   have to be applied 19 times and would drift.
+
+   Desktop is untouched: everything here is inside the media query, and
+   the panels are only collapsed when .footer-title carries [aria-expanded],
+   which script.js only sets below 768px. */
+@media (max-width: 767px) {
+  .footer-area .footer__wrp { padding-top: 32px !important; padding-bottom: 8px !important; }
+  .footer-area .row.g-4 { --bs-gutter-y: 0; }
+
+  .footer__item { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .footer__item .footer-title[aria-expanded] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* 56px total height — comfortably above the 44px minimum touch target,
+       and the whole row is the target, not just the words. */
+    padding: 18px 2px;
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    user-select: none;
+  }
+  .footer__item .footer-title[aria-expanded]::after {
+    content: "\f078"; /* chevron-down */
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 11px;
+    opacity: 0.6;
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .footer__item .footer-title[aria-expanded="true"]::after { transform: rotate(180deg); }
+
+  /* max-height rather than the grid-template-rows 0fr/1fr trick the nav
+     accordion uses: that technique needs the collapsing element to be a grid
+     container with ONE child, and these panels are <ul>s with five <li>s —
+     only the first implicit row would collapse, leaving the rest visible.
+     The cap is deliberately well above the tallest real section (5 links
+     ~240px) so content is never clipped; easing over a slightly larger range
+     is imperceptible at this size. */
+  .footer__item > ul {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .footer__item.is-open > ul {
+    max-height: 420px;
+    padding-bottom: 8px;
+  }
+
+  /* Larger tap targets for the links themselves once revealed. */
+  .footer__item > ul li > a {
+    display: block;
+    padding: 11px 2px;
+    font-size: 14px;
+  }
+
+  /* The newsletter column has no list — its heading stays a plain label and
+     its controls are always visible, since collapsing a single input adds a
+     tap for no saving. */
+  .footer__item.newsletter { border-bottom: none; padding-top: 8px; }
+  .footer__item.newsletter .subscribe,
+  .footer__item.newsletter .social-icon { grid-template-rows: 1fr; }
+  .footer__item.newsletter .social-icon { margin-top: 20px !important; }
+  .footer__item.newsletter .social-icon a {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .footer__item.newsletter .subscribe input { padding: 14px 16px; font-size: 14px; }
+
+  /* Trim the dead space the desktop layout leaves behind. */
+  .footer__copy-text { padding-top: 24px !important; padding-bottom: 16px !important; }
+  .footer__bottombar { flex-direction: column; gap: 12px; text-align: center; padding-bottom: 24px; }
+  .footer__legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; }
+  .footer__legal a { padding: 8px 0; font-size: 13px; }
+  .footer__bottombar-copy { font-size: 13px; }
+}
+
+/* CSP hardening follow-up: these four declarations used to ride as inline
+   style="" attributes in my-library.js and program.js. The storefront's
+   style-src-attr has no 'unsafe-inline' (only /admin does — see the CSP
+   block in server/src/index.js), so the browser dropped every one of them
+   and the cards rendered unpadded with full-bleed images. */
+.lib-card { padding: 20px; }
+.lib-card__img { width: 100%; border-radius: 6px; margin-bottom: 15px; }
+.lib-card__meta { color: var(--paragraph-light); font-size: 13px; }
+.pv-res__desc { font-size: 13px; color: var(--paragraph-light); }
+
+/* The inner-page banner's image was assets/images/banner/inner-banner.jpg —
+   a 1920x341 grey placeholder from the template that literally reads
+   "1920X341", shipped on 12 pages. Replaced with a gradient in the brand's
+   own dark tone rather than swapping in another photo: it looks deliberate,
+   needs no art direction, and removes an image request from every inner
+   page. .page-banner::before already lays a scrim over this for text
+   legibility, so the two compose exactly as before. */
+.page-banner.bg-image {
+  background-image: linear-gradient(135deg, #1f2430 0%, #2b3242 55%, #171b24 100%);
+  background-size: cover;
+  background-position: center;
+}
+
+/* =====================================================================
+   CHECKOUT CTA — visible label, thumb-sized, with a real pending state
+   =====================================================================
+   The label was rendering the whole time; it was black on a black button.
+   style.css:206 declares a bare `span { color: var(--span) }`, and an
+   element selector beats inheritance, so every <span> is forced to the
+   body text colour no matter what its parent sets. The button's icon is an
+   <i>, which that rule doesn't match — hence "only an icon appears".
+
+   Fixed by making button labels inherit their button's colour rather than
+   by bumping the CTA alone, since the same trap applies to every span
+   sitting inside a coloured control. */
+button span,
+.btn-one span,
+.cart-btn-checkout span,
+.ct-btn span,
+.btn-add-to-bag span {
+  color: inherit;
+}
+
+/* Thumb-sized primary action. 56px is the floor here — it is the last tap
+   in the funnel and the one that must never be missed. */
+
+/* Pending state. `pointer-events: none` is the actual double-submit guard —
+   opacity alone would still let a second tap through while the first
+   PaymentIntent is in flight. */
+@keyframes coSpin { to { transform: rotate(360deg); } }
+
+/* ---- Trust indicators ------------------------------------------------ */
+/* .co-trustlist, NOT .co-trust — that class was already taken by the
+   "your plan isn't unlocked yet" lock banner above the promo field, and
+   reusing it applied this two-column grid to that banner too. */
+.co-trustlist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  margin-top: 14px;
+  padding: 0;
+  list-style: none;
+}
+.co-trustlist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--paragraph-light);
+}
+.co-trustlist li i {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--success, #059669);
+}
+@media (max-width: 420px) {
+  .co-trustlist { grid-template-columns: 1fr; gap: 7px; }
+}
+/* On mobile the CTA is a fixed bar, so the trust list must clear it or it
+   sits underneath and is never seen. */
+@media (max-width: 900px) {
+  .co-trustlist { margin-bottom: 84px; }
+}
+
+/* =====================================================================
+   CHECKOUT — collapsible order summary
+   =====================================================================
+   The summary's item list collapses behind a header showing the total —
+   the Shopify/Stripe Checkout pattern — so the number is one tap away
+   without the item list adding a screen of scroll between the payment
+   fields and the CTA.
+
+   Ordering is NOT done here. It used to be: this block carried
+   `.co-summary-panel { order: -1 }`, which hoisted the summary above the
+   form on mobile by paint order only, leaving the DOM — and therefore
+   focus order and assistive tech — saying something different to the
+   screen. checkout.html is now authored in the intended mobile order
+   (form, summary, extras) and desktop rebuilds its two columns with
+   explicit grid placement, so no `order` is needed at either width.
+
+   Desktop is untouched: the toggle is display:none above 900px and the
+   body is always open, so the two-column layout is exactly as before. */
+.co-summary__toggle { display: none; }
+.co-summary__body { display: block; }
+
+@media (max-width: 900px) {
+  .co-summary__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 16px 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* The rule belongs to the open list, not to the header — collapsed, it was
+     a line under a header with nothing beneath it. */
+  .co-summary__toggle[aria-expanded="true"] {
+    border-bottom: 1px solid var(--border);
+  }
+  .co-summary__toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--heading-color);
+  }
+  .co-summary__toggle-label > i:first-child { font-size: 13px; opacity: 0.7; }
+  .co-summary__chev {
+    font-size: 10px;
+    opacity: 0.6;
+    transition: transform var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  }
+  .co-summary__toggle[aria-expanded="true"] .co-summary__chev { transform: rotate(180deg); }
+  .co-summary__toggle-total {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--heading-color);
+  }
+
+  /* max-height rather than grid-template-rows: this body holds a <ul> plus
+     several sibling blocks, and the 0fr/1fr trick only collapses a single
+     grid track — the same trap already hit in the footer accordion. The cap
+     is well clear of the tallest realistic summary. */
+  .co-summary__body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1)),
+                opacity var(--nav-dur, 240ms) var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+    /* Confines the reflow of an auto-height reveal to this subtree. */
+    contain: layout paint;
+  }
+  .co-summary__body.is-open {
+    max-height: 1400px;
+    opacity: 1;
+  }
+  /* The summary's own heading is redundant once the toggle above it says
+     "Order summary". */
+  .co-summary__body .co-summary__ttl { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .co-summary__body { transition: none; }
+    .co-summary__chev { transition: none; }
+  }
+}
+
+/* =====================================================================
+   CHECKOUT v2 — mobile-first purchase experience
+   ===================================================================== */
+
+/* ---- Sticky purchase bar (mobile) ------------------------------------
+   The in-page CTA was itself position:fixed on mobile, which meant the
+   total was never beside it and the button was duplicated conceptually.
+   That fixed positioning is released here and the sticky bar takes over:
+   it carries TOTAL + CTA and nothing else. */
+@media (max-width: 900px) {
+  /* Clearance for the fixed bar used to be padded onto the checkout section
+     itself, which put 104px of empty space between the last card and the
+     footer while the footer still slid underneath the bar. The footer owns
+     that clearance now (§9), so this only needs to breathe. */
+  .checkout-area { padding-bottom: 8px; }
+  .co-trustlist { margin-bottom: 20px; }
+}
+
+/* NOTE: the bar's visibility is now owned by the "sole checkout CTA" block at
+   the end of this file, which shows it at every width. It starts hidden via
+   the `u-hidden` class in checkout.html until the cart is known to be
+   non-empty, so no default `display: none` is needed here. */
+@media (max-width: 900px) {
+  .co-stickybar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    background: var(--color-bg, #fff);
+    border-top: 1px solid var(--border);
+    /* Sits above the iOS home indicator rather than under it. */
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.12);
+    /* Own compositor layer: this element is fixed over a scrolling page, and
+       promoting it avoids repainting the bar on every scroll frame. */
+    will-change: transform;
+    transform: translateZ(0);
+    animation: coBarIn 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  @keyframes coBarIn {
+    from { transform: translate3d(0, 100%, 0); }
+    to   { transform: translate3d(0, 0, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .co-stickybar { animation: none; }
+  }
+}
+.co-stickybar__inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.co-stickybar__total {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  flex: 0 0 auto;
+}
+.co-stickybar__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paragraph-light);
+}
+/* The total is the strongest element in the bar by design — it is the one
+   number the shopper is deciding on. */
+.co-stickybar__value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--heading-color);
+}
+.co-stickybar__cta {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22);
+  transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 180ms ease, opacity 180ms ease;
+}
+.co-stickybar__cta span { color: inherit; }
+.co-stickybar__cta:active { transform: scale(0.985); }
+.co-stickybar__cta.is-busy {
+  pointer-events: none;
+  opacity: 0.85;
+  cursor: progress;
+}
+.co-stickybar__cta.is-busy > i { display: none; }
+
+/* ---- Order summary rows --------------------------------------------- */
+.co-order-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 16px !important;
+  padding: 20px 0 !important;
+  font-size: 15px !important;
+  border-bottom: 1px solid var(--border) !important;
+  /* Collapse animation on remove, so a deleted row doesn't just vanish and
+     snap everything below it upward. */
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.co-order-item.is-removing {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+/* The thing being bought is the largest product image on the page. It was
+   60px while each upsell card was 144px wide — the customer's own purchase
+   rendered at under half the size of the things they hadn't bought. */
+.co-item-img {
+  width: 104px !important;
+  height: 104px !important;
+  object-fit: cover !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  flex-shrink: 0 !important;
+}
+/* With derivatives the summary thumbnail is a <picture>, which then becomes the
+   flex item in the img's place — it has to carry the same fixed box or the row
+   reflows when the AVIF resolves. Same fix as .cart-item picture above, for the
+   checkout summary's larger 104px box. !important throughout because every
+   neighbouring rule in this block has it, and a plain declaration would lose to
+   .co-item-img on the img inside. */
+.co-order-item picture {
+  display: block !important;
+  width: 104px !important;
+  height: 104px !important;
+  flex-shrink: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  background: var(--sub-bg) !important;
+}
+.co-order-item picture img { border-radius: 0 !important; border: 0 !important; }
+.co-item-img--empty { background: var(--sub-bg); display: block; }
+.co-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.co-item-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--heading-color);
+}
+.co-item-creator {
+  font-size: 13px;
+  color: var(--paragraph-light);
+}
+.co-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.co-item-price {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: var(--heading-color) !important;
+  white-space: nowrap;
+}
+
+/* Quantity stepper — 44px targets, which is the accessibility floor and
+   also just the size a thumb actually hits on a moving train. */
+.co-item-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  width: max-content;
+}
+.co-qty-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--heading-color);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.co-qty-btn:hover { background: var(--sub-bg); }
+.co-qty-btn:active { background: var(--border); }
+.co-qty-val {
+  min-width: 30px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+.co-item-qty-static {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--paragraph-light);
+}
+.co-item-remove {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--paragraph-light);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: color 140ms ease, background 140ms ease;
+}
+.co-item-remove:hover { color: var(--danger, #dc2626); background: rgba(220, 38, 38, 0.07); }
+
+/* ---- Typography hierarchy -------------------------------------------- */
+/* The grand total should dominate the summary; supporting rows step down. */
+.co-grand { padding-top: 14px !important; margin-top: 6px !important; }
+.co-grand span { font-size: 15px !important; font-weight: 700 !important; }
+.co-grand span:last-child {
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+.co-total-row { font-size: 14px !important; padding: 7px 0 !important; }
+
+@media (max-width: 900px) {
+  .co-summary__toggle-total { font-size: 18px !important; }
+  /* Inputs at 16px so iOS Safari doesn't zoom the viewport on focus. */
+  .co-input { font-size: 16px !important; min-height: 52px !important; }
+  .co-promo input { font-size: 16px !important; min-height: 48px !important; }
+  .co-promo button { min-height: 48px !important; min-width: 84px !important; }
+}
+
+/* =======================================================================
+   Checkout — Contact & Billing: required markers, inline validation,
+   international phone input, searchable country panel.
+   Appended last deliberately: the checkout form rules above accumulated
+   across several passes and lean on !important, so anything that needs to
+   win has to be both later in the cascade and equally specific.
+   ======================================================================= */
+
+/* ---- Required-field marker ---- */
+.co-req {
+  color: var(--danger, #dc2626);
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+/* ---- Inline validation messages ----
+   Collapsed to zero height when empty so an untouched form has no gaps
+   between fields; the field's own margin does the spacing. */
+.co-err {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--danger, #dc2626);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 140ms ease, opacity 140ms ease, padding 140ms ease;
+}
+.co-field.co-invalid .co-err {
+  max-height: 40px;
+  opacity: 1;
+  padding: 5px 2px 0;
+}
+.co-field.co-invalid .co-input {
+  border-color: var(--danger, #dc2626) !important;
+}
+.co-field.co-invalid .co-input:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14) !important;
+}
+/* A quiet tick rather than a green border: confirmation shouldn't compete
+   with the errors or with the CTA for attention. */
+.co-field.co-valid:not(.co-invalid)::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 26px;
+  width: 13px;
+  height: 8px;
+  border-left: 2px solid var(--success, #16a34a);
+  border-bottom: 2px solid var(--success, #16a34a);
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+/* The country field's own chevron already occupies that corner. */
+.co-field--select.co-valid::after { display: none; }
+
+/* ---- International phone row ---- */
+.co-field--phone {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.co-phone__field {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+}
+.co-field--phone .co-err { flex: 1 0 100%; }
+
+.co-dial {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  /* Matches .co-input's own box so the two read as one control. */
+  padding: 0 11px;
+  min-height: 52px;
+  background: var(--sub-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--heading-color);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-dial:hover { border-color: var(--paragraph-light); }
+.co-dial[aria-expanded="true"] {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.12);
+}
+.co-dial__flag { font-size: 19px; line-height: 1; }
+.co-dial__code { font-weight: 600; font-variant-numeric: tabular-nums; }
+.co-dial__chev { width: 10px; height: 6px; opacity: 0.55; flex: 0 0 auto; }
+
+/* ---- Searchable country / dial-code panel ---- */
+.co-cpanel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+}
+.co-cpanel[hidden] { display: none; }
+.co-cpanel__searchwrap { padding: 9px; border-bottom: 1px solid var(--border); }
+.co-cpanel__search {
+  width: 100%;
+  /* 16px: anything smaller and iOS Safari zooms the viewport on focus, which
+     on a checkout reads as the page breaking. */
+  font-size: 16px;
+  padding: 10px 12px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--sub-bg);
+  color: var(--heading-color);
+}
+.co-cpanel__search:focus { border-color: var(--primary-color); background: #fff; }
+.co-cpanel__list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.co-cpanel__opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  min-height: 44px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--heading-color);
+}
+.co-cpanel__opt:hover,
+.co-cpanel__opt.is-active { background: var(--sub-bg); }
+.co-cpanel__flag { font-size: 18px; line-height: 1; flex: 0 0 auto; }
+.co-cpanel__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.co-cpanel__dial {
+  flex: 0 0 auto;
+  color: var(--paragraph-light);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.co-cpanel__empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--paragraph-light);
+  font-size: 13px;
+}
+
+/* The grouped field surface is `overflow: hidden` (that is what clips the
+   hairline dividers to its rounded corners), and an absolutely-positioned
+   panel inside it is therefore CLIPPED — measured: of a 457px dial-code
+   picker only the ~110px search box survived, so the country list looked
+   like it simply failed to open. The group drops its clip only while a panel
+   is actually open; nothing inside it paints into the corners in the
+   meantime (fields are `background: transparent` within the group), so the
+   rounded surface is unchanged to look at. */
+.co-fieldgroup.has-cpanel-open { overflow: visible !important; }
+
+/* ---- Picker as a bottom sheet on touch ---------------------------------
+   Below 900px the panel stops being an anchored dropdown and becomes a
+   sheet pinned to the viewport. Two reasons, in order of importance:
+   `position: fixed` is laid out against the viewport, so NO ancestor's
+   overflow can ever clip it again — the failure above becomes structurally
+   impossible rather than fixed-by-override. And a full-width sheet with
+   44px+ rows is the control this list actually wants on a phone; the
+   anchored 358px dropdown was a desktop control being scaled down. */
+@media (max-width: 900px) {
+  /* Touch targets: the dial button must match the 52px input beside it, and
+     the picker gets more of the screen since there's no hover to preview. */
+  .co-dial { min-height: 52px; font-size: 16px; padding: 0 12px; }
+  .co-field.co-valid:not(.co-invalid)::after { top: 30px; }
+
+  .co-cpanel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.22);
+    /* Clears the home indicator on iOS without eating space where there
+       isn't one. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: coSheetIn 180ms ease-out;
+  }
+  .co-cpanel__searchwrap { padding: 12px 14px; }
+  /* The list, not the sheet, owns the scroll: `overscroll-behavior: contain`
+     on it (set above) is what stops a flick at the end of the countries
+     scrolling the checkout behind the sheet. */
+  .co-cpanel__list { max-height: min(52vh, 420px); padding: 6px 8px 10px; }
+  .co-cpanel__opt { min-height: 48px; font-size: 15px; }
+
+  /* Tapping outside closes the sheet — that is handled by the existing
+     document click listener, but on touch it needs something to land on
+     that is unambiguously "not the sheet". */
+  .co-cpanel-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    background: rgba(15, 23, 42, 0.32);
+    animation: coBackdropIn 180ms ease-out;
+  }
+}
+/* Above 900px the anchored dropdown is right, and the backdrop would be
+   an unnecessary modal veil over a mouse-driven page. */
+@media (min-width: 901px) {
+  .co-cpanel-backdrop { display: none; }
+}
+@keyframes coSheetIn { from { transform: translateY(12%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes coBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .co-cpanel, .co-cpanel-backdrop { animation: none; }
+}
+
+/* Very narrow phones: let the dial button and number stack rather than
+   squeezing the number field to a few characters. */
+@media (max-width: 359px) {
+  .co-dial { flex: 1 0 100%; justify-content: flex-start; }
+  .co-phone__field { flex: 1 0 100%; }
+}
+
+/* =======================================================================
+   MOBILE CHECKOUT REDESIGN
+   -----------------------------------------------------------------------
+   Appended last on purpose. The checkout rules earlier in this file were
+   built up over several passes and lean heavily on !important, so anything
+   intended to win has to be both later in the cascade AND at least as
+   specific. Everything below is expressed in the existing design tokens
+   (--color-*, --radius, --shadow-*) and Montserrat via --montserrat, so this is
+   a redesign within the existing identity, not a second design system.
+   ======================================================================= */
+
+/* -----------------------------------------------------------------------
+   1. FLOW ORDER
+   Mobile sequence is Logo -> Contact & Billing -> Payment -> Order Summary
+   -> Recommended -> sticky CTA, and nothing else. That is the DOM order in
+   checkout.html, not a paint-order trick: no `order`, no `display:none` on
+   anything the shopper needs, no second copy of the form. Desktop uses
+   explicit grid placement to rebuild the original two-column layout, so the
+   one DOM serves both without duplicated markup.
+   -------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  .checkout-area > .container.co-layout,
+  .co-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    align-items: start !important;
+  }
+  .co-form-panel { grid-column: 1; grid-row: 1; }
+
+  /* The whole right-hand column is ONE grid item now, and it stretches to the
+     row's full height rather than shrinking to its own content. Both parts
+     matter for the sticky summary below: a sticky box can only travel inside
+     its containing block, so when the summary was itself the grid item its
+     containing block was its own grid area — its own height — and it had
+     exactly zero travel. Stretching gives it the taller of the two columns to
+     move through, which is what keeps it pinned while the form is scrolled. */
+  .co-side-col {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    min-width: 0;
+  }
+  /* The column's own gutter. The cards carry only their internal padding,
+     so the inset is set once here instead of being baked into each block. */
+  .co-side-col { padding: 32px 32px 40px 32px; }
+
+  /* ONLY the summary card is sticky. The recommendations and the badges are
+     ordinary flow content and scroll past it, which is why the card has to
+     be opaque and has to out-rank them — see §Z. */
+  .co-summary-panel {
+    /* Releases the old two-panel flex sizing: `max-width: 42%` used to
+       resolve against the whole 1200px row, but would now resolve against
+       .co-side-col, which IS the 42% track — leaving the card half the
+       width of its own column. */
+    flex: initial;
+    max-width: none;
+    position: sticky;
+    top: 24px;
+    /* Taller than the viewport (long carts, tax + discount rows, 200% zoom)
+       scrolls inside the card rather than letting it grow past the screen
+       and become unpinnable. */
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 900px) {
+  .checkout-area > .container.co-layout,
+  .co-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    /* MUST be stretch, not the flex-start the desktop two-panel layout sets.
+       In a column flex container, flex-start makes every panel shrink-to-fit
+       its own content — and the recommendations carousel's content is a row
+       of non-shrinking cards, so the extras panel sized itself to the full
+       2592px track. The overflow-x:clip further down hid that, but Swiper had
+       already measured a 2592px viewport for a 2592px track, concluded there
+       was nothing to scroll, and locked itself (watchOverflow). The carousel
+       could not be swiped at all. */
+    align-items: stretch !important;
+  }
+  /* Belt and braces: nothing can ever be wider than the phone, whatever a
+     future child's intrinsic width turns out to be. */
+  .co-form-panel,
+  .co-side-col,
+  .co-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  /* No `order` here on purpose: checkout.html is authored form -> summary ->
+     recommendations -> badges, so the natural flow IS the intended mobile
+     sequence and paint order matches focus order. Desktop rebuilds its two
+     columns via explicit grid placement above, which ignores source order. */
+
+  /* The form is the first thing under the logo, so it opens the page: no
+     top rule, and only enough top padding to separate it from the header. */
+  .co-form-panel {
+    padding: 18px 16px 4px !important;
+    border-bottom: none !important;
+  }
+
+  /* Same three-card stack as desktop, just without the sticky (which is
+     scoped to the desktop query) and on a tighter gutter. Bottom clearance
+     for the fixed CTA bar belongs to the footer, the actual last element in
+     the flow — see §9 — not to anything in here. */
+  .co-side-col { padding: 18px 16px 0 !important; }
+  .co-card { padding: 16px; border-radius: 14px; }
+  .co-side-col > .co-summary-panel { margin-bottom: 24px; }
+  .co-side-col > .co-recommend { margin-bottom: 20px; }
+
+}
+
+/* -----------------------------------------------------------------------
+   2. ONE PRIMARY CTA ON MOBILE
+   The in-page button stays in the DOM (it owns the click handler and the
+   busy state the sticky bar mirrors) but is never painted on mobile.
+   -------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  /* Its legal line belongs with the payment section instead, where the
+     shopper actually is when they read it. */
+  .co-privacy {
+    margin: 14px 0 0 !important;
+    padding: 0 2px !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    color: var(--paragraph-light) !important;
+  }
+}
+
+/* -----------------------------------------------------------------------
+   3. PREMIUM FORM FIELDS
+   Taller targets, a larger radius, a real focus ring and one consistent
+   vertical rhythm. 16px type throughout is both the premium look and the
+   thing that stops iOS Safari zooming the viewport on focus.
+   -------------------------------------------------------------------- */
+.co-section { margin-bottom: 26px; }
+.co-section__ttl {
+  font-family: var(--montserrat) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--paragraph-light) !important;
+  margin: 0 0 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Form controls do NOT inherit font-family by default — without this the
+   inputs, selects and buttons fall back to the browser UI font while the
+   rest of the page is Inter. */
+.co-input,
+.co-sel,
+.co-dial,
+.co-cpanel__search,
+.co-cpanel__opt,
+.co-reco__add,
+.co-stickybar__cta,
+.co-promo input,
+.co-promo button {
+  font-family: var(--montserrat) !important;
+}
+
+.co-field { margin-bottom: 14px !important; }
+.co-row { gap: 14px !important; }
+
+.co-input {
+  width: 100% !important;
+  min-height: 58px !important;
+  padding: 24px 16px 8px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  color: var(--heading-color) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.co-input:hover:not(:focus) { border-color: rgba(26, 26, 26, 0.2) !important; }
+.co-input:focus {
+  border-color: var(--primary-color) !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.08), var(--shadow-sm) !important;
+}
+
+/* Floating label: bigger, calmer, and it moves on the same curve as the
+   field's own focus transition so the two read as one motion. */
+.co-field .co-label:not(.co-label--top) {
+  position: absolute !important;
+  left: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-family: var(--montserrat) !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  color: var(--paragraph-light) !important;
+  pointer-events: none !important;
+  transition: top 160ms cubic-bezier(0.25, 1, 0.5, 1),
+              font-size 160ms cubic-bezier(0.25, 1, 0.5, 1),
+              color 160ms ease !important;
+}
+.co-field.co-focused .co-label:not(.co-label--top),
+.co-field.co-filled  .co-label:not(.co-label--top),
+.co-input:focus ~ .co-label:not(.co-label--top),
+.co-phone__field .co-input:focus ~ .co-label {
+  top: 11px !important;
+  transform: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--paragraph-light) !important;
+}
+.co-field.co-focused .co-label:not(.co-label--top),
+.co-input:focus ~ .co-label:not(.co-label--top) {
+  color: var(--primary-color) !important;
+}
+.co-label--top {
+  top: 11px !important;
+  left: 16px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--paragraph-light) !important;
+}
+
+/* Country select: same box as a text field, chevron sized to match. */
+.co-sel {
+  min-height: 58px !important;
+  padding: 24px 42px 8px 16px !important;
+  border-radius: 14px !important;
+  background-position: right 16px center !important;
+  background-size: 11px 7px !important;
+}
+.co-field--select.co-valid::after { display: none !important; }
+
+/* Validation states, restated against the new radius and ring. */
+.co-field.co-invalid .co-input {
+  border-color: var(--danger) !important;
+  background: #fffcfc !important;
+}
+.co-field.co-invalid .co-input:focus {
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1), var(--shadow-sm) !important;
+}
+.co-err { font-family: var(--montserrat); font-size: 12.5px; padding-left: 2px; }
+.co-field.co-valid:not(.co-invalid)::after { top: 50%; margin-top: -6px; right: 18px; }
+
+/* Phone row: dial button and number field as one visual control. */
+.co-field--phone { gap: 10px !important; }
+.co-dial {
+  min-height: 58px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease !important;
+}
+.co-dial[aria-expanded="true"] {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.08), var(--shadow-sm) !important;
+}
+.co-cpanel {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 50px rgba(26, 26, 26, 0.16) !important;
+  background: var(--color-surface) !important;
+}
+.co-cpanel__search { border-radius: 11px !important; min-height: 46px !important; }
+
+/* Payment method tabs, restated to match the new field metrics. */
+.co-pay-tabs .pay-tab {
+  min-height: 52px !important;
+  border-radius: 14px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  gap: 8px !important;
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: border-color 160ms ease, background 160ms ease !important;
+}
+.co-pay-tabs .pay-tab.active {
+  border-color: var(--primary-color) !important;
+  background: var(--color-surface-2) !important;
+}
+
+/* -----------------------------------------------------------------------
+   4. RECOMMENDED PRODUCTS — looping swipe carousel
+   Swiper (already bundled sitewide) drives an infinite loop: cloned slides
+   sit either side of the real ones and the track silently repositions at
+   the seam, so a thumb can keep flicking in one direction indefinitely.
+   Free-mode momentum keeps the feel native rather than stepped.
+
+   .co-recos__track below is the no-Swiper fallback — a native scroll-snap
+   track, still a real horizontal swipe, never a static grid.
+   -------------------------------------------------------------------- */
+.co-recos { margin: 18px 0 14px; }
+.co-recos__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+/* Secondary to the order summary: this is an offer, not the purchase. */
+.co-recos__ttl {
+  margin: 0 !important;
+  font-family: var(--montserrat);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--paragraph);
+}
+.co-recos__hint {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paragraph-light);
+}
+.co-recos__hint i { font-size: 10px; margin-left: 3px; }
+/* Set by checkout-payments.js when every card already fits: no swipe to
+   invite. */
+.co-recos--static .co-recos__hint { display: none; }
+
+.co-recos__track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-padding-left: 2px;
+  /* Bleed to the panel edge so a card is visibly cut off — the affordance
+     that tells a thumb there's more to the right. */
+  margin: 0 -16px;
+  padding: 4px 16px 14px;
+  scrollbar-width: none;
+}
+.co-recos__track::-webkit-scrollbar { display: none; }
+
+/* Swiper track. The few layout rules Swiper genuinely needs are restated
+   here rather than relied on from swiper-bundle.min.css: that sheet is
+   loaded as rel="preload" and only flipped to a stylesheet by
+   css-preload-swap.js, so for the first moments of the page it is not
+   applying — and a swiper-wrapper without `display: flex` is a vertical
+   stack of cards, i.e. exactly the static list this section must not be. */
+.co-recos__swiper {
+  position: relative;
+  overflow: hidden;
+  /* The track is intrinsically as wide as all its cards laid end to end. This
+     keeps that width from propagating up into whatever lays the panel out —
+     if it does, Swiper measures a viewport as wide as its own track, decides
+     nothing overflows and locks the slider. */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  /* Bleeds to the panel edge, so a card is visibly cut off at the right —
+     the affordance that tells a thumb there is more to swipe to. */
+  margin: 0 -16px;
+  padding: 4px 16px 14px;
+  /* The loop hands cards in from outside the viewport; without this they are
+     visible sliding in over the page margin. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+.co-recos__swiper .swiper-wrapper {
+  display: flex;
+  align-items: stretch;
+  box-sizing: content-box;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+  transition-property: transform;
+}
+.co-recos__swiper .swiper-slide {
+  flex-shrink: 0;
+  height: auto;
+  /* Sized in CSS because the carousel runs slidesPerView:"auto" — this
+     declaration is what decides how many cards a 390px screen shows. */
+  width: 80px;
+}
+/* Swiper drives the track with transforms; a scroll-snap container inside it
+   would fight that, so the fallback's snap behaviour is scoped to the
+   fallback only (.co-recos__track) and never applies here. */
+
+.co-reco {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 180ms ease;
+}
+.co-reco:active { transform: scale(0.975); }
+/* 4:3 rather than square: this is the single biggest lever on card height,
+   and height is what made the upsell strip read as the main content. */
+.co-reco__media {
+  aspect-ratio: 4 / 3;
+  background: var(--color-surface-2);
+  overflow: hidden;
+}
+/* The reco card's image is a <picture> whenever the cover has derivatives.
+   .co-reco__media is a block with an aspect-ratio, so an inline <picture> in
+   between would collapse and the img's height:100% would resolve against it
+   rather than against the media box. */
+.co-reco__media picture { display: block; width: 100%; height: 100%; }
+.co-reco__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.co-reco__body { padding: 8px 9px 7px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.co-reco__name {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--paragraph);
+  /* Two lines then ellipsis, so a long plan name can't make one card
+     taller than its neighbours and break the row's baseline. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.co-reco__price { font-size: 12px; font-weight: 600; color: var(--heading-color); }
+.co-reco__add {
+  margin: 0 7px 7px;
+  /* 44px, not the 32px this used to be: this is a real touch target on a
+     checkout page that is mobile-first, and it sits on a swipeable carousel
+     where an undersized button is easy to miss and easy to mis-hit. The card
+     is deliberately small, so the height comes from the control rather than
+     the type — the 11px label is unchanged. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--heading-color);
+  background: var(--color-surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-reco__add:hover,
+.co-reco__add:active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+.co-reco__add i { font-size: 10px; }
+
+/* Desktop: the column is narrower than the phone viewport, so show fewer,
+   slightly wider cards rather than shrinking them further. */
+@media (min-width: 901px) {
+  .co-recos__track { margin: 0; padding: 4px 0 12px; }
+  .co-reco { width: 80px; }
+  .co-recos__swiper {
+    margin: 0;
+    padding: 4px 0 12px;
+    /* No bleed to mask on desktop: the track starts and ends inside the
+       column, so a fade would just dim the first and last card. */
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .co-recos__swiper .swiper-slide { width: 80px; }
+}
+
+/* -----------------------------------------------------------------------
+   5. STICKY CHECKOUT BAR
+   The single primary CTA on mobile: lock, label and live total, over a
+   translucent blurred surface so page content reads as passing beneath it.
+   -------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .co-stickybar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(250, 250, 249, 0.82);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 28px rgba(26, 26, 26, 0.07);
+    animation: coStickyIn 420ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  /* Progressive enhancement: only go translucent where the blur is
+     actually supported, otherwise the bar would be a flat wash over live
+     text with no separation. */
+  @supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+    .co-stickybar {
+      background: rgba(250, 250, 249, 0.72);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
+    }
+  }
+  .co-stickybar.u-hidden,
+  .co-stickybar--suppressed { display: none !important; }
+
+  .co-stickybar__inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  .co-stickybar__total { display: flex; flex-direction: column; gap: 1px; flex: 0 0 auto; }
+  .co-stickybar__label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--paragraph-light);
+  }
+  .co-stickybar__value {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--heading-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .co-stickybar__cta {
+    flex: 1 1 auto;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(26, 26, 26, 0.22);
+    transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .co-stickybar__cta:active { transform: scale(0.985); background: #000000; }
+  .co-stickybar__cta > i { font-size: 14px; }
+}
+
+@keyframes coStickyIn {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .co-stickybar { animation: none !important; }
+  .co-reco, .co-input, .co-field .co-label { transition: none !important; }
+}
+
+/* -----------------------------------------------------------------------
+   6. PAYMENT MARKS
+   One row, one baseline, one weight — previously each brand chip carried
+   its own size and the row read as mismatched stickers.
+   -------------------------------------------------------------------- */
+.co-summary-payments {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  margin: 18px 0 10px !important;
+}
+.co-summary-payments .card-brand,
+.co-brands .card-brand {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 48px !important;
+  height: 30px !important;
+  padding: 0 9px !important;
+  font-family: var(--montserrat) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--paragraph-light) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 7px !important;
+  box-shadow: none !important;
+}
+/* checkout-payments.js hides the badge for any method this store isn't
+   actually configured to take (e.g. the PayPal badge when there is no
+   PAYPAL_CLIENT_ID), by toggling the site-wide `u-hidden` utility. That
+   utility is a plain `.u-hidden { display: none }` and CANNOT win against the
+   `display: inline-flex !important` directly above, so without this the class
+   lands on the element and changes nothing — the row keeps advertising a
+   payment method the checkout can't process. Matching !important here is the
+   only thing that beats it, and is consistent with the rest of this block. */
+.co-summary-payments .card-brand.u-hidden,
+.co-brands .card-brand.u-hidden,
+.cart-drawer__payments .card-brand.u-hidden {
+  display: none !important;
+}
+.co-ssl--summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  font-size: 11.5px !important;
+  color: var(--paragraph-light) !important;
+}
+.co-trustlist {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px !important;
+  /* No margin of its own: the badges are the column's third block and the
+     column owns the 24px above them. A margin here stacked on top of that
+     and pushed the rhythm to 42px. */
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+.co-trustlist li {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: var(--paragraph-light) !important;
+}
+.co-trustlist li i { font-size: 9px; margin-top: 4px; color: var(--success); }
+@media (max-width: 359px) {
+  .co-trustlist { grid-template-columns: 1fr; }
+}
+
+/* -----------------------------------------------------------------------
+   7. MOBILE AUDIT GUARDS
+   -------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  /* Nothing on a checkout should ever scroll sideways. The track in §4 is
+     the one intentional horizontal scroller and clips itself. */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  .co-page, .checkout-area, .co-layout { max-width: 100%; overflow-x: clip; }
+
+  /* Notch / home-indicator safe areas on the full-bleed checkout chrome. */
+  .co-hdr__inner {
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+  }
+
+  /* Long plan names in the summary must wrap, not push the row wider. */
+  .co-order-items li,
+  .co-total-row { min-width: 0; }
+  .co-order-items li span:first-child { overflow-wrap: anywhere; }
+}
+
+/* -----------------------------------------------------------------------
+   8. MOBILE FOOTER
+   Legal and Social are mirrored into accordion sections by script.js
+   (footerAccordion). Their originals are hidden here so the content isn't
+   presented twice, and the bottom bar collapses to just the copyright.
+   Everything is inside the mobile query — desktop is untouched.
+   -------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .footer-area .footer__legal,
+  .footer-area .footer__item.newsletter .social-icon,
+  .footer-area .footer__bottombar-right .payment {
+    display: none !important;
+  }
+  .footer-area .footer__bottombar {
+    flex-direction: column !important;
+    gap: 10px !important;
+    text-align: center !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  }
+  .footer-area .footer__bottombar-copy { font-size: 12px !important; }
+
+  /* The standalone logo block between the columns and the bottom bar is
+     the single tallest thing in the mobile footer and repeats the header
+     logo three screens up. */
+  .footer-area .footer__copy-text { padding: 18px 0 !important; }
+  .footer-area .footer__copy-text img { max-height: 26px; width: auto; }
+
+  /* Newsletter keeps its own row but loses the outsized top margin the
+     desktop grid gives it. */
+  .footer-area .footer__item.newsletter { border-bottom: none !important; padding-top: 18px !important; }
+  .footer-area .footer__item.newsletter .footer-title { margin-bottom: 12px !important; }
+}
+
+/* -----------------------------------------------------------------------
+   9. STICKY BAR AS THE SOLE CHECKOUT CTA
+   The in-page #placeOrderBtn was deleted from checkout.html, so this bar is
+   now the only place-order control at EVERY width, not just on mobile — a
+   desktop shopper would otherwise have no way to pay. The busy/spinner
+   styling that used to live on .co-cta-btn moves here with it.
+   -------------------------------------------------------------------- */
+.co-stickybar {
+  display: block;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(250, 250, 249, 0.82);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 28px rgba(26, 26, 26, 0.07);
+  animation: coStickyIn 420ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+@supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+  .co-stickybar {
+    background: rgba(250, 250, 249, 0.72);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+}
+.co-stickybar.u-hidden,
+.co-stickybar--suppressed { display: none !important; }
+
+.co-stickybar__inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* Tracks the page container on desktop so the bar's contents line up with
+     the columns above rather than floating at the window edges. */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.co-stickybar__cta {
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  font-family: var(--montserrat);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(26, 26, 26, 0.22);
+  transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-stickybar__cta:hover:not(:disabled) { background: var(--primary-hover); }
+.co-stickybar__cta:active:not(:disabled) { transform: scale(0.985); background: #000000; }
+
+/* Busy state: pointer-events:none is the real double-submit guard — a second
+   tap while a PaymentIntent is in flight would otherwise create a second one. */
+.co-stickybar__cta.is-busy,
+.co-stickybar__cta:disabled {
+  pointer-events: none;
+  opacity: 0.85;
+  cursor: progress;
+}
+.co-stickybar__cta.is-busy > i { display: none; }
+.co-stickybar__cta .co-cta-spinner { display: none; }
+.co-stickybar__cta.is-busy .co-cta-spinner {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  /* Compositor-only: rotation is a transform, so the spinner costs nothing
+     while a payment is being confirmed. */
+  animation: coSpin 0.7s linear infinite;
+}
+@keyframes coSpin { to { transform: rotate(360deg); } }
+
+/* Desktop: the bar is a slimmer strip, and the CTA stops stretching the full
+   width of a 1200px container — a 1000px-wide button reads as a banner. */
+@media (min-width: 901px) {
+  .co-stickybar__inner { justify-content: flex-end; padding: 0 24px; }
+  .co-stickybar__total { margin-right: auto; }
+  .co-stickybar__cta { flex: 0 0 auto; min-width: 280px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .co-stickybar { animation: none !important; }
+  .co-stickybar__cta .co-cta-spinner { animation-duration: 2s !important; }
+}
+
+/* Clearance for the fixed bar, which is present at all widths. It goes on the
+   LAST element in the page flow, and that is the footer — not anything in the
+   sidebar: padding inside a sidebar block only opens a dead gap above the
+   footer while still letting the footer's final rows slide under the bar at
+   the true bottom of the page. */
+.co-side-col { padding-bottom: 28px; }
+main.co-page ~ .footer-area {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* =======================================================================
+   §Z. CHECKOUT STACKING ORDER
+   One scale for the whole page, so "what covers what" is a decision rather
+   than an accident of source order. Every checkout component that creates a
+   stacking context is listed; anything not listed must stay `z-index: auto`
+   and simply paint in flow.
+
+   Audited against the rendered page, top to bottom:
+
+     2147483647  .pace / .loading     third-party preloader (inactive once done)
+        9999999  #preloader           site preloader
+      9999/9998  #cartDrawer/overlay  sitewide drawer — must cover the page
+             99  .scroll-up           back-to-top button
+             60  .co-stickybar        fixed CTA bar — covers page content
+             40  .co-cpanel           country dropdown — over the form, under
+                                      the CTA bar so the bar is never occluded
+             10  .co-summary-panel    the sticky card: content scrolls UNDER
+                                      it, so it must out-rank what it passes
+              1  .swiper              Swiper's own default on the carousel
+                                      root, plus two ::before/::after field
+                                      decorations
+              0  everything else      normal flow, z-index: auto
+
+   The summary sits at 10 rather than 2 to leave room above the carousel for
+   anything added later without another re-shuffle, while staying far below
+   the CTA bar and the drawer, which must always win. Verified by hit-testing
+   the pinned card's centre through a full scroll: nothing overlaps it.
+   ==================================================================== */
+@media (min-width: 901px) {
+  .co-summary-panel { z-index: 10; }
+}
+
+/* =======================================================================
+   10. PAYMENT STATE + LIGHTER FORM
+   Two problems this fixes:
+   a) the card panel rendered empty whenever the Payment Element couldn't
+      mount yet (no key, or details incomplete) — see .co-paystate;
+   b) the fields were four individually-bordered, shadowed 58px boxes,
+      which reads as dated and eats the vertical space that should be
+      getting the shopper to the payment step.
+   ======================================================================= */
+
+/* -----------------------------------------------------------------------
+   10a. Card-payment state block — never an empty payment section
+   -------------------------------------------------------------------- */
+.co-paystate {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-surface-2);
+  border: 1px dashed var(--border);
+}
+/* Mounted Payment Element present: the placeholder disappears entirely. */
+.co-paystate[data-state="ready"] { display: none; }
+/* Conversely, hide the empty mount point until it actually holds fields, so
+   its margins don't open a gap above the placeholder. */
+#stripe-payment-element:empty { display: none; }
+
+.co-paystate__icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--border);
+  color: var(--paragraph-light);
+  font-size: 14px;
+}
+.co-paystate__copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.co-paystate__title {
+  font-family: var(--montserrat);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--heading-color);
+  letter-spacing: -0.01em;
+}
+.co-paystate__desc {
+  font-family: var(--montserrat);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--paragraph-light);
+}
+
+/* Unavailable / failed are genuine problems, not just "not yet" — they get a
+   solid warning treatment so they aren't mistaken for a loading state. */
+.co-paystate[data-state="unavailable"],
+.co-paystate[data-state="failed"] {
+  border-style: solid;
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.06);
+}
+.co-paystate[data-state="unavailable"] .co-paystate__icon,
+.co-paystate[data-state="failed"] .co-paystate__icon {
+  color: var(--warning);
+  border-color: rgba(217, 119, 6, 0.3);
+}
+
+/* Unconfigured method tabs: visibly present, clearly not selectable. */
+.pay-tab.is-unavailable {
+  opacity: 0.5;
+  pointer-events: none;
+  position: relative;
+}
+.pay-tab__badge {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  font-family: var(--montserrat);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warning);
+}
+.co-pay-tabs .pay-tab.is-unavailable { flex-direction: column; gap: 2px !important; }
+
+/* -----------------------------------------------------------------------
+   10b. Lighter form: one grouped card, hairline dividers
+   Replaces four separate bordered+shadowed boxes with a single surface the
+   fields sit inside, separated by 1px rules — the pattern Apple Pay and
+   Stripe Checkout use. Fewer edges, less visual weight, ~40px shorter.
+   -------------------------------------------------------------------- */
+.co-section .co-fieldgroup {
+  background: var(--color-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Inside a group the field itself carries no chrome — the group owns it. */
+.co-fieldgroup .co-field { margin-bottom: 0 !important; position: relative; }
+.co-fieldgroup .co-field + .co-field,
+.co-fieldgroup .co-row + .co-field,
+.co-fieldgroup .co-field + .co-row {
+  border-top: 1px solid var(--border);
+}
+.co-fieldgroup .co-input,
+.co-fieldgroup .co-sel {
+  min-height: 56px !important;
+  padding: 22px 16px 7px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+/* Focus is shown as a tinted row plus a left accent rule rather than a ring —
+   a ring inside a grouped list fights the dividers. */
+.co-fieldgroup .co-field::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary-color);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  z-index: 1;
+}
+.co-fieldgroup .co-field.co-focused { background: rgba(26, 26, 26, 0.02); }
+.co-fieldgroup .co-field.co-focused::before { opacity: 1; }
+.co-fieldgroup .co-input:focus,
+.co-fieldgroup .co-sel:focus {
+  background: rgba(26, 26, 26, 0.02) !important;
+  box-shadow: none !important;
+}
+
+/* Two-up row inside a group: a vertical hairline instead of a gap. */
+.co-fieldgroup .co-row { gap: 0 !important; margin-bottom: 0 !important; }
+.co-fieldgroup .co-row .co-field + .co-field { border-top: none; border-left: 1px solid var(--border); }
+
+/* Errors sit inside the row's padding so a message can't reflow the dividers. */
+.co-fieldgroup .co-err { padding: 0 16px 8px !important; }
+.co-fieldgroup .co-field.co-invalid { background: rgba(220, 38, 38, 0.04); }
+.co-fieldgroup .co-field.co-invalid::before { background: var(--danger); opacity: 1; }
+.co-fieldgroup .co-field.co-invalid .co-input { border: none !important; background: transparent !important; }
+
+/* Phone row inside the group: the dial button loses its own box too.
+   The row MUST stay wrappable. `.co-err` is a `flex: 1 0 100%` item, i.e. it
+   asks for the whole row and refuses to shrink; on a nowrap line it therefore
+   takes the full width and the phone field — the only shrinkable item left —
+   collapses to zero. That is not theoretical: with `flex-wrap: nowrap` here,
+   #phone measured 32px wide (its own padding, nothing else) at 375/390/430
+   and every desktop width, and at <=359px the field was pushed to x=303 in a
+   320px viewport, i.e. entirely off-screen. An unfillable phone field then
+   fails `customerForm.isComplete()`, which is the gate on BOTH payment paths,
+   so the Stripe Payment Element never mounted and PayPal's popup opened on
+   about:blank. Wrapping is what gives the error message its own line, which
+   is what it was always written for. */
+.co-fieldgroup .co-field--phone { gap: 0 !important; flex-wrap: wrap !important; }
+.co-fieldgroup .co-dial {
+  min-height: 56px !important;
+  border: none !important;
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  /* Inside the group the dial is a fixed-width leading segment at EVERY width.
+     The standalone design stacks it full-width under 360px (§ "International
+     phone row"), which in a bordered group would read as two separate rows;
+     `flex: 0 0 auto` here overrides that media query for the grouped layout. */
+  flex: 0 0 auto !important;
+}
+.co-fieldgroup .co-dial[aria-expanded="true"] { background: rgba(26, 26, 26, 0.03) !important; }
+/* Takes whatever the dial button leaves, and can never be squeezed out of
+   existence again.
+   `flex-basis: 0` rather than `auto` is load-bearing on a wrapping row:
+   with `auto` the basis is the input's max-content width (~280px), and
+   flexbox WRAPS before it shrinks — so at 320/375/390 the number field was
+   dropping onto its own line under the dial button. From a zero basis it
+   simply grows into the space that is left, and `min-width` is an explicit
+   floor rather than flexbox's `auto`, so a long dial code (+1268) narrows
+   the number field instead of overflowing the group. */
+.co-fieldgroup .co-field--phone .co-phone__field {
+  flex: 1 1 0 !important;
+  min-width: 8ch !important;
+}
+.co-fieldgroup .co-field--phone .co-err { flex: 1 0 100%; }
+
+/* On a single column the two-up row stacks, so its divider becomes horizontal
+   again — otherwise the left rule would sit under a full-width field. */
+@media (max-width: 560px) {
+  .co-fieldgroup .co-row { flex-direction: column !important; }
+  .co-fieldgroup .co-row .co-field + .co-field {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* =======================================================================
+   11. CONTACT & BILLING — premium field group
+   -----------------------------------------------------------------------
+   These four fields are now the first thing under the logo on mobile, so
+   they carry the whole first impression of the checkout. Refines §10b's
+   grouped surface rather than replacing it: same one-card-with-hairlines
+   structure, taller touch rows, softer edges, and a focus state that lights
+   the whole group the way Stripe's and Apple's do instead of ringing an
+   individual box. Sizing is mobile-first; desktop keeps its denser metrics
+   so the two-column layout is unchanged.
+   ======================================================================= */
+
+.co-section__hint {
+  margin: -8px 0 14px !important;
+  font-family: var(--montserrat);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--paragraph-light);
+  text-wrap: pretty;
+}
+
+/* ---- The group surface ---------------------------------------------- */
+.co-section .co-fieldgroup {
+  border-radius: 18px;
+  border-color: rgba(26, 26, 26, 0.09);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+              0 12px 28px -18px rgba(15, 23, 42, 0.35);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+/* Premium focus: the card itself responds, so the shopper sees one control
+   they are inside of rather than four boxes one of which is ringed. */
+.co-section .co-fieldgroup:focus-within {
+  border-color: rgba(26, 26, 26, 0.2);
+  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.05),
+              0 1px 2px rgba(15, 23, 42, 0.04),
+              0 16px 34px -20px rgba(15, 23, 42, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .co-section .co-fieldgroup { transition: none; }
+}
+
+/* Hairlines a touch lighter than the group's own edge, so the dividers read
+   as internal structure rather than as four stacked boxes. */
+.co-fieldgroup .co-field + .co-field,
+.co-fieldgroup .co-row + .co-field,
+.co-fieldgroup .co-field + .co-row,
+.co-fieldgroup .co-row .co-field + .co-field {
+  border-color: rgba(26, 26, 26, 0.07);
+}
+
+/* ---- Rows ------------------------------------------------------------ */
+.co-fieldgroup .co-input,
+.co-fieldgroup .co-sel {
+  min-height: 62px !important;
+  padding: 26px 18px 9px !important;
+  /* 16px is both the premium type size and the threshold below which iOS
+     Safari zooms the viewport on focus — which on a checkout throws the
+     shopper into a horizontally scrolled page mid-form. */
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em !important;
+  color: var(--heading-color) !important;
+  caret-color: var(--primary-color);
+  /* Kills the 300ms tap delay and the grey flash on the field itself. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-fieldgroup .co-sel { padding-right: 44px !important; }
+
+/* Chrome/Safari autofill repaints the row bright yellow-blue, which on a
+   transparent grouped field looks like a rendering fault. Repainted back to
+   the surface with an inset shadow (background-color itself is locked by
+   the UA in that state). */
+.co-fieldgroup .co-input:-webkit-autofill,
+.co-fieldgroup .co-input:-webkit-autofill:hover,
+.co-fieldgroup .co-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 60px var(--color-surface) inset !important;
+  -webkit-text-fill-color: var(--heading-color) !important;
+  caret-color: var(--primary-color);
+}
+
+/* ---- Focused row ----------------------------------------------------- */
+.co-fieldgroup .co-field.co-focused { background: #ffffff; }
+.co-fieldgroup .co-field::before { width: 2.5px; }
+.co-fieldgroup .co-input:focus,
+.co-fieldgroup .co-sel:focus {
+  background: #ffffff !important;
+  outline: none !important;
+}
+
+/* ---- Labels ---------------------------------------------------------- */
+/* Resting: large enough to read as the field's real name, not a hint. */
+.co-fieldgroup .co-field .co-label:not(.co-label--top) {
+  left: 18px !important;
+  font-size: 15.5px !important;
+  font-weight: 450 !important;
+  letter-spacing: -0.005em !important;
+}
+/* Floated: small caps-ish, so the value below it is unambiguously the
+   content and the label is unambiguously the caption. */
+.co-fieldgroup .co-field.co-focused .co-label:not(.co-label--top),
+.co-fieldgroup .co-field.co-filled  .co-label:not(.co-label--top),
+.co-fieldgroup .co-input:focus ~ .co-label:not(.co-label--top),
+.co-fieldgroup .co-phone__field .co-input:focus ~ .co-label,
+.co-fieldgroup .co-label--top {
+  top: 12px !important;
+  left: 18px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+/* The asterisk is structure, not emphasis — required is the norm here (all
+   four fields are), so it stays quiet and the label does the work. */
+.co-fieldgroup .co-req { color: var(--paragraph-light); font-weight: 500; opacity: 0.7; }
+
+/* ---- Phone + country controls --------------------------------------- */
+.co-fieldgroup .co-dial {
+  min-height: 62px !important;
+  padding: 0 16px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  border-right-color: rgba(26, 26, 26, 0.07) !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-fieldgroup .co-field--phone .co-phone__field .co-input { padding-left: 14px !important; }
+
+/* ---- Errors ---------------------------------------------------------- */
+.co-fieldgroup .co-err {
+  padding: 0 18px 9px !important;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+/* ---- Mobile-only sizing --------------------------------------------- */
+@media (max-width: 900px) {
+  /* Full 44px+ targets with room to spare, and the group set slightly
+     inboard of the panel edge so the shadow has somewhere to fall. */
+  .co-fieldgroup .co-input,
+  .co-fieldgroup .co-sel,
+  .co-fieldgroup .co-dial { min-height: 64px !important; }
+  .co-section { margin-bottom: 28px !important; }
+  .co-section--divider { padding-top: 26px !important; }
+}
+
+/* Desktop keeps §10b's denser rows: the two-column layout is unchanged, and
+   a 64px row there would push the payment section below the fold. */
+@media (min-width: 901px) {
+  .co-fieldgroup .co-input,
+  .co-fieldgroup .co-sel,
+  .co-fieldgroup .co-dial { min-height: 58px !important; }
+  .co-fieldgroup .co-input,
+  .co-fieldgroup .co-sel { padding: 23px 18px 8px !important; }
+  .co-fieldgroup .co-sel { padding-right: 44px !important; }
+}
+
+/* =======================================================================
+   12. MOBILE FLOW ENDS AT THE CTA
+   -----------------------------------------------------------------------
+   Appended after §6, which sets `display: flex/grid !important` on these
+   same blocks — an earlier rule, however specific, could not have won.
+
+   The mobile sequence is Logo -> Contact & Billing -> Payment -> Order
+   Summary -> Recommended -> sticky CTA, and nothing after it. The trust
+   list, the payment-mark row and the SSL line are desktop right-column
+   furniture; on a phone they are two more screens of scroll PAST the point
+   of purchase. The same reassurance is already on screen where it matters:
+   the lock on the sticky CTA, the card marks inside the payment panel, and
+   the privacy line directly under the card fields. Desktop keeps all three.
+   ======================================================================= */
+@media (max-width: 900px) {
+  /* The card-brand row and the padlock line stay hidden here: on a phone they
+     sit inches from the same marks on the sticky CTA bar and the payment
+     panel, which is the repetition this block exists to remove.
+     .co-trustlist is NOT hidden — it is the third block of the mobile stack
+     (summary -> recommendations -> badges) and the only one of the three that
+     is not duplicated elsewhere on the screen. */
+  .co-summary-payments,
+  .co-ssl--summary { display: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   Order confirmation (/order/success)
+   ---------------------------------------------------------------------------
+   Built against the :root monochrome tokens at the top of this file, NOT
+   assets/sass/_abstracts/_variables.scss — that file still declares the
+   pre-rebrand orange/dark system and building from it produces an orange page
+   on a light site.
+
+   Header clearance is inherited: the page opens with .page-banner, which
+   already carries the site-wide 68px offset for the fixed header. */
+
+.os-panel {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.os-head {
+  margin-bottom: 40px;
+}
+
+.os-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.os-icon--ok {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.os-icon--wait {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.os-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.os-card__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+/* `.u-hidden { display: none }` and `.os-card__row { display: flex }` have
+   IDENTICAL specificity (one class each), so the one declared later in this
+   file wins — and that is this block, not the utility. Without this rule the
+   discount row, which ships with `u-hidden` and is only revealed when a
+   discount actually applied, renders on every order with an empty value.
+   Two classes beats one, in both orders. */
+.os-card__row.u-hidden {
+  display: none;
+}
+
+.os-card__label {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  /* The global `span { color: var(--span) }` rule near the top of this file
+     beats colour inherited from an ancestor, so every span here that isn't
+     meant to be near-black states its own colour explicitly. */
+}
+
+.os-card__value {
+  color: var(--color-text);
+  text-align: right;
+  /* Order ids are long, unbroken cuid strings — without this they force the
+     whole card wider than the viewport on a phone. */
+  word-break: break-word;
+}
+
+.os-card__row--total {
+  border-top: 1px solid var(--color-border);
+  margin-top: 8px;
+  padding-top: 16px;
+  font-size: 18px;
+}
+
+.os-card__row--discount .os-card__value {
+  color: var(--color-text-muted);
+}
+
+.os-items {
+  list-style: none;
+  margin: 16px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.os-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.os-item__img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.os-item__name {
+  flex: 1;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.os-item__price {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.os-next {
+  margin-top: 40px;
+  padding: 24px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius);
+}
+
+.os-next p:last-child {
+  margin-bottom: 0;
+}
+
+.os-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* .btn-one/.btn-two already set `span { color: inherit }` themselves, which is
+   what stops the global `span { color: var(--span) }` rule painting a filled
+   button's label near-black on near-black. Nothing to add here — noted so the
+   next person doesn't "fix" a bug that the shared button classes handle. */
+
+@media (max-width: 575px) {
+  .os-actions {
+    flex-direction: column;
+  }
+
+  .os-actions > a {
+    width: 100%;
+    text-align: center;
+  }
+
+  .os-card,
+  .os-next {
+    padding: 20px 16px;
+  }
+}

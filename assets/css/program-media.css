@@ -1,0 +1,386 @@
+/* ===========================================================================
+   PROGRAM MEDIA VIEWER — see assets/js/program-media.js
+
+   Deliberately the one dark surface on the whole platform. Media is judged
+   against what surrounds it: a training photo or a demo clip on the site's
+   warm off-white paper reads as an illustration in a document, and the same
+   frame on near-black reads as content. Everything that is *chrome* here —
+   the type, the radii, the pill buttons, the easing — is still the
+   platform's, only inverted; nothing about the brand changes, the lights
+   just go down.
+
+   Performance: only transform and opacity animate, the track is a single
+   composited layer, and off-slide media is torn down (src removed) on
+   close so a closed viewer is never still streaming.
+   =========================================================================== */
+
+.pm {
+  --pm-ink: #f5f5f4;
+  --pm-ink-soft: rgba(245, 245, 244, 0.62);
+  --pm-surface: rgba(255, 255, 255, 0.1);
+  --pm-surface-hover: rgba(255, 255, 255, 0.19);
+  --pm-bg: #0c0c0b;
+  --pm-dur: 320ms;
+  --pm-ease: cubic-bezier(0.25, 1, 0.5, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  background: var(--pm-bg);
+  color: var(--pm-ink);
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--pm-dur) var(--pm-ease), visibility var(--pm-dur);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+           env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.pm.is-open { opacity: 1; visibility: visible; }
+
+body.pm-open { overflow: hidden; }
+
+.pm svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pm svg.is-solid { fill: currentColor; stroke: none; }
+
+/* ------------------------------------------------------------- top bar --- */
+.pm__bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  transition: opacity var(--pm-dur) var(--pm-ease), transform var(--pm-dur) var(--pm-ease);
+}
+.pm.is-idle .pm__bar { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+
+.pm__meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.pm__meta strong {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pm__meta span {
+  font-size: 12px;
+  color: var(--pm-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pm__count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pm-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.pm__bar-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+
+/* Every control is at least 44px — this is a viewer used one-handed on a
+   phone, mid-workout, and a 24px icon button is not usable there. */
+.pm__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pm-surface);
+  color: var(--pm-ink);
+  font-size: 19px;
+  cursor: pointer;
+  transition: background-color 180ms var(--pm-ease), transform 180ms var(--pm-ease), opacity 180ms var(--pm-ease);
+}
+.pm__icon:hover { background: var(--pm-surface-hover); }
+.pm__icon:active { transform: scale(0.93); }
+.pm__icon:disabled { opacity: 0.3; cursor: default; }
+.pm__icon:focus-visible { outline: 2px solid var(--pm-ink); outline-offset: 2px; }
+.pm__icon--lg { width: 52px; height: 52px; font-size: 23px; background: var(--pm-ink); color: var(--pm-bg); }
+.pm__icon--lg:hover { background: #ffffff; }
+
+/* --------------------------------------------------------------- stage --- */
+.pm__stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+.pm__track { display: flex; height: 100%; will-change: transform; }
+.pm__track.is-animating { transition: transform var(--pm-dur) var(--pm-ease); }
+
+.pm-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.pm-image { max-width: 100%; max-height: 100%; overflow: hidden; }
+.pm-image img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 200ms var(--pm-ease);
+  cursor: zoom-in;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* While a drag is in flight the transform is written every pointermove;
+   transitioning it would lag the finger by 200ms. */
+.pm.is-zoomed .pm-image img { transition: none; cursor: grab; }
+.pm.is-zoomed .pm-image img:active { cursor: grabbing; }
+
+/* container-type: size is what lets the frame below solve its own box against
+   the stage in pure CSS, with no metadata and no measuring in JS. */
+.pm-video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+
+/* THE VIEWER BOX.
+
+   `.pm-video video` used to be sized INTRINSICALLY (width/height auto, capped
+   by max-*). That made the element's box a function of whatever the decoder
+   had told it so far, which changed twice per open: it took the POSTER's size
+   first (the tile's 320px thumb, so a 320x180 stamp in the middle of a 1904px
+   stage) and only became the video's size once playback replaced the poster.
+   Measured at 1920x1080: container 1904x891, video 320x180 — the element was
+   covering 3% of the area it was given, which is why the centre play button
+   and any native control chrome sat nowhere near where the picture appeared.
+
+   The box is now derived from the aspect ratio the manifest already carries —
+   the same number the inline tiles reserve their space with — so it is known
+   before a single byte of media arrives and never moves afterwards. The video
+   fills that box and `object-fit: contain` keeps the picture undistorted for
+   any source dimensions. */
+.pm-video__frame { position: relative; width: 100%; height: 100%; }
+
+/* Largest box of the manifest's ratio that fits the stage, solved on both axes
+   at once.
+
+   `aspect-ratio` with `height: 100%; max-width: 100%` is the obvious spelling
+   and it is wrong: when the stage is narrower than the ratio wants, max-width
+   clamps the width while height stays definite at 100%, so the ratio is
+   silently dropped and the frame becomes the full stage. Measured on a 390px
+   viewport that produced a 374x655 box for 16:9 content. The min() pair below
+   has no such asymmetry — each axis is bounded by the stage AND by what the
+   other axis allows. */
+.pm-video__frame--ratio {
+  width: min(100cqw, calc(100cqh * var(--pm-ratio)));
+  height: min(100cqh, calc(100cqw / var(--pm-ratio)));
+}
+/* Container query units are the only part of this that is not ancient. Without
+   them the frame stays the full stage and `object-fit: contain` on the video
+   still paints the right picture in the right place — the box just isn't
+   trimmed to it. */
+@supports not (width: 1cqw) {
+  .pm-video__frame--ratio { width: 100%; height: 100%; }
+}
+
+.pm-video video,
+.pm-video__hold {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Transparent, not #000: the element now spans the whole frame, so a black
+   background here would paint a rectangle over the viewer's own backdrop
+   rather than sit behind the picture. */
+.pm-video video { background: transparent; }
+
+/* Hold frame: the tile's already-cached still, painted over the video until it
+   has a frame of its own. It shares the rules above, so it occupies EXACTLY
+   the rectangle the video occupies and removing it is a sharpening rather than
+   a jump. (It previously filled the container while the video was intrinsic-
+   sized beneath it — the picture appeared full-bleed, then collapsed to a
+   320x180 stamp the moment the hold came off.) Removed on `loadeddata` — see
+   wireVideoLoad() in assets/js/program-media.js. */
+.pm-video__hold {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The big centre play target — the only thing on the stage before a video
+   has been started, and it disappears once it has. */
+.pm-video__big {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(245, 245, 244, 0.94);
+  color: #0c0c0b;
+  font-size: 30px;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  transition: opacity 200ms var(--pm-ease), transform 200ms var(--pm-ease);
+}
+.pm-video__big:hover { transform: translate(-50%, -50%) scale(1.06); }
+.pm-slide.is-playing .pm-video__big { opacity: 0; pointer-events: none; }
+
+.pm-embed { width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; }
+.pm-embed iframe { width: 100%; height: 100%; border: 0; border-radius: 10px; }
+
+/* Arrows sit outside the media on desktop, and are hidden on touch where
+   swipe is the real gesture. */
+.pm__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pm-surface);
+  color: var(--pm-ink);
+  font-size: 22px;
+  cursor: pointer;
+  transition: background-color 180ms var(--pm-ease), opacity 180ms var(--pm-ease);
+}
+.pm__arrow:hover { background: var(--pm-surface-hover); }
+.pm__arrow:disabled { opacity: 0.22; cursor: default; }
+.pm__arrow--prev { left: 16px; }
+.pm__arrow--next { right: 16px; }
+.pm.is-idle .pm__arrow { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (min-width: 768px) {
+  .pm__arrow { display: flex; }
+  .pm__arrow[hidden] { display: none; }
+}
+
+/* --------------------------------------------------------------- foot --- */
+.pm__foot {
+  flex: 0 0 auto;
+  padding: 10px 14px 16px;
+  transition: opacity var(--pm-dur) var(--pm-ease), transform var(--pm-dur) var(--pm-ease);
+}
+.pm__foot:empty { padding: 0; }
+.pm.is-idle .pm__foot { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+/* ---- image tools ---- */
+.pm-tools { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.pm-tools__level {
+  min-width: 58px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pm-ink-soft);
+}
+.pm-hint { margin: 8px 0 0; text-align: center; font-size: 11.5px; color: rgba(245, 245, 244, 0.38); }
+@media (hover: hover) { .pm-hint { display: none; } }
+
+/* ---- video transport ---- */
+.pm-player { max-width: 1100px; margin: 0 auto; }
+
+/* The visible bar is 5px, but the pointer target is the full 22px of
+   padding around it — scrubbing with a thumb on a 5px strip is not a
+   premium experience. */
+.pm-player__scrub {
+  position: relative;
+  height: 5px;
+  margin: 9px 0 13px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  touch-action: none;
+}
+.pm-player__scrub::before { content: ""; position: absolute; inset: -11px 0; }
+.pm-player__buffer,
+.pm-player__played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: inherit;
+}
+.pm-player__buffer { background: rgba(255, 255, 255, 0.22); }
+.pm-player__played { background: var(--pm-ink); }
+.pm-player__knob {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--pm-ink);
+  transform: translateY(-50%) scale(0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 160ms var(--pm-ease);
+}
+.pm-player__scrub:hover .pm-player__knob,
+.pm-player__scrub:focus-visible .pm-player__knob { transform: translateY(-50%) scale(1.25); }
+.pm-player__scrub:focus-visible { outline: 2px solid var(--pm-ink); outline-offset: 6px; border-radius: 100px; }
+
+.pm-player__row { display: flex; align-items: center; gap: 8px; }
+.pm-player__spacer { flex: 1 1 auto; }
+.pm-player__time {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--pm-ink-soft);
+  white-space: nowrap;
+}
+.pm-player__time b { color: var(--pm-ink); font-weight: 700; }
+.pm-player__rate { font-size: 13.5px; font-weight: 700; }
+
+.pm-player__quality {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 100px;
+  background: var(--pm-surface);
+  color: var(--pm-ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pm-player__quality option { color: #1a1a1a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pm,
+  .pm *,
+  .pm *::before { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+}

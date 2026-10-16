@@ -21,9 +21,26 @@ model User {
   id              String           @id @default(cuid())
   email           String           @unique
   name            String?
+  // What the customer chose to be called, set in My Profile and used for the
+  // "Welcome back, X" greeting. Separate from `name`, which is the legal /
+  // billing name collected at checkout and used on receipts — a customer who
+  // wants to be greeted as "Sam" must not thereby rewrite the name on their
+  // invoices. Null means "no preference": fall back to the first word of
+  // `name`, then to the email local part.
+  displayName     String?
+  // Profile photo. Stored exactly like Product.imageUrl and Partner.avatarUrl
+  // — a bare relative path under assets/images/, so the existing derivative
+  // pipeline and normalizeImageUrl apply unchanged.
+  avatarUrl       String?
   passwordHash    String?
-  role            String           @default("customer") // "customer" | "admin"
+  role            String           @default("customer") // "customer" | "admin" | "manager"
   status          String           @default("active") // "active" | "suspended"
+  // Collected at checkout (Contact & Billing) and backfilled onto the User on
+  // every fulfillment — see fulfillOrder.js. Nullable because accounts also
+  // arrive via magic link and admin creation, neither of which has a phone.
+  phone           String?
+  // ISO 3166-1 alpha-2 ("US", "GB"). Was previously never written: the
+  // checkout form posted nothing, so this stayed null for every customer.
   country         String?
   notes           String? // admin-only free-text notes, set when manually creating/editing a customer
   lastLoginAt     DateTime?
@@ -33,6 +50,11 @@ model User {
   magicLinkTokens MagicLinkToken[]
   orderNotes      OrderNote[]      @relation("OrderNoteAuthor")
   systemLogs      SystemLog[]
+  promotionsCreated   Promotion[]           @relation("PromotionCreatedBy")
+  promotionRedemptions PromotionRedemption[]
+  promotionEligibility PromotionUser[]
+  presentationsCreated PrivatePresentation[] @relation("PresentationCreatedBy")
+  programProgress      ProgramProgress[]
 }
 
 model Product {
@@ -43,8 +65,31 @@ model Product {
   imageUrl   String?
   thumbnailUrl String?
   description  String? // short description shown on shop grid/cards
-  status       String   @default("published") // "draft" | "published" | "archived"
+  status       String   @default("published") // "draft" | "private" | "scheduled" | "published" | "archived" | "presentation" | "unlisted"
   featured     Boolean  @default(false)
+
+  // VISIBILITY and ACCESS are two different questions and these are the two
+  // different answers.
+  //
+  // `status` decides LISTING. Every public surface filters status:"published"
+  // (shop, homepage, featured, recommendations, sitemap, on-site search) and
+  // so does checkoutItems, which is why a non-published product is also
+  // unbuyable. "unlisted" therefore needs no new filtering anywhere: it is
+  // excluded everywhere by the rule that already exists.
+  //
+  // `freeAccess` decides ACCESS, which until now had exactly one source — a
+  // paid OrderItem. It grants entitlement to THIS product and nothing else,
+  // to anyone, with no order. It is deliberately NOT derived from priceCents
+  // (a product keeps its real price while being shown) and NOT from status
+  // (a draft must not become readable just for being unpublished).
+  //
+  // The pair is what a presentation product needs: unlisted so no customer
+  // can stumble into it, free so a prospect can read the real thing.
+  freeAccess   Boolean  @default(false)
+  // When status is "scheduled", the moment it should flip to "published".
+  // A timer sweep in src/index.js does the flip; until then "scheduled" is a
+  // non-public status like any other, so nothing leaks early.
+  publishAt    DateTime?
   createdAt    DateTime @default(now())
 
   // Platform program content — what the customer actually consumes after
@@ -63,9 +108,17 @@ model Product {
   seoTags String[] @default([])
 
   orderItems OrderItem[]
+  media      ProductMedia[]
   faqs       ProductFaq[]
   resources  ProductResource[]
   taxonomies ProductTaxonomy[]
+  promotionEligibility PromotionProduct[]
+  promotionsAsFreeGift Promotion[] @relation("PromotionFreeProduct")
+  progress             ProgramProgress[]
+  // Partner profiles featuring this product. Cascade lives on PartnerProduct,
+  // so deleting a product cleanly removes it from every profile that curated
+  // it rather than leaving a dangling row.
+  partnerFeatures      PartnerProduct[]
 }
 
 // One tree per top-level nav root (Shop by Goal / Browse Athletes / Browse
@@ -78,17 +131,46 @@ model Taxonomy {
   route String         @unique // "/shop/goals"
   order Int            @default(0)
   // Explicit, stored shape flag — Athletes/Creators are category ->
-  // subcategory (Football -> Cristiano Ronaldo); Goals is a flat list. This
+  // subcategory (Football -> Marcus Reyes); Goals is a flat list. This
   // has to be an explicit column rather than inferred from whether a node
   // currently has children, because a brand-new, still-empty category (e.g.
   // an admin just added "Cricket") would otherwise look identical to a flat
   // leaf and render with the wrong picker UI.
   hasSubcategories Boolean        @default(false)
+
+  // ---- Navigation presentation (header mega-menu + mobile drawer) ----
+  // These four columns are what makes the header a DATA-DRIVEN renderer
+  // instead of three hand-built dropdowns. lib/navigation.js reads them and
+  // nothing in the frontend knows the words "goal", "athlete" or "creator".
+  //
+  // Whether this taxonomy is offered as a top-level nav item at all. An
+  // admin can build out a taxonomy (tagging products with it) long before
+  // it is ready to be advertised, and can retire one from the header
+  // without deleting the categorization it carries.
+  showInNav Boolean @default(true)
+  // How the panel presents its items. "auto" derives from the tree's own
+  // shape (flat -> a link index; nested -> a group index), which is what a
+  // brand-new admin-created taxonomy gets for free. "people" is the one
+  // thing structure cannot tell you — that the leaves are humans and should
+  // be shown with a face — so it is stored, not guessed.
+  //   "auto" | "list" | "groups" | "people"
+  navLayout String @default("auto")
+  // URL segment for a LEAF node: "goal" -> /goal/lose-fat, "athlete" ->
+  // /athlete/marcus-reyes. Previously these three words were hardcoded as
+  // four express routes and a chain of if/else in routes/pages.js, so a new
+  // taxonomy's items had no reachable URL at all.
+  nodeRoute String @unique
+  // URL segment for a BRANCH node, when the tree has them: "sport" ->
+  // /sport/football. Null means branches organize the menu but are not
+  // themselves listing pages — which is exactly the case for the Creators
+  // tree's Fitness/Nutrition/Powerlifting groups today.
+  groupRoute String? @unique
+
   nodes            TaxonomyNode[]
 }
 
 // A node in a taxonomy tree, arbitrary depth (e.g. Athletes: root -> Football
-// -> Cristiano Ronaldo). Leaf nodes are what products actually get tagged
+// -> Marcus Reyes). Leaf nodes are what products actually get tagged
 // with via ProductTaxonomy; branch nodes exist purely to organize the menu.
 model TaxonomyNode {
   id         String            @id @default(cuid())
@@ -102,6 +184,7 @@ model TaxonomyNode {
   order      Int               @default(0)
   createdAt  DateTime          @default(now())
   products   ProductTaxonomy[]
+  promotionEligibility PromotionCategory[]
 
   @@unique([taxonomyId, parentId, slug])
 }
@@ -118,6 +201,26 @@ model ProductTaxonomy {
   taxonomyNode   TaxonomyNode @relation(fields: [taxonomyNodeId], references: [id], onDelete: Cascade)
 
   @@unique([productId, taxonomyNodeId])
+}
+
+// Ordered gallery for the product page carousel. Product.imageUrl stays the
+// single "cover" used by cards, OG tags and the cart line — this is purely
+// additive, so every existing product keeps working with zero rows here.
+//
+// GIFs need no special case: they are image/gif and render in an <img> like
+// any other image. Only real video (mp4/webm) gets type "video".
+model ProductMedia {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  type      String  @default("image") // "image" | "video"
+  alt       String?
+  // Explicit admin-defined sort position, matching ProductFaq/ProductResource.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, order])
 }
 
 model ProductFaq {
@@ -154,9 +257,18 @@ model Order {
   status         String      @default("pending") // payment status: pending | paid | failed | refunded
   deliveryStatus String      @default("pending") // pending | delivered | resent | failed
   totalCents     Int
+  // Cents knocked off the pre-discount subtotal by all applied promotion(s)
+  // combined (0 for orders with none). promotionId is only the manually-
+  // entered code, if any (display convenience) — the full picture, including
+  // a possible stacked auto-apply promotion, lives in promotionRedemptions,
+  // which is the actual source of truth for usage counting/analytics.
+  discountCents  Int         @default(0)
+  promotionId    String?
+  promotion      Promotion?  @relation(fields: [promotionId], references: [id])
   createdAt      DateTime    @default(now())
   items          OrderItem[]
   notes          OrderNote[]
+  promotionRedemptions PromotionRedemption[]
 }
 
 model OrderNote {
@@ -171,11 +283,15 @@ model OrderNote {
 
 model SystemLog {
   id        String   @id @default(cuid())
-  category  String // "auth" | "order" | "product" | "user" | "payment" | "admin" | "dev"
+  category  String // "auth" | "order" | "product" | "user" | "payment" | "admin" | "dev" | "promotion"
   message   String
   metadata  String?
   actorId   String?
   actor     User?    @relation(fields: [actorId], references: [id])
+  // Best-effort request IP (req.ip), captured for admin-mutation audit trails
+  // (currently only Promotion routes pass it) — not populated on older log
+  // categories, so always optional.
+  ip        String?
   createdAt DateTime @default(now())
 }
 
@@ -226,14 +342,59 @@ model OrderItem {
   priceCents Int
 }
 
-// Short-lived record bridging a checkout attempt to its PayPal order, since
-// PayPal's custom_id field is too small to carry a full cart + email payload.
+// One row per checkout attempt, for BOTH providers — the single server-side
+// record of what the buyer was actually quoted and charged for.
+//
+// Originally PayPal-only (its custom_id field is too small to carry a cart +
+// email payload, so the id is round-tripped instead). Stripe used to carry
+// the same payload in PaymentIntent metadata, which capped the cart at
+// roughly ten line items: Stripe limits each metadata VALUE to 500
+// characters, and a serialized cart passes that at ~11 items, failing the
+// whole create-intent call. Both providers now write a row here and carry
+// only its id, so the two paths share one snapshot format and one size
+// limit — the cart cap in checkoutItems.js.
 model PendingCheckout {
   id         String   @id @default(cuid())
   email      String
-  itemsJson  String
+  // Carried from create-order to capture-order so the PayPal path persists
+  // the same Contact & Billing details the Stripe path keeps in PaymentIntent
+  // metadata. Nullable: older pending rows predate these columns.
+  customerName    String?
+  customerPhone   String?
+  customerCountry String?
+  itemsJson  String // JSON: the raw [{ productId, qty }] the browser sent
+  // The PRICED snapshot — JSON: [{ productId, priceCents }], one entry per
+  // unit, exactly as resolveCheckoutItems() computed it at the moment the
+  // payment was created. This is what fulfillment builds the order from.
+  //
+  // Fulfillment used to re-resolve itemsJson against the live catalog
+  // instead, which meant an admin editing a price, or unpublishing a product,
+  // between "customer pays" and "webhook arrives" either recorded an order
+  // total that disagreed with the amount actually charged or — for an
+  // unpublished product — threw "Unknown product" and permanently failed to
+  // fulfill a payment that had already succeeded. Nullable only because rows
+  // written before this column existed have no snapshot; both fulfillment
+  // paths fall back to the old re-resolve for those.
+  resolvedItemsJson String?
+  subtotalCents Int @default(0) // pre-discount, for reconciliation
   totalCents Int
+  // Discount decision locked in at create-order time — read back verbatim at
+  // capture time rather than re-validated, so a promotion that legitimately
+  // applied when the payment was created can't retroactively block
+  // fulfillment of a payment that already completed.
+  discountCents Int @default(0)
+  promotionId   String?
+  appliedPromotionsJson String? // JSON: [{ promotionId, discountCents }]
+  // Which provider claimed this snapshot, and its id for that provider
+  // (Stripe PaymentIntent id / PayPal order id). Audit trail only —
+  // fulfillment is keyed off Order.providerRef, not this.
+  provider    String?
+  providerRef String?
+  consumedAt  DateTime? // set when an order was fulfilled from this snapshot
   createdAt  DateTime @default(now())
+
+  @@index([providerRef])
+  @@index([createdAt])
 }
 
 model MagicLinkToken {
@@ -253,4 +414,449 @@ model Session {
   tokenHash String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// =====================================================================
+// PROMOTION ENGINE
+// =====================================================================
+//
+// One flexible model rather than a table-per-"promotion-type": the brief's
+// list of ~15 promotion types actually mixes a discount mechanism
+// (discountType), independent eligibility rules (the boolean/relation
+// fields below), and a reporting category (codeKind) — modeling them as
+// separate types would make combinations like "20% off, first-purchase-
+// only, one category" impossible. Here they compose freely instead.
+
+// Influencer/athlete/creator/affiliate directory. A Promotion optionally
+// belongs to one — kept as its own model (rather than fields inlined on
+// Promotion) since the same person may eventually run more than one code.
+model Influencer {
+  id             String      @id @default(cuid())
+  name           String
+  email          String?
+  type           String // "influencer" | "athlete" | "creator" | "affiliate"
+  commissionPct  Float? // e.g. 15.0 = 15%; used when commissionType = "percentage"
+  commissionType String? // "percentage" | "fixed"
+  commissionFixedCents Int? // used when commissionType = "fixed"
+  paymentRef     String? // optional bank/Stripe Connect reference — never a secret, just a lookup label
+  notes          String? // internal-only notes, never shown to the influencer
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  promotions     Promotion[]
+  // Optional link to the public-facing profile record. Kept nullable and
+  // SetNull: the commercial record and the published profile have independent
+  // lifecycles, and removing one must never delete the other.
+  partners       Partner[]
+}
+
+model Promotion {
+  id          String  @id @default(cuid())
+  code        String  @unique // normalized uppercase, e.g. "SUMMER20"
+  name        String
+  description String?
+
+  discountType  String // "PERCENTAGE" | "FIXED_AMOUNT" | "FREE_PRODUCT"
+  discountValue Int // percentage (0-100) or cents, per discountType; ignored for FREE_PRODUCT
+  freeProductId String?
+  freeProduct   Product? @relation("PromotionFreeProduct", fields: [freeProductId], references: [id])
+
+  // Reporting/attribution category — does not affect discount math, only how
+  // the promotion is grouped/filtered in the admin list and analytics.
+  codeKind String @default("STANDARD") // "STANDARD" | "AFFILIATE" | "INFLUENCER" | "CAMPAIGN"
+
+  maxUses            Int? // null = unlimited ("Limited Quantity" when set)
+  maxUsesPerCustomer Int?
+  minSpendCents      Int? // "Minimum Cart Value"
+  maxDiscountCents   Int? // caps a PERCENTAGE discount's absolute value
+
+  firstPurchaseOnly Boolean @default(false)
+  singleUse         Boolean @default(false) // once redeemed by anyone, auto-disables (independent of maxUses)
+  stackable         Boolean @default(false) // may combine with one auto-apply promotion; two manual codes never combine
+  autoApply         Boolean @default(false)
+
+  activatesAt DateTime?
+  expiresAt   DateTime?
+  timezone    String    @default("UTC") // interprets activatesAt/expiresAt for display + threshold math
+
+  status String @default("enabled") // "enabled" | "paused" | "disabled" (expiration is derived from expiresAt, not stored)
+
+  createdById String
+  createdBy   User   @relation("PromotionCreatedBy", fields: [createdById], references: [id])
+
+  influencerId String?
+  // Restrict, not the nullable-FK default of SetNull: an Influencer with
+  // promotion history must not be deletable out from under it — that would
+  // silently erase the influencer link on past promotions and break
+  // historical commission reporting (getPromotionStats reads
+  // promotion.influencer). server/src/routes/admin/influencers.js's delete
+  // route surfaces this as a clear 409 instead.
+  influencer   Influencer? @relation(fields: [influencerId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products    PromotionProduct[]
+  categories  PromotionCategory[]
+  users       PromotionUser[]
+  redemptions PromotionRedemption[]
+  notifications PromotionNotification[]
+  orders      Order[]
+}
+
+// "Specific Products" eligibility — if a promotion has any rows here, it
+// only applies to carts containing at least one of these products.
+model PromotionProduct {
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, productId])
+}
+
+// "Specific Categories" eligibility, keyed on the existing TaxonomyNode tree
+// (the site's actual category model) rather than a separate category concept.
+model PromotionCategory {
+  promotionId    String
+  promotion      Promotion    @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  taxonomyNodeId String
+  taxonomyNode   TaxonomyNode @relation(fields: [taxonomyNodeId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, taxonomyNodeId])
+}
+
+// "Specific Users" eligibility — an allowlist of customers who may redeem.
+model PromotionUser {
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, userId])
+}
+
+// Append-only usage ledger — the source of truth for "Uses"/"Revenue" in the
+// promotion list and for all analytics; never derived by re-scanning Order.
+// Usually one row per Order, but an order can carry two (one manually-entered
+// code + one stackable auto-apply promotion) — see fulfillOrder.js. Unique on
+// (orderId, promotionId) rather than orderId alone: allows that second row
+// while still making redemption-writing idempotent per promotion-per-order.
+model PromotionRedemption {
+  id            String    @id @default(cuid())
+  promotionId   String
+  promotion     Promotion @relation(fields: [promotionId], references: [id])
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  discountCents Int
+  createdAt     DateTime  @default(now())
+
+  @@unique([orderId, promotionId])
+  @@index([promotionId, createdAt])
+}
+
+// Admin notification-center rows, generated by
+// server/src/lib/promotionNotifications.js on a timer. Unique on
+// (promotionId, type) so re-evaluation upserts/dedupes instead of spamming a
+// new row every sweep.
+model PromotionNotification {
+  id           String    @id @default(cuid())
+  promotionId  String
+  promotion    Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  type         String // "EXPIRES_30D" | "EXPIRES_14D" | "EXPIRES_7D" | "EXPIRES_3D" | "EXPIRES_24H" | "USAGE_80PCT" | "USAGE_MAX" | "HIGH_SALES" | "NEVER_USED" | "EXPIRED"
+  status       String    @default("open") // "open" | "dismissed" | "snoozed" | "done"
+  snoozedUntil DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([promotionId, type])
+}
+
+// =====================================================================
+// PRIVATE PRESENTATIONS
+// =====================================================================
+//
+// Unlisted, link-only pitch decks served at /presentation/:slug for
+// investor / enterprise / athlete meetings. Deliberately NOT a Product,
+// Promotion or CMS page: nothing here ever appears in navigation, search,
+// the sitemap or robots.txt, and the only way in is a link an admin hands
+// out. See server/src/routes/presentation.js for the access gate and
+// server/src/lib/presentations.js for slug/password/unlock handling.
+
+model PrivatePresentation {
+  id        String @id @default(cuid())
+  // The random, unguessable half of the URL — this IS the access secret
+  // when no password is set, so it's 24 chars of crypto randomness rather
+  // than a readable slug derived from the title (see lib/presentations.js).
+  slug      String @unique
+  // Internal label shown in the admin list, never rendered on the page.
+  title     String
+  // Who the link was cut for ("Northwind Capital", "Sarah Chen") — this one
+  // IS rendered, in the hero, so the deck opens addressed to the viewer.
+  recipient String?
+  status    String @default("enabled") // "enabled" | "disabled"
+
+  // Both optional gates, independent of each other. A null expiresAt never
+  // expires; a null passwordHash opens straight from the link.
+  expiresAt    DateTime?
+  passwordHash String? // bcrypt, same cost as User.passwordHash
+
+  // Per-presentation copy overrides + section visibility. Kept as one JSON
+  // blob rather than a column per field: the deck's structure is fixed
+  // brand content in private/presentation.html, and this only carries the
+  // handful of things that change per meeting (hero copy, the CTA links,
+  // which sections to show). Adding a new override must never need a
+  // migration. Shape:
+  //   { heroEyebrow, heroTitle, heroSubtitle, welcomeNote,
+  //     featuredProductId, partnerProfileId,
+  //     ctaMeetingUrl, ctaDemoUrl, ctaPartnershipUrl,
+  //     sections: { who: true, services: true, ... } }
+  // featuredProductId is a Product id, not a relation: it is one optional
+  // pointer inside a JSON blob of per-meeting overrides, and a real foreign
+  // key would mean a migration plus a decision about what deleting a
+  // product does to every deck that mentions it. It is resolved (and
+  // silently dropped if missing or unpublished) at render time in
+  // routes/presentation.js.
+  //
+  // partnerProfileId is a Partner id and follows that decision exactly — it
+  // is the sibling of featuredProductId in the same admin "Content" panel,
+  // so it is stored the same way for the same reasons. Both are REFERENCES:
+  // no product field and no profile field (name, bio, avatar, socials,
+  // links, products) is ever copied into this blob, so an edit in
+  // Admin -> Products or Admin -> Partner Profiles shows on every deck that
+  // points at it on the very next request. Deleting a Partner leaves a
+  // dangling id that resolves to null and simply drops the section, which is
+  // the same graceful miss featuredProductId already has.
+  content Json?
+
+  createdById String?
+  createdBy   User?   @relation("PresentationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  visits PresentationVisit[]
+  events PresentationEvent[]
+
+  @@index([status, createdAt])
+}
+
+// One row per browser session on a presentation. `visitorKey` is a random
+// id stored in a first-party cookie scoped to the presentation, which is
+// what makes "unique visitors" meaningful without any third-party
+// analytics, fingerprinting or cross-site identifier.
+model PresentationVisit {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   PrivatePresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+
+  visitorKey String
+  ip         String?
+  userAgent  String?
+  referrer   String?
+
+  startedAt DateTime @default(now())
+  // Heartbeated by the page while it's actually visible (see
+  // assets/js/presentation.js) — a backgrounded tab stops accruing time, so
+  // "time spent" means engaged time, not wall-clock time with the tab open.
+  lastSeenAt DateTime @default(now())
+  dwellMs    Int      @default(0)
+
+  // Furthest section reached (0-based index into the deck) and whether the
+  // How It Works wizard was taken all the way to step 6 — the two signals
+  // that answer "did they actually get through it?".
+  maxSectionIndex Int     @default(0)
+  wizardCompleted Boolean @default(false)
+
+  events PresentationEvent[]
+
+  @@index([presentationId, startedAt])
+  @@index([presentationId, visitorKey])
+}
+
+model PresentationEvent {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   PrivatePresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  visitId        String?
+  visit          PresentationVisit?  @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  type  String // "cta_click" | "contact_submit" | "wizard_complete" | "unlock_failed"
+  label String? // which CTA, which wizard step — free-form, always server-clamped
+
+  createdAt DateTime @default(now())
+
+  @@index([presentationId, type, createdAt])
+}
+
+// =====================================================================
+// PROGRAM PROGRESS
+// =====================================================================
+//
+// One row per (customer, product) — the state that makes the purchased
+// program view feel like an application the customer returns to rather
+// than a page they re-read from the top. Deliberately NOT one row per
+// completed item: a program is a few dozen trackable items at most, so a
+// single row with an array is one query per open and one upsert per
+// change, instead of N inserts and a join.
+//
+// `completedKeys` holds opaque, content-derived keys minted client-side
+// by assets/js/program.js (e.g. "training:0:2", "video:<mediaId>",
+// "chapter:overview"). The server deliberately does not validate them
+// against the product's current content: a program that is re-edited in
+// the admin wizard would otherwise silently drop a customer's history,
+// and a key that no longer resolves is simply ignored at render time.
+// They are clamped for length/count instead — see routes/library.js.
+model ProgramProgress {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  completedKeys String[] @default([])
+
+  // How many trackable items this program had when it was last opened — the
+  // DENOMINATOR for "you are 40% through".
+  //
+  // Written by the client, which is the only thing that knows it: the
+  // trackable list is handbook chapters + training days + meals + videos, and
+  // the chapter half is produced by ProgramViewer._buildPages() in the
+  // browser. Recomputing that server-side would be a second implementation of
+  // the page builder to keep in step with the first — the exact duplication
+  // this codebase has been bitten by before. Storing what the page already
+  // computed means My Library's percentage and the program page's own
+  // progress ring can never disagree.
+  //
+  // Nullable, and that is load-bearing: a program bought but never opened has
+  // no total, so My Library shows "Not started" rather than inventing 0%.
+  totalKeys Int?
+
+  // Where "Continue where you left off" resumes. lastKey is the item key;
+  // lastSection is the section id the UI should open ("program", "videos",
+  // "handbook", ...) so resuming works even when lastKey no longer exists.
+  lastKey     String?
+  lastSection String?
+
+  // Separate from updatedAt: updatedAt moves on any write including a
+  // completion toggle, whereas this is specifically "last time the
+  // customer opened the program", which is what the hero shows.
+  lastOpenedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId, lastOpenedAt])
+}
+
+// ---------------------------------------------------------------------
+// Partner Profiles — the public, Fitness-Agency-branded profile page a
+// partner shares as their single link (fitness.agency/partners/:slug).
+//
+// Deliberately SEPARATE from Influencer above, which is a COMMERCIAL record
+// (commission rate, payment reference, internal notes) attached to discount
+// codes. This is a PUBLISHING record. The two answer different questions —
+// "what do we owe this person" vs "what does the public see" — and a person
+// can exist as one without the other. `influencerId` links them when they
+// happen to be the same human, so the admin can cross-reference without
+// either model having to carry the other's fields.
+//
+// The profile owns NO product data. PartnerProduct is a join row to the
+// existing Product table, so a price/cover/name edited in Admin -> Products
+// is reflected on every profile that features it on the very next request.
+model Partner {
+  id          String  @id @default(cuid())
+  slug        String  @unique // public URL segment: /partners/<slug>
+  displayName String
+  handle      String? // "@elena_cho" style label, display-only, never a URL
+  partnerType String  @default("creator") // "athlete" | "creator" | "coach" | "influencer" | "personality"
+  bio         String? // short, plain text — rendered escaped, never as HTML
+  avatarUrl   String? // stored like Product.imageUrl: a bare relative path
+  websiteUrl  String?
+
+  // Publishing state. Mirrors Product's vocabulary rather than inventing a
+  // second one: "draft" | "published" | "archived". Only "published" is
+  // publicly reachable — draft and archived both 404, and neither appears in
+  // the sitemap. Archived is kept distinct from deleted so a profile can be
+  // taken off the internet without destroying the link/product curation.
+  status String @default("draft")
+
+  // Controlled appearance. NOT free-form colour/font input — the brief is
+  // explicit that a partner profile must stay on-brand. These are enum-ish
+  // keys the CSS knows about, validated server-side against a fixed list.
+  accent   String @default("brand") // "brand" | "mono"
+  layout   String @default("stack") // "stack" | "grid"
+
+  // CTA label on the featured link/product, so a partner can say "Get the
+  // program" instead of the generic default, without touching anything else.
+  ctaLabel String?
+
+  // SEO override. Falls back to a generated description when empty, so a
+  // profile is never published with no meta description.
+  metaDescription String?
+
+  influencerId String?
+  influencer   Influencer? @relation(fields: [influencerId], references: [id], onDelete: SetNull)
+
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  socials  PartnerSocial[]
+  links    PartnerLink[]
+  products PartnerProduct[]
+
+  @@index([status])
+}
+
+// One row per configured platform. A platform with no row is simply not
+// rendered — which is how "do not show empty social icons" is enforced
+// structurally rather than by a truthiness check in a template.
+model PartnerSocial {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  platform String // "instagram" | "tiktok" | "youtube" | "x" | "facebook" | "twitch" | "spotify" | "linkedin"
+  url      String
+  position Int    @default(0)
+
+  // One row per platform per partner: two Instagram icons on one profile is
+  // always a mistake, so the database refuses it rather than the UI hoping.
+  @@unique([partnerId, platform])
+  @@index([partnerId, position])
+}
+
+// Free-form "link in bio" rows — the Linktree-style part of the page.
+model PartnerLink {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  title       String
+  url         String
+  description String?
+  icon        String? // font-awesome key from a server-side allowlist, never raw markup
+  featured    Boolean @default(false) // renders as the one primary link above the fold
+  position    Int     @default(0)
+
+  @@index([partnerId, position])
+}
+
+// Join row to the EXISTING catalog. Carries only curation state (order,
+// which one is featured) — never a copy of the product's name, price or
+// image, so the profile cannot drift out of sync with Admin -> Products.
+model PartnerProduct {
+  id        String  @id @default(cuid())
+  partnerId String
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  featured Boolean @default(false)
+  position Int     @default(0)
+
+  @@unique([partnerId, productId])
+  @@index([partnerId, position])
 }

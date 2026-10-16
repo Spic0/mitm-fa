@@ -1,4 +1,5 @@
 const { prisma } = require("../db");
+const { resolveDiscountForCode, findAutoApplyPromotion, computeDiscount } = require("./promotions");
 
 // A real cart is a handful of line items; nothing about this catalog (a few
 // dozen training/nutrition plans) ever needs more than this. Capping early —
@@ -13,8 +14,11 @@ const MAX_LINE_ITEMS = 50;
 const MAX_TOTAL_UNITS = 100;
 
 // Never trust client-provided prices: look products up server-side and expand
-// { productId, qty } pairs into one order-item entry per unit purchased.
-async function resolveCheckoutItems(rawItems) {
+// { productId, qty } pairs into one order-item entry per unit purchased. Pure
+// pricing, no promo logic — split out so callers that only need a subtotal
+// (e.g. the /validate and /auto-apply routes, which are themselves deciding
+// what to do with a promo) don't pay for an auto-apply lookup they discard.
+async function resolveItemsAndSubtotal(rawItems) {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw new Error("Cart is empty");
   }
@@ -40,8 +44,46 @@ async function resolveCheckoutItems(rawItems) {
     }
   }
 
-  const totalCents = resolvedItems.reduce((sum, item) => sum + item.priceCents, 0);
-  return { resolvedItems, totalCents };
+  const subtotalCents = resolvedItems.reduce((sum, item) => sum + item.priceCents, 0);
+  return { resolvedItems, subtotalCents };
 }
 
-module.exports = { resolveCheckoutItems };
+// Full checkout resolution: pricing + promo application. `promoCode`/`email`
+// are optional — when a promoCode is given, the discount is validated and
+// computed server-side too (same "never trust the client" rule that already
+// applies to prices), and the returned totalCents is what should actually be
+// charged.
+async function resolveCheckoutItems(rawItems, { promoCode, email } = {}) {
+  const { resolvedItems, subtotalCents } = await resolveItemsAndSubtotal(rawItems);
+
+  // At most one manually-entered code + at most one auto-apply promotion can
+  // apply to an order — two manually-entered codes never combine, and an
+  // auto-apply promotion only joins a manual code when that code's
+  // `stackable` flag allows it. `appliedPromotions` (0-2 entries) is what
+  // actually gets redeemed at fulfillment time; `promotionId` is just the
+  // manual code, kept for Order's display-convenience FK.
+  const appliedPromotions = [];
+  let manualResult = null;
+  if (promoCode) {
+    manualResult = await resolveDiscountForCode(promoCode, { items: resolvedItems, subtotalCents, email });
+    if (!manualResult.ok) throw new Error(manualResult.reason);
+    appliedPromotions.push({ promotionId: manualResult.promotion.id, discountCents: manualResult.discountCents });
+  }
+
+  const canConsiderAutoApply = !manualResult || manualResult.promotion.stackable;
+  if (canConsiderAutoApply) {
+    const remainingSubtotal = subtotalCents - (manualResult ? manualResult.discountCents : 0);
+    const auto = await findAutoApplyPromotion({ items: resolvedItems, subtotalCents: remainingSubtotal, email });
+    if (auto && (!manualResult || auto.id !== manualResult.promotion.id)) {
+      const autoDiscountCents = computeDiscount(auto, { items: resolvedItems, subtotalCents: remainingSubtotal });
+      if (autoDiscountCents > 0) appliedPromotions.push({ promotionId: auto.id, discountCents: autoDiscountCents });
+    }
+  }
+
+  const discountCents = Math.min(appliedPromotions.reduce((sum, a) => sum + a.discountCents, 0), subtotalCents);
+  const totalCents = subtotalCents - discountCents;
+  const promotionId = manualResult ? manualResult.promotion.id : null;
+  return { resolvedItems, subtotalCents, discountCents, promotionId, appliedPromotions, totalCents };
+}
+
+module.exports = { resolveCheckoutItems, resolveItemsAndSubtotal };

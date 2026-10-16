@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-brand-title="{brand} - My Profile">Fitness Agency - My Profile</title>
+    <!-- description/canonical/OpenGraph/Twitter/robots, injected server-side per route — see server/src/routes/pages.js -> applyStaticSeo. -->
+    <!--PAGE_SEO-->
+    <!-- Favicon img -->
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
+    <!-- Bootstarp min css -->
+    <link rel="stylesheet" href="/assets/css/critical.css">
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/bootstrap.min.css" data-preload-style>
+    <!-- All min css -->
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <!-- Swiper bundle min css -->
+    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
+         select-widget styling only -- not needed for first paint -- loaded
+         as rel="preload" so they can't block rendering; assets/js/css-
+         preload-swap.js flips them to active stylesheets once the DOM is
+         parsed. animate.css stays render-blocking: the .wow scroll-reveal
+         system depends on its initial opacity:0 state site-wide, and
+         deferring it risks a visible flash/flicker. -->
+    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
+    <!-- Magnigic popup css -->
+    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
+    <!-- Animate css -->
+    <link rel="stylesheet" href="/assets/css/animate.css">
+    <!-- Nice select css -->
+    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <noscript>
+      <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/assets/css/style.css">
+      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
+      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
+      <link rel="stylesheet" href="/assets/css/nice-select.css">
+    </noscript>
+    <!-- Style css -->
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <link rel="stylesheet" href="/assets/css/account.css">
+</head>
+
+<body>
+
+    <!--SHARED_HEADER-->
+
+
+
+    <!-- Cart Drawer -->
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-drawer__head">
+            <h5>Shopping Cart (<span id="cartDrawerCount">0</span>)</h5>
+            <button class="cart-drawer__close" id="cartClose" aria-label="Close cart">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cart-drawer__body" id="cartItems">
+            <p class="cart-empty-msg">Your cart is empty.</p>
+        </div>
+        <div class="cart-drawer__foot" id="cartFooter">
+            <div class="cart-subtotal">
+                <span>Subtotal:</span>
+                <strong id="cartTotal">$0.00</strong>
+            </div>
+            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
+            <div class="cart-drawer__payments">
+                <span class="card-brand visa">VISA</span>
+                <span class="card-brand mc">MC</span>
+                <span class="card-brand amex">AMEX</span>
+                <span class="card-brand paypal">PayPal</span>
+                <span class="card-brand applepay">Pay</span>
+            </div>
+        </div>
+    </div>
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <!-- Cart Drawer end -->
+
+    <!-- Preloader area start -->
+    <div class="loading">
+        <span class="text-capitalize">L</span>
+        <span>o</span>
+        <span>a</span>
+        <span>d</span>
+        <span>i</span>
+        <span>n</span>
+        <span>g</span>
+    </div>
+
+    <div id="preloader">
+    </div>
+    <!-- Preloader area end -->
+
+    <!-- Mouse cursor area start here -->
+    <div class="mouse-cursor cursor-outer"></div>
+    <div class="mouse-cursor cursor-inner"></div>
+    <!-- Mouse cursor area end here -->
+
+
+    <main>
+        <div class="ac-page">
+            <div class="ac-shell">
+
+                <div id="prSignedOut" class="ac-hidden">
+                    <div class="ac-empty">
+                        <span class="ac-empty__mark"><i class="fa-regular fa-lock" aria-hidden="true"></i></span>
+                        <h1 class="ac-h2">Sign in to manage your profile</h1>
+                        <p class="ac-lead">Your account details are only visible to you.</p>
+                        <a href="/login" class="ac-btn ac-btn--primary"><span>Sign in</span></a>
+                    </div>
+                </div>
+
+                <div id="prLoading" aria-hidden="true">
+                    <div class="ac-skel ac-skel--title"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                </div>
+
+                <div id="prContent" class="ac-hidden">
+                    <header class="ac-head ac-reveal ac-reveal--1">
+                        <div>
+                            <span class="ac-eyebrow">Account</span>
+                            <h1 class="ac-h2">My profile</h1>
+                            <p class="ac-lead">Your details, your photo and how you sign in.</p>
+                        </div>
+                    </header>
+
+                    <div class="ac-profile">
+
+                        <!-- Identity rail. Sticky from 900px so it stays
+                             visible while a section further down is edited. -->
+                        <aside class="ac-profile__rail ac-reveal ac-reveal--2">
+                            <div class="ac-card ac-idcard">
+                                <span id="prAvatar"></span>
+                                <h2 class="ac-idcard__name" id="prName"></h2>
+                                <p class="ac-idcard__email" id="prEmail"></p>
+                                <div class="ac-idcard__actions">
+                                    <button type="button" class="ac-btn ac-btn--ghost" id="prPhotoBtn"><span>Change photo</span></button>
+                                    <button type="button" class="ac-btn ac-btn--quiet ac-hidden" id="prPhotoRemove"><span>Remove photo</span></button>
+                                    <input type="file" id="prPhotoInput" accept="image/png,image/jpeg,image/webp" class="ac-hidden">
+                                </div>
+                                <p class="ac-sect__status" id="prPhotoStatus"></p>
+                            </div>
+                            <p class="ac-hint" id="prSince"></p>
+                        </aside>
+
+                        <div class="ac-profile__main ac-reveal ac-reveal--3">
+
+                            <!-- Details -->
+                            <section class="ac-card ac-sect" aria-labelledby="prDetailsHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prDetailsHeading">Your details</h2>
+                                    <p class="ac-hint">Used on your receipts and to reach you about an order.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prFullName">Full name</label>
+                                    <input class="ac-input" type="text" id="prFullName" autocomplete="name">
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prDisplayName">Display name</label>
+                                    <input class="ac-input" type="text" id="prDisplayName" maxlength="40" autocomplete="nickname">
+                                    <p class="ac-hint">What we call you around the platform.</p>
+                                </div>
+                                <div class="ac-grid2">
+                                    <div class="ac-field">
+                                        <label class="ac-label" for="prPhone">Phone</label>
+                                        <input class="ac-input" type="tel" id="prPhone" autocomplete="tel">
+                                    </div>
+                                    <div class="ac-field">
+                                        <label class="ac-label" for="prCountry">Country</label>
+                                        <select class="ac-select" id="prCountry"></select>
+                                    </div>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--primary" id="prSaveDetails"><span>Save changes</span></button>
+                                    <p class="ac-sect__status" id="prDetailsStatus"></p>
+                                </div>
+                            </section>
+
+                            <!-- Email, read-only -->
+                            <section class="ac-card ac-sect" aria-labelledby="prEmailHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prEmailHeading">Email address</h2>
+                                    <p class="ac-hint">Every order, receipt and sign-in link is tied to this address, so it is changed by support rather than here.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prEmailField">Email</label>
+                                    <input class="ac-input" type="email" id="prEmailField" readonly>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <a href="/contact" class="ac-btn ac-btn--ghost"><span>Request a change</span></a>
+                                </div>
+                            </section>
+
+                            <!-- Password -->
+                            <section class="ac-card ac-sect" aria-labelledby="prPwdHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prPwdHeading">Password</h2>
+                                    <p class="ac-hint" id="prPwdIntro"></p>
+                                </div>
+                                <div class="ac-field ac-hidden" id="prCurrentWrap">
+                                    <label class="ac-label" for="prCurrent">Current password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prCurrent" autocomplete="current-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prNew">New password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prNew" autocomplete="new-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                    <div class="ac-strength" id="prStrength" aria-hidden="true">
+                                        <span class="ac-strength__bar"></span><span class="ac-strength__bar"></span><span class="ac-strength__bar"></span>
+                                    </div>
+                                    <p class="ac-hint">At least 8 characters.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prConfirm">Confirm new password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prConfirm" autocomplete="new-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--primary" id="prSavePwd"><span>Update password</span></button>
+                                    <p class="ac-sect__status" id="prPwdStatus"></p>
+                                </div>
+                            </section>
+
+                            <!-- Session -->
+                            <section class="ac-card ac-sect" aria-labelledby="prSessionHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prSessionHeading">Session</h2>
+                                    <p class="ac-hint">Signing out ends this session on this device.</p>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--danger" id="prSignOut"><span>Sign out</span></button>
+                                </div>
+                            </section>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main></main>
+
+    <!-- Footer area start here -->
+    <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
+        <div class="container">
+            <div class="footer__wrp pt-65 pb-65 bor-top bor-bottom">
+                <div class="row g-4">
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.1s" data-wow-delay=".1s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Support</h4>
+                            <ul>
+                                <li><a href="/contact"><span></span>Help Portal</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                                <li><a href="/coming-soon"><span></span>Plan Information</a></li>
+                                <li><a href="/coming-soon"><span></span>FAQ</a></li>
+                                <li><a href="/coming-soon"><span></span>Refund Policy</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.2s" data-wow-delay=".2s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Company</h4>
+                            <ul>
+                                <li><a href="/about"><span></span>About Us</a></li>
+                                <li><a href="/services"><span></span>Services</a></li>
+                                <li><a href="/blog/grid"><span></span>News & Blog</a></li>
+                                <li><a href="/coming-soon"><span></span>Careers</a></li>
+                                <li><a href="/coming-soon"><span></span>Investors</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Our Plans</h4>
+                            <ul>
+                                <li><a href="/shop"><span></span>Training Plans</a></li>
+                                <li><a href="/shop"><span></span>Diet Plans</a></li>
+                                <li><a href="/shop"><span></span>Strength Programs</a></li>
+                                <li><a href="/shop"><span></span>Cardio Programs</a></li>
+                                <li><a href="/shop"><span></span>Nutrition Guides</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.4s" data-wow-delay=".4s">
+                        <div class="footer__item newsletter">
+                            <h4 class="footer-title">Get Newsletter</h4>
+                            <div class="subscribe">
+                                <input type="email" placeholder="Your Email">
+                                <button><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer__copy-text pt-50 pb-50">
+    <a href="/" class="logo d-block">
+                    <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112" data-brand-logo>
+                </a>
+</div>
+<div class="footer__bottombar">
+    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="/" class="primary-hover" data-brand-name>Fitness Agency</a> All Rights Reserved</p>
+    <div class="footer__bottombar-right">
+        <div class="footer__legal">
+            <a href="/coming-soon">Terms and Conditions</a>
+            <a href="/coming-soon">Terms of Use</a>
+            <a href="/coming-soon">Privacy Notice</a>
+            <a href="/coming-soon">Cookie Policy</a>
+        </div>
+        <a href="#0" class="payment d-block image">
+                    <img src="/assets/images/icon/payment.png" alt="icon">
+                </a>
+    </div>
+</div>
+        </div>
+    </footer>
+    <!-- Footer area end here -->
+
+    <!-- Back to top area start here -->
+    <div class="scroll-up">
+        <svg class="scroll-circle svg-content" width="100%" height="100%" viewBox="-1 -1 102 102">
+            <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
+        </svg>
+    </div>
+    <!-- Back to top area end here -->
+
+    <!-- Jquery 3. 7. 1 Min Js -->
+    <script src="/assets/js/css-preload-swap.js" defer></script>
+    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
+    <!-- Bootstrap min Js -->
+    <script src="/assets/js/bootstrap.min.js" defer></script>
+    <!-- Swiper bundle min Js -->
+    <script src="/assets/js/swiper-bundle.min.js" defer></script>
+    <!-- Wow min Js -->
+    <script src="/assets/js/wow.min.js" defer></script>
+    <!-- Magnific popup min Js -->
+    <script src="/assets/js/magnific-popup.min.js" defer></script>
+    <!-- Nice select min Js -->
+    <script src="/assets/js/nice-select.min.js" defer></script>
+    <!-- Pace min Js -->
+    <script src="/assets/js/pace.min.js" defer></script>
+    <!-- Script Js -->
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/media-container.js" defer></script>
+    <script src="/assets/js/script.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/countries.js" defer></script>
+    <script src="/assets/js/account-common.js" defer></script>
+    <script src="/assets/js/my-profile.js" defer></script>
+</body>
+
+</html>

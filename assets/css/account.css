@@ -1,0 +1,877 @@
+/* =======================================================================
+   THE CUSTOMER AREA — order confirmation, My Library, My Profile, Orders
+   -----------------------------------------------------------------------
+   The four pages between paying and training. Their job is to make the
+   minute after a payment clears feel like arriving somewhere, not like
+   receiving a receipt.
+
+   This is NOT a new design system. Every value below is style.css's own
+   token or is derived from one: the same warm off-white paper, the same
+   near-black ink that is never pure black, the same 10px/100px radius pair,
+   the same --nav-ease curve, the same Montserrat. The prefix is --ac-.
+
+   It is the same language assets/css/program.css speaks (--pg-), and that
+   is deliberate: program.css is the room a customer walks into after
+   paying, and these are the corridor. The scale, elevation ramp and motion
+   here are its smaller siblings so that Library -> Program is one product
+   rather than two. Where a value is shared with program.css it is the SAME
+   number, not a similar one — see the shadow and radius blocks.
+
+   Mobile is authored first and separately, not scaled down. The three
+   places that differ most: the library hero (§4, a full-bleed 4:5 card vs.
+   a 16:7 cinematic split), the program grid (§5, one column of wide rows
+   vs. a 2/3-up card grid) and the profile layout (§7, stacked cards vs. a
+   sticky-sidebar two-column).
+
+   Loaded ON TOP of style.css and bootstrap, unlike program.css which is
+   standalone — these pages keep the site header, because the brief is that
+   customer navigation lives in the existing header/drawer rather than in a
+   second navigation language.
+   ======================================================================= */
+
+/* -----------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------- */
+.ac-page {
+  /* Palette — aliases onto style.css, so a rebrand there moves these too. */
+  --ac-bg: var(--color-bg, #fafaf9);
+  --ac-surface: var(--color-surface, #fdfdfc);
+  --ac-surface-2: var(--color-surface-2, #f2f1ee);
+  --ac-ink: var(--color-text, #1a1a1a);
+  --ac-ink-hover: var(--color-primary-hover, #2e2e2c);
+  --ac-muted: var(--color-text-muted, #55534f);
+  --ac-faint: var(--color-text-faint, #9c9993);
+  --ac-border: var(--color-border, rgba(26, 26, 26, 0.1));
+  --ac-border-soft: rgba(26, 26, 26, 0.06);
+  --ac-success: #059669;
+  --ac-danger: #dc2626;
+
+  /* Radius — the platform's 10/100 pair plus program.css's two larger
+     stops, identical numbers so a cover here and a cover there match. */
+  --ac-radius: 10px;
+  --ac-radius-lg: 18px;
+  --ac-radius-xl: 26px;
+  --ac-radius-pill: 100px;
+
+  /* Elevation — program.css's ramp verbatim. */
+  --ac-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --ac-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --ac-shadow-lg: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 14px rgba(15, 23, 42, 0.06);
+
+  /* Motion — --ac-ease IS style.css's --nav-ease. */
+  --ac-ease: var(--nav-ease, cubic-bezier(0.25, 1, 0.5, 1));
+  --ac-ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ac-dur-fast: 160ms;
+  --ac-dur: 240ms;
+  --ac-dur-slow: 520ms;
+
+  /* Spacing — one fluid rhythm. */
+  --ac-gap-xs: 8px;
+  --ac-gap-sm: 14px;
+  --ac-gap: clamp(18px, 2.2vw, 28px);
+  --ac-gap-lg: clamp(30px, 3.6vw, 52px);
+  --ac-shell-x: clamp(18px, 4vw, 40px);
+  --ac-max: 1080px;
+
+  /* Type scale. */
+  --ac-display: clamp(30px, 6.2vw, 54px);
+  --ac-h2: clamp(22px, 2.8vw, 32px);
+  --ac-h3: clamp(17px, 1.5vw, 20px);
+  --ac-lead: clamp(16px, 1.4vw, 19px);
+  --ac-body: clamp(15.5px, 1.1vw, 17px);
+  --ac-small: 14px;
+  --ac-micro: 12px;
+
+  /* The 68px fixed-header clearance every inner page on this site reserves.
+     Named so the pages below cannot each guess at it. */
+  --ac-header-clear: 68px;
+  --ac-safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+/* -----------------------------------------------------------------------
+   2. SHELL
+   -------------------------------------------------------------------- */
+.ac-page {
+  background: var(--ac-bg);
+  color: var(--ac-ink);
+  font-family: var(--prosto-one, "Montserrat", sans-serif);
+  font-size: var(--ac-body);
+  line-height: 1.55;
+  /* The site header is position:fixed and nothing reserves space for it
+     globally — without this the first line renders underneath it at scroll
+     position 0, which scrolling immediately hides the evidence of. */
+  padding-top: calc(var(--ac-header-clear) + var(--ac-gap));
+  padding-bottom: clamp(60px, 10vw, 120px);
+}
+
+.ac-shell {
+  width: 100%;
+  max-width: var(--ac-max);
+  margin-inline: auto;
+  /* Side padding is what guarantees no horizontal overflow at 320px: every
+     child below is width:100% of an already-inset column. */
+  padding-inline: var(--ac-shell-x);
+}
+
+.ac-shell--narrow { max-width: 720px; }
+
+/* Section rhythm — one class instead of a margin on every heading. */
+.ac-section { margin-top: var(--ac-gap-lg); }
+.ac-section:first-child { margin-top: 0; }
+
+.ac-eyebrow {
+  display: block;
+  font-size: var(--ac-micro);
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ac-faint);
+  margin-bottom: 10px;
+}
+
+.ac-h2 {
+  font-size: var(--ac-h2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 6px;
+  color: var(--ac-ink);
+}
+
+.ac-h3 {
+  font-size: var(--ac-h3);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  color: var(--ac-ink);
+}
+
+.ac-lead {
+  font-size: var(--ac-lead);
+  color: var(--ac-muted);
+  margin: 0;
+  max-width: 56ch;
+}
+
+.ac-muted { color: var(--ac-muted); }
+.ac-faint { color: var(--ac-faint); }
+.ac-hidden { display: none !important; }
+
+/* Section head: title left, an optional action right, wrapping on a phone
+   rather than squeezing the action into four characters. */
+.ac-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ac-gap-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--ac-gap);
+}
+
+/* -----------------------------------------------------------------------
+   3. PRIMITIVES — buttons, cards, pills, fields
+   Same shapes as style.css's .btn-one/.btn-two, restated here at this
+   page's scale so the customer area does not inherit the marketing
+   button's larger padding on a 320px screen.
+   -------------------------------------------------------------------- */
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* 48px min height: above the 44px tap-target floor with room for a
+     focus ring, at every width. */
+  min-height: 48px;
+  padding: 12px 26px;
+  border: 1px solid transparent;
+  border-radius: var(--ac-radius-pill);
+  font-family: inherit;
+  font-size: var(--ac-small);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--ac-dur) var(--ac-ease),
+              color var(--ac-dur) var(--ac-ease),
+              border-color var(--ac-dur) var(--ac-ease),
+              transform var(--ac-dur-fast) var(--ac-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+/* style.css has a global `span { color: var(--span) }` that BEATS the
+   colour set on an ancestor anchor — a label span inside a filled dark
+   button renders near-black on near-black, invisible, with no error.
+   Every button in this file therefore forces the span to inherit. */
+.ac-btn span,
+.ac-btn i { color: inherit; }
+.ac-btn:active { transform: translateY(1px); }
+.ac-btn:focus-visible { outline: 2px solid var(--ac-ink); outline-offset: 3px; }
+
+.ac-btn--primary { background: var(--ac-ink); color: var(--ac-surface); }
+.ac-btn--primary:hover { background: var(--ac-ink-hover); color: var(--ac-surface); }
+
+.ac-btn--ghost {
+  background: transparent;
+  color: var(--ac-ink);
+  border-color: var(--ac-border);
+}
+.ac-btn--ghost:hover { background: var(--ac-surface-2); color: var(--ac-ink); }
+
+.ac-btn--quiet {
+  background: transparent;
+  color: var(--ac-muted);
+  border-color: transparent;
+  padding-inline: 10px;
+  min-height: 44px;
+}
+.ac-btn--quiet:hover { color: var(--ac-ink); }
+
+.ac-btn--danger { background: transparent; color: var(--ac-danger); border-color: rgba(220, 38, 38, 0.3); }
+.ac-btn--danger:hover { background: rgba(220, 38, 38, 0.07); color: var(--ac-danger); }
+
+.ac-btn--block { display: flex; width: 100%; }
+.ac-btn[disabled], .ac-btn.is-busy { opacity: 0.55; pointer-events: none; }
+
+.ac-card {
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border-soft);
+  border-radius: var(--ac-radius-lg);
+  box-shadow: var(--ac-shadow-sm);
+  padding: var(--ac-gap);
+}
+
+.ac-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--ac-radius-pill);
+  background: var(--ac-surface-2);
+  color: var(--ac-muted);
+  font-size: var(--ac-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ac-pill span, .ac-pill i { color: inherit; }
+.ac-pill--ok { background: rgba(5, 150, 105, 0.1); color: var(--ac-success); }
+
+/* ---- Fields ---- */
+.ac-field { margin-bottom: var(--ac-gap-sm); }
+.ac-field:last-child { margin-bottom: 0; }
+
+.ac-label {
+  display: block;
+  font-size: var(--ac-small);
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ac-ink);
+}
+
+.ac-input,
+.ac-select {
+  display: block;
+  width: 100%;
+  /* 16px minimum: iOS Safari zooms the viewport on focus for anything
+     smaller, which on a phone reads as the page jumping. */
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--ac-ink);
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  padding: 13px 14px;
+  min-height: 50px;
+  transition: border-color var(--ac-dur-fast) var(--ac-ease),
+              box-shadow var(--ac-dur-fast) var(--ac-ease);
+}
+.ac-input:focus,
+.ac-select:focus {
+  outline: none;
+  border-color: var(--ac-ink);
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+}
+.ac-input[readonly] { background: var(--ac-surface-2); color: var(--ac-muted); }
+.ac-input.is-invalid { border-color: var(--ac-danger); }
+
+.ac-hint { font-size: var(--ac-micro); color: var(--ac-faint); margin: 6px 0 0; }
+.ac-error { font-size: var(--ac-micro); color: var(--ac-danger); margin: 6px 0 0; }
+.ac-ok { font-size: var(--ac-micro); color: var(--ac-success); margin: 6px 0 0; }
+
+/* Password field with a reveal control. The button sits inside the input's
+   padding box rather than beside it, so the field keeps full width on a
+   320px screen. */
+.ac-pwd { position: relative; }
+.ac-pwd .ac-input { padding-right: 54px; }
+.ac-pwd__toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--ac-faint);
+  cursor: pointer;
+  border-radius: var(--ac-radius);
+}
+.ac-pwd__toggle:hover { color: var(--ac-ink); }
+.ac-pwd__toggle i { color: inherit; }
+
+/* -----------------------------------------------------------------------
+   4. PROGRESS
+   Only ever rendered when a real denominator exists — see
+   ProgramProgress.totalKeys. There is no "0%" state in this file because
+   there is no measurement to show before a program has been opened.
+   -------------------------------------------------------------------- */
+.ac-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--ac-micro);
+  color: var(--ac-muted);
+}
+.ac-progress__track {
+  flex: 1;
+  height: 6px;
+  min-width: 60px;
+  border-radius: var(--ac-radius-pill);
+  background: rgba(26, 26, 26, 0.09);
+  overflow: hidden;
+}
+.ac-progress__bar {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--ac-ink);
+  transition: width var(--ac-dur-slow) var(--ac-ease-soft);
+}
+.ac-progress__val { font-weight: 650; color: var(--ac-ink); font-variant-numeric: tabular-nums; }
+
+/* -----------------------------------------------------------------------
+   5. MEDIA
+   Covers are rendered through the platform's .pmedia box (media-container
+   .css) wherever a manifest exists. These classes only set the FRAME —
+   ratio, radius, clipping — never the image sizing, which .pmedia owns.
+   -------------------------------------------------------------------- */
+.ac-cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--ac-radius);
+  background: var(--ac-surface-2);
+  /* A cover with no art must still occupy its slot, or the card collapses
+     and the grid reflows as images arrive. */
+  aspect-ratio: 4 / 5;
+}
+.ac-cover img,
+.ac-cover .pmedia {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ac-cover img { object-fit: cover; }
+
+/* -----------------------------------------------------------------------
+   6. ENTRANCE MOTION
+   One transform + opacity transition, applied by JS adding .is-in. No
+   library, no scroll observer per card: the customer area is small enough
+   that a staggered reveal on first paint is the whole animation budget.
+   -------------------------------------------------------------------- */
+.ac-reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--ac-dur-slow) var(--ac-ease-soft),
+              transform var(--ac-dur-slow) var(--ac-ease-soft);
+}
+.ac-reveal.is-in { opacity: 1; transform: none; }
+.ac-reveal--1 { transition-delay: 40ms; }
+.ac-reveal--2 { transition-delay: 90ms; }
+.ac-reveal--3 { transition-delay: 140ms; }
+.ac-reveal--4 { transition-delay: 190ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-reveal { opacity: 1; transform: none; transition: none; }
+  .ac-progress__bar { transition: none; }
+  .ac-btn { transition: none; }
+}
+
+/* -----------------------------------------------------------------------
+   7. SKELETONS
+   Shown only until the first payload lands. Deliberately shaped like the
+   content that replaces them so the swap does not move the page.
+   -------------------------------------------------------------------- */
+.ac-skel {
+  background: linear-gradient(90deg, var(--ac-surface-2) 25%, rgba(26, 26, 26, 0.05) 37%, var(--ac-surface-2) 63%);
+  background-size: 400% 100%;
+  animation: ac-shimmer 1.3s ease-in-out infinite;
+  border-radius: var(--ac-radius);
+}
+.ac-skel--line { height: 13px; margin-bottom: 9px; }
+.ac-skel--title { height: 24px; width: 60%; margin-bottom: 14px; }
+.ac-skel--cover { aspect-ratio: 4 / 5; width: 100%; }
+.ac-skel--avatar { width: 52px; height: 52px; border-radius: 50%; flex: none; }
+/* Same footprint as the Continue card it stands in for, so the first paint
+   and the loaded page occupy identical space and nothing jumps. */
+.ac-skel--hero { aspect-ratio: 4 / 5; width: 100%; border-radius: var(--ac-radius-xl); }
+@media (min-width: 768px) { .ac-skel--hero { aspect-ratio: 16 / 7; } }
+.ac-skel-stack { flex: 1; min-width: 0; }
+@keyframes ac-shimmer { to { background-position: -400% 0; } }
+@media (prefers-reduced-motion: reduce) { .ac-skel { animation: none; } }
+
+/* -----------------------------------------------------------------------
+   8. EMPTY STATE
+   -------------------------------------------------------------------- */
+.ac-empty {
+  text-align: center;
+  padding: clamp(40px, 9vw, 84px) var(--ac-gap);
+  border: 1px dashed var(--ac-border);
+  border-radius: var(--ac-radius-xl);
+  background: var(--ac-surface);
+}
+.ac-empty__mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ac-surface-2);
+  color: var(--ac-muted);
+  font-size: 21px;
+}
+.ac-empty__mark i { color: inherit; }
+.ac-empty .ac-lead { margin-inline: auto; margin-bottom: var(--ac-gap); }
+
+/* -----------------------------------------------------------------------
+   9. ORDER CONFIRMATION — /order/success
+   -----------------------------------------------------------------------
+   The page is a single centred column at every width. It does NOT become a
+   two-column layout on desktop: the whole point is one unambiguous next
+   step, and putting a summary card beside the CTA gives the eye somewhere
+   else to go at the exact moment it should not have one.
+   -------------------------------------------------------------------- */
+.ac-conf { max-width: 640px; margin-inline: auto; }
+
+/* The success mark. A drawn ring and tick — no confetti, no illustration.
+   The tick is stroked by CSS so it costs no request and no library. */
+.ac-conf__mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ac-ink);
+  color: var(--ac-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--ac-gap);
+}
+.ac-conf__mark svg { width: 26px; height: 26px; display: block; }
+.ac-conf__mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: ac-tick 460ms var(--ac-ease-soft) 160ms forwards;
+}
+@keyframes ac-tick { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ac-conf__mark path { animation: none; stroke-dashoffset: 0; }
+}
+
+.ac-conf__title {
+  font-size: var(--ac-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  margin: 0 0 10px;
+}
+.ac-conf__sub { font-size: var(--ac-lead); color: var(--ac-muted); margin: 0; }
+
+/* The purchased product, given the weight of the page. Cover left, meta
+   right on every width including 320 — a stacked cover would push the CTA
+   below the fold, and the CTA is the point of the page. */
+.ac-conf__product {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: var(--ac-gap-sm);
+  align-items: center;
+  margin-top: var(--ac-gap);
+}
+@media (min-width: 576px) {
+  .ac-conf__product { grid-template-columns: 132px minmax(0, 1fr); gap: var(--ac-gap); }
+}
+.ac-conf__cover { aspect-ratio: 4 / 5; box-shadow: var(--ac-shadow-md); }
+.ac-conf__meta { min-width: 0; }
+.ac-conf__name {
+  font-size: var(--ac-h3);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  /* Long admin-authored product names must wrap, not overflow the card. */
+  overflow-wrap: break-word;
+}
+.ac-conf__by { font-size: var(--ac-small); color: var(--ac-muted); margin: 0 0 10px; }
+.ac-conf__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Multi-item orders: the same row, repeated, without the hero treatment. */
+.ac-conf__items { list-style: none; margin: var(--ac-gap-sm) 0 0; padding: 0; }
+.ac-conf__item {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--ac-border-soft);
+}
+.ac-conf__item-name { font-size: var(--ac-small); font-weight: 600; overflow-wrap: anywhere; }
+.ac-conf__item-price { font-size: var(--ac-small); color: var(--ac-muted); font-variant-numeric: tabular-nums; }
+
+/* The next step. Sticky on a phone so it is reachable however far the
+   summary pushes the page down, static from 576px where it always fits. */
+.ac-conf__next { margin-top: var(--ac-gap); }
+.ac-conf__actions { display: grid; gap: 10px; margin-top: var(--ac-gap-sm); }
+@media (min-width: 576px) {
+  .ac-conf__actions { grid-auto-flow: column; justify-content: start; }
+  .ac-conf__actions .ac-btn { min-width: 200px; }
+}
+
+/* Order summary — deliberately quiet. Definition rows, not a table: a
+   table at 320px either scrolls sideways or crushes its columns. */
+.ac-conf__summary { margin-top: var(--ac-gap); }
+.ac-sum { display: grid; gap: 2px; }
+.ac-sum__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ac-gap-sm);
+  padding: 9px 0;
+  font-size: var(--ac-small);
+  border-bottom: 1px solid var(--ac-border-soft);
+}
+.ac-sum__row:last-child { border-bottom: 0; }
+.ac-sum__k { color: var(--ac-muted); }
+.ac-sum__v { font-weight: 600; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.ac-sum__row--total { border-top: 1px solid var(--ac-border); margin-top: 4px; padding-top: 12px; }
+.ac-sum__row--total .ac-sum__k,
+.ac-sum__row--total .ac-sum__v { font-size: var(--ac-body); font-weight: 700; color: var(--ac-ink); }
+
+/* The "check your email" note when the buyer has no session yet. */
+.ac-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: var(--ac-gap-sm);
+  border-radius: var(--ac-radius);
+  background: var(--ac-surface-2);
+  font-size: var(--ac-small);
+  color: var(--ac-muted);
+  margin-top: var(--ac-gap);
+}
+.ac-note i { color: var(--ac-ink); margin-top: 2px; }
+
+/* -----------------------------------------------------------------------
+   10. MY LIBRARY — /my-library
+   -------------------------------------------------------------------- */
+.ac-greet { display: flex; align-items: center; gap: var(--ac-gap-sm); margin-bottom: var(--ac-gap-lg); }
+.ac-greet__body { min-width: 0; }
+.ac-greet__title {
+  font-size: clamp(26px, 5.4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  margin: 0 0 4px;
+  overflow-wrap: break-word;
+}
+.ac-greet__sub { font-size: var(--ac-lead); color: var(--ac-muted); margin: 0; }
+
+/* Avatar, shared by the greeting and the profile page. */
+.ac-avatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--ac-surface-2);
+  color: var(--ac-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 650;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+.ac-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ac-avatar--lg { width: 88px; height: 88px; font-size: 27px; }
+
+/* ---- CONTINUE: the one dominant card ----
+   Phone: a full-bleed 4:5 cover with the copy laid over its foot.
+   Desktop (768+): a 16:7 stage, cover left, copy in a column right. Two
+   layouts, not one scaled — the overlay that reads well on a tall phone
+   card becomes a thin strip on a wide one. */
+.ac-continue {
+  position: relative;
+  display: block;
+  border-radius: var(--ac-radius-xl);
+  overflow: hidden;
+  background: var(--ac-surface-2);
+  box-shadow: var(--ac-shadow-lg);
+  text-decoration: none;
+  color: inherit;
+  isolation: isolate;
+}
+.ac-continue__media { aspect-ratio: 4 / 5; width: 100%; }
+.ac-continue__media img,
+.ac-continue__media .pmedia { width: 100%; height: 100%; display: block; }
+.ac-continue__media img { object-fit: cover; }
+/* The scrim is what makes overlaid text legible on an unknown photograph.
+   Opaque at the foot, clear by 55% — a flat overlay would grey the art. */
+.ac-continue__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 12, 0.92) 0%, rgba(12, 12, 12, 0.66) 26%, rgba(12, 12, 12, 0) 62%);
+  pointer-events: none;
+}
+.ac-continue__body {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: var(--ac-gap);
+  color: #fff;
+}
+.ac-continue__body .ac-eyebrow { color: rgba(255, 255, 255, 0.72); }
+.ac-continue__title {
+  font-size: clamp(22px, 5.6vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0 0 6px;
+  color: #fff;
+  overflow-wrap: break-word;
+}
+.ac-continue__meta { font-size: var(--ac-small); color: rgba(255, 255, 255, 0.78); margin: 0 0 14px; }
+.ac-continue .ac-btn--primary { background: #fff; color: #141414; }
+.ac-continue .ac-btn--primary:hover { background: rgba(255, 255, 255, 0.88); color: #141414; }
+/* The progress bar sits on dark art here, so its track and fill invert. */
+.ac-continue .ac-progress { color: rgba(255, 255, 255, 0.8); margin-bottom: 14px; }
+.ac-continue .ac-progress__track { background: rgba(255, 255, 255, 0.26); }
+.ac-continue .ac-progress__bar { background: #fff; }
+.ac-continue .ac-progress__val { color: #fff; }
+
+@media (min-width: 768px) {
+  .ac-continue { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: stretch; }
+  /* A defined ratio, not `auto`. Left to the image's own 4:5 the card grew
+     to ~500px tall for ~200px of copy, and the right-hand column read as
+     half empty. 4:3 keeps the cover clearly legible (a modest crop of a
+     portrait cover) while bringing the card down to a height the copy
+     actually fills. */
+  .ac-continue__media { aspect-ratio: 4 / 3; height: 100%; min-height: 300px; }
+  .ac-continue__scrim { display: none; }
+  .ac-continue__body {
+    position: static;
+    color: var(--ac-ink);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--ac-gap-lg);
+  }
+  .ac-continue__body .ac-eyebrow { color: var(--ac-faint); }
+  .ac-continue__title { color: var(--ac-ink); }
+  .ac-continue__meta { color: var(--ac-muted); }
+  .ac-continue .ac-btn--primary { background: var(--ac-ink); color: var(--ac-surface); align-self: flex-start; }
+  .ac-continue .ac-btn--primary:hover { background: var(--ac-ink-hover); color: var(--ac-surface); }
+  .ac-continue .ac-progress { color: var(--ac-muted); }
+  .ac-continue .ac-progress__track { background: rgba(26, 26, 26, 0.09); }
+  .ac-continue .ac-progress__bar { background: var(--ac-ink); }
+  .ac-continue .ac-progress__val { color: var(--ac-ink); }
+}
+
+/* ---- The rest of the programs ----
+   Phone: wide rows — a 2-up grid at 320px gives 140px cards whose titles
+   wrap to four lines. Tablet up: a real grid. */
+.ac-grid { display: grid; gap: var(--ac-gap-sm); }
+@media (min-width: 600px) { .ac-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ac-gap); } }
+@media (min-width: 1024px) { .ac-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.ac-prog {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--ac-gap-sm);
+  align-items: center;
+  padding: 12px;
+  background: var(--ac-surface);
+  border: 1px solid var(--ac-border-soft);
+  border-radius: var(--ac-radius-lg);
+  box-shadow: var(--ac-shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow var(--ac-dur) var(--ac-ease), transform var(--ac-dur) var(--ac-ease);
+}
+.ac-prog:hover { box-shadow: var(--ac-shadow-md); color: inherit; }
+@media (hover: hover) { .ac-prog:hover { transform: translateY(-2px); } }
+.ac-prog__cover { aspect-ratio: 4 / 5; }
+.ac-prog__body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ac-prog__title { font-size: var(--ac-small); font-weight: 650; margin: 0; overflow-wrap: break-word; }
+.ac-prog__by { font-size: var(--ac-micro); color: var(--ac-muted); margin: 0; }
+.ac-prog__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.ac-prog__cta { font-size: var(--ac-micro); font-weight: 650; color: var(--ac-ink); white-space: nowrap; }
+.ac-prog__cta i { color: inherit; margin-left: 4px; }
+
+/* From 600px each program becomes a vertical card: cover on top, body
+   below — at that width the cover is large enough to be the thing you
+   recognise, which is not true of an 84px thumbnail. */
+@media (min-width: 600px) {
+  .ac-prog { grid-template-columns: none; grid-template-rows: auto auto; align-items: stretch; padding: 12px; }
+  .ac-prog__cover { aspect-ratio: 4 / 5; width: 100%; }
+  .ac-prog__title { font-size: var(--ac-body); }
+  .ac-prog__body { padding: 4px 2px 2px; }
+}
+
+/* -----------------------------------------------------------------------
+   11. MY PROFILE — /my-profile
+   Phone: a stack of cards. 900px+: content column with a sticky summary
+   rail, so the identity stays visible while editing a section further down.
+   -------------------------------------------------------------------- */
+.ac-profile { display: grid; gap: var(--ac-gap); }
+@media (min-width: 900px) {
+  .ac-profile { grid-template-columns: 280px minmax(0, 1fr); gap: var(--ac-gap-lg); align-items: start; }
+  .ac-profile__rail { position: sticky; top: calc(var(--ac-header-clear) + var(--ac-gap)); }
+}
+
+.ac-idcard { text-align: center; }
+.ac-idcard .ac-avatar { margin: 0 auto 14px; }
+.ac-idcard__name { font-size: var(--ac-h3); font-weight: 700; margin: 0 0 2px; overflow-wrap: break-word; }
+.ac-idcard__email { font-size: var(--ac-micro); color: var(--ac-muted); margin: 0 0 var(--ac-gap-sm); overflow-wrap: anywhere; }
+.ac-idcard__actions { display: grid; gap: 8px; }
+
+/* A card per settings group, each with its own save — one giant form with
+   one button at the bottom is the thing this replaces. */
+.ac-sect { margin-bottom: var(--ac-gap); }
+.ac-sect:last-child { margin-bottom: 0; }
+.ac-sect__head { margin-bottom: var(--ac-gap-sm); }
+.ac-sect__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-gap-sm);
+  flex-wrap: wrap;
+  margin-top: var(--ac-gap-sm);
+  padding-top: var(--ac-gap-sm);
+  border-top: 1px solid var(--ac-border-soft);
+}
+.ac-sect__status { font-size: var(--ac-micro); margin: 0; }
+
+.ac-grid2 { display: grid; gap: var(--ac-gap-sm); }
+@media (min-width: 560px) { .ac-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* -----------------------------------------------------------------------
+   12. ORDERS — /orders
+   Rows that expand in place. A separate detail page per order would be a
+   navigation for something that is six lines of text.
+   -------------------------------------------------------------------- */
+.ac-order { border: 1px solid var(--ac-border-soft); border-radius: var(--ac-radius-lg); background: var(--ac-surface); box-shadow: var(--ac-shadow-sm); margin-bottom: var(--ac-gap-sm); overflow: hidden; }
+.ac-order__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ac-gap-sm);
+  align-items: center;
+  width: 100%;
+  padding: var(--ac-gap-sm);
+  background: none;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: 60px;
+}
+/* Both are <span> inside the row's button (a <p> would be invalid there), so
+   they need display:block or the reference and the date render as one run of
+   text: "#4RR2W3NUAugust 17, 2026". */
+.ac-order__ref { display: block; font-size: var(--ac-small); font-weight: 650; margin: 0 0 2px; overflow-wrap: anywhere; }
+.ac-order__when { display: block; font-size: var(--ac-micro); color: var(--ac-muted); margin: 0; }
+.ac-order__right { display: flex; align-items: center; gap: 10px; }
+.ac-order__total { font-size: var(--ac-small); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ac-order__chev { color: var(--ac-faint); transition: transform var(--ac-dur) var(--ac-ease); }
+.ac-order.is-open .ac-order__chev { transform: rotate(180deg); }
+.ac-order__panel { padding: 0 var(--ac-gap-sm) var(--ac-gap-sm); border-top: 1px solid var(--ac-border-soft); }
+
+/* -----------------------------------------------------------------------
+   13. SETUP WIZARD — /welcome
+   The site header is hidden on this page (HIDDEN_HEADER_PAGES), so it
+   reserves no clearance and centres in the viewport instead. One step
+   visible at a time, on a phone, with the keyboard open — which is what
+   the min-height and the sticky footer below are for.
+   -------------------------------------------------------------------- */
+.ac-page--wizard {
+  padding-top: 0;
+  padding-bottom: 0;
+  /* dvh, not vh: on iOS the URL bar collapse changes vh mid-scroll and the
+     footer would jump. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-wz { flex: 1; display: flex; flex-direction: column; width: 100%; max-width: 520px; margin-inline: auto; padding: 0 var(--ac-shell-x); }
+
+.ac-wz__top { padding: clamp(20px, 5vw, 40px) 0 var(--ac-gap); }
+.ac-wz__brand { display: block; height: 30px; margin-bottom: var(--ac-gap); }
+.ac-wz__brand img { height: 100%; width: auto; display: block; }
+
+/* Progress: one segment per step. Reads as position without a percentage,
+   which is what a five-step form needs. */
+.ac-wz__steps { display: flex; gap: 6px; margin-bottom: 10px; }
+.ac-wz__seg { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(26, 26, 26, 0.1); overflow: hidden; }
+.ac-wz__seg span { display: block; height: 100%; width: 0; background: var(--ac-ink); border-radius: inherit; transition: width var(--ac-dur-slow) var(--ac-ease-soft); }
+.ac-wz__seg.is-done span, .ac-wz__seg.is-current span { width: 100%; }
+.ac-wz__count { font-size: var(--ac-micro); color: var(--ac-faint); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.ac-wz__body { flex: 1; padding-bottom: var(--ac-gap); }
+.ac-wz__panel { display: none; }
+.ac-wz__panel.is-active { display: block; animation: ac-step-in var(--ac-dur-slow) var(--ac-ease-soft); }
+@keyframes ac-step-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ac-wz__panel.is-active { animation: none; } }
+
+.ac-wz__title { font-size: clamp(27px, 6.4vw, 40px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; margin: 0 0 10px; overflow-wrap: break-word; }
+.ac-wz__sub { font-size: var(--ac-lead); color: var(--ac-muted); margin: 0 0 var(--ac-gap); }
+
+/* The footer is sticky to the bottom of the flow rather than fixed to the
+   viewport: fixed positioning is what puts a Continue button underneath an
+   open mobile keyboard. Sticky inside a flex column stays in the document,
+   so the browser scrolls it into view with the focused field. */
+.ac-wz__foot {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--ac-bg) 62%, rgba(250, 250, 249, 0));
+  padding: var(--ac-gap-sm) 0 calc(var(--ac-gap) + var(--ac-safe-b));
+  display: grid;
+  gap: 8px;
+}
+.ac-wz__back { justify-self: center; }
+
+/* Password strength — three bars, no numeric score. */
+.ac-strength { display: flex; gap: 5px; margin-top: 10px; }
+.ac-strength__bar { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(26, 26, 26, 0.1); transition: background var(--ac-dur) var(--ac-ease); }
+.ac-strength.is-1 .ac-strength__bar:nth-child(1) { background: #d97706; }
+.ac-strength.is-2 .ac-strength__bar:nth-child(-n+2) { background: #d97706; }
+.ac-strength.is-3 .ac-strength__bar { background: var(--ac-success); }
+
+.ac-req { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.ac-req li { display: flex; align-items: center; gap: 8px; font-size: var(--ac-micro); color: var(--ac-muted); }
+.ac-req li i { color: var(--ac-faint); font-size: 11px; width: 13px; }
+.ac-req li.is-met { color: var(--ac-success); }
+.ac-req li.is-met i { color: var(--ac-success); }
+
+/* Avatar picker in step 4. */
+.ac-pick { display: flex; align-items: center; gap: var(--ac-gap-sm); margin-bottom: var(--ac-gap); }
+.ac-pick__actions { display: grid; gap: 8px; }
+
+/* Step 5. */
+.ac-wz__done { text-align: center; padding-top: clamp(20px, 6vw, 50px); }
+.ac-wz__done .ac-conf__mark { margin-inline: auto; }

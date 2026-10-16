@@ -37,6 +37,13 @@ async function getTaxonomyTree(key) {
     route: taxonomy.route,
     order: taxonomy.order,
     hasSubcategories: taxonomy.hasSubcategories,
+    // Navigation presentation, read by lib/navigation.js and by the admin
+    // CMS's Navigation panel. Carried on the same tree object every consumer
+    // already loads rather than as a second fetch.
+    showInNav: taxonomy.showInNav,
+    navLayout: taxonomy.navLayout,
+    nodeRoute: taxonomy.nodeRoute,
+    groupRoute: taxonomy.groupRoute,
     nodes: buildTree(taxonomy.nodes, null),
   };
 }
@@ -70,4 +77,57 @@ async function uniqueSlugForNode(taxonomyId, parentId, name, excludeNodeId) {
   return slug;
 }
 
-module.exports = { getTaxonomyTree, getAllTaxonomyTrees, slugify, uniqueSlugForNode };
+// Slug/segment helpers for CREATING a taxonomy through the CMS. A new nav
+// category has to arrive with a working key, /shop/<key> route and a URL
+// segment for its items, because those are what make its pages reachable at
+// all — an admin should not have to know that to add "Equipment" to the menu.
+// Everything is derived from the one thing they do type: the label.
+//
+// The segment is the SINGULAR of the key where a naive plural is obvious
+// ("collections" -> "collection"), because that is the convention the three
+// existing taxonomies already set: /goal/, /athlete/, /creator/.
+function singularize(value) {
+  if (/ies$/.test(value)) return value.replace(/ies$/, "y");
+  if (/(ches|shes|sses|xes|zes)$/.test(value)) return value.replace(/es$/, "");
+  if (/[^s]s$/.test(value)) return value.replace(/s$/, "");
+  return value;
+}
+
+// Finds a value not already taken by ANY taxonomy's nodeRoute or groupRoute.
+// The two share one URL namespace — /sport/football and /athlete/marcus-reyes are
+// resolved from the same lookup — so a collision would make one of them
+// unreachable rather than merely ugly.
+async function uniqueTaxonomySegment(base, excludeTaxonomyId) {
+  const taken = new Set();
+  const rows = await prisma.taxonomy.findMany({
+    where: excludeTaxonomyId ? { id: { not: excludeTaxonomyId } } : {},
+    select: { nodeRoute: true, groupRoute: true },
+  });
+  for (const r of rows) {
+    if (r.nodeRoute) taken.add(r.nodeRoute);
+    if (r.groupRoute) taken.add(r.groupRoute);
+  }
+  const seed = slugify(base) || "item";
+  let candidate = seed;
+  let suffix = 2;
+  while (taken.has(candidate)) candidate = `${seed}-${suffix++}`;
+  return candidate;
+}
+
+async function uniqueTaxonomyKey(label) {
+  const base = slugify(label) || "category";
+  let key = base;
+  let suffix = 2;
+  while (await prisma.taxonomy.findUnique({ where: { key } })) key = `${base}-${suffix++}`;
+  return key;
+}
+
+module.exports = {
+  getTaxonomyTree,
+  getAllTaxonomyTrees,
+  slugify,
+  singularize,
+  uniqueSlugForNode,
+  uniqueTaxonomySegment,
+  uniqueTaxonomyKey,
+};

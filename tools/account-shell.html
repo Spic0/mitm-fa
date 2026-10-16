@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-brand-title="{brand} - My Library">Fitness Agency - My Library</title>
+    <!-- description/canonical/OpenGraph/Twitter/robots, injected server-side per route — see server/src/routes/pages.js -> applyStaticSeo. -->
+    <!--PAGE_SEO-->
+    <!-- Favicon img -->
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
+    <!-- Bootstarp min css -->
+    <link rel="stylesheet" href="/assets/css/critical.css">
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/bootstrap.min.css" data-preload-style>
+    <!-- All min css -->
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <!-- Swiper bundle min css -->
+    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
+         select-widget styling only -- not needed for first paint -- loaded
+         as rel="preload" so they can't block rendering; assets/js/css-
+         preload-swap.js flips them to active stylesheets once the DOM is
+         parsed. animate.css stays render-blocking: the .wow scroll-reveal
+         system depends on its initial opacity:0 state site-wide, and
+         deferring it risks a visible flash/flicker. -->
+    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
+    <!-- Magnigic popup css -->
+    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
+    <!-- Animate css -->
+    <link rel="stylesheet" href="/assets/css/animate.css">
+    <!-- Nice select css -->
+    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <noscript>
+      <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/assets/css/style.css">
+      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
+      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
+      <link rel="stylesheet" href="/assets/css/nice-select.css">
+    </noscript>
+    <!-- Style css -->
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+</head>
+
+<body>
+
+    <!--SHARED_HEADER-->
+
+
+
+    <!-- Cart Drawer -->
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-drawer__head">
+            <h5>Shopping Cart (<span id="cartDrawerCount">0</span>)</h5>
+            <button class="cart-drawer__close" id="cartClose" aria-label="Close cart">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cart-drawer__body" id="cartItems">
+            <p class="cart-empty-msg">Your cart is empty.</p>
+        </div>
+        <div class="cart-drawer__foot" id="cartFooter">
+            <div class="cart-subtotal">
+                <span>Subtotal:</span>
+                <strong id="cartTotal">$0.00</strong>
+            </div>
+            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
+            <div class="cart-drawer__payments">
+                <span class="card-brand visa">VISA</span>
+                <span class="card-brand mc">MC</span>
+                <span class="card-brand amex">AMEX</span>
+                <span class="card-brand paypal">PayPal</span>
+                <span class="card-brand applepay">Pay</span>
+            </div>
+        </div>
+    </div>
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <!-- Cart Drawer end -->
+
+    <!-- Preloader area start -->
+    <div class="loading">
+        <span class="text-capitalize">L</span>
+        <span>o</span>
+        <span>a</span>
+        <span>d</span>
+        <span>i</span>
+        <span>n</span>
+        <span>g</span>
+    </div>
+
+    <div id="preloader">
+    </div>
+    <!-- Preloader area end -->
+
+    <!-- Mouse cursor area start here -->
+    <div class="mouse-cursor cursor-outer"></div>
+    <div class="mouse-cursor cursor-inner"></div>
+    <!-- Mouse cursor area end here -->
+
+
+    <main>
+        <!-- Page banner area start here -->
+        <section class="page-banner bg-image pt-130 pb-130">
+            <div class="container">
+                <h2 class="wow fadeInUp mb-15" data-wow-duration="1.1s" data-wow-delay=".1s">My Library</h2>
+                <div class="breadcrumb-list wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
+                    <a href="/" class="primary-hover"><i class="fa-solid fa-house me-1"></i> Home <i
+                            class="fa-regular text-white fa-angle-right"></i></a>
+                    <span>My Library</span>
+                </div>
+            </div>
+        </section>
+        <!-- Page banner area end here -->
+
+        <section class="pt-130 pb-130">
+            <div class="container">
+
+                <!-- Shown when not signed in -->
+                <div id="libraryGuard" class="u-hidden u-text-center">
+                    <h3 class="mb-15">Sign in to view your library</h3>
+                    <p class="mb-30 u-text-body">Your purchases are tied to your email — sign in with a magic link to access them.</p>
+                    <a href="/login" class="btn-one"><span>Go to Sign In</span></a>
+                </div>
+
+                <!-- Shown when signed in -->
+                <div id="libraryContent" class="u-hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-60 flex-wrap gap-3">
+                        <div>
+                            <h3 class="mb-1">Welcome, <span id="libraryUserEmail"></span></h3>
+                            <p class="mb-0 u-text-body">Everything you've purchased is available to access below.</p>
+                        </div>
+                        <button id="logoutBtn" type="button" class="btn-two"><span>Sign Out</span></button>
+                    </div>
+
+                    <h4 class="mb-25" id="library">Your Programs &amp; Plans</h4>
+                    <div class="row g-4 mb-70" id="libraryGrid">
+                        <p class="u-text-light" id="libraryEmptyMsg">You haven't purchased anything yet — <a href="/shop" class="primary-hover">browse plans</a>.</p>
+                    </div>
+
+                    <h4 class="mb-25" id="orders">Purchase History</h4>
+                    <div class="table-responsive mb-70">
+                        <table class="table table-borderless align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Provider</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr><td colspan="4" class="u-text-light">No orders yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="mb-25" id="account-settings">Account Settings</h4>
+                    <div class="row">
+                        <div class="col-lg-5">
+                            <form id="setPasswordForm" class="form-area login__form">
+                                <p id="setPasswordIntro" class="mb-15 u-text-body">Optional: set a password so you can also sign in without a magic link.</p>
+                                <input id="currentPassword" type="password" placeholder="Current Password" autocomplete="current-password" class="u-hidden">
+                                <input id="newPassword" type="password" placeholder="New Password" minlength="8" required autocomplete="new-password">
+                                <button class="mt-20" type="submit" id="setPasswordSubmit">Set Password</button>
+                                <p id="setPasswordMessage" class="mt-15 u-hidden"></p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer area start here -->
+    <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
+        <div class="container">
+            <div class="footer__wrp pt-65 pb-65 bor-top bor-bottom">
+                <div class="row g-4">
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.1s" data-wow-delay=".1s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Support</h4>
+                            <ul>
+                                <li><a href="/contact"><span></span>Help Portal</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                                <li><a href="/coming-soon"><span></span>Plan Information</a></li>
+                                <li><a href="/coming-soon"><span></span>FAQ</a></li>
+                                <li><a href="/coming-soon"><span></span>Refund Policy</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.2s" data-wow-delay=".2s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Company</h4>
+                            <ul>
+                                <li><a href="/about"><span></span>About Us</a></li>
+                                <li><a href="/services"><span></span>Services</a></li>
+                                <li><a href="/blog/grid"><span></span>News & Blog</a></li>
+                                <li><a href="/coming-soon"><span></span>Careers</a></li>
+                                <li><a href="/coming-soon"><span></span>Investors</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
+                        <div class="footer__item">
+                            <h4 class="footer-title">Our Plans</h4>
+                            <ul>
+                                <li><a href="/shop"><span></span>Training Plans</a></li>
+                                <li><a href="/shop"><span></span>Diet Plans</a></li>
+                                <li><a href="/shop"><span></span>Strength Programs</a></li>
+                                <li><a href="/shop"><span></span>Cardio Programs</a></li>
+                                <li><a href="/shop"><span></span>Nutrition Guides</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.4s" data-wow-delay=".4s">
+                        <div class="footer__item newsletter">
+                            <h4 class="footer-title">Get Newsletter</h4>
+                            <div class="subscribe">
+                                <input type="email" placeholder="Your Email">
+                                <button><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer__copy-text pt-50 pb-50">
+    <a href="/" class="logo d-block">
+                    <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112" data-brand-logo>
+                </a>
+</div>
+<div class="footer__bottombar">
+    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="/" class="primary-hover" data-brand-name>Fitness Agency</a> All Rights Reserved</p>
+    <div class="footer__bottombar-right">
+        <div class="footer__legal">
+            <a href="/coming-soon">Terms and Conditions</a>
+            <a href="/coming-soon">Terms of Use</a>
+            <a href="/coming-soon">Privacy Notice</a>
+            <a href="/coming-soon">Cookie Policy</a>
+        </div>
+        <a href="#0" class="payment d-block image">
+                    <img src="/assets/images/icon/payment.png" alt="icon">
+                </a>
+    </div>
+</div>
+        </div>
+    </footer>
+    <!-- Footer area end here -->
+
+    <!-- Back to top area start here -->
+    <div class="scroll-up">
+        <svg class="scroll-circle svg-content" width="100%" height="100%" viewBox="-1 -1 102 102">
+            <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
+        </svg>
+    </div>
+    <!-- Back to top area end here -->
+
+    <!-- Jquery 3. 7. 1 Min Js -->
+    <script src="/assets/js/css-preload-swap.js" defer></script>
+    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
+    <!-- Bootstrap min Js -->
+    <script src="/assets/js/bootstrap.min.js" defer></script>
+    <!-- Swiper bundle min Js -->
+    <script src="/assets/js/swiper-bundle.min.js" defer></script>
+    <!-- Wow min Js -->
+    <script src="/assets/js/wow.min.js" defer></script>
+    <!-- Magnific popup min Js -->
+    <script src="/assets/js/magnific-popup.min.js" defer></script>
+    <!-- Nice select min Js -->
+    <script src="/assets/js/nice-select.min.js" defer></script>
+    <!-- Pace min Js -->
+    <script src="/assets/js/pace.min.js" defer></script>
+    <!-- Script Js -->
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/media-container.js" defer></script>
+    <script src="/assets/js/script.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/my-library.js" defer></script>
+</body>
+
+</html>

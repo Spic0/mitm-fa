@@ -1,0 +1,13 @@
+# Icons whose class name is assembled at runtime, so no static scan can find
+# them. One icon name per line; the leading "fa-" is optional.
+#
+# How to know you need an entry here: search for string concatenation onto an
+# "fa-" prefix. Each such site leaves a truncated, useless token in the source
+# (e.g. `fa-chevron`) and the real icon name never appears literally anywhere.
+
+# assets/js/admin/builder/ui.js:210 — week twisty:
+#   'fa-chevron-' + (open ? "down" : "right")
+# "down" also appears literally at ui.js:449; "right" appears nowhere, which is
+# why the collapsed twisty rendered as an empty box.
+chevron-down
+chevron-right

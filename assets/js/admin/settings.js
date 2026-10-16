@@ -15,6 +15,25 @@ window.AdminPanels.settings = {
         root.querySelector("#currency").value = data.settings.currency || "USD";
         root.querySelector("#taxRate").value = data.settings.taxRate || "0";
         root.querySelector("#emailFromName").value = data.settings.emailFromName || "";
+        // The demo picker is filled from the real catalog rather than being a
+        // free-text slug field, so it cannot be pointed at something that does
+        // not exist. The server re-checks that the chosen slug resolves to a
+        // PUBLISHED product anyway (lib/demo.js) — this is convenience, not the
+        // guard. A failed product fetch leaves the "Automatic" option in place
+        // rather than blocking the rest of the form.
+        var demoSelect = root.querySelector("#demoProductSlug");
+        if (demoSelect) {
+          window.AdminAPI.listProducts({ limit: 200 }).then(function (res) {
+            (res.products || []).forEach(function (prod) {
+              if (prod.status !== "published") return;
+              var opt = document.createElement("option");
+              opt.value = prod.slug;
+              opt.textContent = prod.name;
+              demoSelect.appendChild(opt);
+            });
+            demoSelect.value = data.settings.demoProductSlug || "";
+          }).catch(function () {});
+        }
         if (data.settings.logoUrl) {
           logoPreview.src = "/" + data.settings.logoUrl;
           logoPreview.style.display = "block";
@@ -33,6 +52,7 @@ window.AdminPanels.settings = {
         currency: root.querySelector("#currency").value,
         taxRate: root.querySelector("#taxRate").value,
         emailFromName: root.querySelector("#emailFromName").value,
+        demoProductSlug: root.querySelector("#demoProductSlug").value,
       }).then(function () {
         window.AdminUI.toast("Settings saved", "success");
       }).catch(function (err) {
@@ -42,13 +62,38 @@ window.AdminPanels.settings = {
 
     logoForm.addEventListener("submit", function (e) {
       e.preventDefault();
-      var fd = new FormData();
-      fd.append("logo", e.target.logo.files[0]);
-      window.AdminAPI.uploadLogo(fd).then(function (res) {
-        logoPreview.src = "/" + res.logoUrl;
+      var picked = e.target.logo.files[0];
+      if (!picked) return window.AdminUI.toast("Choose a logo file first", "warning");
+
+      var submitBtn = logoForm.querySelector('button[type="submit"], input[type="submit"]');
+      function setBusy(label) {
+        if (!submitBtn) return;
+        submitBtn.disabled = !!label;
+        if (label) {
+          if (!submitBtn.dataset.idleLabel) submitBtn.dataset.idleLabel = submitBtn.textContent;
+          submitBtn.textContent = label;
+        } else if (submitBtn.dataset.idleLabel) {
+          submitBtn.textContent = submitBtn.dataset.idleLabel;
+        }
+      }
+
+      setBusy("Preparing…");
+      window.AdminUpload.maybeCompressImage(picked).then(function (toSend) {
+        var fd = new FormData();
+        fd.append("logo", toSend);
+        return window.AdminAPI.uploadLogo(fd, function (pct) {
+          setBusy(pct === null ? "Uploading…" : pct === 100 ? "Processing…" : "Uploading " + pct + "%");
+        });
+      }).then(function (res) {
+        // Cache-bust: the logo URL is stable across replacements, so without
+        // this the browser keeps showing the previous logo from cache and the
+        // upload looks like it silently did nothing.
+        logoPreview.src = "/" + res.logoUrl + "?t=" + Date.now();
         logoPreview.style.display = "block";
+        setBusy("");
         window.AdminUI.toast("Logo updated", "success");
       }).catch(function (err) {
+        setBusy("");
         window.AdminUI.toast(err.message, "error");
       });
     });

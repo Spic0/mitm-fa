@@ -42,13 +42,13 @@ window.AdminPanels["system-logs"] = {
       window.AdminAPI.listSystemLogs(params).then(function (data) {
         populateCategories(data.categories);
 
-        if (!data.logs.length) {
+        if (!logs.length) {
           tbody.innerHTML = '<tr><td colspan="4">' + window.AdminUI.emptyState("fa-list", "No log entries match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           pagination.innerHTML = "";
           return;
         }
-        tbody.innerHTML = data.logs.map(function (l) {
+        tbody.innerHTML = logs.map(function (l) {
           return (
             "<tr>" +
             "<td>" + categoryBadge(l.category) + "</td>" +

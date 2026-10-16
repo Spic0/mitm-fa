@@ -1,0 +1,41 @@
+{
+  "name": "fitness-agency-tools",
+  "private": true,
+  "description": "Build-time asset tooling and browser tests. Not part of serving a request \u2014 see tools/README.md. Kept separate from server/package.json so a tool dependency can never end up in the production dependency tree.",
+  "scripts": {
+    "fontawesome": "node subset-fontawesome-css.js && node subset-fontawesome-fonts.js && node verify-fontawesome.js",
+    "bootstrap": "node subset-bootstrap-css.js",
+    "verify:bootstrap": "node verify-bootstrap-subset.js",
+    "test:handbook-media": "node test-handbook-media.js",
+    "test:media-x-accel": "node test-media-x-accel.js",
+    "test:handbook-video": "node test-handbook-video.js",
+    "test:program-page-media": "node test-program-page-media.js",
+    "test:admin-api": "node test-admin-api-resilience.js",
+    "test:presentation-picker": "node test-presentation-picker.js",
+    "test": "node test-admin-api-resilience.js && node test-free-access.js && node test-products-pagination.js && node test-presentation-picker.js && node test-handbook-media.js && node test-media-x-accel.js && node test-handbook-video.js && node test-program-page-media.js && node test-product-page-media.js && node test-landing-responsive.js && node test-hero-carousel.js && node test-service-pages.js && node test-partner-profile.js && node test-partner-admin.js && node test-presentation-partner.js && node test-presentation-partner-admin.js && node test-customer-journey.js && node test-new-pages-responsive.js && node test-account-nav.js && node test-demo-preview.js && node test-nav-menu.js && node test-product-showcase.js && npm run test:email",
+    "test:checkout-payment": "node test-checkout-payment.js",
+    "test:payment-lifecycle": "node test-payment-lifecycle.js",
+    "test:hero-carousel": "node test-hero-carousel.js",
+    "test:product-page-media": "node test-product-page-media.js",
+    "measure": "node measure-page-network.js",
+    "test:products-pagination": "node test-products-pagination.js",
+    "test:free-access": "node test-free-access.js",
+    "test:free-access-browser": "node test-free-access-browser.js",
+    "landing-assets": "node build-landing-assets.js",
+    "test:landing-responsive": "node test-landing-responsive.js",
+    "test:partner-profile": "node test-partner-profile.js",
+    "test:partner-admin": "node test-partner-admin.js",
+    "test:service-pages": "node test-service-pages.js",
+    "test:new-pages-responsive": "node test-new-pages-responsive.js",
+    "test:account-nav": "node test-account-nav.js",
+    "test:nav-menu": "node test-nav-menu.js",
+    "test:email": "node send-test-emails.js && node test-email-rendering.js",
+    "test:product-showcase": "node test-product-showcase.js",
+    "test:demo-preview": "node test-demo-preview.js"
+  },
+  "devDependencies": {
+    "postcss": "^8.5.26",
+    "puppeteer-core": "^24.43.1",
+    "subset-font": "^2.5.0"
+  }
+}

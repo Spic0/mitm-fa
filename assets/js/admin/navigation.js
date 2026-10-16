@@ -1,8 +1,18 @@
-// Admin "Navigation" section — CRUD for the three taxonomy trees (Shop by
-// Goal / Browse Athletes / Browse Creators) that drive both storefront
-// navigation and product categorization. Every mutation reloads the full
-// tree from the server rather than patching local state — the trees are
-// small, and this keeps ordering/nesting always provably correct.
+// Admin "Navigation" section — CRUD for the taxonomy trees that drive both
+// storefront navigation and product categorization. Every mutation reloads
+// the full tree from the server rather than patching local state — the trees
+// are small, and this keeps ordering/nesting always provably correct.
+//
+// Two levels, deliberately distinct:
+//   CATEGORY  a whole top-level item in the site header ("Browse Athletes").
+//             Create, rename, reorder, show/hide, choose how its menu panel
+//             presents, delete. This level did not exist before — the three
+//             seeded categories were the only ones there could ever be.
+//   ITEM      a node inside a category (a goal, a sport, an athlete).
+//
+// Nothing here writes a key, a route or a URL segment. Those are derived
+// server-side from the name (see routes/admin/taxonomy.js) because they are
+// live public URLs, not content.
 window.AdminPanels = window.AdminPanels || {};
 window.AdminPanels.navigation = (function () {
   var container = null;
@@ -26,16 +36,55 @@ window.AdminPanels.navigation = (function () {
   }
 
   function render() {
-    container.innerHTML = taxonomies.map(renderTaxonomyCard).join("");
+    container.innerHTML =
+      taxonomies.map(renderTaxonomyCard).join("") +
+      '<button type="button" class="a-btn a-btn-primary a-btn-sm u-w-auto" id="taxAddCategory">' +
+      '<i class="fa-solid fa-plus"></i> New category</button>';
+  }
+
+  // How this category's menu panel is laid out. "Automatic" is the honest
+  // default and covers most cases from the tree's own shape; "People" is the
+  // one thing structure cannot tell you.
+  var LAYOUTS = [
+    ["auto", "Automatic"],
+    ["list", "List of links"],
+    ["groups", "Grouped columns"],
+    ["people", "People, with photos"],
+  ];
+
+  function layoutSelect(tax) {
+    return (
+      '<select class="tax-select" data-layout="' + tax.id + '" aria-label="Menu layout for ' + esc(tax.label) + '">' +
+      LAYOUTS.map(function (opt) {
+        return '<option value="' + opt[0] + '"' + (tax.navLayout === opt[0] ? " selected" : "") + ">" + opt[1] + "</option>";
+      }).join("") +
+      "</select>"
+    );
   }
 
   function renderTaxonomyCard(tax) {
+    var hidden = tax.showInNav === false;
     return (
-      '<div class="a-card a-card-pad tax-card" style="margin-bottom:20px;">' +
+      '<div class="a-card a-card-pad tax-card' + (hidden ? " tax-card--hidden" : "") + '" style="margin-bottom:20px;">' +
       '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2" style="margin-bottom:16px;">' +
-      '<div><h6 style="margin:0;">' + esc(tax.label) + '</h6><span class="tax-route">' + esc(tax.route) + "</span></div>" +
-      '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-add-root="' + tax.id + '"><i class="fa-solid fa-plus"></i> Add item</button>' +
-      "</div>" +
+      "<div>" +
+      '<h6 style="margin:0;"><span class="tax-node__name" data-rename-tax="' + tax.id + '" title="Click to rename">' + esc(tax.label) + "</span>" +
+      (hidden ? ' <span class="tax-badge">Hidden from menu</span>' : "") +
+      "</h6>" +
+      '<span class="tax-route">' + esc(tax.route) + " · items at /" + esc(tax.nodeRoute) + "/…" +
+      (tax.groupRoute ? " · groups at /" + esc(tax.groupRoute) + "/…" : "") +
+      "</span></div>" +
+      '<div class="tax-card__actions">' +
+      layoutSelect(tax) +
+      '<button type="button" class="tax-icon-btn" data-move-tax="' + tax.id + ':-1" aria-label="Move category up"><i class="fa-solid fa-arrow-up"></i></button>' +
+      '<button type="button" class="tax-icon-btn" data-move-tax="' + tax.id + ':1" aria-label="Move category down"><i class="fa-solid fa-arrow-down"></i></button>' +
+      '<button type="button" class="tax-icon-btn" data-toggle-nav="' + tax.id + '" aria-pressed="' + (!hidden) + '" aria-label="' + (hidden ? "Show in menu" : "Hide from menu") + '" title="' + (hidden ? "Show in menu" : "Hide from menu") + '">' +
+      '<i class="fa-solid ' + (hidden ? "fa-eye-slash" : "fa-eye") + '"></i></button>' +
+      '<button type="button" class="tax-icon-btn tax-icon-btn--danger" data-delete-tax="' + tax.id + '"' +
+      (tax.nodes.length ? ' disabled title="Delete the items inside it first"' : "") +
+      ' aria-label="Delete category"><i class="fa-solid fa-trash"></i></button>' +
+      '<button type="button" class="a-btn a-btn-secondary a-btn-sm u-w-auto" data-add-root="' + tax.id + '"><i class="fa-solid fa-plus"></i> Add item</button>' +
+      "</div></div>" +
       '<ul class="tax-tree" data-parent-list="' + tax.id + ':">' +
       (tax.nodes.length ? tax.nodes.map(function (n) { return renderNode(n, tax.id); }).join("") : "") +
       "</ul>" +
@@ -131,9 +180,76 @@ window.AdminPanels.navigation = (function () {
     });
   }
 
+  // ---- Category-level mutations ----
+
+  function updateTaxonomy(taxonomyId, body) {
+    window.AdminAPI.updateTaxonomy(taxonomyId, body)
+      .then(load)
+      .catch(function (err) { window.AdminUI.toast(err.message, "error"); load(); });
+  }
+
+  function moveTaxonomy(taxonomyId, direction) {
+    var idx = taxonomies.findIndex(function (t) { return t.id === taxonomyId; });
+    var swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= taxonomies.length) return;
+    var a = taxonomies[idx], b = taxonomies[swapIdx];
+    Promise.all([
+      window.AdminAPI.updateTaxonomy(a.id, { order: b.order }),
+      window.AdminAPI.updateTaxonomy(b.id, { order: a.order }),
+    ]).then(load).catch(function (err) { window.AdminUI.toast(err.message, "error"); });
+  }
+
+  function deleteTaxonomy(taxonomyId) {
+    var tax = taxonomies.find(function (t) { return t.id === taxonomyId; });
+    window.AdminUI.confirmDialog({
+      title: 'Delete "' + (tax ? tax.label : "this category") + '"?',
+      message: "It will disappear from the site header and its /shop URL will stop working. This can't be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    }).then(function (ok) {
+      if (!ok) return;
+      window.AdminAPI.deleteTaxonomy(taxonomyId)
+        .then(function () { window.AdminUI.toast("Category deleted", "success"); load(); })
+        .catch(function (err) { window.AdminUI.toast(err.message, "error"); });
+    });
+  }
+
+  // A new category needs one decision beyond its name — whether its items
+  // are grouped (Football -> Marcus Reyes) or a flat list — because that is what
+  // the item editor below has to offer, and it cannot be inferred from an
+  // empty tree.
+  function beginAddCategory(btn) {
+    var wrap = document.createElement("div");
+    wrap.className = "a-card a-card-pad tax-card tax-add-category";
+    wrap.innerHTML =
+      '<div class="tax-node__row">' +
+      '<input type="text" class="tax-inline-input" placeholder="Category name, e.g. Equipment">' +
+      '<label class="tax-checkbox"><input type="checkbox" data-nested> Items have sub-items</label>' +
+      '<button type="button" class="a-btn a-btn-primary a-btn-sm u-w-auto" data-confirm-cat>Create</button>' +
+      '<button type="button" class="a-btn a-btn-secondary a-btn-sm u-w-auto" data-cancel-cat>Cancel</button>' +
+      "</div>";
+    btn.replaceWith(wrap);
+    var input = wrap.querySelector("input[type=text]");
+    input.focus();
+
+    function confirm() {
+      var name = input.value.trim();
+      if (!name) { render(); return; }
+      window.AdminAPI.createTaxonomy({ label: name, hasSubcategories: wrap.querySelector("[data-nested]").checked })
+        .then(function () { window.AdminUI.toast("Category created", "success"); load(); })
+        .catch(function (err) { window.AdminUI.toast(err.message, "error"); render(); });
+    }
+    wrap.querySelector("[data-confirm-cat]").addEventListener("click", confirm);
+    wrap.querySelector("[data-cancel-cat]").addEventListener("click", render);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); confirm(); }
+      if (e.key === "Escape") { e.preventDefault(); render(); }
+    });
+  }
+
   // ---- Inline forms (rename / add) ----
 
-  function beginRename(nameEl, nodeId) {
+  function beginRename(nameEl, nodeId, isTaxonomy) {
     var current = nameEl.textContent;
     var input = document.createElement("input");
     input.type = "text";
@@ -143,7 +259,14 @@ window.AdminPanels.navigation = (function () {
     input.focus();
     input.select();
 
-    function commit() { renameNode(nodeId, input.value); }
+    function commit() {
+      if (isTaxonomy) {
+        if (!input.value.trim()) { render(); return; }
+        updateTaxonomy(nodeId, { label: input.value.trim() });
+      } else {
+        renameNode(nodeId, input.value);
+      }
+    }
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); input.blur(); }
       if (e.key === "Escape") { e.preventDefault(); render(); }
@@ -183,6 +306,12 @@ window.AdminPanels.navigation = (function () {
   }
 
   container = null;
+  document.addEventListener("change", function (e) {
+    if (!container || !container.contains(e.target)) return;
+    var layoutSel = e.target.closest("[data-layout]");
+    if (layoutSel) updateTaxonomy(layoutSel.getAttribute("data-layout"), { navLayout: layoutSel.value });
+  });
+
   document.addEventListener("click", function (e) {
     if (!container || !container.contains(e.target)) return;
 
@@ -202,6 +331,29 @@ window.AdminPanels.navigation = (function () {
       if (childUl) beginAdd(childUl, taxonomyId, parentId);
       return;
     }
+
+    if (e.target.closest("#taxAddCategory")) { beginAddCategory(e.target.closest("#taxAddCategory")); return; }
+
+    var renameTaxEl = e.target.closest("[data-rename-tax]");
+    if (renameTaxEl) { beginRename(renameTaxEl, renameTaxEl.getAttribute("data-rename-tax"), true); return; }
+
+    var moveTaxBtn = e.target.closest("[data-move-tax]");
+    if (moveTaxBtn) {
+      var taxParts = moveTaxBtn.getAttribute("data-move-tax").split(":");
+      moveTaxonomy(taxParts[0], parseInt(taxParts[1], 10));
+      return;
+    }
+
+    var toggleNavBtn = e.target.closest("[data-toggle-nav]");
+    if (toggleNavBtn) {
+      var tid = toggleNavBtn.getAttribute("data-toggle-nav");
+      var t = taxonomies.find(function (x) { return x.id === tid; });
+      updateTaxonomy(tid, { showInNav: !(t && t.showInNav !== false) });
+      return;
+    }
+
+    var deleteTaxBtn = e.target.closest("[data-delete-tax]");
+    if (deleteTaxBtn && !deleteTaxBtn.disabled) { deleteTaxonomy(deleteTaxBtn.getAttribute("data-delete-tax")); return; }
 
     var renameEl = e.target.closest("[data-rename]");
     if (renameEl) { beginRename(renameEl, renameEl.getAttribute("data-rename")); return; }

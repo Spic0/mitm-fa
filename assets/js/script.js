@@ -54,31 +54,158 @@ CSS TABLE OF CONTENTS
 
 	// Mobile off-canvas drawer: hamburger opens/closes it, an overlay click
 	// or Escape closes it, and tapping a top-level item that owns a panel
-	// (.sub-menu / .mega-menu) drills into a dedicated full-width screen
-	// for that panel instead of expanding in place — .drill-open/.drilling
-	// drive the CSS for that (see style.css's mobile nav rules). Leaf links
-	// with no panel (e.g. Nutrition Plans' own sub-items) just navigate
-	// normally; this handler only intercepts the ones that own a panel.
+	// (.sub-menu / .mega-menu) expands it in place as a single-open
+	// accordion — see the click handler below and style.css's mobile nav
+	// rules (grid-template-rows 0fr/1fr on .open). Leaf links with no panel
+	// just navigate normally; that handler only intercepts the ones that
+	// own a panel. Deliberately doesn't reset any open panel here: an
+	// accordion section stays open for as long as the drawer itself stays
+	// open, even across a close/reopen.
+	// Swaps the hamburger glyph between bars (closed) and X (open). Both are
+	// Font Awesome 6 Pro solid icons, self-hosted with the project.
+	function setBarIcon(open) {
+		$(".site-header .header-bar__icon")
+			.toggleClass("fa-bars", !open)
+			.toggleClass("fa-xmark", open);
+		$(".site-header .header-bar").attr("aria-label", open ? "Close menu" : "Open menu");
+	}
+
+	// iOS Safari ignores `overflow:hidden` on <body> for touch scrolling, so
+	// the page behind the drawer still scrolled under your finger. Pinning the
+	// body with position:fixed does hold, but collapses the scroll position to
+	// 0 — so the offset is stashed and restored on unlock, which is what stops
+	// the page jumping to the top every time the menu closes.
+	var savedScrollY = 0;
+	function lockBodyScroll() {
+		savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+		document.body.style.top = -savedScrollY + "px";
+		$("body").addClass("nav-open");
+	}
+	function unlockBodyScroll() {
+		$("body").removeClass("nav-open");
+		document.body.style.top = "";
+		// 'instant' matters: a smooth restore animates the page back down and
+		// reads as exactly the scroll-jump this is meant to prevent.
+		window.scrollTo({ top: savedScrollY, behavior: "instant" });
+	}
+
 	function closeDrawer() {
 		$(".site-header .header-bar").removeClass("active").attr("aria-expanded", "false");
-		$(".site-header .main-menu").removeClass("active drilling");
-		$(".site-header .main-menu > li").removeClass("drill-open");
-		$("#navOverlay").removeClass("active");
-		$("body").removeClass("nav-open");
+		$(".site-header .main-menu").removeClass("active").css("transform", "");
+		$("#navOverlay").removeClass("active").css("opacity", "");
+		if ($("body").hasClass("nav-open")) unlockBodyScroll();
+		setBarIcon(false);
+	}
+
+	function openDrawer() {
+		$(".site-header .header-bar").addClass("active").attr("aria-expanded", "true");
+		$(".site-header .main-menu").addClass("active").css("transform", "");
+		$("#navOverlay").addClass("active").css("opacity", "");
+		lockBodyScroll();
+		setBarIcon(true);
 	}
 
 	$(".site-header .header-bar").on("click", function (e) {
 		e.stopPropagation();
-		var opening = !$(this).hasClass("active");
-		if (opening) {
-			$(this).addClass("active").attr("aria-expanded", "true");
-			$(".site-header .main-menu").addClass("active");
-			$("#navOverlay").addClass("active");
-			$("body").addClass("nav-open");
-		} else {
-			closeDrawer();
-		}
+		if (!$(this).hasClass("active")) openDrawer();
+		else closeDrawer();
 	});
+
+	// ---- Swipe-to-close ---------------------------------------------------
+	// Native-feeling drag: the drawer tracks the finger 1:1, then either
+	// completes or springs back based on how far AND how fast it was thrown.
+	// Distance alone makes a quick flick feel unresponsive; velocity alone
+	// makes a slow deliberate push fail.
+	(function enableDrawerSwipe() {
+		var drawer = document.querySelector(".site-header .main-menu");
+		var overlay = document.getElementById("navOverlay");
+		if (!drawer) return;
+
+		var startX = 0, startY = 0, lastX = 0, lastT = 0, velocity = 0;
+		var dragging = false, decided = false, width = 0;
+
+		function isOpen() { return drawer.classList.contains("active"); }
+
+		drawer.addEventListener("touchstart", function (e) {
+			if (!isOpen() || e.touches.length !== 1) return;
+			var t = e.touches[0];
+			startX = lastX = t.clientX;
+			startY = t.clientY;
+			lastT = Date.now();
+			velocity = 0;
+			width = drawer.offsetWidth || 320;
+			dragging = true;
+			decided = false;
+		}, { passive: true });
+
+		drawer.addEventListener("touchmove", function (e) {
+			if (!dragging) return;
+			var t = e.touches[0];
+			var dx = t.clientX - startX;
+			var dy = t.clientY - startY;
+
+			// The first meaningful movement decides the gesture's axis.
+			// Without this, scrolling the menu vertically drags it sideways.
+			if (!decided) {
+				if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+				if (Math.abs(dy) > Math.abs(dx)) { dragging = false; return; }
+				decided = true;
+				drawer.classList.add("is-dragging");
+				// Scrim tracks the finger too — see .nav-overlay.is-dragging.
+				if (overlay) overlay.classList.add("is-dragging");
+			}
+
+			// Only closing (rightward) drags track 1:1. Pulling left past the
+			// open position is damped rather than blocked, so the edge still
+			// feels physical instead of dead.
+			var offset = dx > 0 ? dx : dx / 4;
+			var now = Date.now();
+			var dt = now - lastT;
+			if (dt > 0) velocity = (t.clientX - lastX) / dt; // px per ms
+			lastX = t.clientX;
+			lastT = now;
+
+			drawer.style.transform = "translate3d(" + offset + "px,0,0)";
+			// Overlay fades in step with the drawer so the two never desync.
+			if (overlay) overlay.style.opacity = String(Math.max(0, 1 - offset / width));
+		}, { passive: true });
+
+		function endDrag() {
+			if (!dragging) return;
+			dragging = false;
+			if (!decided) return;
+			drawer.classList.remove("is-dragging");
+			if (overlay) overlay.classList.remove("is-dragging");
+
+			var offset = lastX - startX;
+			// Either thrown hard enough, or dragged more than a third of the
+			// way across. 0.45 px/ms is about a deliberate flick, not a drift.
+			var shouldClose = velocity > 0.45 || offset > width * 0.33;
+
+			if (shouldClose) {
+				// Carry the throw's speed into the closing animation rather
+				// than always using one duration — a hard flick finishes fast,
+				// a gentle push glides.
+				var remaining = Math.max(0, width - offset);
+				var ms = velocity > 0.45
+					? Math.min(320, Math.max(120, remaining / Math.abs(velocity)))
+					: 280;
+				drawer.style.transition = "transform " + Math.round(ms) + "ms cubic-bezier(0.32,0.72,0,1)";
+				drawer.style.transform = "translate3d(100%,0,0)";
+				setTimeout(function () {
+					drawer.style.transition = "";
+					closeDrawer();
+				}, Math.round(ms));
+			} else {
+				drawer.style.transition = "";
+				drawer.style.transform = "";
+				if (overlay) overlay.style.opacity = "";
+			}
+		}
+
+		drawer.addEventListener("touchend", endDrag, { passive: true });
+		drawer.addEventListener("touchcancel", endDrag, { passive: true });
+	})();
 
 	$(document).on("click", "#navOverlay", closeDrawer);
 
@@ -93,35 +220,293 @@ CSS TABLE OF CONTENTS
 		if (e.key === "Escape" && $(window).width() < 992) closeDrawer();
 	});
 
-	// Drill down into a top-level item's panel (mobile only)
+	// Inline accordion (mobile only): tapping a top-level item that owns a
+	// panel (.sub-menu / .mega-menu) toggles it open/closed in place. Single-
+	// open — opening one panel closes whichever other one was open first, so
+	// there's never more than one expanded at a time. aria-expanded on the
+	// trigger link is the only state this writes; style.css keys both the
+	// panel's grid-template-rows and the chevron's rotation off .open/
+	// [aria-expanded] directly, so there's nothing else to keep in sync.
 	$(".site-header .main-menu > li > .nav-top-link").on("click", function (e) {
 		if ($(window).width() >= 992) return;
-		var li = $(this).parent("li");
-		if (!li.children("[data-menu-panel]").length) return; // no panel: let it navigate
+		var $link = $(this);
+		var $panel = $link.siblings("[data-menu-panel]");
+		if (!$panel.length) return; // no panel: let it navigate
 		e.preventDefault();
-		li.addClass("drill-open");
-		$(".site-header .main-menu").addClass("drilling");
+		var opening = !$panel.hasClass("open");
+
+		$(".site-header .main-menu > li > [data-menu-panel].open").not($panel)
+			.removeClass("open")
+			.siblings(".nav-top-link")
+			.attr("aria-expanded", "false");
+
+		$panel.toggleClass("open", opening);
+		$link.attr("aria-expanded", String(opening));
 	});
 
-	// Back button returns to the drawer's root list
-	$(".site-header .main-menu").on("click", ".mobile-nav-back", function () {
-		$(".site-header .main-menu").removeClass("drilling");
-		$(".site-header .main-menu > li").removeClass("drill-open");
-	});
+	// ---- Menu thumbnails: fetched on first contact, not on page load ------
+	// server/src/lib/navigation.js ships every panel thumbnail with no `src`,
+	// only `data-src`. See the long comment there for why `loading="lazy"` is
+	// not enough: a closed desktop panel sits inside the viewport, so the
+	// browser happily downloaded the whole menu's imagery on every page of the
+	// site. This promotes them once, on the first sign that a visitor is
+	// actually going to use the nav — early enough that the pictures are in
+	// place before a panel finishes opening, and never at all on the many page
+	// views where nobody touches the menu.
+	(function navThumbs() {
+		var painted = false;
+		function paint() {
+			if (painted) return;
+			painted = true;
+			// SOURCES FIRST, then the img. Inside a <picture> the img's src is
+			// only the last candidate, so promoting it before the sources
+			// would fetch the fallback original and then fetch the AVIF too.
+			var sources = document.querySelectorAll(".site-header picture source[data-srcset]");
+			Array.prototype.forEach.call(sources, function (source) {
+				source.srcset = source.getAttribute("data-srcset");
+				source.removeAttribute("data-srcset");
+			});
+			var imgs = document.querySelectorAll(".site-header img[data-nav-thumb][data-src]");
+			Array.prototype.forEach.call(imgs, function (img) {
+				img.src = img.getAttribute("data-src");
+				img.removeAttribute("data-src");
+			});
+		}
+		var header = document.querySelector(".site-header");
+		if (!header) return;
+		// Desktop: the pointer arriving anywhere in the header, or focus
+		// entering it. Mobile: the hamburger. All three are "about to look at
+		// the menu", and all three are once-only.
+		header.addEventListener("mouseenter", paint, { once: true });
+		header.addEventListener("focusin", paint, { once: true });
+		header.addEventListener("touchstart", paint, { once: true, passive: true });
+		var bar = header.querySelector(".header-bar");
+		if (bar) bar.addEventListener("click", paint, { once: true });
+	})();
 
-	// Desktop hover/focus opens the dropdown visually via CSS alone; this
-	// just keeps aria-expanded in sync with that so screen readers know
-	// the real state, since CSS :hover/:focus-within can't touch ARIA.
-	$(".site-header .main-menu > li").on("mouseenter focusin", function () {
-		$(this).children(".nav-top-link").attr("aria-expanded", "true");
-	}).on("mouseleave focusout", function () {
-		var li = $(this);
-		setTimeout(function () {
-			if (!li.is(":hover") && li.find(":focus").length === 0) {
-				li.children(".nav-top-link").attr("aria-expanded", "false");
+	// ---- Desktop mega-menu controller ------------------------------------
+	// The panels used to open on a bare CSS :hover/:focus-within, with this
+	// block doing nothing but patching aria-expanded afterwards. Four of the
+	// behaviours this menu needs are simply not expressible that way:
+	//
+	//   - Escape must close it, and an outside click must close it. CSS has
+	//     no concept of either.
+	//   - Moving from one category to another must be CONTINUOUS. With
+	//     :hover, leaving A starts A's close while B's open is still sitting
+	//     behind its hover-intent delay, so the two never overlap and the
+	//     page ground flashes between them. Here the second open is told to
+	//     skip the delay and cross-dissolve in place (.is-switching).
+	//   - A pointer travelling diagonally from the trigger toward the panel
+	//     briefly leaves both. A short close grace absorbs that instead of
+	//     snapping the panel shut under the cursor.
+	//   - Opening one panel must close the other, deterministically, rather
+	//     than relying on two independent :hover states not overlapping.
+	//
+	// Everything is state on ONE element (.is-open on the panel), so the
+	// panels stay mounted, server-rendered and identical for the whole page
+	// lifetime — nothing here creates, destroys or refetches anything, which
+	// is what makes an open feel instantaneous.
+	(function desktopMegaMenu() {
+		var OPEN_DELAY = 120;   // hover intent: a mouse crossing the nav on its
+		                        // way elsewhere must not flash panels open
+		var CLOSE_DELAY = 140;  // grace for the diagonal trigger -> panel travel
+		var SWITCH_MS = 260;    // how long "switching" suppresses the open delay
+
+		var menu = document.querySelector(".site-header .main-menu");
+		var header = document.querySelector(".site-header");
+		if (!menu || !header) return;
+
+		var openTimer = null, closeTimer = null, switchTimer = null;
+		var current = null;       // the <li> whose panel is open
+		// Escape closes the panel and returns focus to its trigger, which is
+		// the only place focus can go without stranding a keyboard user at the
+		// top of the document — but the trigger opens its panel ON FOCUS, so
+		// that same courtesy immediately re-opened what Escape just closed.
+		// This suppresses exactly one focus-open, on exactly that trigger.
+		var dismissed = null;
+
+		function isDesktop() { return window.innerWidth >= 992; }
+		function panelOf(li) { return li ? li.querySelector("[data-menu-panel]") : null; }
+		function triggerOf(li) { return li ? li.querySelector(".nav-top-link") : null; }
+
+		function clearTimers() {
+			clearTimeout(openTimer); clearTimeout(closeTimer);
+			openTimer = closeTimer = null;
+		}
+
+		function close(li) {
+			var panel = panelOf(li), trigger = triggerOf(li);
+			if (panel) panel.classList.remove("is-open");
+			if (trigger) trigger.setAttribute("aria-expanded", "false");
+		}
+
+		function closeAll(immediate) {
+			if (!current) return;
+			close(current);
+			current = null;
+			if (immediate) {
+				menu.classList.remove("is-switching");
+				clearTimeout(switchTimer);
 			}
-		}, 50);
-	});
+		}
+
+		function open(li) {
+			if (!isDesktop() || li === current) return;
+			var panel = panelOf(li);
+			if (!panel) return;
+			// Switching, not opening from cold: hold the fast cross-dissolve
+			// for long enough to cover this transition, then drop it so the
+			// NEXT cold open gets its full easing back.
+			if (current) {
+				menu.classList.add("is-switching");
+				clearTimeout(switchTimer);
+				switchTimer = setTimeout(function () {
+					menu.classList.remove("is-switching");
+				}, SWITCH_MS);
+				close(current);
+			}
+			panel.classList.add("is-open");
+			var trigger = triggerOf(li);
+			if (trigger) trigger.setAttribute("aria-expanded", "true");
+			current = li;
+		}
+
+		function scheduleOpen(li) {
+			clearTimers();
+			// Already showing a panel: the customer is clearly reading the
+			// menu, so the intent delay has been paid for. Switch now.
+			if (current) { open(li); return; }
+			openTimer = setTimeout(function () { open(li); }, OPEN_DELAY);
+		}
+
+		function scheduleClose() {
+			clearTimers();
+			closeTimer = setTimeout(function () { closeAll(true); }, CLOSE_DELAY);
+		}
+
+		var items = menu.querySelectorAll("li.nav-mega");
+
+		// Where the panels hang from. See --nav-panel-left in style.css.
+		//
+		// The panel is a child of .header-inner, so its max-width is measured
+		// against the page container and it can never overflow the viewport —
+		// but .header-inner starts at the LOGO, and a panel hanging off the
+		// logo does not read as belonging to the nav item that opened it. So
+		// the origin is the first trigger's left edge. (Not .main-menu's own
+		// box: that <ul> is a stretched flex child 1257px wide whose items are
+		// centred inside it, so its left edge is nowhere near the first link.)
+		//
+		// ONE origin, shared by every category, deliberately: that is what
+		// makes switching read as a single surface changing its contents, and
+		// it is why the panel cannot appear to jump sideways mid-switch.
+		// Clamped against the WIDEST panel so the shared origin is safe for
+		// all of them at once.
+		function measureOrigin() {
+			if (!isDesktop() || !items.length) return;
+			var inner = header.querySelector(".header-inner");
+			if (!inner) return;
+			// Measure the panels unconstrained: their max-width is derived from
+			// the very property being computed here, so leaving the previous
+			// value in place would feed the last answer back into this one.
+			inner.style.setProperty("--nav-panel-left", "0px");
+			var widest = 0;
+			Array.prototype.forEach.call(items, function (li) {
+				var panel = panelOf(li);
+				if (panel) widest = Math.max(widest, panel.offsetWidth);
+			});
+			var innerBox = inner.getBoundingClientRect();
+			var first = items[0].getBoundingClientRect().left - innerBox.left;
+			var left = Math.max(0, Math.min(Math.round(first), Math.round(innerBox.width - widest)));
+			inner.style.setProperty("--nav-panel-left", left + "px");
+		}
+		measureOrigin();
+		// Fonts landing after first paint re-flow the nav; re-measure once they
+		// do rather than leaving the panels aligned to a pre-swap layout.
+		if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureOrigin);
+		Array.prototype.forEach.call(items, function (li) {
+			li.addEventListener("mouseenter", function () {
+				if (isDesktop()) scheduleOpen(li);
+			});
+
+			var trigger = triggerOf(li);
+			if (!trigger) return;
+
+			// A keyboard user gets the panel on focus, with no delay — Tab is
+			// always deliberate, never an accident of pointer travel.
+			trigger.addEventListener("focus", function () {
+				if (!isDesktop()) return;
+				if (dismissed === li) return; // just closed with Escape
+				clearTimers();
+				open(li);
+			});
+			trigger.addEventListener("blur", function () {
+				if (dismissed === li) dismissed = null;
+			});
+
+			trigger.addEventListener("click", function (e) {
+				if (!isDesktop()) return; // mobile accordion owns the tap
+				// First click opens the panel; a second click on an already-
+				// open trigger follows the link, so the category's own landing
+				// page is never unreachable by mouse.
+				if (current !== li) {
+					e.preventDefault();
+					dismissed = null;
+					clearTimers();
+					open(li);
+				}
+			});
+
+			// Down-arrow from the trigger walks into the panel, which is the
+			// convention a screen-reader user expects from aria-haspopup.
+			trigger.addEventListener("keydown", function (e) {
+				if (!isDesktop() || e.key !== "ArrowDown") return;
+				e.preventDefault();
+				dismissed = null;
+				open(li);
+				var first = panelOf(li).querySelector("a[href]");
+				if (first) first.focus();
+			});
+		});
+
+		// One close path for the pointer leaving the whole header, rather than
+		// per-item mouseleave — the panel is a child of .header-inner, not of
+		// the <li> that triggered it, so an <li>-level mouseleave fires the
+		// moment the cursor sets off toward the panel it is about to enter.
+		header.addEventListener("mouseleave", function () {
+			if (isDesktop()) scheduleClose();
+		});
+		header.addEventListener("mouseenter", function () { clearTimers(); });
+
+		// Focus leaving the header entirely (Tab past the last panel link).
+		header.addEventListener("focusout", function () {
+			if (!isDesktop()) return;
+			setTimeout(function () {
+				if (!header.contains(document.activeElement)) closeAll(true);
+			}, 0);
+		});
+
+		document.addEventListener("keydown", function (e) {
+			if (e.key !== "Escape" || !current) return;
+			var li = current;
+			var trigger = triggerOf(li);
+			closeAll(true);
+			// Focus must come back to something, or a keyboard user is left
+			// stranded at the top of the document.
+			dismissed = li;
+			if (trigger) trigger.focus();
+		});
+
+		document.addEventListener("click", function (e) {
+			if (current && !header.contains(e.target)) closeAll(true);
+		});
+
+		// Crossing the breakpoint with a panel open would leave .is-open on a
+		// panel the drawer is now styling as an accordion section.
+		window.addEventListener("resize", function () {
+			if (!isDesktop()) closeAll(true);
+			measureOrigin();
+		});
+	})();
 
 	var fixed_top = $(".site-header");
 	$(window).on("scroll", function () {
@@ -322,12 +707,38 @@ CSS TABLE OF CONTENTS
 	// Get swiper slider area end here ***
 
 	// Background image date area start here ***
-	$("[data-background").each(function () {
-		$(this).css(
-			"background-image",
-			"url( " + $(this).attr("data-background") + "  )"
+	// Lazy: only sets background-image once an element is near the
+	// viewport, instead of every [data-background] element on the page
+	// (header banner, mid-page sections, footer alike) eagerly fetching its
+	// image on load regardless of scroll position. An element already in
+	// view at load (e.g. a page's top banner) gets its callback almost
+	// immediately, so this doesn't delay anything above the fold — it only
+	// defers what's actually below it (e.g. the footer background, which is
+	// otherwise downloaded on every single page load whether or not the
+	// visitor ever scrolls that far).
+	if ("IntersectionObserver" in window) {
+		var bgObserver = new IntersectionObserver(
+			function (entries) {
+				entries.forEach(function (entry) {
+					if (!entry.isIntersecting) return;
+					var el = entry.target;
+					$(el).css("background-image", "url( " + $(el).attr("data-background") + "  )");
+					bgObserver.unobserve(el);
+				});
+			},
+			{ rootMargin: "200px 0px" }
 		);
-	});
+		$("[data-background]").each(function () {
+			bgObserver.observe(this);
+		});
+	} else {
+		$("[data-background]").each(function () {
+			$(this).css(
+				"background-image",
+				"url( " + $(this).attr("data-background") + "  )"
+			);
+		});
+	}
 	// Background image date area end here ***
 
 	// Video popup area start here ***
@@ -364,34 +775,17 @@ CSS TABLE OF CONTENTS
 	});
 	// Video popup area end here ***
 
-	// Countdown area start here ***
-	var targetDate = new Date("2023-12-01 00:00:00").getTime();
-	// fix you date here
-	var countdownInterval = setInterval(function () {
-		var currentDate = new Date().getTime();
-		var remainingTime = targetDate - currentDate;
-
-		var days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
-		var hours = Math.floor(
-			(remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-		);
-		var minutes = Math.floor(
-			(remainingTime % (1000 * 60 * 60)) / (1000 * 60)
-		);
-		var seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
-
-		// Pad single-digit values with leading zeros
-		$("#day").text(days.toString().padStart(2, "0"));
-		$("#hour").text(hours.toString().padStart(2, "0"));
-		$("#min").text(minutes.toString().padStart(2, "0"));
-		$("#sec").text(seconds.toString().padStart(2, "0"));
-
-		if (remainingTime <= 0) {
-			clearInterval(countdownInterval);
-			// You can add a message or perform any action when the countdown timer reaches zero
-		}
-	}, 1000);
-	// Countdown area end here ***
+	// Countdown area removed 2026-08-11 ***
+	// The theme's "HURRY UP! Offer end in:" timer was a rolling 48h window
+	// persisted in localStorage that re-armed itself forever, so the deadline it
+	// counted down to did not exist. It was dropped from the homepage along with
+	// the "$79.00 -> $49.00" price it sat above, and the last markup carrying
+	// #day/#hour/#min/#sec went with the deleted index-2/index-light variants —
+	// so this ran a setInterval once a second, forever, on every page of the
+	// site, writing into elements that no longer exist anywhere.
+	//
+	// If a REAL, dated offer is ever run, drive it from the Promotion row's
+	// expiresAt (server/src/lib/promotions.js), not from a rolling window.
 
 	// Shop single swiper slider area start here ***
 	var swiper = new Swiper(".shop-slider-thumb", {
@@ -406,20 +800,28 @@ CSS TABLE OF CONTENTS
 		spaceBetween: 20,
 		speed: 300,
 		grabCursor: true,
+		pagination: {
+			el: ".shop-single-pagination",
+			clickable: true,
+		},
 		thumbs: {
 			swiper: swiper,
 		},
 	});
+	// The product page builds its real slide list from the CMS *after* this
+	// runs (assets/js/shop-single.js, which has to wait on the product API),
+	// so it needs these instances to re-sync once the slides change. Exposed
+	// rather than re-initialized: re-running `new Swiper` on a live element
+	// leaks the old instance's listeners.
+	window.ProFitShopSwiper = { main: swiper2, thumbs: swiper };
 	// Shop single swiper slider area end here ***
 
-	// Hide & show by clicks js area start here ***
-	$(document).on("click", "#openButton", function () {
-		$("#targetElement").removeClass("side_bar_hidden");
-	});
-	$(document).on("click", "#closeButton", function () {
-		$("#targetElement").addClass("side_bar_hidden");
-	});
-	// Hide & show by clicks js area end here ***
+	// The #targetElement off-canvas sidebar these handlers drove has been
+	// removed from every page: #openButton, its only trigger, existed in no
+	// markup anywhere (not in the 19 pages, not in partials/header.html), so
+	// the panel could never be opened. It was shipping placeholder template
+	// content — a fake email, a fake phone number and lorem copy about road
+	// subgrade — inside 13 pages for nothing.
 
 	// Radio btn area start here ***
 	$(document).on("click", ".radio-btn span", function () {
@@ -465,8 +867,17 @@ CSS TABLE OF CONTENTS
 	// Mouse cursor area end here ***
 
 	// Nice seclect area start here ***
+	//
+	// Two opt-outs, both for the same reason: niceSelect HIDES the native
+	// <select> (display:none) and renders its own widget from whatever
+	// options exist AT INIT. Any select whose options are populated later by
+	// JS therefore renders as an empty box — the native element is correct
+	// and invisible, the widget is visible and blank, and nothing errors.
+	//   .co-sel   the checkout's country picker
+	//   .ac-select the customer area's selects (My Profile, setup wizard),
+	//              which are filled from assets/js/countries.js after load
 	$(document).ready(function () {
-		$("select:not(.co-sel)").niceSelect();
+		$("select:not(.co-sel):not(.ac-select)").niceSelect();
 	});
 	// Nice seclect area end here ***
 
@@ -562,6 +973,16 @@ CSS TABLE OF CONTENTS
 		return getCart();
 	}
 
+	// True when checkout is showing a Buy Now item rather than the cart. The
+	// checkout summary's quantity and remove controls are suppressed in that
+	// case: they mutate the cart, which is not what is being purchased.
+	function buyNowActive() {
+		try {
+			var b = JSON.parse(sessionStorage.getItem(BUYNOW_KEY));
+			return !!(b && b.id);
+		} catch (e) { return false; }
+	}
+
 	window.ProFitCart = {
 		getCart: getCart,
 		saveCart: saveCart,
@@ -579,7 +1000,98 @@ CSS TABLE OF CONTENTS
 	function updateCartBadge() {
 		var cart = getCart();
 		var count = cart.reduce(function (n, item) { return n + item.qty; }, 0);
-		$("#cartCount, #cartDrawerCount").text(count);
+		$("#cartCount, #cartDrawerCount, #drawerCartCount").text(count);
+	}
+
+	// ---- Cart thumbnails ---------------------------------------------------
+	// The cart stores only the raw `imageUrl` a product was added with, i.e.
+	// the ORIGINAL upload. Rendering that straight into <img src> is the same
+	// bug that has now been found on four separate surfaces: every request
+	// succeeds, so nothing ever flags it. Measured on the live drawer with
+	// three items, 10/2 Mbps: 4,565,282 bytes of PNG (1290x2796, 1055x1491,
+	// 1122x1402) to fill three 60x60 boxes, the last of them landing 3.7s
+	// after the drawer opened.
+	//
+	// The 320w AVIF/WebP derivatives already exist for every raster cover —
+	// nothing here generates anything, it only asks for what is there.
+	// `listProducts()` is cached per page by api.js, so this costs at most one
+	// request per page view and usually zero (the shop grid, checkout
+	// recommendations and the drawer's own "you might also like" all prime it).
+	var cartCoverIndex = null;
+
+	function cartCoverFor(id) {
+		if (!cartCoverIndex) return null;
+		var p = cartCoverIndex[id];
+		return p && p.cover ? p.cover : null;
+	}
+
+	// Replaces each placeholder <img> with the best source set available.
+	// Deliberately falls back to the stored original for anything with no
+	// cover: SVG demo covers, GIFs and stills below the 320w tier legitimately
+	// have no derivatives, and the stored file IS the right one for those.
+	//
+	// Two callers, because there are two surfaces showing the same cart items
+	// at two different box sizes: the drawer (60px) and the checkout order
+	// summary (104px). The summary was rendering `item.img` — the ORIGINAL
+	// upload — straight into <img src>, measured live at 1055x1491 / 2,245.6 KB
+	// painted into a 104x104 box, against a 16.5 KB 320w AVIF that already
+	// existed on disk. Same defect as the drawer had, one surface over.
+	function paintThumbs(rowSelector, imgAttr, sizes) {
+		var rows = document.querySelectorAll(rowSelector);
+		if (!rows.length) return;
+		Array.prototype.forEach.call(rows, function (row) {
+			var img = row.querySelector("img[" + imgAttr + "]");
+			if (!img) return;
+			var stored = img.getAttribute("data-src") || "";
+			var cover = cartCoverFor(row.getAttribute("data-id"));
+			img.removeAttribute(imgAttr);
+
+			if (!cover || !cover.sources || !cover.sources.length || !window.MediaContainer) {
+				if (stored) img.src = stored;
+				return;
+			}
+
+			// pictureFor() MOVES the img into the <picture> it returns, so the
+			// insertion point has to be captured first — reading img.parentNode
+			// afterwards gives the <picture> itself, not the row.
+			var parent = img.parentNode;
+			var next = img.nextSibling;
+			// The rendered box, so even a 3x screen asks for no more than the
+			// 320w tier.
+			var picture = window.MediaContainer.pictureFor(img, cover, sizes);
+
+			// src is set only now, with the <source> elements already in place,
+			// so the browser runs picture selection and takes the AVIF/WebP.
+			// Setting it while the img was still a bare child of the row would
+			// have started the original's download before the sources existed —
+			// which is the whole bug, moved a few lines later.
+			// The fallback is the narrowest derivative rather than cover.src:
+			// on the one path where a browser ignores <source> entirely, 320w
+			// WebP is still the right answer and the 2MB PNG never is.
+			img.src = window.MediaContainer.smallestDerivative(cover) || cover.src || stored;
+
+			if (picture !== img && parent) parent.insertBefore(picture, next);
+		});
+	}
+
+	function paintCartThumbs() {
+		paintThumbs("#cartItems .cart-item", "data-cart-thumb", "60px");
+		paintThumbs("#checkoutOrderList .co-order-item", "data-co-thumb", "104px");
+		paintThumbs("#cartPageTable .product", "data-cartpage-thumb", "70px");
+	}
+
+	function ensureCartCovers() {
+		if (cartCoverIndex) { paintCartThumbs(); return; }
+		if (!window.ProFitAPI) { paintCartThumbs(); return; }
+		window.ProFitAPI.listProducts().then(function (data) {
+			cartCoverIndex = {};
+			(data.products || []).forEach(function (p) { cartCoverIndex[p.id] = p; });
+			paintCartThumbs();
+		}).catch(function () {
+			// Falls back to the stored original rather than to no image at
+			// all — worse bytes, but a cart that still shows what is in it.
+			paintCartThumbs();
+		});
 	}
 
 	function renderCartDrawer() {
@@ -589,11 +1101,17 @@ CSS TABLE OF CONTENTS
 		if (cart.length === 0) {
 			$body.html('<p class="cart-empty-msg">Your cart is empty.</p>');
 			$("#cartTotal").text("$0.00");
-			renderRecommendedProducts();
 			return;
 		}
 		$.each(cart, function (i, item) {
-			var img = item.img ? '<img src="' + escapeHtml(item.img) + '" alt="' + escapeHtml(item.name) + '">' : '<img src="assets/images/placeholder.jpg" alt="">';
+			// No `src` yet: setting the original here would start its download
+			// immediately, and the upgrade below would then be a second
+			// request rather than a replacement. width/height reserve the box
+			// so the row never reflows once the real bytes land.
+			var src = item.img || "/assets/images/placeholder.jpg";
+			var img = '<img data-cart-thumb data-src="' + escapeHtml(src) + '"' +
+				' alt="' + escapeHtml(item.name || "") + '" width="60" height="60"' +
+				' loading="lazy" decoding="async">';
 			var html = '<div class="cart-item" data-id="' + item.id + '">' +
 				img +
 				'<div class="cart-item-info">' +
@@ -610,17 +1128,32 @@ CSS TABLE OF CONTENTS
 			$body.append(html);
 		});
 		$("#cartTotal").text(formatDollars(cartTotal(cart)));
-		renderRecommendedProducts();
+		ensureCartCovers();
 	}
 
 	// Compact "You might also like" row inside the cart drawer — only runs
 	// where the drawer markup actually includes #cartRecommended (currently
 	// shop-single.html), so pages without it are completely unaffected.
+	//
+	// Deliberately rebuilt only when the drawer OPENS, never on each cart
+	// mutation. It used to run from renderCartDrawer(), which caused the
+	// "removed item comes back" bug: this list excludes whatever is in the
+	// cart, so removing an item made that item eligible again, and the async
+	// listProducts() resolve then injected it as a new tile *after* the
+	// removal had already reflowed the drawer. Each tile is a full-tile
+	// add-to-cart target, so the shopper's next tap — aimed at the next
+	// remove button — landed on the tile of the item they had just removed
+	// and silently re-added it. Nothing was corrupting localStorage; the
+	// item was genuinely being added back by a mis-aimed tap.
 	function renderRecommendedProducts() {
 		var $section = $("#cartRecommended");
 		if (!$section.length || !window.ProFitAPI) return;
 
 		var cartIds = getCart().map(function (item) { return item.id; });
+
+		// Hold the row's height across the async fetch so its arrival doesn't
+		// shove the cart rows above it (the other half of the mis-tap).
+		if (!$section.children().length) $section.css("min-height", "0px");
 
 		window.ProFitAPI.listProducts().then(function (data) {
 			var picks = (data.products || [])
@@ -631,26 +1164,51 @@ CSS TABLE OF CONTENTS
 
 			var html = '<p class="cart-recommended__title">You might also like</p><div class="cart-recommended__row">';
 			picks.forEach(function (p) {
-				var img = p.imageUrl || "assets/images/placeholder.jpg";
+				var img = p.imageUrl || "/assets/images/placeholder.jpg";
 				var price = (p.priceCents / 100).toFixed(2);
-				var link = "shop-single.html?slug=" + encodeURIComponent(p.slug);
+				var link = "/program/" + encodeURIComponent(p.slug);
 				// The whole tile is one add-to-cart tap target: the "Add" anchor
 				// stretches over the item (same pattern as product cards), with
 				// the product page href only as an open-in-new-tab fallback.
-				html += '<div class="cart-recommended__item" style="position:relative;">' +
+				// No inline style="position:relative" here — the CSP's
+				// style-src-attr blocks style attributes outright, so it never
+				// applied. The rule lives in style.css (.cart-recommended__item)
+				// where it actually takes effect.
+				html += '<div class="cart-recommended__item">' +
 					'<img src="' + escapeHtml(img) + '" alt="">' +
 					'<span class="cart-recommended__name">' + escapeHtml(p.name) + '</span>' +
 					'<span class="cart-recommended__price">$' + price + '</span>' +
-					'<a href="' + link + '" class="cart-recommended__add stretched-link" data-add-to-cart data-id="' + p.id + '" data-name="' + escapeHtml(p.name) + '" data-price="' + price + '" data-img="' + escapeHtml(img) + '" aria-label="Add ' + escapeHtml(p.name) + ' to cart, $' + price + '">Add</a>' +
+					'<a href="' + link + '" class="cart-recommended__add stretched-link" data-add-to-cart data-id="' + p.id + '" data-slug="' + escapeHtml(p.slug) + '" data-name="' + escapeHtml(p.name) + '" data-price="' + price + '" data-img="' + escapeHtml(img) + '" aria-label="Add ' + escapeHtml(p.name) + ' to cart, $' + price + '">Add</a>' +
 					'</div>';
 			});
 			html += '</div>';
 			$section.html(html);
+			// Freeze the height it settled at, so later removals reflow only
+			// the item list above and never move these tap targets.
+			$section.css("min-height", $section.outerHeight() + "px");
 		}).catch(function () { $section.empty(); });
 	}
 
+	// Anything that mutates the cart from inside the drawer reflows the item
+	// list. A tap that lands within a few hundred ms of that reflow is almost
+	// certainly aimed at where the content *was*, so the recommendation tiles
+	// (the only add-to-cart targets in the drawer) ignore it. Belt-and-braces
+	// alongside not re-rendering them at all — a fast double-tap on a slow
+	// phone can still outrun a reflow.
+	var recsGuardedUntil = 0;
+	function guardRecommendationsBriefly() {
+		recsGuardedUntil = Date.now() + 350;
+	}
+	$(document).on("click", "#cartRecommended [data-add-to-cart]", function (e) {
+		if (Date.now() < recsGuardedUntil) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+		}
+	});
+
 	function openCartDrawer() {
 		renderCartDrawer();
+		renderRecommendedProducts();
 		$("#cartDrawer, #cartOverlay").addClass("open");
 		$("body").addClass("cart-open");
 	}
@@ -659,8 +1217,9 @@ CSS TABLE OF CONTENTS
 		$("body").removeClass("cart-open");
 	}
 
-	$(document).on("click", "#cartToggle", function (e) {
+	$(document).on("click", "#cartToggle, .js-cart-toggle", function (e) {
 		e.preventDefault();
+		closeDrawer(); // no-op if the mobile nav drawer wasn't open, needed when Cart is tapped from inside it
 		openCartDrawer();
 	});
 	$(document).on("click", "#cartClose, #cartOverlay", function () {
@@ -671,27 +1230,40 @@ CSS TABLE OF CONTENTS
 	$(document).on("click", ".cart-qty-minus", function () {
 		var id = $(this).data("id");
 		var cart = getCart();
-		var idx = cart.findIndex(function (i) { return i.id === id; });
+		var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 		if (idx > -1) {
 			cart[idx].qty -= 1;
 			if (cart[idx].qty <= 0) cart.splice(idx, 1);
 			saveCart(cart);
 			renderCartDrawer();
 			updateCartBadge();
+			guardRecommendationsBriefly();
 		}
 	});
 	$(document).on("click", ".cart-qty-plus", function () {
 		var id = $(this).data("id");
 		var cart = getCart();
-		var idx = cart.findIndex(function (i) { return i.id === id; });
-		if (idx > -1) { cart[idx].qty += 1; saveCart(cart); renderCartDrawer(); updateCartBadge(); }
+		var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
+		if (idx > -1) {
+			cart[idx].qty += 1;
+			saveCart(cart);
+			renderCartDrawer();
+			updateCartBadge();
+			guardRecommendationsBriefly();
+		}
 	});
 	$(document).on("click", ".cart-item-remove", function () {
 		var id = $(this).data("id");
-		var cart = getCart().filter(function (i) { return i.id !== id; });
+		// Compare loosely on the string form: ids are cuids today, but the
+		// shop-grid fallback path can synthesise a numeric-looking id, and
+		// jQuery's .data() would hand that back as a Number while the stored
+		// copy round-tripped through JSON as a String. A strict !== would
+		// then quietly match nothing and the row would refuse to delete.
+		var cart = getCart().filter(function (i) { return String(i.id) !== String(id); });
 		saveCart(cart);
 		renderCartDrawer();
 		updateCartBadge();
+		guardRecommendationsBriefly();
 	});
 
 	// Add to cart — works on any .product__cart button across shop pages
@@ -710,13 +1282,14 @@ CSS TABLE OF CONTENTS
 		var price = parseFloat(priceRaw.replace(/[^0-9.]/g, "")) || parseFloat($btn.data("price")) || 0;
 		var img = $card.find("img").first().attr("src") || $btn.data("img") || "";
 		var id = $btn.data("id") || (name + "_" + price).replace(/\s+/g, "_");
+		var slug = $btn.data("slug") || null;
 
 		var cart = getCart();
-		var existing = cart.find(function (i) { return i.id === id; });
+		var existing = cart.find(function (i) { return String(i.id) === String(id); });
 		if (existing) {
 			existing.qty += 1;
 		} else {
-			cart.push({ id: id, name: name, price: price, img: img, qty: 1 });
+			cart.push({ id: id, slug: slug, name: name, price: price, img: img, qty: 1 });
 		}
 		saveCart(cart);
 		updateCartBadge();
@@ -739,12 +1312,13 @@ CSS TABLE OF CONTENTS
 		if (!id) return;
 
 		var cart = getCart();
-		var existing = cart.find(function (i) { return i.id === id; });
+		var existing = cart.find(function (i) { return String(i.id) === String(id); });
 		if (existing) {
 			existing.qty += 1;
 		} else {
 			cart.push({
 				id: id,
+				slug: $el.data("slug") || null,
 				name: $el.data("name") || "Product",
 				price: parseFloat($el.data("price")) || 0,
 				img: $el.data("img") || "",
@@ -786,7 +1360,7 @@ CSS TABLE OF CONTENTS
 		}
 
 		setBuyNow({ id: id, name: name, price: price, img: img, qty: 1 });
-		window.location.href = "checkout.html?buynow=1";
+		window.location.href = "/checkout?buynow=1";
 	});
 
 	// Init badge on page load
@@ -825,17 +1399,27 @@ CSS TABLE OF CONTENTS
 			$.each(cart, function (i, item) {
 				var lineTotal = parseFloat(item.price) * item.qty;
 				subtotal += lineTotal;
-				var img = item.img || "assets/images/shop/01.jpg";
+				var img = item.img || "/assets/images/shop/01.jpg";
 				var borderClass = (i < cart.length - 1) ? "bor-bottom" : "";
-				// The product's own page lookup accepts an id or a slug
-				// interchangeably (server resolves by either), so the cart
-				// line — which only has the id — can still deep-link there
-				// without needing to carry the slug through localStorage too.
-				var productLink = "shop-single.html?slug=" + encodeURIComponent(item.id);
+				// The product's public URL is slug-based (/program/<slug>), never
+				// the internal id — a cart line added before this field existed
+				// (stale localStorage from an older visit) has no slug yet; render
+				// its name as plain unlinked text rather than ever falling back to
+				// the raw id in the address bar. It self-heals next time the item
+				// is re-added or the cart is cleared at checkout.
+				var titleHtml = item.slug
+					? '<a href="/program/' + encodeURIComponent(item.slug) + '" class="stretched-link" style="color:inherit;">' + escapeHtml(item.name) + '</a>'
+					: escapeHtml(item.name);
 				html += '<div class="product p-4 ' + borderClass + ' d-flex justify-content-between align-items-center" data-id="' + item.id + '" style="position:relative;">' +
 					'<div class="product-details d-flex align-items-center">' +
-					'<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.name) + '" style="width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0;">' +
-					'<h4 class="ps-4 text-capitalize mb-0"><a href="' + productLink + '" class="stretched-link" style="color:inherit;">' + escapeHtml(item.name) + '</a></h4>' +
+					// Same src-less placeholder as the drawer and the checkout summary:
+					// the stored value is the ORIGINAL upload (measured here at
+					// 1055x1491 / 2,241.9 KB inside a 70x70 box) and setting it now
+					// would start that download before paintThumbs can substitute the
+					// 320w derivative.
+					'<img data-cartpage-thumb data-src="' + escapeHtml(img) + '" class="cp-thumb"' +
+					' alt="' + escapeHtml(item.name) + '" width="70" height="70" loading="lazy" decoding="async">' +
+					'<h4 class="ps-4 text-capitalize mb-0">' + titleHtml + '</h4>' +
 					'</div>' +
 					'<div class="product-price text-white">' + formatDollars(parseFloat(item.price)) + '</div>' +
 					'<div class="product-quantity">' +
@@ -862,13 +1446,16 @@ CSS TABLE OF CONTENTS
 				'</div>';
 
 			$table.html(html);
+			// Swaps each placeholder for its <picture>; see renderCheckoutSummary.
+			ensureCartCovers();
 		}
 
 		renderCartPage();
 
 		$(document).on("click", ".cp-remove", function () {
 			var id = $(this).data("id");
-			var cart = getCart().filter(function (i) { return i.id !== id; });
+			// Same String() coercion guard as the drawer handlers above.
+			var cart = getCart().filter(function (i) { return String(i.id) !== String(id); });
 			saveCart(cart);
 			renderCartPage();
 			updateCartBadge();
@@ -877,7 +1464,7 @@ CSS TABLE OF CONTENTS
 		$(document).on("click", ".cp-qty-minus", function () {
 			var id = $(this).data("id");
 			var cart = getCart();
-			var idx = cart.findIndex(function (i) { return i.id === id; });
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 			if (idx > -1) {
 				cart[idx].qty -= 1;
 				if (cart[idx].qty <= 0) cart.splice(idx, 1);
@@ -890,7 +1477,7 @@ CSS TABLE OF CONTENTS
 		$(document).on("click", ".cp-qty-plus", function () {
 			var id = $(this).data("id");
 			var cart = getCart();
-			var idx = cart.findIndex(function (i) { return i.id === id; });
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
 			if (idx > -1) {
 				cart[idx].qty += 1;
 				saveCart(cart);
@@ -908,6 +1495,45 @@ CSS TABLE OF CONTENTS
 	// =====================================================
 	if ($("#checkoutOrderList").length) {
 
+		// --- Promo code ---
+		// appliedPromo (manually entered, confirmed via /api/promotions/validate)
+		// takes visual precedence over autoPromo (a site-wide/category auto-apply
+		// promotion, discovered without any code) in this preview banner. The
+		// authoritative combined total — including a possible stacked
+		// auto-apply promotion alongside a manual one — is always computed
+		// server-side at create/update-intent time (server/src/lib/
+		// checkoutItems.js); this preview intentionally doesn't replicate that
+		// full combination logic, it just needs to be in the right ballpark and
+		// never overstate what the shopper will actually be charged.
+		var appliedPromo = null; // { code, name, discountCents }
+		var autoPromo = null;
+		window.ProFitCart.appliedPromoCode = null;
+
+		function checkoutItemsForPromo() {
+			return getCheckoutItems().map(function (item) { return { productId: item.id, qty: item.qty || 1 }; });
+		}
+		function currentEmailForPromo() {
+			var el = document.getElementById("email");
+			return el ? el.value.trim().toLowerCase() : "";
+		}
+		function showPromoMsg(message, isError) {
+			var $el = $("#promoMsg");
+			if (!$el.length) return;
+			if (!message) { $el.addClass("u-hidden").text(""); return; }
+			$el.text(message).removeClass("u-hidden").toggleClass("is-error", !!isError).toggleClass("is-success", !isError);
+		}
+		// Only called when no manual code is applied — a single, cart-driven
+		// (not polled) check for a site-wide/category promotion that needs no
+		// code at all.
+		function refreshAutoPromo() {
+			if (appliedPromo) { autoPromo = null; return Promise.resolve(); }
+			var items = checkoutItemsForPromo();
+			if (!items.length) { autoPromo = null; return Promise.resolve(); }
+			return window.ProFitAPI.getAutoApplyPromotion(items, currentEmailForPromo()).then(function (data) {
+				autoPromo = data.applied ? { code: data.promotion.code, name: data.promotion.name, discountCents: data.discountCents } : null;
+			}).catch(function () { autoPromo = null; });
+		}
+
 		// --- Order summary ---
 		function renderCheckoutSummary() {
 			var cart = getCheckoutItems();
@@ -920,23 +1546,152 @@ CSS TABLE OF CONTENTS
 				$.each(cart, function (i, item) {
 					var line = parseFloat(item.price) * item.qty;
 					subtotal += line;
-					var imgHtml = item.img ? '<img src="' + escapeHtml(item.img) + '" class="co-item-img" alt="">' : '';
+					// No `src` yet, exactly as the drawer does it: setting the stored
+					// original here would start its download immediately and the
+					// upgrade below would be a second request rather than a
+					// replacement. ensureCartCovers() -> paintThumbs() swaps in the
+					// <picture> with the AVIF/WebP srcsets once the product index is
+					// in. width/height reserve the 104px box so the summary does not
+					// reflow when the cover lands.
+					var imgHtml = item.img
+						? '<img data-co-thumb data-src="' + escapeHtml(item.img) + '" class="co-item-img"' +
+						  ' alt="" width="104" height="104" loading="lazy" decoding="async">'
+						: '<span class="co-item-img co-item-img--empty"></span>';
+					// Buy Now bypasses the cart, so its single item has no cart entry to
+					// increment or remove -- the controls would be writing to a cart the
+					// shopper is not actually buying from.
+					var editable = !buyNowActive();
+					var controls = editable
+						? '<div class="co-item-qty">' +
+						  '<button type="button" class="co-qty-btn co-qty-minus" data-id="' + escapeHtml(item.id) + '" aria-label="Decrease quantity">&#8722;</button>' +
+						  '<span class="co-qty-val">' + item.qty + '</span>' +
+						  '<button type="button" class="co-qty-btn co-qty-plus" data-id="' + escapeHtml(item.id) + '" aria-label="Increase quantity">&#43;</button>' +
+						  '</div>'
+						: '<span class="co-item-qty-static">Qty ' + item.qty + '</span>';
+					var removeBtn = editable
+						? '<button type="button" class="co-item-remove" data-id="' + escapeHtml(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + '"><i class="fa-solid fa-xmark"></i></button>'
+						: '';
 					$list.append(
-						'<li class="co-order-item">' +
+						'<li class="co-order-item" data-id="' + escapeHtml(item.id) + '">' +
 						imgHtml +
-						'<span class="co-item-name">' + escapeHtml(item.name) + ' <em>&times;' + item.qty + '</em></span>' +
+						'<div class="co-item-main">' +
+						'<span class="co-item-name">' + escapeHtml(item.name) + '</span>' +
+						(item.creator ? '<span class="co-item-creator">' + escapeHtml(item.creator) + '</span>' : '') +
+						controls +
+						'</div>' +
+						'<div class="co-item-side">' +
 						'<span class="co-item-price">' + formatDollars(line) + '</span>' +
+						removeBtn +
+						'</div>' +
 						'</li>'
 					);
 				});
 			}
 			$("#coSubtotal").text(formatDollars(subtotal));
-			$("#coTotal").text(formatDollars(subtotal));
+
+			var subtotalCents = Math.round(subtotal * 100);
+			var discountCents = Math.min((appliedPromo || autoPromo || {}).discountCents || 0, subtotalCents);
+			if (discountCents > 0) {
+				$("#coDiscountRow").removeClass("u-hidden");
+				$("#coDiscount").text("−" + formatDollars(discountCents / 100));
+			} else {
+				$("#coDiscountRow").addClass("u-hidden");
+			}
+			$("#coTotal").text(formatDollars((subtotalCents - discountCents) / 100));
+
+			// Swap each placeholder thumbnail for its <picture>. Runs on EVERY
+			// re-render (qty change, promo, remove), not just the first, because
+			// the list is rebuilt from scratch each time and a fresh row would
+			// otherwise be left with a src-less img. The product index is fetched
+			// once and cached, so repeat calls cost nothing.
+			ensureCartCovers();
 		}
+		// Quantity and remove, inline in the order summary. These write through
+		// saveCart(), which dispatches profit:cart-changed -- the same event the
+		// summary, the sticky bar and checkout-payments.js's PaymentIntent resync
+		// all listen for, so one mutation updates every one of them and the
+		// charged amount can never drift from what is displayed.
+		function adjustQty(id, delta) {
+			if (buyNowActive()) return;
+			var cart = getCart();
+			var idx = cart.findIndex(function (i) { return String(i.id) === String(id); });
+			if (idx < 0) return;
+			cart[idx].qty += delta;
+			if (cart[idx].qty <= 0) cart.splice(idx, 1);
+			saveCart(cart);
+			updateCartBadge();
+			renderCheckoutSummary();
+		}
+		$(document).on("click", "#checkoutOrderList .co-qty-plus", function () { adjustQty($(this).data("id"), 1); });
+		$(document).on("click", "#checkoutOrderList .co-qty-minus", function () { adjustQty($(this).data("id"), -1); });
+		$(document).on("click", "#checkoutOrderList .co-item-remove", function () {
+			if (buyNowActive()) return;
+			var id = $(this).data("id");
+			var $row = $(this).closest(".co-order-item");
+			// Let the row collapse before re-rendering, so an item does not just
+			// vanish and snap the rows below it upward.
+			$row.addClass("is-removing");
+			setTimeout(function () {
+				saveCart(getCart().filter(function (i) { return String(i.id) !== String(id); }));
+				updateCartBadge();
+				renderCheckoutSummary();
+			}, 200);
+		});
+
 		renderCheckoutSummary();
+		refreshAutoPromo().then(renderCheckoutSummary);
 		// Adding a checkout-page recommendation (or any other cart mutation)
-		// re-renders the summary instantly — no page reload, no polling.
-		document.addEventListener("profit:cart-changed", renderCheckoutSummary);
+		// re-renders the summary instantly — no page reload, no polling. If a
+		// promo code is already applied, it's silently re-validated once per
+		// change (a min-spend code can stop qualifying as the cart shrinks);
+		// with none applied, auto-apply eligibility is re-checked instead.
+		document.addEventListener("profit:cart-changed", function () {
+			if (appliedPromo) {
+				var items = checkoutItemsForPromo();
+				window.ProFitAPI.validatePromoCode(appliedPromo.code, items, currentEmailForPromo()).then(function (data) {
+					if (!data.ok) {
+						appliedPromo = null;
+						window.ProFitCart.appliedPromoCode = null;
+						showPromoMsg("\"" + $("#promoCodeInput").val().trim() + "\" no longer applies to your cart.", true);
+					} else {
+						appliedPromo.discountCents = data.discountCents;
+					}
+					renderCheckoutSummary();
+				}).catch(function () { renderCheckoutSummary(); });
+			} else {
+				refreshAutoPromo().then(renderCheckoutSummary);
+			}
+		});
+
+		$("#promoApplyBtn").on("click", function () {
+			var $btn = $(this);
+			var code = $("#promoCodeInput").val().trim();
+			if (!code) { showPromoMsg("Enter a promo code", true); return; }
+			var items = checkoutItemsForPromo();
+			if (!items.length) { showPromoMsg("Your cart is empty", true); return; }
+
+			$btn.prop("disabled", true);
+			window.ProFitAPI.validatePromoCode(code, items, currentEmailForPromo()).then(function (data) {
+				$btn.prop("disabled", false);
+				if (!data.ok) {
+					showPromoMsg(data.reason || "This code isn't valid", true);
+					return;
+				}
+				appliedPromo = { code: data.promotion.code, name: data.promotion.name, discountCents: data.discountCents };
+				autoPromo = null;
+				window.ProFitCart.appliedPromoCode = appliedPromo.code;
+				showPromoMsg("“" + data.promotion.code + "” applied: " + formatDollars(data.discountCents / 100) + " off", false);
+				renderCheckoutSummary();
+				// Keeps the live PaymentIntent's charged amount (and PayPal's
+				// next create-order call) in sync with the newly applied code —
+				// same event checkout-payments.js already listens for on any
+				// other cart mutation.
+				document.dispatchEvent(new CustomEvent("profit:cart-changed"));
+			}).catch(function (err) {
+				$btn.prop("disabled", false);
+				showPromoMsg(err.message || "Could not validate this code", true);
+			});
+		});
 
 		// --- Express pay buttons (scroll to tab) ---
 		$(document).on("click", ".co-express-btn", function () {
@@ -969,4 +1724,139 @@ CSS TABLE OF CONTENTS
 	// END CART SYSTEM
 	// =====================================================
 
+})(jQuery);
+
+// =====================================================================
+// MOBILE FOOTER ACCORDION
+// =====================================================================
+// Collapses the footer's link columns behind their headings below 768px.
+// Progressive enhancement: the [aria-expanded] attribute this adds is what
+// the CSS keys the collapsed state off, so with JS unavailable the footer
+// stays fully expanded and every link remains reachable.
+(function footerAccordion($) {
+	var MOBILE = 767;
+	var wired = false;
+
+	function titles() {
+		// The newsletter column is excluded — it holds a single input rather
+		// than a link list, so collapsing it costs a tap and saves nothing.
+		return $(".footer-area .footer__item").not(".newsletter").find("> .footer-title");
+	}
+
+	// Legal and Social live outside the link columns in the markup (the
+	// bottom bar and the newsletter block respectively), so on mobile they
+	// are mirrored into two extra accordion sections. Built here rather than
+	// added to all 18 pages' HTML for the same reason the rest of this
+	// feature is JS-driven: there is no footer partial, so per-page markup
+	// would have to be applied 18 times and would drift. Removed again on
+	// desktop, which keeps the desktop footer byte-for-byte as it was.
+	var SYNTHETIC = "js-footer-synthetic";
+
+	// Legal links carry their own text; social links are icon-only, so their
+	// label is recovered from the Font Awesome brand class. Those classes
+	// carry glyph-variant suffixes ("fa-facebook-f", "fa-linkedin-in") that
+	// are not part of the brand name, hence the explicit map rather than
+	// prettifying the class string and shipping "Linkedin in".
+	var BRAND_LABELS = {
+		"facebook-f": "Facebook", facebook: "Facebook",
+		twitter: "Twitter", "x-twitter": "X",
+		"linkedin-in": "LinkedIn", linkedin: "LinkedIn",
+		youtube: "YouTube", instagram: "Instagram",
+		tiktok: "TikTok", whatsapp: "WhatsApp",
+	};
+
+	function labelFor($a) {
+		var text = $.trim($a.text());
+		if (text) return text;
+		if ($a.attr("aria-label")) return $a.attr("aria-label");
+		var cls = ($a.find("i").attr("class") || "").match(/fa-([a-z0-9-]+)/g) || [];
+		for (var i = 0; i < cls.length; i++) {
+			var key = cls[i].replace(/^fa-/, "");
+			if (BRAND_LABELS[key]) return BRAND_LABELS[key];
+		}
+		return "Link";
+	}
+
+	function buildSyntheticSections() {
+		var $row = $(".footer-area .footer__wrp .row").first();
+		if (!$row.length || $row.find("." + SYNTHETIC).length) return;
+
+		function section(title, $links) {
+			if (!$links.length) return null;
+			var $col = $('<div class="col-12 ' + SYNTHETIC + '"><div class="footer__item"><h4 class="footer-title"></h4><ul></ul></div></div>');
+			$col.find(".footer-title").text(title);
+			var $ul = $col.find("ul");
+			$links.each(function () {
+				var $a = $(this);
+				$ul.append(
+					$("<li>").append(
+						$("<a>").attr("href", $a.attr("href") || "#0")
+							.append($("<span>"))
+							.append(document.createTextNode(labelFor($a)))
+					)
+				);
+			});
+			return $col;
+		}
+
+		var $legal = section("Legal", $(".footer-area .footer__legal a"));
+		var $social = section("Social", $(".footer-area .social-icon a"));
+		if ($legal) $row.append($legal);
+		if ($social) $row.append($social);
+	}
+
+	function removeSyntheticSections() {
+		$(".footer-area ." + SYNTHETIC).remove();
+	}
+
+	function enable() {
+		if (wired) return;
+		wired = true;
+		buildSyntheticSections();
+		titles().each(function (i) {
+			var $t = $(this);
+			$t.attr({ role: "button", tabindex: "0", "aria-expanded": "false" });
+			// First section open by default: an all-collapsed footer reads as
+			// empty, and Customer Service is the one people actually want.
+			//
+			// Indexed off the collection, NOT :first-of-type — every
+			// .footer__item sits in its own Bootstrap column, so each one is
+			// the first (and only) .footer__item within its own parent and
+			// :first-of-type matched all of them, opening every section.
+			if (i === 0) {
+				$t.attr("aria-expanded", "true").closest(".footer__item").addClass("is-open");
+			}
+		});
+	}
+
+	function disable() {
+		if (!wired) return;
+		wired = false;
+		titles().removeAttr("role tabindex aria-expanded")
+			.closest(".footer__item").removeClass("is-open");
+		removeSyntheticSections();
+	}
+
+	function sync() {
+		if ($(window).width() <= MOBILE) enable();
+		else disable();
+	}
+
+	$(document).on("click keydown", ".footer-area .footer__item:not(.newsletter) > .footer-title[aria-expanded]", function (e) {
+		if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+		e.preventDefault();
+		var $t = $(this);
+		var $item = $t.closest(".footer__item");
+		var opening = !$item.hasClass("is-open");
+		// Multi-open rather than single-open: footer sections are short and
+		// unrelated, so closing one to read another would just add taps.
+		$item.toggleClass("is-open", opening);
+		$t.attr("aria-expanded", String(opening));
+	});
+
+	$(sync);
+	// Debounced so an orientation change or a desktop resize drag doesn't
+	// rebuild the attributes on every intermediate width.
+	var t;
+	$(window).on("resize", function () { clearTimeout(t); t = setTimeout(sync, 150); });
 })(jQuery);

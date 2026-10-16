@@ -6,11 +6,15 @@ const { prisma } = require("../db");
 // must never appear here in any form, not even masked/read-only. Those stay
 // exclusively in the server's environment configuration.
 const DEFAULTS = {
-  storeName: "ProFit",
+  storeName: "Fitness Agency",
   currency: "USD",
   taxRate: "0",
-  emailFromName: "ProFit",
+  emailFromName: "Fitness Agency",
   logoUrl: "",
+  // Which published product the public /demo sneak peek shows. Empty means
+  // "use the built-in fallback chain" — see lib/demo.js. A slug, not an id,
+  // so it is legible in the admin field and matches the storefront's urls.
+  demoProductSlug: "",
 };
 
 async function getSettings() {

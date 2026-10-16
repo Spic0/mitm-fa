@@ -140,7 +140,7 @@ const PRODUCTS = [
     name: "Advanced Powerlifting Peak",
     priceCents: 7900,
     category: "Powerlifting",
-    creator: "Big Sam Coleman",
+    creator: "Rowan Kessler",
     platform: "youtube",
     sport: "boxing",
     featured: false,
@@ -375,7 +375,7 @@ const GOAL_BY_CATEGORY = {
 const CREATOR_CATEGORIES = {
   Fitness: ["Marcus Reyes", "Jordan Blake", "Amara Chen", "Tom Whitfield", "Dr. Lisa Moreno", "Elena Cho"],
   Nutrition: ["Priya Nair", "Nadia Fischer"],
-  Powerlifting: ["Big Sam Coleman"],
+  Powerlifting: ["Rowan Kessler"],
   Bodybuilding: ["Derrick Owens"],
 };
 const CREATOR_CATEGORY_BY_NAME = {};
@@ -407,16 +407,28 @@ async function upsertNode(taxonomyId, parentId, name, order) {
 // way callers below reference them: goals by their own name, athletes/
 // creators by "Category/Leaf Name".
 async function seedTaxonomies() {
+  // nodeRoute/groupRoute are the URL segments a taxonomy's pages live under
+  // (/goal/lose-fat, /sport/football, /athlete/marcus-reyes) and navLayout is how
+  // its header panel presents. They are columns, not code, precisely so an
+  // admin-created category gets the same treatment — see
+  // server/src/lib/navigation.js. A creator category (Fitness, Nutrition)
+  // organizes the menu but is not itself a listing page, hence no groupRoute.
   const defs = [
-    { key: "goals", label: "Shop by Goal", route: "/shop/goals", order: 0, hasSubcategories: false },
-    { key: "athletes", label: "Browse Athletes", route: "/shop/athletes", order: 1, hasSubcategories: true },
-    { key: "creators", label: "Browse Creators", route: "/shop/creators", order: 2, hasSubcategories: true },
+    { key: "goals", label: "Shop by Goal", route: "/shop/goals", order: 0, hasSubcategories: false,
+      navLayout: "list", nodeRoute: "goal", groupRoute: null },
+    { key: "athletes", label: "Browse Athletes", route: "/shop/athletes", order: 1, hasSubcategories: true,
+      navLayout: "people", nodeRoute: "athlete", groupRoute: "sport" },
+    { key: "creators", label: "Browse Creators", route: "/shop/creators", order: 2, hasSubcategories: true,
+      navLayout: "people", nodeRoute: "creator", groupRoute: null },
   ];
   const taxonomies = {};
   for (const def of defs) {
     taxonomies[def.key] = await prisma.taxonomy.upsert({
       where: { key: def.key },
-      update: { label: def.label, route: def.route, order: def.order, hasSubcategories: def.hasSubcategories },
+      update: {
+        label: def.label, route: def.route, order: def.order, hasSubcategories: def.hasSubcategories,
+        navLayout: def.navLayout, nodeRoute: def.nodeRoute, groupRoute: def.groupRoute,
+      },
       create: def,
     });
   }
@@ -446,7 +458,7 @@ async function seedTaxonomies() {
     Football: ["Marcus Reyes", "Jordan Blake", "Tom Whitfield"],
     Basketball: ["Derrick Owens", "Amara Chen"],
     MMA: ["Elena Cho", "Dr. Lisa Moreno"],
-    Boxing: ["Priya Nair", "Big Sam Coleman", "Nadia Fischer"],
+    Boxing: ["Priya Nair", "Rowan Kessler", "Nadia Fischer"],
   });
 
   await seedTwoLevel("creators", CREATOR_CATEGORIES);

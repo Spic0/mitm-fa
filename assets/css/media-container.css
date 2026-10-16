@@ -1,0 +1,223 @@
+/* Universal product media container.
+   ---------------------------------------------------------------------------
+   The rule this file exists to enforce: THE CONTAINER DEFINES THE SIZE, THE
+   IMAGE ADAPTS TO IT. Never the other way round.
+
+   What it replaces: `.product__image img { width: 100% }` with no height
+   constraint, which handed control of card geometry to whatever an admin
+   uploaded. A 1920x480 banner produced a squashed strip, a 32x32 favicon
+   produced a blurry 280px square, and every card in the same row inherited a
+   different height — so one bad upload broke the whole grid.
+
+   Nothing in here depends on the image's dimensions, so no upload can change
+   the layout. The image is absolutely positioned inside a box whose height
+   comes from `aspect-ratio` alone; it cannot push, stretch or shrink anything.
+   ------------------------------------------------------------------------- */
+
+.pmedia {
+  /* The single source of truth for card media shape. Change this one value to
+     restyle every product grid on the site. */
+  --pmedia-ratio: 4 / 3;
+  --pmedia-radius: 10px;
+  /* Shown before the image decodes; overridden inline with the image's own
+     dominant colour when the manifest has one. */
+  --pmedia-bg: #f1f1f3;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--pmedia-ratio);
+  /* Reserving the box via aspect-ratio is what keeps CLS at 0: the space is
+     correct before a single image byte arrives, so nothing reflows on load. */
+  overflow: hidden;
+  border-radius: var(--pmedia-radius);
+  background-color: var(--pmedia-bg);
+  isolation: isolate;
+}
+
+/* Older engines without aspect-ratio still get a reserved box rather than a
+   collapsing one. */
+@supports not (aspect-ratio: 1) {
+  .pmedia::before {
+    content: "";
+    display: block;
+    padding-top: 75%; /* 4:3 */
+  }
+}
+
+.pmedia__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* object-fit is what preserves the original proportions. The image is never
+     stretched or distorted — it is either cropped (cover) or letterboxed
+     (contain), and both keep the aspect ratio intact. */
+  object-fit: cover;
+  object-position: center;
+  /* Fade in once decoded. Starts at 0 and is flipped by .is-loaded so the
+     placeholder shows through instead of a white flash. */
+  opacity: 0;
+  transition: opacity 420ms ease;
+  z-index: 1;
+}
+
+.pmedia__img.is-loaded { opacity: 1; }
+
+/* An image already in the browser cache decodes before the load handler can
+   run; without this it would sit invisible at opacity 0 forever. */
+.pmedia__img[data-instant] { opacity: 1; transition: none; }
+
+/* --- fit modes -----------------------------------------------------------
+   Chosen per image on the server (see chooseFit in mediaDerivatives.js),
+   because CSS cannot know an image's aspect ratio before it loads and
+   guessing is what produced the jumping layouts. ----------------------- */
+
+/* Close to the container's shape: fill it edge to edge, crop imperceptibly. */
+.pmedia--cover .pmedia__img { object-fit: cover; }
+
+/* Meaningfully taller/wider than the card, or smaller than it: show the whole
+   image, letterboxed. Padding keeps it off the edges so it reads as a
+   deliberate composition rather than a mistake. */
+.pmedia--contain .pmedia__img {
+  object-fit: contain;
+  padding: 8%;
+}
+
+/* The blurred backdrop behind a contained image. A scaled, blurred copy of the
+   same image fills the letterbox area, so a portrait phone screenshot or a
+   wide banner still looks intentional instead of floating on a flat slab.
+   aria-hidden + pointer-events:none — it is pure decoration. */
+.pmedia__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Overscaled so the blur's soft edge never reveals the container edge. */
+  transform: scale(1.15);
+  filter: blur(18px) saturate(1.25);
+  opacity: 0;
+  transition: opacity 420ms ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.pmedia__backdrop.is-loaded { opacity: 0.55; }
+
+/* The tiny inline LQIP. Sits under everything, blurred up to hide that it is
+   only 20px wide, and fades out as the real image fades in. */
+.pmedia__placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(12px);
+  transform: scale(1.1);
+  opacity: 1;
+  transition: opacity 320ms ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.pmedia.is-ready .pmedia__placeholder { opacity: 0; }
+
+/* An image smaller than the card it sits in. The inline max-width/max-height
+   set by media-container.js cap it at 2x its own resolution; `margin: auto`
+   inside the absolutely-positioned box is what then centres it, since
+   object-fit has nothing left to do once the element is smaller than its
+   container. Padding is dropped so the cap is the only thing controlling
+   size. */
+.pmedia--tiny .pmedia__img {
+  object-fit: contain;
+  padding: 0;
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+}
+
+/* Vector art scales losslessly to any box, so it is contained with a little
+   more breathing room and never gets a blurred backdrop (there is nothing to
+   blur — an SVG upscaled and blurred looks like a rendering bug). */
+.pmedia--vector .pmedia__img {
+  object-fit: contain;
+  padding: 6%;
+}
+
+/* --- skeletons -----------------------------------------------------------
+   Drawn before the product API answers so the grid occupies its final space
+   from the first paint. These must match the real card's geometry closely —
+   that is the entire point — so they reuse .pmedia for the media box and mimic
+   the title/price/CTA blocks at their natural heights. ------------------- */
+.pmedia--skeleton { background-color: #ececed; }
+
+.skel-line {
+  display: block;
+  border-radius: 6px;
+  background: #ececed;
+}
+/* Sized from the real card's type: h4.mb-15 then a 20px price span. */
+.skel-line--title { height: 22px; margin-bottom: 15px; width: 78%; }
+.skel-line--price { height: 20px; width: 34%; }
+.skel-cta { min-height: 52px; }
+
+/* One shared shimmer so skeletons read as "loading", not "broken". */
+.pmedia--skeleton,
+.skel-line,
+.skel-cta {
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: pmedia-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pmedia-shimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -80% 0; }
+}
+
+/* --- reduced motion ------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .pmedia--skeleton,
+  .skel-line,
+  .skel-cta { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pmedia__img,
+  .pmedia__backdrop,
+  .pmedia__placeholder {
+    transition: none;
+  }
+}
+
+/* --- integration with the existing card ----------------------------------
+   .product__image previously capped width at 280px and centred itself with
+   `margin: 0 auto`, which is what let cards of differing image ratios end up
+   different heights.
+
+   Those auto margins have to go, and not only for centring: inside the flex
+   column below, an auto cross-axis margin suppresses `align-items: stretch`,
+   so the wrapper sizes to its content instead of to the card. Its content is
+   `.pmedia { width: 100% }`, which then resolves against an indefinite width
+   — and the whole media box collapses to 0x0. An explicit width breaks that
+   circularity.
+
+   The marker class is applied by assets/js/product-card.js rather than using
+   `:has(.pmedia)`, so the rule doesn't depend on selector support and can
+   never touch a `.product__image` that isn't using this container. */
+.product__image--pmedia {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+/* Every card in a row ends up the same height regardless of title length or
+   media, so the CTA strip always lines up across the grid. */
+.product__item {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.product__item .product__content { flex: 1 1 auto; }
+.product__item .product__tap-cta { margin-top: auto; }

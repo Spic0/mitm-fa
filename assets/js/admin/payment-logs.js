@@ -25,13 +25,14 @@ window.AdminPanels["payment-logs"] = {
       Object.keys(params).forEach(function (k) { if (!params[k]) delete params[k]; });
 
       window.AdminAPI.listPaymentLogs(params).then(function (data) {
-        if (!data.events.length) {
+        var events = window.AdminAPI.rows(data, "events");
+        if (!events.length) {
           tbody.innerHTML = '<tr><td colspan="7">' + window.AdminUI.emptyState("fa-credit-card", "No payment events match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           pagination.innerHTML = "";
           return;
         }
-        tbody.innerHTML = data.events.map(function (e, i) {
+        tbody.innerHTML = events.map(function (e, i) {
           return (
             "<tr>" +
             "<td><code style=\"font-size:12px;\">" + window.AdminUI.escapeHtml(e.eventType) + "</code></td>" +

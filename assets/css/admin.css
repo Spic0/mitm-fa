@@ -49,10 +49,12 @@ body.admin-body {
 /* ---- Auth pages (login / 403) ---- */
 .admin-auth {
   min-height: 100vh;
+  /* dvh follows the collapsing mobile browser chrome; the vh above is fallback */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 16px;
 }
 .admin-auth__card {
   width: 100%;
@@ -63,22 +65,53 @@ body.admin-body {
   padding: 44px 36px;
   text-align: center;
 }
-.admin-auth__logo { max-width: 110px; margin: 0 auto 22px; }
-.admin-auth__logo img { width: 100%; display: block; }
+/* Height-driven, like every other logo slot on the site — see .header-logo in
+   style.css for why the FA mark must never be sized by width. */
+.admin-auth__logo { margin: 0 auto 22px; }
+.admin-auth__logo img { height: 38px; width: auto; display: block; margin: 0 auto; }
 .admin-auth__title { font-size: 20px; margin: 0 0 8px; }
 .admin-auth__subtitle { color: var(--a-text-muted); font-size: 14px; margin: 0 0 30px; line-height: 22px; }
-.admin-auth__card input[type="email"] {
+/* Both field types must be listed. When this rule covered only [type="email"]
+   the password input fell back to browser defaults with no bottom margin, and
+   the submit button collided with it. */
+.admin-auth__card input[type="email"],
+.admin-auth__card input[type="password"] {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
   padding: 15px 20px;
   border-radius: var(--a-radius);
   border: 1px solid var(--a-border);
   background: var(--a-surface-2);
   color: var(--a-text);
-  font-size: 14px;
+  /* 16px keeps iOS Safari from zooming the viewport on focus */
+  font-size: 16px;
   margin-bottom: 16px;
   transition: var(--transition);
 }
-.admin-auth__card input[type="email"]:focus { border-color: var(--a-primary); }
+.admin-auth__card input[type="email"]:focus,
+.admin-auth__card input[type="password"]:focus { border-color: var(--a-primary); }
+
+/* Buttons sit in normal flow at full width so they can never ride over a field */
+.admin-auth__card .a-btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+}
+.admin-auth__card form { margin: 0; }
+
+@media (max-width: 400px) {
+  .admin-auth__card { padding: 32px 22px; }
+  .admin-auth__logo { margin-bottom: 18px; }
+  .admin-auth__logo img { height: 32px; }
+  .admin-auth__subtitle { margin-bottom: 24px; }
+  .admin-auth__divider { margin: 22px 0; }
+}
 .admin-auth__divider {
   display: flex;
   align-items: center;
@@ -159,11 +192,17 @@ body.admin-body {
 /* ---- App shell ---- */
 .admin-shell { display: flex; min-height: 100vh; }
 
+/* Safe-area padding throughout the admin shell: manage.html ships
+   `viewport-fit=cover`, so the layout viewport runs under the Dynamic
+   Island and home indicator and every fixed/sticky surface has to inset
+   itself back out. The `, 0px` fallback keeps the calc() valid where
+   env() is unsupported. */
 .admin-sidebar {
   width: var(--a-sidebar-w);
   background: var(--a-surface);
   border-right: 1px solid var(--a-border);
-  padding: 24px 16px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(16px + env(safe-area-inset-left, 0px));
   position: fixed;
   top: 0; bottom: 0; left: 0;
   overflow-y: auto;
@@ -174,7 +213,7 @@ body.admin-body {
   display: flex; align-items: center;
   padding: 4px 10px 28px;
 }
-.admin-sidebar__brand img { max-width: 108px; }
+.admin-sidebar__brand img { height: 28px; width: auto; display: block; }
 .admin-nav { list-style: none; margin: 0; padding: 0; }
 .admin-nav li { margin-bottom: 2px; }
 .admin-nav a {
@@ -197,15 +236,21 @@ body.admin-body {
 
 .admin-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 16px 32px;
+  gap: 16px;
+  padding: 16px 32px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-right: calc(32px + env(safe-area-inset-right, 0px));
   border-bottom: 1px solid var(--a-border);
   background: var(--a-surface);
   position: sticky; top: 0; z-index: 30;
   box-shadow: var(--shadow-sm);
 }
-.admin-breadcrumb { font-size: 14px; color: var(--a-text-muted); }
+/* min-width:0 so a long breadcrumb can shrink instead of forcing the whole
+   sticky row wider than the viewport — a flex item defaults to
+   min-width:auto, which refuses to shrink below its content. */
+.admin-breadcrumb { font-size: 14px; color: var(--a-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-breadcrumb strong { color: var(--a-text); font-weight: 600; }
-.admin-topbar__actions { display: flex; align-items: center; gap: 12px; }
+.admin-topbar__actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .admin-search {
   display: flex; align-items: center; gap: 10px;
   background: var(--a-surface-2); border: 1px solid var(--a-border);
@@ -307,6 +352,36 @@ table.a-table tbody tr:last-child td { border-bottom: none; }
    buttons from wrapping awkwardly. */
 .a-row-actions { white-space: nowrap; }
 
+/* Row action buttons (Edit / Preview / Duplicate / Archive / Delete, and
+   the promotion row's equivalents) measured 31-39px tall — under the 44px
+   minimum, and these sit side by side, which is exactly the arrangement
+   where an undersized target causes a mis-tap on a destructive action
+   like Delete. Raised on touch-sized viewports only; the desktop admin
+   keeps its denser row height. */
+@media (max-width: 991px) {
+  .a-row-actions .a-btn,
+  td .a-btn-sm {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Toolbar filters/search and every standalone button — all measured
+     39-43px, just under the minimum. */
+  .a-toolbar input,
+  .a-toolbar select,
+  .a-btn {
+    min-height: 44px;
+  }
+  /* Toast dismiss — small, and toasts auto-expire, so a missed tap means
+     waiting the message out. */
+  .a-toast__close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 .a-badge {
   display: inline-flex; align-items: center; padding: 4px 12px; border-radius: var(--a-radius-pill);
   font-size: 12px; font-weight: 600; border: 1px solid transparent; background: transparent; text-transform: capitalize;
@@ -315,6 +390,15 @@ table.a-table tbody tr:last-child td { border-bottom: none; }
 .a-badge-warning { color: var(--a-warning); border-color: var(--a-warning); }
 .a-badge-danger { color: var(--a-danger); border-color: var(--a-danger); }
 .a-badge-neutral { color: var(--a-text-muted); border-color: var(--a-border); }
+/* Filled rather than outlined, and the only badge that is: it marks a
+   product that is deliberately outside the store (a presentation/showcase
+   product), which is a different KIND of fact from "draft" or "archived"
+   and should not be mistaken for a step on the way to publishing. */
+.a-badge-info {
+  color: var(--a-bg, #fff);
+  background: var(--a-text);
+  border-color: var(--a-text);
+}
 
 .a-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
 .a-toolbar input, .a-toolbar select {
@@ -407,7 +491,11 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-drawer-backdrop { justify-content: flex-end; padding: 0; }
 .a-drawer {
   background: var(--a-surface); border-left: 1px solid var(--a-border); box-shadow: var(--a-shadow-modal);
-  width: 100%; max-width: 620px; height: 100vh; overflow-y: auto; padding: 28px;
+  /* height: 100dvh so the drawer tracks iOS Safari's collapsing toolbar
+     instead of running underneath it; 100vh first as the fallback. */
+  width: 100%; max-width: 620px; height: 100vh; height: 100dvh; overflow-y: auto;
+  padding: 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   transform: translateX(100%);
   transition: transform var(--a-dur) var(--a-ease-out);
 }
@@ -431,7 +519,7 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-modal h5 { margin: 0 0 8px; font-size: 18px; }
 .a-modal p.a-modal-desc { color: var(--a-text-muted); font-size: 13px; margin: 0 0 22px; text-transform: none; }
 .a-modal h6 { font-size: 14px; margin: 18px 0 10px; }
-.a-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.a-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
 .a-modal-actions .a-btn { width: auto; }
 .a-form-row { margin-bottom: 16px; }
 .a-form-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; color: var(--a-text); }
@@ -507,7 +595,36 @@ body.a-modal-body-lock { overflow: hidden; }
   .admin-search { display: none; }
   .admin-menu-btn { display: flex; }
   .admin-sidebar-overlay.visible { display: block; background: rgba(0, 0, 0, .5); }
+
+  /* The topbar was the single biggest source of horizontal overflow in the
+     admin on phones: its 32px side padding plus a never-truncated
+     #adminUserEmail plus a fixed-size logout button added up to more than
+     the viewport, so the whole page scrolled sideways (measured at 405px
+     of content in a 320px viewport). The email is the part with unbounded
+     width — it's identity, not a control, and the avatar beside it already
+     conveys "you're signed in" — so it drops out here while every actual
+     control stays. */
+  .admin-topbar {
+    gap: 10px;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
+  }
+  #adminUserEmail { display: none; }
+  .admin-topbar__actions { gap: 8px; flex-shrink: 0; }
+  .admin-breadcrumb { flex: 1 1 auto; font-size: 13px; }
+  /* Every topbar control keeps a full 44px tap target on touch. */
+  .admin-icon-btn { width: 44px; height: 44px; }
 }
+
+/* Grid children default to min-width:auto and so refuse to shrink below
+   their content's intrinsic width. A Chart.js <canvas> reports a wide
+   intrinsic size, which pushed .chart-card past its column and past the
+   viewport (measured overflowing at 1024px, and again at 360/375px).
+   min-width:0 lets the column win, and the canvas scales to it. */
+.chart-card, .chart-grid > *, .chart-grid-2 > * { min-width: 0; }
+.chart-card canvas { max-width: 100%; }
 
 /* ---- Product Setup Wizard ----
    One fixed-height shell (never resizes step to step) split into: a stable
@@ -518,7 +635,20 @@ body.a-modal-body-lock { overflow: hidden; }
   max-width: 960px; width: 100%; height: min(86vh, 720px);
   padding: 0; display: flex; overflow: hidden;
 }
-.a-wizard-steps { width: 230px; flex-shrink: 0; background: var(--a-surface-2); border-right: 1px solid var(--a-border); padding: 24px 0; height: 100%; overflow-y: auto; }
+.a-wizard-rail { width: 230px; flex-shrink: 0; background: var(--a-surface-2); border-right: 1px solid var(--a-border); height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Step X of Y / NN% Complete, plus the "Saved just now" autosave readout —
+   both shared verbatim by every wizard via wizard-shell.js, sitting above
+   the step list so they're visible no matter how many steps there are. */
+.a-wizard-progress { padding: 20px 22px 16px; border-bottom: 1px solid var(--a-border); flex-shrink: 0; }
+.a-wizard-progress-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--a-text-muted); margin-bottom: 8px; }
+.a-wizard-progress-pct { color: var(--a-primary); }
+.a-wizard-progress-bar { height: 4px; border-radius: 2px; background: var(--a-border); overflow: hidden; }
+.a-wizard-progress-fill { height: 100%; width: 0; background: var(--a-primary); border-radius: 2px; transition: width var(--a-dur) var(--a-ease); }
+.a-wizard-saved-label { margin-top: 10px; font-size: 11px; color: var(--a-text-muted); display: flex; align-items: center; gap: 5px; min-height: 14px; }
+.a-wizard-saved-label i { color: var(--a-success); font-size: 10px; }
+
+.a-wizard-steps { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 0; }
 .a-wizard-step {
   display: flex; align-items: center; gap: 10px; padding: 12px 22px; font-size: 13px; font-weight: 600;
   color: var(--a-text-muted); cursor: pointer; border-left: 3px solid transparent;
@@ -526,12 +656,15 @@ body.a-modal-body-lock { overflow: hidden; }
 }
 .a-wizard-step .a-wizard-step-icon { width: 18px; text-align: center; flex-shrink: 0; }
 .a-wizard-step.active { color: var(--a-text); border-left-color: var(--a-primary); background: var(--a-surface); font-weight: 700; }
-/* untouched (default muted) / complete (visited, all required fields filled) /
-   incomplete (visited, still missing something) — never a navigation gate,
-   purely a "here's what still needs attention" signal. */
-.a-wizard-step.complete .a-wizard-step-icon { color: var(--a-success); }
-.a-wizard-step.incomplete .a-wizard-step-icon { color: var(--a-warning); }
-.a-wizard-step.incomplete:not(.active) { color: var(--a-text); }
+/* Four states, identical vocabulary in both wizards (wizard-shell.js decides
+   which applies): not-started (default muted "○") / current (active step,
+   "●") / complete (all required fields filled, "✓") / missing (visited, still
+   missing something, "⚠"). Never a navigation gate — purely a "here's what
+   still needs attention" signal. */
+.a-wizard-step-complete .a-wizard-step-icon { color: var(--a-success); }
+.a-wizard-step-missing .a-wizard-step-icon { color: var(--a-warning); }
+.a-wizard-step-missing:not(.active) { color: var(--a-text); }
+.a-wizard-step-current .a-wizard-step-icon { color: var(--a-primary); }
 .a-wizard-main { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
 .a-wizard-body { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 32px 28px; }
 .a-wizard-body h5 { margin: 0 0 4px; font-size: 18px; }
@@ -545,6 +678,10 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-wizard-footer { flex-shrink: 0; padding: 18px 32px; border-top: 1px solid var(--a-border); background: var(--a-surface); }
 .a-wizard-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .a-wizard-actions .a-btn { width: auto; }
+/* Close | Back Skip "Save Draft" Next — same order/placement in both
+   wizards, enforced by both routing through wizard-shell.js's standardFooter
+   instead of building their own footer markup. */
+.a-wizard-actions-right { display: flex; gap: 10px; flex-wrap: wrap; }
 .a-wizard-repeat-item { border: 1px solid var(--a-border); border-radius: var(--a-radius); padding: 16px; margin-bottom: 14px; position: relative; }
 .a-wizard-repeat-item .a-wizard-remove { position: absolute; top: 12px; right: 14px; color: var(--a-danger); cursor: pointer; font-size: 13px; background: none; border: none; }
 .a-wizard-add-btn { margin-bottom: 20px; }
@@ -637,8 +774,13 @@ body.a-modal-body-lock { overflow: hidden; }
 
 @media (max-width: 720px) {
   .a-modal.a-wizard { flex-direction: column; height: 92vh; }
-  .a-wizard-steps { width: 100%; height: auto; display: flex; overflow-x: auto; padding: 12px; }
-  .a-wizard-step { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  /* Left sidebar becomes a top progress bar + horizontal stepper — every
+     step still tappable, nothing hidden, per the "no hidden functionality"
+     mobile requirement. */
+  .a-wizard-rail { width: 100%; height: auto; flex-direction: column; border-right: none; border-bottom: 1px solid var(--a-border); }
+  .a-wizard-progress { padding: 14px 16px 10px; }
+  .a-wizard-steps { flex: none; display: flex; overflow-x: auto; padding: 10px 12px; }
+  .a-wizard-step { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; flex-shrink: 0; }
   .a-wizard-step.active { border-bottom-color: var(--a-primary); }
   .a-wizard-main { min-height: 0; }
 }
@@ -687,19 +829,82 @@ body.a-modal-body-lock { overflow: hidden; }
   background: var(--a-surface); color: var(--a-text); font-size: 14px; font-weight: 600;
 }
 .tax-empty { color: var(--a-text-muted); font-size: 13px; margin: 0; }
+/* Category-level row: layout picker + reorder/visibility/delete + add-item,
+   all on one line so the CATEGORY controls read as a different tier from the
+   per-item controls inside the card. */
+.tax-card__actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tax-select {
+  height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--a-border);
+  background: var(--a-surface); color: var(--a-text); font-size: 13px; font-weight: 500;
+}
+/* A category hidden from the storefront menu still exists and still tags
+   products — it is dimmed, never removed, so the distinction between "hidden"
+   and "deleted" stays visible at a glance. */
+.tax-card--hidden { opacity: .62; }
+.tax-checkbox {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 13px; color: var(--a-text-muted); white-space: nowrap;
+}
 
 /* ---- Product wizard: Navigation Placement taxonomy picker ---- */
 .a-wizard-tax-group { margin-bottom: 20px; }
 .a-wizard-tax-group-title { font-size: 13px; margin: 0 0 4px; }
 .a-wizard-tax-group-hint { font-size: 12px; color: var(--a-text-muted); margin: 0 0 8px; }
 .a-wizard-tax-pills { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
-.a-wizard-tax-leaf {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500;
-  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
-  background: var(--a-surface-2); cursor: pointer;
+/* Goals renders flat .a-wizard-tax-leaf pills while Athletes/Creators render
+   .a-wizard-tax-cat-pill — a data-shape difference (hasSubcategories), not a
+   design decision. The two therefore have to be styled as ONE pill so the three
+   selectors read as a single component. Shared resting/hover/focus/press
+   treatment lives here; only the selected-state affordance differs, because a
+   leaf is a checkbox and a category pill is an expander. */
+.a-wizard-tax-leaf,
+.a-wizard-tax-cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border: 1px solid var(--a-border);
+  border-radius: var(--a-radius-pill);
+  background: var(--a-surface-2);
+  color: var(--a-text);
+  cursor: pointer;
+  transition: background-color var(--a-dur) var(--a-ease), color var(--a-dur) var(--a-ease),
+    box-shadow var(--a-dur) var(--a-ease), border-color var(--a-dur) var(--a-ease),
+    transform var(--a-dur-fast) var(--a-ease-out);
 }
-.a-wizard-tax-leaf:has(input:checked), .a-wizard-tax-leaf.is-checked { border-color: var(--a-primary); background: rgba(var(--a-primary-rgb, 26, 26, 26), .08); }
+
+/* Hover only where a pointer can actually hover — on touch this would stick
+   after tapping. */
+@media (hover: hover) {
+  .a-wizard-tax-leaf:hover,
+  .a-wizard-tax-cat-pill:hover {
+    border-color: var(--a-primary);
+    background: var(--a-surface);
+  }
+}
+.a-wizard-tax-leaf:active,
+.a-wizard-tax-cat-pill:active { transform: translateY(1px); }
+
+.a-wizard-tax-leaf:focus-within,
+.a-wizard-tax-cat-pill:focus-visible {
+  outline: 2px solid var(--a-primary);
+  outline-offset: 2px;
+}
+
+/* Selected leaf now carries the same inset ring the open category pill uses,
+   so a chosen Goal reads as firmly as a chosen Athlete. */
+.a-wizard-tax-leaf:has(input:checked), .a-wizard-tax-leaf.is-checked {
+  border-color: var(--a-primary);
+  background: rgba(var(--a-primary-rgb, 26, 26, 26), .08);
+  box-shadow: inset 0 0 0 1px var(--a-primary);
+}
+.a-wizard-tax-leaf input[type="checkbox"] { accent-color: var(--a-primary); cursor: pointer; }
 .a-wizard-tax-count { font-size: 11px; color: var(--a-text-muted); }
+
+/* The flat Goals row is a pill row exactly like the category row above it. */
+.a-wizard-tax-pills { row-gap: 8px; }
 
 /* The category row is a plain flex-wrap row with NO item in it ever forced
    to flex-basis:100% — its contents (the pills themselves) never change
@@ -707,11 +912,8 @@ body.a-modal-body-lock { overflow: hidden; }
    Only .a-wizard-tax-subpanel-area, a fully separate block below the row,
    changes when a different category is selected. */
 .a-wizard-tax-cat-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
-.a-wizard-tax-cat-pill {
-  display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
-  padding: 7px 12px; border: 1px solid var(--a-border); border-radius: var(--a-radius-pill);
-  background: var(--a-surface-2); cursor: pointer; color: var(--a-text);
-}
+/* Base pill styling is shared with .a-wizard-tax-leaf above; only the
+   expander-specific states live here. */
 .a-wizard-tax-cat-pill.has-selection { border-color: var(--a-primary); }
 .a-wizard-tax-cat-pill.is-open { background: var(--a-surface); box-shadow: inset 0 0 0 1px var(--a-primary); }
 .a-wizard-tax-cat-pill i { font-size: 10px; color: var(--a-text-muted); transition: transform .15s ease; }
@@ -752,4 +954,773 @@ body.a-modal-body-lock { overflow: hidden; }
 .a-pill-btn {
   padding: 10px 16px; border-radius: var(--a-radius-pill); border: 1px solid var(--a-border);
   background: var(--a-surface-2); color: var(--a-text); font-size: 13px;
+}
+
+/* ===================================================
+   SETUP WIZARD — TOUCH TARGET MINIMUMS
+   ===================================================
+   Deliberately placed at the END of this file. The wizard's own base rules
+   (.a-wizard-close's 32x32, .a-wizard-tax-cat-pill's compact height, ...)
+   are single-class selectors defined further up; a media query adds no
+   specificity, so an equally-specific override has to come later in source
+   order to win. Putting these last is what makes them apply, and keeps the
+   next person from re-hitting the same trap by editing in place.
+
+   Both wizards share this chrome (assets/js/admin/wizard-shell.js), so
+   every rule here lands on the Product and Promotion wizards identically
+   and they cannot drift apart on touch sizing. */
+@media (max-width: 991px) {
+  .a-wizard-close {
+    width: 44px;
+    height: 44px;
+  }
+  .a-wizard input:not([type="checkbox"]):not([type="radio"]),
+  .a-wizard select,
+  .a-wizard textarea,
+  .a-wizard-tax-add-trigger,
+  .a-wizard-tax-leaf,
+  .a-wizard-tax-cat-pill,
+  .a-wizard-media-add,
+  .a-wizard-tag-input-wrap {
+    min-height: 44px;
+  }
+  /* A 13x13 checkbox is far under any touch minimum. The wrapping <label>
+     is the real target and gets the 44px row height below; the box itself
+     is scaled up enough to also be aimed at directly. */
+  .a-wizard input[type="checkbox"],
+  .a-wizard input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .a-wizard .a-form-row label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+  }
+  /* "Fix this step" links in the publish-readiness summary. */
+  .a-wizard-fix-list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Product wizard — gallery step (sales-page carousel media)
+   --------------------------------------------------------------------- */
+.a-wizard-gallery-ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.a-wizard-gallery-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--a-border);
+    border-radius: 8px;
+    background: var(--a-surface);
+    cursor: grab;
+}
+.a-wizard-gallery-item.is-dragging { opacity: 0.5; }
+.a-wizard-gallery-handle { color: var(--a-text-muted); cursor: grab; }
+.a-wizard-gallery-thumb {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--a-bg);
+}
+.a-wizard-gallery-thumb img,
+.a-wizard-gallery-thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.a-wizard-gallery-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.a-wizard-gallery-meta strong { font-size: 13px; }
+.a-wizard-gallery-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--a-text-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Dashboard alert banner (outbound email health)
+   --------------------------------------------------------------------- */
+/* Must out-specify .a-alert's own display:flex below. Both are single-class
+   selectors, and admin.css loads after style.css where .u-hidden is defined,
+   so on equal specificity source order wins and the alert would refuse to
+   hide — it stayed on screen even when email health came back OK. */
+.a-alert.u-hidden { display: none; }
+
+.a-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: var(--a-radius, 10px);
+    font-size: 14px;
+    line-height: 1.55;
+}
+.a-alert__icon { flex: 0 0 auto; font-size: 18px; line-height: 1.4; }
+.a-alert__body { flex: 1; min-width: 0; }
+.a-alert__title { font-weight: 700; margin: 0 0 4px; font-size: 14px; }
+.a-alert__text { margin: 0; }
+/* The provider's raw error string — monospace so an operator can tell at a
+   glance it is a quoted machine message, not our own copy. */
+.a-alert__reason {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.06);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+}
+.a-alert__meta { margin: 8px 0 0; font-size: 12.5px; opacity: 0.8; }
+.a-alert__actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.a-alert--danger {
+    border-color: var(--a-danger);
+    background: rgba(220, 38, 38, 0.07);
+    color: var(--a-danger);
+}
+.a-alert--warning {
+    border-color: var(--a-warning);
+    background: rgba(217, 119, 6, 0.08);
+    color: var(--a-warning);
+}
+/* Body copy stays readable rather than inheriting the full alert tint. */
+.a-alert .a-alert__text,
+.a-alert .a-alert__meta { color: var(--a-text); }
+
+@media (max-width: 640px) {
+    .a-alert { flex-direction: column; gap: 10px; padding: 14px; }
+}
+
+/* =======================================================================
+   PRIVATE PRESENTATIONS
+   -----------------------------------------------------------------------
+   Adds nothing to the admin's visual language: the list is a plain .a-table,
+   the editor is the existing .a-drawer with .a-drawer-tabs, the stats are
+   .metric-card tiles, and every control is an .a-btn / .a-badge. The rules
+   below are the handful of layout pieces those components don't already
+   cover — a link row, a labelled form row inside a drawer, and a checkbox
+   list — all expressed in the --a-* tokens declared at the top of this file.
+   ======================================================================= */
+
+.pres-admin-title { font-weight: 600; color: var(--a-text); }
+.pres-admin-sub { font-size: 12.5px; color: var(--a-text-muted); margin-top: 2px; }
+.pres-admin-muted { color: var(--a-text-muted); }
+
+/* ---- The private link row ----
+   The one genuinely new component here, because nothing else in the admin
+   hands out a URL. Monospaced and selectable: an admin who can't use the
+   clipboard button (insecure origin, locked-down browser) must still be able
+   to select the text and copy it by hand. */
+.pres-link {
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+.pres-link__label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--a-text-muted);
+    margin-bottom: 8px;
+}
+.pres-link__url {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text);
+    /* anywhere, not break-word: these slugs are one unbroken 24-character
+       token and must wrap inside the drawer rather than widen it. */
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+.pres-link__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ---- Drawer form rows ---- */
+.pres-form-row { margin-bottom: 18px; }
+.pres-form-row label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--a-text);
+    margin-bottom: 7px;
+}
+.pres-form-row input[type="text"],
+.pres-form-row input[type="password"],
+.pres-form-row input[type="date"],
+.pres-form-row input[type="url"],
+.pres-form-row select,
+.pres-form-row textarea {
+    display: block;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+    color: var(--a-text);
+    /* 16px stops iOS Safari zooming the viewport on focus — the admin is
+       used from a phone often enough for this to matter. */
+    font-size: 16px;
+    line-height: 1.5;
+    transition: border-color var(--a-dur-fast) var(--a-ease), box-shadow var(--a-dur-fast) var(--a-ease);
+}
+.pres-form-row textarea { resize: vertical; min-height: 84px; }
+.pres-form-row input:focus,
+.pres-form-row select:focus,
+.pres-form-row textarea:focus {
+    outline: none;
+    border-color: var(--a-primary);
+    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+}
+.pres-form-hint {
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text-muted);
+}
+.pres-form-heading {
+    margin: 26px 0 6px;
+    padding-top: 20px;
+    border-top: 1px solid var(--a-border);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--a-text);
+}
+
+/* ---- Checkbox rows (section toggles, remove-password) ----
+   44px minimum height and a full-width hit area: these are ticked from a
+   phone, and a bare 13px checkbox is not a usable target. */
+.pres-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 4px 0;
+    font-size: 14px;
+    color: var(--a-text);
+    cursor: pointer;
+}
+.pres-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    accent-color: var(--a-primary);
+    cursor: pointer;
+}
+.pres-sections {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+}
+@media (min-width: 560px) {
+    .pres-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+}
+
+/* ---- Drawer footer ----
+   Sticky to the drawer's own bottom edge so Save stays reachable on a long
+   form without scrolling back down, and clear of the iOS home indicator. */
+.a-drawer-footer {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 16px 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--a-border);
+    background: var(--a-surface);
+}
+@media (max-width: 560px) {
+    /* Full-width stacked buttons, primary on top — the same order and
+       proportions the drawer's other actions use at this width. */
+    .a-drawer-footer { flex-direction: column-reverse; }
+    .a-drawer-footer .a-btn { width: 100%; }
+}
+
+/* ---- Analytics tiles ----
+   Slightly smaller than a dashboard metric because several of these carry a
+   unit ("2m 14s", "63%") rather than a bare count, and the drawer is
+   narrower than the dashboard grid. */
+.pres-metric-value { font-size: 20px; }
+.pres-metric-sub {
+    font-size: 12px;
+    color: var(--a-text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------------
+   Presentation product picker
+
+   Replaces a plain <select> that was filtered to status "presentation" — so a
+   real catalogue product could not be found in it at all. Every product is now
+   listed, which means the control has to carry two extra pieces of
+   information a <select> had nowhere to put: each product's STATUS, and what
+   the deck will actually do with it (link to the storefront, link to the
+   unlisted showcase, or show it with no outbound link).
+
+   Search is server-side and debounced, so this stays the same weight at 10 or
+   10,000 products. The list renders a capped window and the meta line always
+   states the true total — a product is never hidden, only un-scrolled-to.
+   --------------------------------------------------------------------------- */
+.pres-picker { position: relative; }
+
+.pres-picker__current {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface-2, var(--a-surface));
+    font-size: 14px;
+    line-height: 1.5;
+}
+.pres-picker__none { color: var(--a-text-muted); }
+.pres-picker__warn { color: var(--a-warning, #b45309); }
+.pres-picker__warn code { font-size: 12px; }
+.pres-picker__name { font-weight: 600; }
+.pres-picker__by { color: var(--a-text-muted); font-size: 13px; margin-left: 6px; }
+.pres-picker__link-note {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--a-text-muted);
+}
+
+.pres-picker__list {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    /* Caps the drop-down at roughly eight rows and scrolls beyond that, so a
+       large result set cannot push the drawer's own controls off screen. */
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 4px 0 0;
+    padding: 4px;
+    list-style: none;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+.pres-picker__opt {
+    padding: 9px 10px;
+    border-radius: calc(var(--a-radius) - 2px);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.pres-picker__opt:hover,
+.pres-picker__opt.is-active { background: var(--a-surface-hover, rgba(127, 127, 127, 0.12)); }
+.pres-picker__opt--none { color: var(--a-text-muted); font-style: italic; }
+.pres-picker__opt--error { color: var(--a-danger, #b91c1c); cursor: default; }
+.pres-picker__opt--error:hover { background: none; }
+
+.pres-picker__meta {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--a-text-muted);
+}
+
+/* ---- Partner profile picker additions ----
+   The partner picker is the product picker with an avatar and two extra
+   affordances; everything above is shared, and only what a profile needs
+   beyond a product is declared here. */
+
+/* 32px, and the markup requests the pipeline's narrowest derivative — see
+   toPartnerOption in routes/admin/presentations.js. Vertically centred with
+   the name rather than floated, so a row with no avatar (initials) and a row
+   with one line up on the same baseline. */
+.pres-picker__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--a-surface-hover, rgba(127, 127, 127, 0.12));
+    /* Initials only; harmless on the <img>. */
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--a-text-muted);
+}
+
+/* A draft selection is not an error — it saves — but it is the one state
+   where what the admin sees here and what the visitor sees differ, so it
+   gets the warning colour rather than the muted one. */
+.pres-picker__link-note--warn { color: var(--a-warning, #b45309); }
+
+.pres-picker__preview {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+/* Status is the thing an admin most needs to see here, because it decides
+   whether the deck can link out at all. Colour follows the badges already used
+   in the products table so the two read as the same vocabulary. */
+.pres-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: lowercase;
+    vertical-align: middle;
+    background: rgba(127, 127, 127, 0.16);
+    color: var(--a-text-muted);
+}
+.pres-badge--published { background: rgba(16, 163, 74, 0.16); color: #15803d; }
+.pres-badge--presentation { background: rgba(37, 99, 235, 0.16); color: #1d4ed8; }
+.pres-badge--draft { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+.pres-badge--scheduled { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; }
+.pres-badge--private { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+.pres-badge--archived { background: rgba(127, 127, 127, 0.18); color: var(--a-text-muted); }
+
+@media (prefers-color-scheme: dark) {
+    .pres-badge--published { color: #4ade80; }
+    .pres-badge--presentation,
+    .pres-badge--scheduled { color: #93c5fd; }
+    .pres-badge--draft,
+    .pres-badge--private { color: #fbbf24; }
+}
+
+/* ---------------------------------------------------------------------------
+   Table pager
+
+   Shared shell for paged admin tables (Products first). Hidden entirely while
+   everything fits on one page, so a small catalogue never grows controls it
+   has no use for — the class is toggled in JS, not by CSS.
+   --------------------------------------------------------------------------- */
+.a-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-top: 1px solid var(--a-border);
+}
+.a-pager__count { font-size: 13px; color: var(--a-text-muted); }
+.a-pager__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.a-pager__size {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--a-text-muted);
+}
+.a-pager__size select {
+    padding: 5px 8px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+    color: var(--a-text);
+    font-size: 13px;
+}
+.a-pager__page {
+    font-size: 13px;
+    color: var(--a-text);
+    /* Fixed minimum so the Prev/Next buttons don't shuffle sideways as the
+       page number gains a digit. */
+    min-width: 104px;
+    text-align: center;
+}
+.a-pager .a-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+    .a-pager { justify-content: center; }
+    .a-pager__count { width: 100%; text-align: center; }
+}
+
+/* ==========================================================================
+   Partner Profiles
+   --------------------------------------------------------------------------
+   The admin section and its six-step wizard. Every value below is an existing
+   admin token (--a-*); this adds no new colour, radius or shadow. The only
+   genuinely new components are the product picker, the reorderable rows and
+   the live preview frame — everything else reuses a-card / a-table / a-btn /
+   a-form-row / a-wizard-* as-is.
+   ========================================================================== */
+
+/* Monospaced and selectable, like the presentation link row: an admin who
+   can't use the clipboard button must still be able to read and copy it. */
+.partner-admin-url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--a-text-muted);
+}
+.partner-admin-url:hover { color: var(--a-primary); }
+
+.a-form-hint {
+    display: block;
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--a-text-muted);
+}
+
+/* ---- Slug field: a fixed origin prefix welded to the editable segment, so
+   it is always obvious that the input is one path segment and not a URL. ---- */
+.partner-slug-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    overflow: hidden;
+}
+.partner-slug-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--a-surface-2);
+    border-right: 1px solid var(--a-border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--a-text-muted);
+    white-space: nowrap;
+}
+.partner-slug-row input {
+    border: 0 !important;
+    border-radius: 0 !important;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ---- Avatar ---- */
+.partner-avatar-row { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.partner-avatar-preview {
+    flex: 0 0 auto;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.partner-avatar-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.partner-avatar-initials { font-size: 26px; font-weight: 700; color: var(--a-text-muted); }
+.partner-avatar-actions { flex: 1 1 220px; min-width: 0; }
+
+/* ---- Social rows ---- */
+.partner-social-list { display: flex; flex-direction: column; gap: 10px; }
+.partner-social-row { display: flex; align-items: center; gap: 10px; }
+.partner-social-icon {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--a-surface-2);
+    color: var(--a-text);
+}
+.partner-social-label {
+    flex: 0 0 84px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--a-text);
+}
+.partner-social-row input { flex: 1 1 auto; min-width: 0; }
+
+/* ---- Product picker + selected/reorderable rows ---- */
+.partner-picker {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    margin-bottom: 18px;
+}
+.partner-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--a-border);
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--a-dur-fast) var(--a-ease);
+}
+.partner-picker-row:last-child { border-bottom: 0; }
+.partner-picker-row:hover { background: var(--a-surface-2); }
+.partner-picker-body, .partner-selected-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.partner-picker-body strong, .partner-selected-body strong {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--a-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.partner-picker-body span, .partner-selected-body span { font-size: 12px; color: var(--a-text-muted); }
+.partner-picker-add { flex: 0 0 auto; color: var(--a-text-muted); }
+
+.partner-thumb {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--a-surface-2);
+    display: block;
+}
+.partner-thumb--empty { display: inline-block; }
+
+.partner-selected { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.partner-selected-row, .partner-link-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface);
+}
+.partner-selected-row.is-dragging, .partner-link-row.is-dragging { opacity: 0.5; }
+.partner-drag { flex: 0 0 auto; cursor: grab; color: var(--a-text-muted); padding: 0 2px; }
+.partner-drag:active { cursor: grabbing; }
+
+/* Link rows carry four fields, so they stack their inputs and drop the
+   actions onto their own line below the comfortable width for a modal. */
+.partner-link-row { align-items: flex-start; flex-wrap: wrap; }
+.partner-link-fields { flex: 1 1 320px; min-width: 0; display: grid; gap: 6px; }
+.partner-link-actions { flex: 0 0 auto; display: flex; gap: 4px; align-items: center; }
+
+.partner-count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 1px 7px;
+    border-radius: var(--a-radius-pill);
+    background: var(--a-surface-2);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--a-text-muted);
+}
+
+/* ---- Publish step ---- */
+.partner-publish-url {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface-2);
+    margin-bottom: 14px;
+}
+.partner-publish-url__label { font-size: 12px; font-weight: 600; color: var(--a-text-muted); }
+.partner-publish-url code {
+    flex: 1 1 240px;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--a-text);
+    overflow-wrap: anywhere;
+}
+.partner-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+.partner-preview-tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; }
+
+/* The preview is a REAL iframe of the real public page, not a mock-up. The
+   mobile frame is a true 390px viewport so what the admin sees is what a
+   phone renders; the desktop frame renders at 1280 and is scaled down to
+   fit the modal with transform, which changes apparent size without
+   changing the layout the page computes. */
+.partner-preview {
+    border: 1px solid var(--a-border);
+    border-radius: var(--a-radius);
+    background: var(--a-surface-2);
+    padding: 14px;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+}
+.partner-preview__frame { position: relative; overflow: hidden; border-radius: var(--a-radius); background: #fff; }
+.partner-preview iframe { border: 0; display: block; }
+
+.partner-preview--mobile .partner-preview__frame {
+    width: 390px;
+    max-width: 100%;
+    height: 620px;
+    box-shadow: var(--a-shadow-modal);
+}
+.partner-preview--mobile iframe { width: 390px; height: 620px; }
+
+.partner-preview--desktop .partner-preview__frame {
+    width: 100%;
+    height: 460px;
+}
+.partner-preview--desktop iframe {
+    width: 1280px;
+    height: 920px;
+    transform: scale(0.5);
+    transform-origin: top left;
+}
+
+@media (max-width: 900px) {
+    .partner-preview--mobile .partner-preview__frame,
+    .partner-preview--mobile iframe { width: 100%; }
+    .partner-social-label { flex-basis: 68px; }
 }

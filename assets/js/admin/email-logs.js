@@ -18,13 +18,14 @@ window.AdminPanels["email-logs"] = {
       Object.keys(params).forEach(function (k) { if (!params[k]) delete params[k]; });
 
       window.AdminAPI.listEmailLogs(params).then(function (data) {
-        if (!data.logs.length) {
+        var logs = window.AdminAPI.rows(data, "logs");
+        if (!logs.length) {
           tbody.innerHTML = '<tr><td colspan="6">' + window.AdminUI.emptyState("fa-envelope", "No emails match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           pagination.innerHTML = "";
           return;
         }
-        tbody.innerHTML = data.logs.map(function (l, i) {
+        tbody.innerHTML = logs.map(function (l, i) {
           return (
             "<tr>" +
             "<td>" + window.AdminUI.escapeHtml(l.recipient) + "</td>" +

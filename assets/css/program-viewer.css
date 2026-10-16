@@ -1,0 +1,496 @@
+/* ===========================================================================
+   PROGRAM HANDBOOK VIEWER
+   Fullscreen, paginated reading experience for a purchased program.
+
+   Content comes entirely from GET /api/library/program/:id — see
+   assets/js/program-viewer.js for how the payload is paginated. Nothing here
+   assumes a fixed number of pages or sections; a program with no nutrition
+   plan simply produces fewer pages.
+
+   Performance notes, because this runs on phones:
+   - Only `transform` and `opacity` are animated (compositor-only properties),
+     never width/left/top.
+   - Page markup is built lazily in JS (see HYDRATE_RADIUS), so an off-screen
+     page costs one empty div until the reader gets near it.
+   - The blur behind the modal is applied to a single wrapper element rather
+     than per-page, so there is exactly one filter layer on screen.
+   =========================================================================== */
+
+:root {
+  --pv-dur: 420ms;
+  --pv-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --pv-paper: #ffffff;
+  --pv-ink: #14161a;
+  --pv-ink-soft: #5b6270;
+  --pv-rule: rgba(20, 22, 26, 0.1);
+}
+
+/* Icons are inline SVG (see the ICON table in program-viewer.js) rather
+   than an icon font — the purchased-program page deliberately doesn't load
+   all.min.css, and the viewer must not be the one thing that drags it back
+   in. Sized off the button's own font-size so every existing rule below
+   that sets a font-size still controls its glyph. */
+.pv svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
+/* The page behind the modal. Blurring `body > *` directly would also blur the
+   modal itself, so the app content is blurred via this class on <body> which
+   targets only the siblings the viewer is not inside of. */
+body.pv-open { overflow: hidden; }
+body.pv-open main,
+body.pv-open footer,
+body.pv-open header,
+body.pv-open .header-section,
+body.pv-open .cart-drawer,
+/* The purchased-program app shell's own fixed chrome — without these the
+   rail, tab bar and dock stay razor sharp above a blurred page. */
+body.pv-open .pg-shell,
+body.pv-open .pg-appbar,
+body.pv-open .pg-tabbar,
+body.pv-open .pg-dock {
+  filter: blur(7px) saturate(0.85);
+  transition: filter var(--pv-dur) var(--pv-ease);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------- shell --- */
+.pv {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 11, 14, 0.62);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--pv-dur) var(--pv-ease), visibility var(--pv-dur);
+  /* Keeps the viewer clear of notches and the iOS home indicator. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.pv.is-open { opacity: 1; visibility: visible; }
+
+/* The "book" itself — nearly the full viewport on a phone, a centred spread on
+   larger screens. dvh so the iOS URL bar collapsing does not clip the footer. */
+.pv__book {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 720px;
+  max-height: 100%;
+  margin: 0 auto;
+  background: var(--pv-paper);
+  color: var(--pv-ink);
+  overflow: hidden;
+  transform: translateY(14px) scale(0.985);
+  transition: transform var(--pv-dur) var(--pv-ease);
+}
+.pv.is-open .pv__book { transform: none; }
+
+@media (min-width: 768px) {
+  .pv { padding: 24px; }
+  .pv__book { height: min(100%, 940px); border-radius: 18px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45); }
+}
+
+/* ---------------------------------------------------------------- topbar --- */
+.pv__bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--pv-paper);
+  border-bottom: 1px solid var(--pv-rule);
+  flex: 0 0 auto;
+}
+.pv__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  /* Long program names must never push the close button off screen. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pv__section {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pv-ink-soft);
+  white-space: nowrap;
+}
+.pv__close {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 22, 26, 0.06);
+  color: var(--pv-ink);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 0.18s var(--pv-ease);
+}
+.pv__close:hover { background: rgba(20, 22, 26, 0.12); }
+.pv__close:focus-visible { outline: 2px solid var(--pv-ink); outline-offset: 2px; }
+
+/* Reading progress — the spine of the book. */
+.pv__progress { height: 2px; background: rgba(20, 22, 26, 0.08); flex: 0 0 auto; }
+.pv__progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--pv-ink);
+  transform-origin: left center;
+  transition: width var(--pv-dur) var(--pv-ease);
+}
+
+/* ----------------------------------------------------------------- pages --- */
+.pv__stage {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+  /* Vertical panning still scrolls a long page; horizontal is ours to handle. */
+  touch-action: pan-y;
+}
+.pv__track {
+  display: flex;
+  height: 100%;
+  will-change: transform;
+}
+.pv__track.is-animating { transition: transform var(--pv-dur) var(--pv-ease); }
+
+.pv-page {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 26px 22px 40px;
+  box-sizing: border-box;
+  /* Paint containment only. `content-visibility: auto` was deliberately not
+     used here: page markup is already lazily built in JS, and it interferes
+     with these scroll containers. */
+  contain: paint;
+}
+@media (min-width: 768px) { .pv-page { padding: 40px 52px 56px; } }
+@media (max-width: 360px) { .pv-page { padding: 22px 16px 36px; } }
+
+/* Depth during the turn: the outgoing page dims and recedes slightly, which
+   reads as paper lifting without the cost of a real curl. */
+.pv-page__inner {
+  transform: scale(var(--pv-page-scale, 1));
+  opacity: var(--pv-page-fade, 1);
+  transition: transform var(--pv-dur) var(--pv-ease), opacity var(--pv-dur) var(--pv-ease);
+}
+
+/* ------------------------------------------------------------ typography --- */
+.pv-page h2 { font-size: clamp(22px, 6vw, 30px); line-height: 1.2; margin: 0 0 12px; font-weight: 800; }
+.pv-page h3 { font-size: clamp(18px, 5vw, 22px); line-height: 1.25; margin: 0 0 10px; font-weight: 700; }
+.pv-page h4 { font-size: 16px; margin: 0 0 8px; font-weight: 700; }
+.pv-page p { font-size: 16px; line-height: 1.7; color: var(--pv-ink-soft); margin: 0 0 14px; }
+.pv-page__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pv-ink-soft);
+  margin: 0 0 10px;
+}
+.pv-page img, .pv-page video { max-width: 100%; height: auto; display: block; }
+
+/* ------------------------------------------------------------------ cover --- */
+.pv-cover { display: flex; flex-direction: column; justify-content: center; min-height: 100%; text-align: center; }
+.pv-cover__art {
+  width: min(74%, 300px);
+  margin: 0 auto 26px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+  aspect-ratio: 3 / 4;
+  background: rgba(20, 22, 26, 0.05);
+}
+.pv-cover__art img { width: 100%; height: 100%; object-fit: cover; }
+.pv-cover h2 { font-size: clamp(26px, 7.5vw, 38px); }
+.pv-cover__author { font-size: 15px; font-weight: 600; color: var(--pv-ink-soft); margin: 0 0 20px; }
+.pv-cover__meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--pv-rule);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pv-ink-soft);
+  text-transform: capitalize;
+}
+
+/* ------------------------------------------------------- training/meals --- */
+.pv-ex {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--pv-rule);
+  align-items: flex-start;
+}
+.pv-ex:first-of-type { border-top: 0; }
+.pv-ex__media {
+  flex: 0 0 88px;
+  width: 88px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(20, 22, 26, 0.05);
+}
+.pv-ex__media img, .pv-ex__media video { width: 100%; height: 100%; object-fit: cover; }
+
+/* The tile is a button: it opens the fullscreen viewer, which is where a demo
+   is actually legible. At 88px square a 1920x1080 clip is a thumbnail of a
+   thumbnail — the handbook rendered these inline with no way to enlarge them,
+   even though program-media.js has provided zoom, pan, keyboard nav and
+   native fullscreen all along. */
+.pv-ex__media-btn {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.pv-ex__media-btn:focus-visible {
+  outline: 2px solid var(--pv-accent, #0b74ff);
+  outline-offset: 2px;
+}
+
+/* Expand affordance — without it the tile reads as decoration rather than as
+   something that opens. Corner glyph rather than a centred play button: these
+   loop on their own once visible, so a play symbol would promise the wrong
+   interaction. */
+.pv-ex__media-expand {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(16, 18, 22, 0.62);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+/* Two corner brackets, drawn with a conic-free pure-CSS mark so this needs no
+   icon font and no extra request. */
+.pv-ex__media-expand::before,
+.pv-ex__media-expand::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid #fff;
+}
+.pv-ex__media-expand::before { top: 3px; left: 3px; border-right: 0; border-bottom: 0; }
+.pv-ex__media-expand::after { right: 3px; bottom: 3px; border-left: 0; border-top: 0; }
+
+.pv-ex__media-btn:hover .pv-ex__media-expand,
+.pv-ex__media-btn:focus-visible .pv-ex__media-expand { opacity: 1; }
+/* Touch has no hover, so the affordance is always visible there rather than
+   never. */
+@media (hover: none) {
+  .pv-ex__media-expand { opacity: 1; }
+}
+.pv-ex__body { flex: 1 1 auto; min-width: 0; }
+.pv-ex__body strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.pv-ex__reps {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: rgba(20, 22, 26, 0.06);
+  margin-bottom: 6px;
+}
+.pv-ex__note { font-size: 13px; line-height: 1.55; margin: 4px 0 0; }
+
+.pv-block { padding: 14px 0; border-top: 1px solid var(--pv-rule); }
+.pv-block:first-of-type { border-top: 0; }
+.pv-block p:last-child { margin-bottom: 0; }
+
+/* --------------------------------------------------------------- media --- */
+.pv-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 14px;
+}
+.pv-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.pv-res {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--pv-rule);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.18s var(--pv-ease), transform 0.18s var(--pv-ease);
+}
+@media (hover: hover) { .pv-res:hover { border-color: var(--pv-ink); } }
+.pv-res:active { transform: translateY(1px); }
+.pv-res__icon {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(20, 22, 26, 0.06);
+  font-size: 16px;
+}
+.pv-res__body { flex: 1 1 auto; min-width: 0; }
+.pv-res__body strong { display: block; font-size: 15px; }
+.pv-res__body span { font-size: 13px; color: var(--pv-ink-soft); }
+
+.pv-empty { font-size: 15px; color: var(--pv-ink-soft); font-style: italic; }
+
+/* ---------------------------------------------------------------- footer --- */
+.pv__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--pv-rule);
+  background: var(--pv-paper);
+  flex: 0 0 auto;
+}
+.pv__nav-btn {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pv-rule);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pv-ink);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.18s var(--pv-ease), opacity 0.18s var(--pv-ease);
+}
+.pv__nav-btn:disabled { opacity: 0.3; cursor: default; }
+.pv__nav-btn:not(:disabled):active { background: rgba(20, 22, 26, 0.08); }
+.pv__nav-btn:focus-visible { outline: 2px solid var(--pv-ink); outline-offset: 2px; }
+.pv__count { flex: 1 1 auto; text-align: center; font-size: 12px; font-weight: 600; color: var(--pv-ink-soft); }
+
+/* Tap-to-turn is handled in JS from the pointerup position (see onUp), not with
+   overlay elements — an absolutely positioned tap zone would sit above the page
+   and swallow vertical scrolling and link taps in the outer strips. */
+.pv__stage { -webkit-tap-highlight-color: transparent; }
+
+/* --------------------------------------------------------- reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .pv, .pv__book, .pv__track, .pv-page__inner, .pv__progress-fill {
+    transition-duration: 1ms !important;
+  }
+  body.pv-open main, body.pv-open footer, body.pv-open header { transition: none; }
+}
+
+/* -------------------------------------------------------- preview boundary ---
+   The final page of the PUBLIC handbook preview (GET /api/demo/handbook) —
+   never present in a purchased program's pagination. Same paper, same ink:
+   the boundary is a page of the book, not an overlay breaking the reading
+   experience it just demonstrated. */
+.pv-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+}
+.pv-locked__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 18px;
+  border: 1px solid var(--pv-rule);
+  border-radius: 50%;
+  color: var(--pv-ink-soft);
+}
+.pv-locked__badge svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.pv-locked h2 { font-size: clamp(22px, 6vw, 30px); margin: 0 0 10px; }
+.pv-locked__sum { color: var(--pv-ink-soft); margin: 0 0 18px; }
+.pv-locked__counts {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 14px;
+  color: var(--pv-ink);
+}
+.pv-locked__counts li { padding: 3px 0; }
+.pv-locked__days {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 26px;
+  padding: 0;
+}
+.pv-locked__day {
+  padding: 6px 14px;
+  border: 1px solid var(--pv-rule);
+  border-radius: 100px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pv-ink-soft);
+}
+.pv-locked__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px;
+  border-radius: 100px;
+  background: var(--pv-ink);
+  color: var(--pv-paper);
+  font-weight: 600;
+  text-decoration: none;
+}
+/* The landing page (unlike /my-library) loads style.css, whose global
+   `span { color: var(--span) }` beats an ancestor anchor's colour — without
+   this the label renders near-black on the near-black pill. */
+.pv-locked__cta span { color: inherit; }
+.pv-locked__cta svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+.pv-locked__cta:hover { color: var(--pv-paper); opacity: 0.92; }
+.pv-locked__price { margin: 12px 0 0; font-size: 14px; font-weight: 600; color: var(--pv-ink-soft); }

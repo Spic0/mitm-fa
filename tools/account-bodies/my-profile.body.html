@@ -1,0 +1,147 @@
+        <div class="ac-page">
+            <div class="ac-shell">
+
+                <div id="prSignedOut" class="ac-hidden">
+                    <div class="ac-empty">
+                        <span class="ac-empty__mark"><i class="fa-regular fa-lock" aria-hidden="true"></i></span>
+                        <h1 class="ac-h2">Sign in to manage your profile</h1>
+                        <p class="ac-lead">Your account details are only visible to you.</p>
+                        <a href="/login" class="ac-btn ac-btn--primary"><span>Sign in</span></a>
+                    </div>
+                </div>
+
+                <div id="prLoading" aria-hidden="true">
+                    <div class="ac-skel ac-skel--title"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                    <div class="ac-skel ac-skel--line"></div>
+                </div>
+
+                <div id="prContent" class="ac-hidden">
+                    <header class="ac-head ac-reveal ac-reveal--1">
+                        <div>
+                            <span class="ac-eyebrow">Account</span>
+                            <h1 class="ac-h2">My profile</h1>
+                            <p class="ac-lead">Your details, your photo and how you sign in.</p>
+                        </div>
+                    </header>
+
+                    <div class="ac-profile">
+
+                        <!-- Identity rail. Sticky from 900px so it stays
+                             visible while a section further down is edited. -->
+                        <aside class="ac-profile__rail ac-reveal ac-reveal--2">
+                            <div class="ac-card ac-idcard">
+                                <span id="prAvatar"></span>
+                                <h2 class="ac-idcard__name" id="prName"></h2>
+                                <p class="ac-idcard__email" id="prEmail"></p>
+                                <div class="ac-idcard__actions">
+                                    <button type="button" class="ac-btn ac-btn--ghost" id="prPhotoBtn"><span>Change photo</span></button>
+                                    <button type="button" class="ac-btn ac-btn--quiet ac-hidden" id="prPhotoRemove"><span>Remove photo</span></button>
+                                    <input type="file" id="prPhotoInput" accept="image/png,image/jpeg,image/webp" class="ac-hidden">
+                                </div>
+                                <p class="ac-sect__status" id="prPhotoStatus"></p>
+                            </div>
+                            <p class="ac-hint" id="prSince"></p>
+                        </aside>
+
+                        <div class="ac-profile__main ac-reveal ac-reveal--3">
+
+                            <!-- Details -->
+                            <section class="ac-card ac-sect" aria-labelledby="prDetailsHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prDetailsHeading">Your details</h2>
+                                    <p class="ac-hint">Used on your receipts and to reach you about an order.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prFullName">Full name</label>
+                                    <input class="ac-input" type="text" id="prFullName" autocomplete="name">
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prDisplayName">Display name</label>
+                                    <input class="ac-input" type="text" id="prDisplayName" maxlength="40" autocomplete="nickname">
+                                    <p class="ac-hint">What we call you around the platform.</p>
+                                </div>
+                                <div class="ac-grid2">
+                                    <div class="ac-field">
+                                        <label class="ac-label" for="prPhone">Phone</label>
+                                        <input class="ac-input" type="tel" id="prPhone" autocomplete="tel">
+                                    </div>
+                                    <div class="ac-field">
+                                        <label class="ac-label" for="prCountry">Country</label>
+                                        <select class="ac-select" id="prCountry"></select>
+                                    </div>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--primary" id="prSaveDetails"><span>Save changes</span></button>
+                                    <p class="ac-sect__status" id="prDetailsStatus"></p>
+                                </div>
+                            </section>
+
+                            <!-- Email, read-only -->
+                            <section class="ac-card ac-sect" aria-labelledby="prEmailHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prEmailHeading">Email address</h2>
+                                    <p class="ac-hint">Every order, receipt and sign-in link is tied to this address, so it is changed by support rather than here.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prEmailField">Email</label>
+                                    <input class="ac-input" type="email" id="prEmailField" readonly>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <a href="/contact" class="ac-btn ac-btn--ghost"><span>Request a change</span></a>
+                                </div>
+                            </section>
+
+                            <!-- Password -->
+                            <section class="ac-card ac-sect" aria-labelledby="prPwdHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prPwdHeading">Password</h2>
+                                    <p class="ac-hint" id="prPwdIntro"></p>
+                                </div>
+                                <div class="ac-field ac-hidden" id="prCurrentWrap">
+                                    <label class="ac-label" for="prCurrent">Current password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prCurrent" autocomplete="current-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prNew">New password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prNew" autocomplete="new-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                    <div class="ac-strength" id="prStrength" aria-hidden="true">
+                                        <span class="ac-strength__bar"></span><span class="ac-strength__bar"></span><span class="ac-strength__bar"></span>
+                                    </div>
+                                    <p class="ac-hint">At least 8 characters.</p>
+                                </div>
+                                <div class="ac-field">
+                                    <label class="ac-label" for="prConfirm">Confirm new password</label>
+                                    <div class="ac-pwd">
+                                        <input class="ac-input" type="password" id="prConfirm" autocomplete="new-password">
+                                        <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--primary" id="prSavePwd"><span>Update password</span></button>
+                                    <p class="ac-sect__status" id="prPwdStatus"></p>
+                                </div>
+                            </section>
+
+                            <!-- Session -->
+                            <section class="ac-card ac-sect" aria-labelledby="prSessionHeading">
+                                <div class="ac-sect__head">
+                                    <h2 class="ac-h3" id="prSessionHeading">Session</h2>
+                                    <p class="ac-hint">Signing out ends this session on this device.</p>
+                                </div>
+                                <div class="ac-sect__foot">
+                                    <button type="button" class="ac-btn ac-btn--danger" id="prSignOut"><span>Sign out</span></button>
+                                </div>
+                            </section>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

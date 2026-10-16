@@ -70,7 +70,7 @@ const fail = (m) => { failures++; console.log(`  FAIL  ${m}`); };
     // WHICH image the page actually renders first is not always the cover:
     // shop-single.js prefers the gallery when the product has one, and only
     // falls back to the cover. Asserting against product.cover when a gallery
-    // item is on screen tests an image that is not there — it reported Sulek
+    // item is on screen tests an image that is not there — it reported Strength & Size Peak
     // as broken because its 250x250 gallery still legitimately has no
     // derivatives (nothing smaller than the 320w tier is worth cutting).
     const detail = await (await fetch(`${BASE}/api/products/${encodeURIComponent(product.slug)}`, {

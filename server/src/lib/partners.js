@@ -157,7 +157,7 @@ function validateSlug(input) {
 
 // Collision handling. Appends -2, -3, ... until free. `excludeId` lets an
 // existing partner keep its own slug on update instead of colliding with
-// itself and drifting to "sam-sulek-2" on every save.
+// itself and drifting to "elena-cho-2" on every save.
 async function uniqueSlug(prisma, desired, excludeId) {
   const base = validateSlug(desired);
   let candidate = base;

@@ -31,9 +31,9 @@ const CHROME = process.env.CHROME_PATH || (function () {
 // One product per status, so "lists every product regardless of status" is
 // actually exercised rather than asserted against a single-status fixture.
 const CATALOGUE = [
-  { id: "p-pub", slug: "peak", name: "Sulek Strength & Size Peak", status: "published", creator: "Sam Sulek" },
+  { id: "p-pub", slug: "peak", name: "Cho Strength & Size Peak", status: "published", creator: "Elena Cho" },
   { id: "p-show", slug: "platform-showcase", name: "Platform Showcase", status: "presentation", creator: "Fitness Agency" },
-  { id: "p-draft", slug: "untitled", name: "Untitled Program", status: "draft", creator: "Sam Sulek" },
+  { id: "p-draft", slug: "untitled", name: "Untitled Program", status: "draft", creator: "Elena Cho" },
   { id: "p-priv", slug: "private-one", name: "Private Beta Block", status: "private", creator: "Alex Roe" },
   { id: "p-arch", slug: "old", name: "Retired 2024 Plan", status: "archived", creator: "Alex Roe" },
   { id: "p-sched", slug: "soon", name: "Scheduled Launch", status: "scheduled", creator: "Jo Kim" },
@@ -137,12 +137,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // Search is server-side: each of these must produce a request, not a local filter.
   const before = requests.length;
-  await page.type("#presProductSearch", "Sam Sulek", { delay: 20 });
+  await page.type("#presProductSearch", "Elena Cho", { delay: 20 });
   await sleep(700);
   const byCreator = await page.$$eval("#presProductList [data-idx]", (els) => els.map((e) => e.textContent.trim()));
   check("search by creator hits the server", requests.length > before, { before: before, after: requests.length });
   check("search by creator returns that creator's products",
-    byCreator.filter((t) => /Sulek|Untitled/.test(t)).length === 2, byCreator);
+    byCreator.filter((t) => /Cho Strength|Untitled/.test(t)).length === 2, byCreator);
 
   await page.evaluate(() => { document.getElementById("presProductSearch").value = ""; });
   await page.type("#presProductSearch", "p-arch", { delay: 20 });
@@ -156,7 +156,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await sleep(700);
   await page.evaluate(() => {
     const li = Array.from(document.querySelectorAll("#presProductList [data-idx]"))
-      .find((e) => /Sulek Strength/.test(e.textContent));
+      .find((e) => /Cho Strength/.test(e.textContent));
     li.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   });
   await sleep(300);
@@ -195,14 +195,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // Out-of-order responses: a slow early request must not overwrite a newer one.
   delayNext = 1200;
   await page.focus("#presProductSearch");
-  await page.type("#presProductSearch", "Sulek", { delay: 10 });
+  await page.type("#presProductSearch", "Cho", { delay: 10 });
   await sleep(400);
   await page.evaluate(() => { document.getElementById("presProductSearch").value = ""; });
   await page.type("#presProductSearch", "Retired", { delay: 10 });
   await sleep(2000);
   const final = await page.$$eval("#presProductList [data-idx]", (els) => els.map((e) => e.textContent));
   check("a slow earlier search cannot overwrite a newer one",
-    final.some((t) => /Retired 2024/.test(t)) && !final.some((t) => /Sulek Strength/.test(t)), final);
+    final.some((t) => /Retired 2024/.test(t)) && !final.some((t) => /Cho Strength/.test(t)), final);
 
   check("no console errors", (await page.evaluate(() => window.__errors)).length === 0,
     await page.evaluate(() => window.__errors));

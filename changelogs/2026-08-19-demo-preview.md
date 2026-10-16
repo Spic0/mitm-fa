@@ -7,10 +7,10 @@ partner profiles, private presentations or auth.** No migration.
 
 ## A production leak found on the way in, and closed
 
-`sulek-strength-size-peak` was **`freeAccess = true` while `status =
+`elena-cho-strength-size-peak` was **`freeAccess = true` while `status =
 published`**. Its entire 10-week program — 210 exercises, all coaching notes,
 the nutrition plan and every exercise GIF — was readable by any anonymous
-visitor at `GET /api/library/program/sulek-strength-size-peak`, while the
+visitor at `GET /api/library/program/elena-cho-strength-size-peak`, while the
 product was listed for sale at $34.49 and **two customers had already paid for
 it**.
 
@@ -171,9 +171,9 @@ Rendered in headless Chrome against real data at 320, 375, 390, 430, 1280,
 
 - No horizontal overflow at any width on either page.
 - `/demo`: zero console errors and zero failed requests at every width.
-- Full flow driven by real clicks: homepage → **See Demo** → `/demo` (Sam
-  Sulek, 2 real exercises, locked counts 2/3/9) → **Get the full program** →
-  `/program/sulek-strength-size-peak`, which renders `.product-price = $34.49`,
+- Full flow driven by real clicks: homepage → **See Demo** → `/demo` (Elena
+  Cho, 2 real exercises, locked counts 2/3/9) → **Get the full program** →
+  `/program/elena-cho-strength-size-peak`, which renders `.product-price = $34.49`,
   matching the API.
 - Touch targets: hero CTAs 56px and 53px, section CTA 48px, demo CTA 59px.
 - Contrast on `/demo`: 7.35:1 to 16.66:1, all passing AA.

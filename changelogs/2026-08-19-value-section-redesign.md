@@ -117,7 +117,7 @@ At 320, 375, 390, 430, 768, 1440, 1920:
 - `document.scrollWidth === innerWidth` at every width — no horizontal overflow,
   and no element inside the section exceeds the viewport.
 - No console or page errors.
-- Real data renders: creator "Cristiano Ronaldo", program "CR7 Elite
+- Real data renders: creator "Marcus Reyes", program "Elite
   Athleticism & Conditioning", 12 week ticks.
 - Rows settle at opacity 1/1/1/0.42 (the fourth is the crop indicator).
 - Preview `aria-hidden="true"` with **0** focusable descendants.

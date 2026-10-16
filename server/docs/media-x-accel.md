@@ -16,7 +16,7 @@ GET /api/library/download/media/:token     auth + verify + hasEntitlement -> res
 
 Two requests, four DB queries (two session, two entitlement), and the bytes
 themselves copied through the event loop. Measured against the largest real
-program (`sulek-strength-size-peak`, 6 GIFs, 72.31 MB of originals on disk),
+program (`elena-cho-strength-size-peak`, 6 GIFs, 72.31 MB of originals on disk),
 a customer paging through the whole handbook generates:
 
 | | token path | with X-Accel |

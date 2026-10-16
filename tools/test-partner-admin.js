@@ -110,7 +110,7 @@ const TEST_SLUG = "zz-wizard-test";
       active: link ? link.classList.contains("active") : false,
       breadcrumb: (document.getElementById("adminBreadcrumbTitle") || {}).textContent || null,
       rows: document.querySelectorAll("#partnersTableBody tr").length,
-      hasSamSulek: document.body.textContent.includes("Sam Sulek"),
+      hasElenaCho: document.body.textContent.includes("Elena Cho"),
       createBtn: !!document.getElementById("createPartnerBtn"),
     };
   });
@@ -118,7 +118,7 @@ const TEST_SLUG = "zz-wizard-test";
   check("section is active on deep link", nav.active);
   check("breadcrumb reads Partner Profiles", nav.breadcrumb === "Partner Profiles", nav.breadcrumb);
   check("list renders rows", nav.rows > 0, `${nav.rows} rows`);
-  check("existing Sam Sulek profile is listed", nav.hasSamSulek);
+  check("existing Elena Cho profile is listed", nav.hasElenaCho);
   check("New Partner button present", nav.createBtn);
 
   // ---- Open the wizard and walk it ----

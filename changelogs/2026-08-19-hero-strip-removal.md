@@ -24,7 +24,7 @@ taxonomy and the `creators` taxonomy into one array, and in this catalog the
 | Person | In `athletes` | In `creators` |
 |---|---|---|
 | Amara Chen | Basketball | Fitness |
-| Big Sam Coleman | Boxing | Powerlifting |
+| Rowan Kessler | Boxing | Powerlifting |
 | Derrick Owens | Basketball | Bodybuilding |
 | Dr. Lisa Moreno | MMA | Fitness |
 | Elena Cho | MMA | Fitness |
@@ -35,8 +35,8 @@ taxonomy and the `creators` taxonomy into one array, and in this catalog the
 | Tom Whitfield | Football | Fitness |
 
 Ten of the eleven people appeared twice, sorted by product count then name, so
-the rail literally read `Amara Chen / Amara Chen / Big Sam Coleman / Big Sam
-Coleman / …`. Deduplicating by slug would have fixed the repetition but broken
+the rail literally read `Amara Chen / Amara Chen / Rowan Kessler / Rowan
+Kessler / …`. Deduplicating by slug would have fixed the repetition but broken
 the section's only stated purpose: the `ATHLETE` / `CREATOR` label is the one
 thing distinguishing the two entries, so collapsing them makes the label
 meaningless — and it is that label, on every pill, that made the strip read as

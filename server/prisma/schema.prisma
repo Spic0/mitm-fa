@@ -131,7 +131,7 @@ model Taxonomy {
   route String         @unique // "/shop/goals"
   order Int            @default(0)
   // Explicit, stored shape flag — Athletes/Creators are category ->
-  // subcategory (Football -> Cristiano Ronaldo); Goals is a flat list. This
+  // subcategory (Football -> Marcus Reyes); Goals is a flat list. This
   // has to be an explicit column rather than inferred from whether a node
   // currently has children, because a brand-new, still-empty category (e.g.
   // an admin just added "Cricket") would otherwise look identical to a flat
@@ -170,7 +170,7 @@ model Taxonomy {
 }
 
 // A node in a taxonomy tree, arbitrary depth (e.g. Athletes: root -> Football
-// -> Cristiano Ronaldo). Leaf nodes are what products actually get tagged
+// -> Marcus Reyes). Leaf nodes are what products actually get tagged
 // with via ProductTaxonomy; branch nodes exist purely to organize the menu.
 model TaxonomyNode {
   id         String            @id @default(cuid())
@@ -769,7 +769,7 @@ model Partner {
   id          String  @id @default(cuid())
   slug        String  @unique // public URL segment: /partners/<slug>
   displayName String
-  handle      String? // "@sam_sulek" style label, display-only, never a URL
+  handle      String? // "@elena_cho" style label, display-only, never a URL
   partnerType String  @default("creator") // "athlete" | "creator" | "coach" | "influencer" | "personality"
   bio         String? // short, plain text — rendered escaped, never as HTML
   avatarUrl   String? // stored like Product.imageUrl: a bare relative path

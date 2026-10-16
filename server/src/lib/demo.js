@@ -22,14 +22,14 @@ const LIMITS = { weeks: 1, days: 1, exercises: 2 };
 // this constant, then any published product that actually has training
 // content. The last step means the demo cannot 500 the homepage just because
 // someone renamed a slug.
-const DEFAULT_DEMO_SLUG = "sulek-strength-size-peak";
+const DEFAULT_DEMO_SLUG = "elena-cho-strength-size-peak";
 
 function weeksOf(product) {
   const tc = product && product.trainingContent;
   return tc && Array.isArray(tc.weeks) ? tc.weeks : [];
 }
 
-// A "training day" is one with at least one exercise. Sam Sulek's week 1 has a
+// A "training day" is one with at least one exercise. Elena Cho's week 1 has a
 // Tuesday active-recovery day carrying notes and no exercises, and counting
 // that as a training day would overstate what the customer is buying.
 function isTrainingDay(day) {

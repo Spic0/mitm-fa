@@ -13,7 +13,7 @@
 // all preserved exactly.
 //
 //   node attach-partner-to-presentation.js --partner <slug|id> --presentation <slug|id>
-//   node attach-partner-to-presentation.js --partner sam-sulek --presentation <slug> --dry-run
+//   node attach-partner-to-presentation.js --partner elena-cho --presentation <slug> --dry-run
 //   node attach-partner-to-presentation.js --presentation <slug> --detach
 const path = require("path");
 const SERVER = path.join(__dirname, "..", "server");

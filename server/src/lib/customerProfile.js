@@ -88,7 +88,7 @@ function greetingName(user) {
   if (user.displayName) return user.displayName;
   if (user.name) return user.name.trim().split(/\s+/)[0];
   const local = String(user.email || "").split("@")[0];
-  // "sam.sulek" / "sam_sulek" / "sam-sulek" -> "Sam"
+  // "elena.cho" / "elena_cho" / "elena-cho" -> "Elena"
   const first = local.split(/[._-]/)[0] || local;
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : "";
 }

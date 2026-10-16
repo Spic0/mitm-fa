@@ -22,7 +22,7 @@ const express = dep("express");
 const puppeteer = require("puppeteer-core");
 
 const FREE_ID = "freeaccess-test";
-const FREE_SLUG = "sulek-strength-size-peak";
+const FREE_SLUG = "elena-cho-strength-size-peak";
 const PAID_ID = "paid-control-product";
 const FIX = path.join(SERVER, "storage", "media", FREE_ID);
 const PAID_FIX = path.join(SERVER, "storage", "media", PAID_ID);
@@ -66,8 +66,8 @@ function trainingContent() {
 }
 
 const PRODUCTS = [
-  { id: FREE_ID, slug: FREE_SLUG, name: "Sulek Strength Size Peak", status: "unlisted",
-    freeAccess: true, creator: "Sulek", difficulty: "advanced", durationWeeks: 8,
+  { id: FREE_ID, slug: FREE_SLUG, name: "Strength Size Peak", status: "unlisted",
+    freeAccess: true, creator: "Elena Cho", difficulty: "advanced", durationWeeks: 8,
     overview: "Overview.", trainingContent: trainingContent(), nutritionContent: null,
     bonusNotes: null, priceCents: 4999 },
   { id: PAID_ID, slug: "paid-control", name: "Paid Control", status: "published",
@@ -87,6 +87,8 @@ const prisma = {
   } },
   orderItem: { findFirst: async () => null },
   programProgress: { findUnique: async () => null, upsert: () => ({ catch: () => {} }) },
+  // lib/demo.js reads `demoProductSlug` first; no row means DEFAULT_DEMO_SLUG.
+  setting: { findUnique: async () => null },
 };
 
 function stub(rel, exports, fromDir) {

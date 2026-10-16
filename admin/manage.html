@@ -3,13 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-brand-title="{brand} Admin">ProFit Admin</title>
-    <link rel="shortcut icon" href="/assets/images/favicon.png" data-brand-favicon>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-brand-title="{brand} Admin">Fitness Agency Admin</title>
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link rel="stylesheet" href="/assets/css/style.css">
-    <link rel="stylesheet" href="/assets/css/admin.css">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260729">
+    <link rel="stylesheet" href="/assets/css/builder.css?v=20260730">
 </head>
 
 <body class="admin-body">
@@ -42,6 +48,12 @@
                 <button class="a-btn a-btn-secondary" id="devSeedBtn"><i class="fa-solid fa-database"></i> Seed Demo Data</button>
             </div>
         </div>
+
+        <!-- Outbound email health. Sits above the metrics because a silent
+             mail outage means customers cannot sign in and buyers get no
+             receipt — it outranks any revenue figure below it. Hidden until
+             the overview reports a problem. -->
+        <div class="a-alert a-alert--danger u-hidden" id="emailHealthAlert" role="alert"></div>
 
         <div class="metric-grid" id="metricGrid"></div>
 
@@ -153,12 +165,17 @@
         <div class="a-card">
             <div class="a-card-pad u-pb-0">
                 <div class="a-toolbar">
-                    <input type="text" id="productSearch" placeholder="Search by name…" class="u-minw-240">
+                    <input type="text" id="productSearch" placeholder="Search by name, creator or ID…" class="u-minw-240">
                     <select id="statusFilter">
                         <option value="">All statuses</option>
                         <option value="published">Published</option>
                         <option value="draft">Draft</option>
+                        <option value="private">Private (unlisted)</option>
+                        <option value="scheduled">Scheduled</option>
                         <option value="archived">Archived</option>
+                        <!-- Showcase-only products, used by private presentation
+                             decks and deliberately invisible to the storefront. -->
+                        <option value="presentation">Presentation products</option>
                     </select>
                 </div>
             </div>
@@ -178,14 +195,123 @@
                     <tbody id="productsTableBody"></tbody>
                 </table>
             </div>
+            <!-- Rendered by assets/js/admin/products.js. Hidden entirely while
+                 the whole result set fits on one page, so a small catalogue
+                 never grows controls it has no use for. -->
+            <div class="a-pager u-hidden" id="productsPager">
+                <span class="a-pager__count" id="productsPagerCount"></span>
+                <div class="a-pager__controls">
+                    <label class="a-pager__size">
+                        Per page
+                        <select id="productsPageSize">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                    <button class="a-btn a-btn-secondary a-btn-sm" id="productsPrev" type="button">
+                        <i class="fa-solid fa-chevron-left"></i> Prev
+                    </button>
+                    <span class="a-pager__page" id="productsPagerPage"></span>
+                    <button class="a-btn a-btn-secondary a-btn-sm" id="productsNext" type="button">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </template>
 
     <template id="tpl-navigation">
         <h1 class="admin-page-title">Navigation</h1>
-        <p class="admin-page-subtitle">Manage the Shop by Goal, Browse Athletes, and Browse Creators trees — changes here update storefront navigation and filters everywhere automatically, no code changes needed.</p>
+        <p class="admin-page-subtitle">Every category in the site header, and everything inside it. Add a category, rename it, reorder it, hide it, or choose how its menu panel looks — the storefront header, the mobile drawer, the shop filters and the sitemap all follow, with no code changes.</p>
 
         <div id="taxonomyList"></div>
+    </template>
+
+    <template id="tpl-partners">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="admin-page-title">Partner Profiles</h1>
+                <p class="admin-page-subtitle">Public, Fitness Agency-branded profile pages for athletes, creators and coaches — one shareable link carrying their bio, socials, products and custom links.</p>
+            </div>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createPartnerBtn"><i class="fa-solid fa-plus"></i> New Partner</button>
+        </div>
+
+        <div class="a-card">
+            <div class="a-card-pad u-pb-0">
+                <div class="a-toolbar">
+                    <input type="text" id="partnerSearch" placeholder="Search name, handle or URL…" class="u-minw-260">
+                    <select id="partnerStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+            </div>
+            <div class="a-table-wrap">
+                <table class="a-table">
+                    <thead>
+                        <tr>
+                            <th>Partner</th>
+                            <th>Status</th>
+                            <th>Profile URL</th>
+                            <th>Products</th>
+                            <th>Links</th>
+                            <th>Last updated</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="partnersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-presentations">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h1 class="admin-page-title">Private Presentations</h1>
+                <p class="admin-page-subtitle">Unlisted, link-only decks for investor, partner and athlete meetings. These never appear anywhere on the public site.</p>
+            </div>
+            <button class="a-btn a-btn-primary a-btn-sm u-w-auto" id="createPresentationBtn"><i class="fa-solid fa-plus"></i> New Presentation</button>
+        </div>
+
+        <div class="a-card">
+            <div class="a-card-pad u-pb-0">
+                <div class="a-toolbar">
+                    <input type="text" id="presentationSearch" placeholder="Search title or recipient…" class="u-minw-260">
+                    <select id="presentationStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="enabled">Enabled</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                    <select id="presentationSortFilter">
+                        <option value="createdAt-desc">Newest first</option>
+                        <option value="createdAt-asc">Oldest first</option>
+                        <option value="updatedAt-desc">Recently updated</option>
+                        <option value="title-asc">Title A–Z</option>
+                    </select>
+                </div>
+            </div>
+            <div class="a-table-wrap">
+                <table class="a-table">
+                    <thead>
+                        <tr>
+                            <th>Presentation</th>
+                            <th>Status</th>
+                            <th>Access</th>
+                            <th>Expires</th>
+                            <th>Visits</th>
+                            <th>Enquiries</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="presentationsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
     </template>
 
     <template id="tpl-promotions">
@@ -442,6 +568,20 @@
                     <label>Email "From" Name</label>
                     <input type="text" name="emailFromName" id="emailFromName">
                 </div>
+                <!-- Which published product the public /demo preview shows. The
+                     preview is a server-limited slice (one day of week one, two
+                     exercises) — see server/src/lib/demo.js — so choosing a
+                     product here never makes it free. Only products that
+                     actually have training content are offered, because a
+                     product without any has nothing to preview. -->
+                <div class="a-form-row">
+                    <label for="demoProductSlug">Public Demo Product</label>
+                    <select name="demoProductSlug" id="demoProductSlug">
+                        <option value="">Automatic (first published program with content)</option>
+                    </select>
+                    <small class="u-muted">Shown at /demo as a limited free preview. The full program stays
+                        paid.</small>
+                </div>
                 <button type="submit" class="a-btn a-btn-primary u-w-auto">Save Changes</button>
             </form>
         </div>
@@ -460,16 +600,29 @@
     </template>
 
     <script src="/assets/js/admin/api.js"></script>
+    <!-- Must load before anything that uploads: the builder dialogs and the
+         settings panel both call AdminUpload.maybeCompressImage on pick. -->
+    <script src="/assets/js/admin/upload-compress.js"></script>
     <script src="/assets/js/admin/ui.js"></script>
+    <script src="/assets/js/admin/wizard-shell.js"></script>
     <script src="/assets/js/admin/dashboard.js"></script>
     <script src="/assets/js/admin/orders.js"></script>
     <script src="/assets/js/admin/products.js"></script>
-    <script src="/assets/js/admin/product-wizard.js"></script>
+    <!-- Product Builder. core.js is the DOM-free engine and must load before
+         the two view layers, which both call into it at definition time. -->
+    <script src="/assets/js/admin/builder/core.js"></script>
+    <script src="/assets/js/admin/builder/dialogs.js"></script>
+    <script src="/assets/js/admin/builder/ui.js"></script>
     <script src="/assets/js/admin/navigation.js"></script>
     <script src="/assets/js/admin/customers.js"></script>
     <script src="/assets/js/admin/promotion-wizard.js"></script>
     <script src="/assets/js/admin/promotions.js"></script>
     <script src="/assets/js/admin/promotion-drawer.js"></script>
+    <script src="/assets/js/admin/presentations.js"></script>
+    <!-- Wizard must load before the panel that opens it, same ordering as
+         promotion-wizard.js above promotions.js. -->
+    <script src="/assets/js/admin/partner-wizard.js"></script>
+    <script src="/assets/js/admin/partners.js"></script>
     <script src="/assets/js/admin/notifications.js"></script>
     <script src="/assets/js/admin/analytics.js"></script>
     <script src="/assets/js/admin/email-logs.js"></script>

@@ -1,0 +1,2444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Unlisted deck. The X-Robots-Tag header set in routes/presentation.js is
+         the real control (it covers responses nothing links to); this is the
+         belt-and-braces copy for anything that only reads markup. -->
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title><!--PRES_TITLE--> | Fitness Agency</title>
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
+
+    <!-- Deliberately NOT loading bootstrap/all.min/animate/swiper the way the
+         storefront pages do. This deck shares the platform's design tokens and
+         typeface, not its vendor CSS: presentation.css declares the same Inter
+         @font-face and re-derives every token from the values in style.css, so
+         first paint costs two files instead of seven. See the header comment in
+         presentation.css for the token mapping. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-400-normal.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-600-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/css/presentation.css">
+
+    <!--IFPARTNER-->
+    <!-- Attached ONLY when this deck has a Partner Profile selected — the
+         server strips this whole block otherwise (IFPARTNER in
+         routes/presentation.js), so a deck without a profile still pays for
+         exactly the two files described above.
+
+         These are the real partner design system, unmodified: the profile
+         inside the deck is the same markup and the same CSS as
+         /partners/:slug, which is what keeps the two from drifting.
+           partner.css         .pprofile — the profile itself
+           media-container.css .pmedia   — the fixed-ratio product media box
+                                           partner.css expects around covers
+           all.min.css         the subsetted Font Awesome the profile's
+                                           social, link and badge icons need.
+                                           The deck's own glyphs are all
+                                           inline SVG, so this is the one
+                                           surface here that needs the font. -->
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/media-container.css">
+    <link rel="stylesheet" href="/assets/css/partner.css">
+    <!--/IFPARTNER-->
+
+    <!-- Render-blocking on purpose, and the only thing on this page that is.
+         It sets html.pres-js, which is what arms the scroll-reveal system's
+         initial hidden state. Deferring it would let the deck paint fully
+         visible for a frame and then blank itself; leaving the hidden state
+         unconditional would mean a blank page if JS never runs. A ~100-byte
+         same-origin file is the cheapest correct answer. (A CSP-legal inline
+         script is not available here — see the strict policy in index.js.) -->
+    <script src="/assets/js/presentation-boot.js"></script>
+</head>
+
+<body class="pres-body">
+    <!--PRES_BOOT-->
+
+    <!-- Scroll progress. A single transform-scaled bar rather than a width
+         animation, so it never triggers layout on any of the ~60 scroll frames
+         a second it updates. -->
+    <div class="pres-progress" aria-hidden="true">
+        <div class="pres-progress__bar" id="presProgressBar"></div>
+    </div>
+
+    <!-- Section rail: the only navigation this page has. Built from the
+         sections that actually survived server-side stripping (see
+         presentation.js), so a deck with sections switched off never shows a
+         dot that goes nowhere. Hidden below 1200px, where the progress bar and
+         the deck's own rhythm carry orientation instead. -->
+    <nav class="pres-rail" id="presRail" aria-label="Presentation sections"></nav>
+
+    <main class="pres-main">
+
+        <!-- ============================================================
+             1. HERO
+             Two columns on desktop, one on mobile: the words on the left,
+             a ten-panel slideshow of the actual product on the right. The
+             old hero was words alone, which meant the first screen of a
+             deck shown in an investor meeting said what we do without
+             ever showing it.
+
+             The slogan sits here, immediately under the wordmark, because
+             it is the shortest true description of the business and it
+             was previously nine sections down where most viewers of a
+             live deck never reached it.
+
+             The long "we build and run the commercial layer" paragraph
+             that used to close the hero is gone rather than moved: with
+             the slideshow present it competed with the thing it was
+             describing, and the Who We Are lead directly below says it
+             again in more detail.
+             ============================================================ -->
+        <section class="pres-hero" id="pres-hero" data-section-id="hero" data-section-label="Introduction">
+            <div class="pres-hero__inner">
+
+                <div class="pres-hero__copy">
+                    <!-- The deck opens on the mark. Decks are shown on someone
+                         else's screen, often out of context and with no browser
+                         chrome to say whose they are, so the first thing on the
+                         first slide should be the brand. This is also the
+                         "wordmark" the slogan comment below refers to — the
+                         slogan was placed directly under it. -->
+                    <img class="pres-hero__logo" src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112">
+                    <p class="pres-eyebrow pres-hero__eyebrow"><!--PRES_EYEBROW--></p>
+                    <h1 class="pres-hero__title"><!--PRES_HERO_TITLE--></h1>
+
+                    <!-- The slogan. Two lines, revealed one after the other,
+                         with the second carrying the emphasis — the sentence
+                         only lands once "ours" arrives. Marked up as a single
+                         <p> with spans so it is read as one sentence by a
+                         screen reader regardless of how it is animated. -->
+                    <p class="pres-slogan">
+                        <span class="pres-slogan__line">Creators should create.</span>
+                        <span class="pres-slogan__line pres-slogan__line--accent">Everything else is ours.</span>
+                    </p>
+
+                    <p class="pres-hero__subtitle"><!--PRES_HERO_SUBTITLE--></p>
+                    <!--PRES_RECIPIENT-->
+                    <!--PRES_WELCOME-->
+                </div>
+
+                <!-- A sibling of the copy rather than a child of it, because
+                     the two layouts want it in different places: beneath the
+                     copy on desktop, but BELOW the slideshow on mobile, where
+                     the buttons should be the last thing before the fold and
+                     the slideshow should not push them off it. Only a grid
+                     area can move it across that boundary; nesting it in the
+                     copy would pin it above the slideshow on both. -->
+                <div class="pres-hero__actions">
+                        <a class="pres-btn pres-btn--primary" href="#pres-cta" data-hero-cta="wizard">
+                            <span>Estimate your partnership</span>
+                        </a>
+                        <!--IFPRODUCT-->
+                        <!-- Destination is the product the admin picked in the
+                             Presentation Builder, resolved server-side on every
+                             render. Absent that pick the whole block is stripped
+                             rather than rendered pointing nowhere. -->
+                        <a class="pres-btn pres-btn--secondary pres-btn--product" href="<!--PRES_PRODUCT_URL-->"
+                            data-product-cta="hero" target="_blank" rel="noopener">
+                            <span>View Product</span>
+                            <span class="pres-btn__arrow" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h13"/><path d="M12.5 6.5 19 12l-6.5 5.5"/></svg>
+                            </span>
+                        </a>
+                        <!--/IFPRODUCT-->
+                </div>
+
+                <!-- ---------------- SLIDESHOW ----------------
+                     Ten panels, cross-faded on a timer, swipeable by touch
+                     and driveable by keyboard. Every panel is drawn in DOM
+                     rather than screenshotted, for the same reason the
+                     showcase below is: a screenshot of this platform goes
+                     stale the week after it is taken, and ten of them would
+                     cost more to download than the entire rest of the deck.
+
+                     The stage holds its aspect ratio from first paint and
+                     every panel is absolutely positioned inside it, so
+                     nothing here can shift layout as slides change — the
+                     panels are siblings in the same box, not a flow. -->
+                <!-- data-parallax is on the STAGE, not on .pres-hs. The
+                     wrapper carries the hero's entrance keyframes, and a CSS
+                     animation with fill:both keeps winning the cascade over
+                     an inline transform even after it has finished — so a
+                     parallax written there would have been silently dead.
+                     The stage animates nothing, so it is the element that
+                     can actually be moved. -->
+                <div class="pres-hs" id="presHeroShow">
+                    <div class="pres-hs__stage" id="presHeroStage" aria-live="off" data-parallax="0.03">
+
+                        <!-- 1 — Creators -->
+                        <article class="pres-hs__slide is-active" data-hs-slide data-hs-label="Creators">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/creators</span></div>
+                                <div class="hsm__body">
+                                    <div class="hsm__grid hsm__grid--3">
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--lg"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--sm"></span><span class="hsm__line hsm__line--md"></span></div>
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--lg"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--person"><span class="hsm__avatar"></span><span class="hsm__line hsm__line--sm"></span><span class="hsm__line hsm__line--md"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Creators</strong> Every creator you sign gets their own storefront inside one platform.</p>
+                        </article>
+
+                        <!-- 2 — Athletes -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Athletes">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/athletes</span></div>
+                                <div class="hsm__body">
+                                    <div class="hsm__hero-row">
+                                        <span class="hsm__avatar hsm__avatar--xl"></span>
+                                        <div class="hsm__col">
+                                            <span class="hsm__line hsm__line--lg hsm__line--strong"></span>
+                                            <span class="hsm__line hsm__line--md"></span>
+                                            <div class="hsm__pills"><span class="hsm__pill"></span><span class="hsm__pill"></span><span class="hsm__pill"></span></div>
+                                        </div>
+                                    </div>
+                                    <div class="hsm__grid hsm__grid--3">
+                                        <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                        <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--md"></span></div>
+                                        <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Athletes</strong> A career's worth of method, packaged as products that sell while they train.</p>
+                        </article>
+
+                        <!-- 3 — Products. The first card carries the real
+                             artwork of the product the admin selected; the
+                             rest are drawn. With no product selected the
+                             card falls back to the same drawn treatment as
+                             its neighbours. -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Products">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/shop</span></div>
+                                <div class="hsm__body">
+                                    <div class="hsm__grid hsm__grid--3">
+                                        <div class="hsm__card hsm__card--product">
+                                            <span class="hsm__thumb hsm__thumb--feature">
+                                                <!--IFPRODUCTIMAGE--><img class="hsm__shot" src="<!--PRES_PRODUCT_IMAGE-->" alt="" loading="eager" decoding="async"><!--/IFPRODUCTIMAGE-->
+                                            </span>
+                                            <span class="hsm__line hsm__line--lg hsm__line--strong"></span>
+                                            <span class="hsm__line hsm__line--xs"></span>
+                                        </div>
+                                        <div class="hsm__card hsm__card--product"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--product"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--lg"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--product"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--sm"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--product"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                        <div class="hsm__card hsm__card--product"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--lg"></span><span class="hsm__line hsm__line--xs"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Products</strong> Programs, plans and bundles, priced and merchandised like a real store.</p>
+                        </article>
+
+                        <!-- 4 — Customer dashboard -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Customer dashboard">
+                            <div class="hsm hsm--win hsm--app" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/dashboard</span></div>
+                                <div class="hsm__app">
+                                    <div class="hsm__side">
+                                        <span class="hsm__side-mark"></span>
+                                        <span class="hsm__side-item is-on"></span>
+                                        <span class="hsm__side-item"></span>
+                                        <span class="hsm__side-item"></span>
+                                        <span class="hsm__side-item"></span>
+                                    </div>
+                                    <div class="hsm__main">
+                                        <span class="hsm__line hsm__line--lg hsm__line--strong"></span>
+                                        <div class="hsm__grid hsm__grid--3">
+                                            <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                            <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                            <div class="hsm__stat"><span class="hsm__stat-num"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                        </div>
+                                        <div class="hsm__row hsm__row--card">
+                                            <span class="hsm__thumb hsm__thumb--wide"></span>
+                                            <div class="hsm__col">
+                                                <span class="hsm__line hsm__line--md"></span>
+                                                <span class="hsm__line hsm__line--xs"></span>
+                                                <span class="hsm__meter"><i class="hsm__meter-fill hsm__meter-fill--62"></i></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Customer dashboard</strong> Where a buyer lands: everything they own, and where they left off.</p>
+                        </article>
+
+                        <!-- 5 — Creator dashboard -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Creator dashboard">
+                            <div class="hsm hsm--win hsm--app" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/admin</span></div>
+                                <div class="hsm__app">
+                                    <div class="hsm__side">
+                                        <span class="hsm__side-mark"></span>
+                                        <span class="hsm__side-item is-on"></span>
+                                        <span class="hsm__side-item"></span>
+                                        <span class="hsm__side-item"></span>
+                                        <span class="hsm__side-item"></span>
+                                    </div>
+                                    <div class="hsm__main">
+                                        <div class="hsm__row hsm__row--split">
+                                            <div class="hsm__stat hsm__stat--big"><span class="hsm__stat-num hsm__stat-num--wide"></span><span class="hsm__line hsm__line--sm"></span></div>
+                                            <div class="hsm__pills"><span class="hsm__pill"></span><span class="hsm__pill"></span></div>
+                                        </div>
+                                        <div class="hsm__chart">
+                                            <i class="hsm__chart-col hsm__chart-col--1"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--2"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--3"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--4"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--5"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--6"></i>
+                                            <i class="hsm__chart-col hsm__chart-col--7"></i>
+                                        </div>
+                                        <div class="hsm__list">
+                                            <span class="hsm__list-row"></span>
+                                            <span class="hsm__list-row"></span>
+                                            <span class="hsm__list-row"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Creator dashboard</strong> Revenue, orders and campaign performance, live, in one screen.</p>
+                        </article>
+
+                        <!-- 6 — Purchased products -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Purchased products">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/my-library</span></div>
+                                <div class="hsm__body">
+                                    <span class="hsm__line hsm__line--md hsm__line--strong"></span>
+                                    <div class="hsm__grid hsm__grid--3">
+                                        <div class="hsm__card hsm__card--owned">
+                                            <span class="hsm__thumb hsm__thumb--feature">
+                                                <!--IFPRODUCTIMAGE--><img class="hsm__shot" src="<!--PRES_PRODUCT_IMAGE-->" alt="" loading="lazy" decoding="async"><!--/IFPRODUCTIMAGE-->
+                                            </span>
+                                            <span class="hsm__line hsm__line--md"></span>
+                                            <span class="hsm__meter"><i class="hsm__meter-fill hsm__meter-fill--62"></i></span>
+                                        </div>
+                                        <div class="hsm__card hsm__card--owned"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--lg"></span><span class="hsm__meter"><i class="hsm__meter-fill hsm__meter-fill--34"></i></span></div>
+                                        <div class="hsm__card hsm__card--owned"><span class="hsm__thumb"></span><span class="hsm__line hsm__line--sm"></span><span class="hsm__meter"><i class="hsm__meter-fill hsm__meter-fill--88"></i></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Purchased products</strong> Access is instant and permanent. No inbox archaeology, no expiring link.</p>
+                        </article>
+
+                        <!-- 7 — Workout viewer -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Workout viewer">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/train/week-3</span></div>
+                                <div class="hsm__body hsm__body--split">
+                                    <div class="hsm__player">
+                                        <span class="hsm__play"></span>
+                                        <span class="hsm__scrub"><i class="hsm__meter-fill hsm__meter-fill--34"></i></span>
+                                    </div>
+                                    <div class="hsm__col hsm__col--pad">
+                                        <span class="hsm__line hsm__line--md hsm__line--strong"></span>
+                                        <span class="hsm__list-row is-on"></span>
+                                        <span class="hsm__list-row"></span>
+                                        <span class="hsm__list-row"></span>
+                                        <span class="hsm__list-row"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Workout viewer</strong> Video, sets, reps and substitutions on the same screen as the timer.</p>
+                        </article>
+
+                        <!-- 8 — Nutrition viewer -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Nutrition viewer">
+                            <div class="hsm hsm--win" aria-hidden="true">
+                                <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span><span class="hsm__url">yourbrand.com/nutrition</span></div>
+                                <div class="hsm__body">
+                                    <div class="hsm__macros">
+                                        <span class="hsm__ring hsm__ring--a"></span>
+                                        <span class="hsm__ring hsm__ring--b"></span>
+                                        <span class="hsm__ring hsm__ring--c"></span>
+                                    </div>
+                                    <div class="hsm__grid hsm__grid--2">
+                                        <div class="hsm__card hsm__card--meal"><span class="hsm__thumb hsm__thumb--sq"></span><div class="hsm__col"><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--xs"></span></div></div>
+                                        <div class="hsm__card hsm__card--meal"><span class="hsm__thumb hsm__thumb--sq"></span><div class="hsm__col"><span class="hsm__line hsm__line--lg"></span><span class="hsm__line hsm__line--xs"></span></div></div>
+                                        <div class="hsm__card hsm__card--meal"><span class="hsm__thumb hsm__thumb--sq"></span><div class="hsm__col"><span class="hsm__line hsm__line--sm"></span><span class="hsm__line hsm__line--xs"></span></div></div>
+                                        <div class="hsm__card hsm__card--meal"><span class="hsm__thumb hsm__thumb--sq"></span><div class="hsm__col"><span class="hsm__line hsm__line--md"></span><span class="hsm__line hsm__line--xs"></span></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Nutrition viewer</strong> Meals, macros and swaps, structured — not a PDF someone has to print.</p>
+                        </article>
+
+                        <!-- 9 — Mobile experience -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Mobile experience">
+                            <div class="hsm hsm--stage" aria-hidden="true">
+                                <div class="hsm__phone">
+                                    <span class="hsm__notch"></span>
+                                    <div class="hsm__phone-body">
+                                        <span class="hsm__line hsm__line--md hsm__line--strong"></span>
+                                        <span class="hsm__thumb hsm__thumb--wide"></span>
+                                        <span class="hsm__list-row is-on"></span>
+                                        <span class="hsm__list-row"></span>
+                                        <span class="hsm__list-row"></span>
+                                        <div class="hsm__tabbar"><i></i><i></i><i></i><i></i></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Mobile experience</strong> Built for the phone at the gym, not shrunk down to fit it.</p>
+                        </article>
+
+                        <!-- 10 — Desktop experience -->
+                        <article class="pres-hs__slide" data-hs-slide data-hs-label="Desktop experience">
+                            <div class="hsm hsm--stage" aria-hidden="true">
+                                <div class="hsm__combo">
+                                    <div class="hsm hsm--win hsm--flat">
+                                        <div class="hsm__bar"><span class="hsm__dots"><i></i><i></i><i></i></span></div>
+                                        <div class="hsm__body">
+                                            <span class="hsm__line hsm__line--lg hsm__line--strong"></span>
+                                            <div class="hsm__grid hsm__grid--3">
+                                                <div class="hsm__card"><span class="hsm__thumb"></span></div>
+                                                <div class="hsm__card"><span class="hsm__thumb"></span></div>
+                                                <div class="hsm__card"><span class="hsm__thumb"></span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="hsm__phone hsm__phone--inset">
+                                        <span class="hsm__notch"></span>
+                                        <div class="hsm__phone-body">
+                                            <span class="hsm__thumb hsm__thumb--wide"></span>
+                                            <span class="hsm__list-row"></span>
+                                            <span class="hsm__list-row"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="pres-hs__caption"><strong>Desktop experience</strong> The same account, the same progress, on whichever screen is nearer.</p>
+                        </article>
+                    </div>
+
+                    <!-- Controls. Real buttons, not dots-as-divs: this is the
+                         only way to reach slide 7 with a keyboard. The label
+                         of each slide is the accessible name. -->
+                    <div class="pres-hs__controls">
+                        <button class="pres-hs__arrow" type="button" data-hs-prev aria-label="Previous slide">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5.5 8.5 12l6.5 6.5"/></svg>
+                        </button>
+                        <div class="pres-hs__dots" id="presHeroDots" role="tablist" aria-label="Choose a slide"></div>
+                        <button class="pres-hs__arrow" type="button" data-hs-next aria-label="Next slide">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5.5 15.5 12 9 18.5"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pres-hero__cue" aria-hidden="true">
+                <span class="pres-hero__cue-line"></span>
+                <span class="pres-hero__cue-label">Scroll</span>
+            </div>
+        </section>
+
+        <!--SECTION:who-->
+        <!-- ============================================================
+             2. WHO WE ARE
+             ============================================================ -->
+        <section class="pres-section" id="pres-who" data-section-id="who" data-section-label="Who we are">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Who we are</p>
+                    <h2 class="pres-h2" data-reveal>
+                        A complete digital commerce platform, headquartered in Winnipeg, Canada.
+                    </h2>
+                    <p class="pres-lead" data-reveal>
+                        Instead of building and maintaining their own websites, the people we
+                        work with get everything under one platform. One system, one team,
+                        one place where the business actually runs.
+                    </p>
+                </header>
+
+                <ul class="pres-audience" data-reveal-group>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">01</span>
+                        <h3 class="pres-audience__name">Athletes</h3>
+                        <p class="pres-audience__desc">Competitive and professional athletes turning a career's worth of method into products.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">02</span>
+                        <h3 class="pres-audience__name">Fitness Influencers</h3>
+                        <p class="pres-audience__desc">Established audiences that have outgrown link-in-bio tools and one-off launches.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">03</span>
+                        <h3 class="pres-audience__name">Sports Creators</h3>
+                        <p class="pres-audience__desc">Content-first brands that need a commercial engine behind the publishing schedule.</p>
+                    </li>
+                    <li class="pres-audience__item" data-reveal>
+                        <span class="pres-audience__index">04</span>
+                        <h3 class="pres-audience__name">Nutrition Coaches</h3>
+                        <p class="pres-audience__desc">Practitioners packaging structured programs, plans and ongoing client support.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:who-->
+
+        <!--SECTION:services-->
+        <!-- ============================================================
+             3. EVERYTHING WE HANDLE
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-services" data-section-id="services" data-section-label="What we handle">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>The platform</p>
+                    <h2 class="pres-h2" data-reveal>Everything we handle</h2>
+                    <p class="pres-lead" data-reveal>
+                        Eleven separate systems a creator would otherwise have to buy,
+                        integrate and maintain themselves. Here they are one product.
+                    </p>
+                </header>
+
+                <ul class="pres-grid pres-grid--services" data-reveal-group>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Digital platform</h3>
+                        <p class="pres-card__desc">A branded storefront and member area, hosted, maintained and updated by us.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Product publishing</h3>
+                        <p class="pres-card__desc">Programs, plans and bundles built, priced and published without touching code.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Training plans</h3>
+                        <p class="pres-card__desc">Structured week-by-week programming with sets, reps, notes and substitutions.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Nutrition programs</h3>
+                        <p class="pres-card__desc">Meal frameworks, macros and sample plans delivered alongside the training.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Digital downloads</h3>
+                        <p class="pres-card__desc">Guides, templates and assets released through expiring, signed download links.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Memberships</h3>
+                        <p class="pres-card__desc">Recurring access with entitlements resolved per customer, per product.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Checkout</h3>
+                        <p class="pres-card__desc">A conversion-tuned checkout with saved details, discounts and one clear action.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Payments</h3>
+                        <p class="pres-card__desc">Card and wallet payments, refunds and reconciliation, handled end to end.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Customer accounts</h3>
+                        <p class="pres-card__desc">Accounts created automatically at purchase, with passwordless sign-in.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Analytics</h3>
+                        <p class="pres-card__desc">Revenue, orders, products and customer behaviour in one live dashboard.</p>
+                    </li>
+                    <li class="pres-card" data-reveal>
+                        <span class="pres-card__mark" aria-hidden="true"></span>
+                        <h3 class="pres-card__title">Customer support</h3>
+                        <p class="pres-card__desc">Buyer questions, access issues and refunds answered by our team, not theirs.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:services-->
+
+        <!--SECTION:studio-->
+        <!-- ============================================================
+             4. CREATIVE STUDIO
+             ============================================================ -->
+        <section class="pres-section" id="pres-studio" data-section-id="studio" data-section-label="Creative studio">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Creative studio</p>
+                    <h2 class="pres-h2" data-reveal>Production is part of the platform.</h2>
+                    <p class="pres-lead" data-reveal>
+                        The commercial system only works if there is something to sell and
+                        something to say. Our in-house studio produces both, so creators can
+                        stay on the one job that cannot be delegated while our team handles
+                        everything downstream of it.
+                    </p>
+                </header>
+
+                <ul class="pres-grid pres-grid--studio" data-reveal-group>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Video Editing</h3>
+                        <p class="pres-tile__desc">Full post-production on launch films, program trailers and campaign cuts.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Short-form Content</h3>
+                        <p class="pres-tile__desc">Vertical edits built for reach, cut from footage that already exists.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Long-form Content</h3>
+                        <p class="pres-tile__desc">Episodes, documentaries and deep-dive pieces that carry the brand story.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Graphic Design</h3>
+                        <p class="pres-tile__desc">Covers, layouts and program artwork, consistent across the catalogue.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Branding</h3>
+                        <p class="pres-tile__desc">Identity, type, palette and voice. Defined once, applied everywhere.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Merch Design</h3>
+                        <p class="pres-tile__desc">Apparel and physical product design ready for production runs.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Marketing Assets</h3>
+                        <p class="pres-tile__desc">Ad creative, email art direction and launch collateral on schedule.</p>
+                    </li>
+                    <li class="pres-tile" data-reveal>
+                        <h3 class="pres-tile__title">Social Media Optimization</h3>
+                        <p class="pres-tile__desc">Formats, captions, cadence and testing tuned to each platform.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:studio-->
+
+        <!--SECTION:process-->
+        <!-- ============================================================
+             5. HOW IT WORKS — the step wizard
+             One DOM, two genuinely different layouts: below 1024px it is a
+             vertical accordion timeline (headers open their own body inline);
+             above it, every body is placed in a second grid column and cross-
+             faded, so the numbered rail stays fixed while the detail changes.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-process" data-section-id="process" data-section-label="How it works">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>How it works</p>
+                    <h2 class="pres-h2" data-reveal>Six steps from first conversation to compounding revenue.</h2>
+                </header>
+
+                <div class="pres-wizard" id="presWizard" data-reveal>
+                    <div class="pres-wizard__rail" aria-hidden="true">
+                        <span class="pres-wizard__rail-fill" id="presWizardFill"></span>
+                    </div>
+
+                    <div class="pres-step" data-step="1">
+                        <button class="pres-step__head" type="button" aria-expanded="true">
+                            <span class="pres-step__num">1</span>
+                            <span class="pres-step__label">Apply</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>We review every application against a single question: is there an audience
+                                    here that would buy something we can build well? Fit matters more than size,
+                                    and we take on a small number of partners at a time.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="2">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">2</span>
+                            <span class="pres-step__label">Strategy Call</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>A working session, not a pitch. We map the audience, the offer and the
+                                    pricing, and leave with a concrete product roadmap and a launch date
+                                    everyone has agreed to.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="3">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">3</span>
+                            <span class="pres-step__label">Content Preparation</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>Our studio produces what the launch needs: filming, editing, photography,
+                                    design and copy. The creator keeps to their normal publishing rhythm.
+                                    Production is our problem from here.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="4">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">4</span>
+                            <span class="pres-step__label">Product Publishing</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>Programs, plans and downloads are built inside the platform, priced,
+                                    proofed and staged behind the scenes. Checkout, delivery and accounts
+                                    are wired up and tested before anyone sees them.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="5">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">5</span>
+                            <span class="pres-step__label">Launch</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>The storefront goes live with the campaign already loaded: assets
+                                    scheduled, emails queued, discounts configured. We monitor the first
+                                    days closely and adjust in real time.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pres-step" data-step="6">
+                        <button class="pres-step__head" type="button" aria-expanded="false">
+                            <span class="pres-step__num">6</span>
+                            <span class="pres-step__label">Sales &amp; Growth</span>
+                            <span class="pres-step__chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="pres-step__body">
+                            <div class="pres-step__body-inner">
+                                <p>The platform keeps selling after the launch window closes. We read the
+                                    analytics, expand the catalogue, run promotions and support every
+                                    customer, so revenue compounds instead of spiking once.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:process-->
+
+        <!--SECTION:why-->
+        <!-- ============================================================
+             6. WHY FITNESS AGENCY
+             A continuously moving band of benefits rather than a static
+             grid. The motion is the argument: the list is longer than the
+             viewport and never stops, which is the point being made.
+             ============================================================ -->
+        <section class="pres-section pres-section--deep" id="pres-why" data-section-id="why" data-section-label="Why Fitness Agency">
+            <div class="pres-aura" aria-hidden="true" data-parallax="0.07">
+                <span class="pres-aura__orb pres-aura__orb--a"></span>
+                <span class="pres-aura__orb pres-aura__orb--b"></span>
+            </div>
+
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Why Fitness Agency</p>
+                    <h2 class="pres-h2" data-reveal>Every operational job, lifted off your desk.</h2>
+                    <p class="pres-lead" data-reveal>
+                        You keep the audience, the method and the name on the door. We take
+                        the platform, the products, the payments, the production and the
+                        person emailing at midnight to ask where their download went.
+                    </p>
+                </header>
+            </div>
+
+            <!-- Full-bleed on purpose: the band has to run off both edges of
+                 the viewport for the loop to read as endless rather than as a
+                 slider with a start and a finish. -->
+            <div class="pres-belt" id="presBelt" data-reveal>
+                <div class="pres-belt__viewport" id="presBeltViewport" tabindex="0" role="group"
+                    aria-label="Platform benefits. Use the left and right arrow keys to move through them.">
+                    <ul class="pres-belt__track" id="presBeltTrack">
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 3 7.5 12 12l9-4.5L12 3Z"/><path d="M3 12.5 12 17l9-4.5"/><path d="M3 17.5 12 22l9-4.5"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">One platform for everything</h3>
+                            <p class="pres-benefit__desc">Storefront, checkout, member area and admin, running as one system.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Instant digital delivery</h3>
+                            <p class="pres-benefit__desc">The product lands in the customer's library the second a payment clears.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M4 5.5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"/><path d="M2 10h20"/><path d="M6 14.5h3.5"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Payments handled automatically</h3>
+                            <p class="pres-benefit__desc">Cards, wallets, refunds and receipts settle without a message to you.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M20.5 12.4a7.6 7.6 0 0 1-7.6 7.6H8.4L4 23v-5.6a7.6 7.6 0 1 1 16.5-5Z"/><path d="m8.6 12.2 2.4 2.4 4.6-4.8"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Customer support managed</h3>
+                            <p class="pres-benefit__desc">Buyer questions and access issues reach our inbox, never yours.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4.5" width="18" height="6.2" rx="2"/><rect x="3" y="13.3" width="18" height="6.2" rx="2"/><path d="M7 7.6h.01"/><path d="M7 16.4h.01"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Website hosting included</h3>
+                            <p class="pres-benefit__desc">Hosting, certificates, backups and uptime are ours to worry about.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M10 9.2 15 12l-5 2.8V9.2Z"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Video and content production</h3>
+                            <p class="pres-benefit__desc">Our studio films, edits and designs every asset a launch needs.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M12 2.8 21 7.4v9.2L12 21.2 3 16.6V7.4L12 2.8Z"/><path d="M3 7.4 12 12l9-4.6"/><path d="M12 12v9.2"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Product management</h3>
+                            <p class="pres-benefit__desc">Programs, plans and bundles built, priced and published on your behalf.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M4 20V10.5"/><path d="M10 20V4.5"/><path d="M16 20v-7"/><path d="M2.5 20h19"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Analytics dashboard</h3>
+                            <p class="pres-benefit__desc">Revenue, orders and customer behaviour in one live view.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M3 16.5 9 10l4 4 8-8"/><path d="M15 6h6v6"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Unlimited scaling</h3>
+                            <p class="pres-benefit__desc">The thousandth sale costs exactly what the first one did.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M12 2.6 4.5 5.8v6c0 4.4 3.1 8.2 7.5 9.6 4.4-1.4 7.5-5.2 7.5-9.6v-6L12 2.6Z"/><path d="m8.6 11.9 2.5 2.5 4.4-4.6"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Secure Stripe payments</h3>
+                            <p class="pres-benefit__desc">The same rails the largest platforms use, with 3D Secure built in.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.6h3"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Mobile optimised</h3>
+                            <p class="pres-benefit__desc">Most of your audience buys on a phone. Every screen starts there.</p>
+                        </li>
+                        <li class="pres-benefit">
+                            <span class="pres-benefit__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="3.5" width="19" height="17" rx="2.5"/><path d="M2.5 9h19"/><path d="M9 9v11.5"/></svg>
+                            </span>
+                            <h3 class="pres-benefit__title">Creator dashboard</h3>
+                            <p class="pres-benefit__desc">One place to watch sales land and decide what to build next.</p>
+                        </li>
+                    </ul>
+                </div>
+                <p class="pres-belt__hint" aria-hidden="true">Drag to explore</p>
+            </div>
+
+            <div class="pres-container">
+                <!-- The three pillars. Previously three flat glass panels with
+                     an index, a heading and a line of copy — structurally the
+                     weakest block on a deck that had since grown a bento, a
+                     value grid and a wizard around it.
+
+                     Rebuilt with the same vocabulary those use: a drawn icon,
+                     a proof figure, and the before/after that makes the claim
+                     concrete. Each card animates its own glyph on hover and on
+                     first reveal, which is the one thing the flat version had
+                     no room for. -->
+                <ul class="pres-pillars" data-reveal-group>
+                    <li class="pres-pillar" data-reveal data-magnetic>
+                        <span class="pres-pillar__index">01</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- Five scattered tools collapsing into one square:
+                                 the drawing IS the claim. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--a" x="6" y="6" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--b" x="29" y="6" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--c" x="6" y="29" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__glyph pres-pillar__glyph--d" x="29" y="29" width="13" height="13" rx="3.5"/>
+                                <rect class="pres-pillar__core" x="17.5" y="17.5" width="13" height="13" rx="3.5"/>
+                            </svg>
+                        </span>
+                        <h3 class="pres-pillar__title">Simplicity</h3>
+                        <p class="pres-pillar__desc">
+                            One platform, one team, one dashboard, instead of a stack of
+                            subscriptions to administer and reconcile.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Before</dt>
+                                <dd>6+ tools</dd>
+                            </div>
+                            <div>
+                                <dt>After</dt>
+                                <dd>One login</dd>
+                            </div>
+                        </dl>
+                    </li>
+
+                    <li class="pres-pillar" data-reveal data-magnetic>
+                        <span class="pres-pillar__index">02</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- A payment landing, then three steps firing in
+                                 sequence along the track below it. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <path class="pres-pillar__track" d="M7 33h34"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--1" cx="13" cy="33" r="3.4"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--2" cx="24" cy="33" r="3.4"/>
+                                <circle class="pres-pillar__pip pres-pillar__pip--3" cx="35" cy="33" r="3.4"/>
+                                <path class="pres-pillar__bolt" d="M26 6 14 23h9l-2 11 13-18h-9z"/>
+                            </svg>
+                        </span>
+                        <h3 class="pres-pillar__title">Automation</h3>
+                        <p class="pres-pillar__desc">
+                            Accounts, delivery, receipts and access are provisioned the moment
+                            a payment clears — not the next time somebody checks.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Manual steps</dt>
+                                <dd>Zero</dd>
+                            </div>
+                            <div>
+                                <dt>Time to access</dt>
+                                <dd>Instant</dd>
+                            </div>
+                        </dl>
+                    </li>
+
+                    <li class="pres-pillar" data-reveal data-magnetic>
+                        <span class="pres-pillar__index">03</span>
+                        <span class="pres-pillar__icon" aria-hidden="true">
+                            <!-- Four rising columns. The tallest is filled, the
+                                 same device the campaign and progress charts
+                                 elsewhere in the deck use. -->
+                            <svg viewBox="0 0 48 48" focusable="false">
+                                <rect class="pres-pillar__bar pres-pillar__bar--1" x="7" y="30" width="7" height="12" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--2" x="18" y="23" width="7" height="19" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--3" x="29" y="16" width="7" height="26" rx="2"/>
+                                <rect class="pres-pillar__bar pres-pillar__bar--4 is-filled" x="40" y="7" width="7" height="35" rx="2"/>
+                            </svg>
+                        </span>
+                        <h3 class="pres-pillar__title">Scalability</h3>
+                        <p class="pres-pillar__desc">
+                            Growth stops depending on your hours. None of the delivery work is
+                            done by hand, so the thousandth customer costs what the first did.
+                        </p>
+                        <dl class="pres-pillar__proof">
+                            <div>
+                                <dt>Cost per sale</dt>
+                                <dd>Flat</dd>
+                            </div>
+                            <div>
+                                <dt>Your time</dt>
+                                <dd>Unchanged</dd>
+                            </div>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:why-->
+
+        <!--SECTION:showcase-->
+        <!-- ============================================================
+             7. PRODUCT SHOWCASE
+             The member area a customer lands in after buying, built as
+             real DOM rather than screenshots, and switchable between the
+             two devices people actually use. Both mockups are drawn at a
+             fixed design size (1120x700 and 340x736) and scaled to the
+             frame by presentation.js, which is what keeps the internal
+             proportions identical at every viewport.
+
+             aria-hidden on the mockups is deliberate: they are a picture
+             of an interface, and reading 200 fragments of fake UI aloud
+             would bury the copy that actually explains the product.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint pres-section--deep" id="pres-showcase" data-section-id="showcase" data-section-label="Platform">
+            <div class="pres-aura" aria-hidden="true" data-parallax="0.05">
+                <span class="pres-aura__orb pres-aura__orb--c"></span>
+                <span class="pres-aura__grid"></span>
+            </div>
+
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Product showcase</p>
+                    <h2 class="pres-h2" data-reveal>This is what your customer sees after they buy.</h2>
+                    <p class="pres-lead" data-reveal>
+                        No inbox to search, no download link to chase, no password to invent.
+                        The account already exists and the product is already inside it.
+                    </p>
+                </header>
+
+                <!-- Device switcher. Two real tabs over one stage, with the
+                     selected thumb sliding between them rather than snapping,
+                     so the change of device reads as a movement. -->
+                <div class="pres-switch" id="presSwitch" role="tablist" aria-label="Choose a device" data-reveal>
+                    <span class="pres-switch__thumb" id="presSwitchThumb" aria-hidden="true"></span>
+                    <button class="pres-switch__btn is-active" type="button" role="tab" id="presTabDesktop"
+                        data-device="desktop" aria-selected="true" aria-controls="presPaneDesktop">
+                        <span class="pres-switch__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 20.5h7"/><path d="M12 17v3.5"/></svg>
+                        </span>
+                        <span class="pres-switch__label">Desktop</span>
+                    </button>
+                    <button class="pres-switch__btn" type="button" role="tab" id="presTabPhone"
+                        data-device="phone" aria-selected="false" aria-controls="presPanePhone" tabindex="-1">
+                        <span class="pres-switch__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.6h3"/></svg>
+                        </span>
+                        <span class="pres-switch__label">Phone</span>
+                    </button>
+                </div>
+
+                <div class="pres-stage" id="presStage" data-device="desktop" data-reveal>
+                    <span class="pres-stage__glow" aria-hidden="true"></span>
+
+                    <!-- Callouts that flank the phone. Shown only in phone
+                         mode and only where there is genuinely room beside
+                         the frame, which is the same space that otherwise
+                         sits empty on a wide screen. Decorative: every
+                         claim here is made again in the body copy. -->
+                    <ul class="pres-stage__notes" aria-hidden="true">
+                        <li class="pres-stage__note pres-stage__note--1">
+                            <p class="pres-stage__note-title">Signed in already</p>
+                            <p class="pres-stage__note-body">They arrived from the emailed link. There was no password to invent.</p>
+                        </li>
+                        <li class="pres-stage__note pres-stage__note--2">
+                            <p class="pres-stage__note-title">Picks up where they stopped</p>
+                            <p class="pres-stage__note-body">Progress is stored per lesson, per device.</p>
+                        </li>
+                        <li class="pres-stage__note pres-stage__note--3">
+                            <p class="pres-stage__note-title">One product, three surfaces</p>
+                            <p class="pres-stage__note-body">Workout, nutrition and video, swiped between.</p>
+                        </li>
+                        <li class="pres-stage__note pres-stage__note--4">
+                            <p class="pres-stage__note-title">Downloads stay theirs</p>
+                            <p class="pres-stage__note-body">Issued as short-lived signed links tied to the purchase.</p>
+                        </li>
+                    </ul>
+
+                    <!-- ---------------- DESKTOP ---------------- -->
+                    <div class="pres-pane pres-pane--desktop is-active" id="presPaneDesktop"
+                        role="tabpanel" aria-labelledby="presTabDesktop">
+                        <div class="pres-shell pres-shell--desktop">
+                            <div class="pres-shell__screen">
+                                <div class="pres-fit" data-fit-width="1120">
+                                    <div class="mock mock--desktop" aria-hidden="true">
+
+                                        <div class="mock__chrome">
+                                            <span class="mock__dots"><i></i><i></i><i></i></span>
+                                            <span class="mock__url">yourbrand.com/my-library</span>
+                                            <span class="mock__chrome-pad"></span>
+                                        </div>
+
+                                        <div class="mock__app">
+
+                                        <aside class="mock__side">
+                                            <div class="mock__brand">
+                                                <span class="mock__brand-mark"></span>
+                                                <span class="mock__brand-name">Jordan Vale</span>
+                                            </div>
+                                            <p class="mock__side-label">Library</p>
+                                            <!-- data-desk-nav ties a row to a page id; the rows
+                                                 without one are real destinations in the product
+                                                 that this four-page demo simply doesn't visit. -->
+                                            <ul class="mock__nav">
+                                                <li class="is-active" data-desk-nav="library"><span class="mock__nav-dot"></span>Purchased products</li>
+                                                <li data-desk-nav="workout"><span class="mock__nav-dot"></span>Training plans</li>
+                                                <li data-desk-nav="nutrition"><span class="mock__nav-dot"></span>Nutrition plans</li>
+                                                <li><span class="mock__nav-dot"></span>Video lessons</li>
+                                                <li><span class="mock__nav-dot"></span>Downloads</li>
+                                            </ul>
+                                            <p class="mock__side-label">Account</p>
+                                            <ul class="mock__nav">
+                                                <li data-desk-nav="progress"><span class="mock__nav-dot"></span>Progress</li>
+                                                <li><span class="mock__nav-dot"></span>Certificates</li>
+                                            </ul>
+                                            <div class="mock__side-card">
+                                                <p class="mock__side-card-title">Need a hand?</p>
+                                                <p class="mock__side-card-body">Our team replies in a few hours.</p>
+                                                <span class="mock__side-card-btn">Contact support</span>
+                                            </div>
+                                        </aside>
+
+                                        <div class="mock__main">
+                                            <header class="mock__top">
+                                                <div>
+                                                    <p class="mock__hello">Welcome back, Alex</p>
+                                                    <p class="mock__hello-sub">You own 6 products. Two are in progress.</p>
+                                                </div>
+                                                <div class="mock__top-right">
+                                                    <span class="mock__search">Search your library</span>
+                                                    <span class="mock__avatar">A</span>
+                                                </div>
+                                            </header>
+
+                                            <!-- The pages the deck browses through. Absolutely
+                                                 positioned siblings inside a fixed-height box, so
+                                                 changing page cannot resize the mockup and the
+                                                 laptop shell never grows or shrinks mid-demo. The
+                                                 sidebar nav on the left lights up in step with
+                                                 whichever page is showing — that pairing is what
+                                                 makes it read as somebody clicking around rather
+                                                 than as four unrelated screenshots. -->
+                                            <div class="mock__pages" id="presDeskPages">
+
+                                            <section class="mock__page is-active" data-desk-page="library">
+                                            <ul class="mock__stats">
+                                                <li class="mock__stat">
+                                                    <span class="mock__stat-value">6</span>
+                                                    <span class="mock__stat-label">Products owned</span>
+                                                </li>
+                                                <li class="mock__stat">
+                                                    <span class="mock__stat-value">24</span>
+                                                    <span class="mock__stat-label">Lessons completed</span>
+                                                </li>
+                                                <li class="mock__stat">
+                                                    <span class="mock__stat-value">12</span>
+                                                    <span class="mock__stat-label">Day streak</span>
+                                                </li>
+                                                <li class="mock__stat">
+                                                    <span class="mock__stat-value">2</span>
+                                                    <span class="mock__stat-label">Certificates</span>
+                                                </li>
+                                            </ul>
+
+                                            <div class="mock__cols">
+                                                <section class="mock__panel">
+                                                    <header class="mock__panel-head">
+                                                        <p class="mock__panel-title">Continue where you left off</p>
+                                                        <span class="mock__panel-link">View all</span>
+                                                    </header>
+
+                                                    <ul class="mock__products">
+                                                        <li class="mock__product">
+                                                            <span class="mock__cover mock__cover--a"></span>
+                                                            <span class="mock__product-body">
+                                                                <span class="mock__product-title">12 Week Strength Program</span>
+                                                                <span class="mock__product-meta">Training plan · 36 sessions</span>
+                                                                <span class="mock__bar"><i data-fill="68"></i></span>
+                                                            </span>
+                                                            <span class="mock__product-pct">68%</span>
+                                                        </li>
+                                                        <li class="mock__product">
+                                                            <span class="mock__cover mock__cover--b"></span>
+                                                            <span class="mock__product-body">
+                                                                <span class="mock__product-title">Lean Kitchen Nutrition Plan</span>
+                                                                <span class="mock__product-meta">Nutrition plan · 40 recipes</span>
+                                                                <span class="mock__bar"><i data-fill="41"></i></span>
+                                                            </span>
+                                                            <span class="mock__product-pct">41%</span>
+                                                        </li>
+                                                        <li class="mock__product">
+                                                            <span class="mock__cover mock__cover--c"></span>
+                                                            <span class="mock__product-body">
+                                                                <span class="mock__product-title">Mobility Masterclass</span>
+                                                                <span class="mock__product-meta">Video course · 18 lessons</span>
+                                                                <span class="mock__bar"><i data-fill="92"></i></span>
+                                                            </span>
+                                                            <span class="mock__product-pct">92%</span>
+                                                        </li>
+                                                    </ul>
+
+                                                    <header class="mock__panel-head mock__panel-head--sub">
+                                                        <p class="mock__panel-title">Downloads</p>
+                                                    </header>
+                                                    <ul class="mock__files">
+                                                        <li class="mock__file">
+                                                            <span class="mock__file-icon"></span>
+                                                            <span class="mock__file-name">Week 3 training log</span>
+                                                            <span class="mock__file-meta">PDF · 1.2 MB</span>
+                                                            <span class="mock__file-btn">Download</span>
+                                                        </li>
+                                                        <li class="mock__file">
+                                                            <span class="mock__file-icon"></span>
+                                                            <span class="mock__file-name">Recipe book, volume 2</span>
+                                                            <span class="mock__file-meta">PDF · 8.4 MB</span>
+                                                            <span class="mock__file-btn">Download</span>
+                                                        </li>
+                                                    </ul>
+                                                </section>
+
+                                                <aside class="mock__rail">
+                                                    <div class="mock__player">
+                                                        <span class="mock__player-cover">
+                                                            <span class="mock__play"></span>
+                                                        </span>
+                                                        <p class="mock__player-title">Lesson 14: Bracing under load</p>
+                                                        <p class="mock__player-meta">12:04 of 18:30</p>
+                                                        <span class="mock__bar mock__bar--light"><i data-fill="65"></i></span>
+                                                    </div>
+
+                                                    <div class="mock__progress">
+                                                        <p class="mock__rail-title">This month</p>
+                                                        <div class="mock__chart">
+                                                            <svg viewBox="0 0 200 64" preserveAspectRatio="none" focusable="false">
+                                                                <path class="mock__spark-area" d="M0 56 L28 50 L56 53 L84 34 L112 39 L140 20 L168 25 L200 8 L200 64 L0 64 Z"/>
+                                                                <path class="mock__spark" d="M0 56 L28 50 L56 53 L84 34 L112 39 L140 20 L168 25 L200 8"/>
+                                                            </svg>
+                                                        </div>
+                                                        <p class="mock__rail-meta">14 sessions completed</p>
+                                                    </div>
+
+                                                    <div class="mock__cert">
+                                                        <span class="mock__cert-seal"></span>
+                                                        <p class="mock__cert-title">Certificate unlocked</p>
+                                                        <p class="mock__cert-meta">Mobility Masterclass</p>
+                                                    </div>
+                                                </aside>
+                                            </div>
+                                            </section><!-- /library -->
+
+                                            <!-- ---- Workout viewer ---- -->
+                                            <section class="mock__page" data-desk-page="workout">
+                                                <div class="mock__viewer">
+                                                    <div class="mock__viewer-main">
+                                                        <div class="mock__stagevid">
+                                                            <span class="mock__play"></span>
+                                                            <span class="mock__stagevid-tag">Week 3 · Day 12 · Lower body</span>
+                                                            <span class="mock__bar mock__bar--light mock__bar--scrub"><i data-fill="42"></i></span>
+                                                        </div>
+                                                        <header class="mock__panel-head">
+                                                            <p class="mock__panel-title"><!--PRES_PRODUCT_NAME--></p>
+                                                            <span class="mock__panel-link">Mark complete</span>
+                                                        </header>
+                                                        <ul class="mock__sets">
+                                                            <li><span class="mock__set-name">Back squat</span><span class="mock__set-meta">4 × 6 · RPE 8</span><span class="mock__set-note">3 min rest</span></li>
+                                                            <li class="is-live"><span class="mock__set-name">Romanian deadlift</span><span class="mock__set-meta">3 × 8 · RPE 7</span><span class="mock__set-note">2 min rest</span></li>
+                                                            <li><span class="mock__set-name">Bulgarian split squat</span><span class="mock__set-meta">3 × 10</span><span class="mock__set-note">Swap available</span></li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <!-- Looping exercise demonstrations. These are the
+                                                         short clips a creator uploads per movement —
+                                                         drawn here as a CSS loop rather than shipped as
+                                                         real GIFs, because four autoplaying GIFs in a
+                                                         deck is a megabyte of download and a decoding
+                                                         cost on every frame the page paints. -->
+                                                    <aside class="mock__demos">
+                                                        <p class="mock__rail-title">Demonstrations</p>
+                                                        <ul class="mock__demo-list">
+                                                            <li class="mock__demo">
+                                                                <span class="mock__demo-art"><i class="mock__demo-figure mock__demo-figure--squat"></i></span>
+                                                                <span class="mock__demo-name">Back squat</span>
+                                                            </li>
+                                                            <li class="mock__demo">
+                                                                <span class="mock__demo-art"><i class="mock__demo-figure mock__demo-figure--hinge"></i></span>
+                                                                <span class="mock__demo-name">Hip hinge</span>
+                                                            </li>
+                                                            <li class="mock__demo">
+                                                                <span class="mock__demo-art"><i class="mock__demo-figure mock__demo-figure--press"></i></span>
+                                                                <span class="mock__demo-name">Press</span>
+                                                            </li>
+                                                        </ul>
+                                                        <p class="mock__rail-meta">Looping clips, no download</p>
+                                                    </aside>
+                                                </div>
+                                            </section><!-- /workout -->
+
+                                            <!-- ---- Nutrition ---- -->
+                                            <section class="mock__page" data-desk-page="nutrition">
+                                                <div class="mock__viewer">
+                                                    <div class="mock__viewer-main">
+                                                        <ul class="mock__stats mock__stats--3">
+                                                            <li class="mock__stat"><span class="mock__stat-value">2,340</span><span class="mock__stat-label">Calories today</span></li>
+                                                            <li class="mock__stat"><span class="mock__stat-value">186 g</span><span class="mock__stat-label">Protein</span></li>
+                                                            <li class="mock__stat"><span class="mock__stat-value">4</span><span class="mock__stat-label">Meals planned</span></li>
+                                                        </ul>
+                                                        <header class="mock__panel-head">
+                                                            <p class="mock__panel-title">Day 12 · Meal plan</p>
+                                                            <span class="mock__panel-link">Swap a meal</span>
+                                                        </header>
+                                                        <ul class="mock__meals">
+                                                            <li><span class="mock__meal-art"></span><span class="mock__set-name">Overnight oats, berries</span><span class="mock__set-meta">520 kcal</span></li>
+                                                            <li><span class="mock__meal-art"></span><span class="mock__set-name">Chicken, rice, greens</span><span class="mock__set-meta">740 kcal</span></li>
+                                                            <li><span class="mock__meal-art"></span><span class="mock__set-name">Salmon, potatoes</span><span class="mock__set-meta">810 kcal</span></li>
+                                                        </ul>
+                                                    </div>
+                                                    <aside class="mock__demos">
+                                                        <p class="mock__rail-title">Macros</p>
+                                                        <ul class="mock__macrolist">
+                                                            <li><span class="mock__macro-name">Protein</span><span class="mock__bar"><i data-fill="82"></i></span></li>
+                                                            <li><span class="mock__macro-name">Carbs</span><span class="mock__bar"><i data-fill="64"></i></span></li>
+                                                            <li><span class="mock__macro-name">Fat</span><span class="mock__bar"><i data-fill="48"></i></span></li>
+                                                        </ul>
+                                                        <p class="mock__rail-meta">Adjusts with the training block</p>
+                                                    </aside>
+                                                </div>
+                                            </section><!-- /nutrition -->
+
+                                            <!-- ---- Progress ---- -->
+                                            <section class="mock__page" data-desk-page="progress">
+                                                <ul class="mock__stats">
+                                                    <li class="mock__stat"><span class="mock__stat-value">12</span><span class="mock__stat-label">Day streak</span></li>
+                                                    <li class="mock__stat"><span class="mock__stat-value">38</span><span class="mock__stat-label">Sessions logged</span></li>
+                                                    <li class="mock__stat"><span class="mock__stat-value">+14%</span><span class="mock__stat-label">Squat estimate</span></li>
+                                                    <li class="mock__stat"><span class="mock__stat-value">86%</span><span class="mock__stat-label">Plan adherence</span></li>
+                                                </ul>
+                                                <div class="mock__viewer">
+                                                    <div class="mock__viewer-main">
+                                                        <header class="mock__panel-head">
+                                                            <p class="mock__panel-title">Twelve weeks of training</p>
+                                                            <span class="mock__panel-link">Export</span>
+                                                        </header>
+                                                        <div class="mock__bars">
+                                                            <i data-fill="34"></i><i data-fill="46"></i><i data-fill="41"></i>
+                                                            <i data-fill="58"></i><i data-fill="52"></i><i data-fill="67"></i>
+                                                            <i data-fill="61"></i><i data-fill="74"></i><i data-fill="70"></i>
+                                                            <i data-fill="83"></i><i data-fill="79"></i><i data-fill="94"></i>
+                                                        </div>
+                                                    </div>
+                                                    <aside class="mock__demos">
+                                                        <p class="mock__rail-title">Milestones</p>
+                                                        <ul class="mock__milestones">
+                                                            <li><span class="mock__tickmark"></span>First full block finished</li>
+                                                            <li><span class="mock__tickmark"></span>Bodyweight squat × 1.5</li>
+                                                            <li><span class="mock__tickmark"></span>30 sessions logged</li>
+                                                        </ul>
+                                                        <p class="mock__rail-meta">Shared with their coach in a tap</p>
+                                                    </aside>
+                                                </div>
+                                            </section><!-- /progress -->
+
+                                            </div><!-- /.mock__pages -->
+                                        </div>
+
+                                        </div><!-- /.mock__app -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ---------------- PHONE ---------------- -->
+                    <div class="pres-pane pres-pane--phone" id="presPanePhone"
+                        role="tabpanel" aria-labelledby="presTabPhone">
+                        <div class="pres-shell pres-shell--phone">
+                            <span class="pres-shell__notch" aria-hidden="true"></span>
+                            <div class="pres-shell__screen">
+                                <div class="pres-fit" data-fit-width="340">
+                                    <div class="mock mock--phone" aria-hidden="true">
+
+                                        <div class="mockp__status">
+                                            <span>9:41</span>
+                                            <span class="mockp__status-icons"><i></i><i></i><i></i></span>
+                                        </div>
+
+                                        <div class="mockp__bar">
+                                            <span class="mockp__back"></span>
+                                            <span class="mockp__bar-text">
+                                                <span class="mockp__bar-title"><!--PRES_PRODUCT_NAME--></span>
+                                                <span class="mockp__bar-sub">Week 3 · Day 12</span>
+                                            </span>
+                                            <span class="mockp__avatar">A</span>
+                                        </div>
+
+                                        <div class="mockp__deck" id="presPhoneDeck">
+                                            <ul class="mockp__slides" id="presPhoneSlides">
+
+                                                <!-- Library. Deliberately first: the phone deck
+                                                     should open where a customer opens the app,
+                                                     on the things they own, and only then walk
+                                                     through what is inside one of them. -->
+                                                <li class="mockp__slide">
+                                                    <p class="mockp__section">Your library</p>
+                                                    <ul class="mockp__owned">
+                                                        <li>
+                                                            <span class="mockp__owned-art">
+                                                                <!--IFPRODUCTIMAGE--><img class="mockp__owned-img" src="<!--PRES_PRODUCT_IMAGE-->" alt="" loading="lazy" decoding="async"><!--/IFPRODUCTIMAGE-->
+                                                            </span>
+                                                            <span class="mockp__owned-text">
+                                                                <span class="mockp__row-name"><!--PRES_PRODUCT_NAME--></span>
+                                                                <span class="mockp__owned-bar"><i data-fill="62"></i></span>
+                                                            </span>
+                                                        </li>
+                                                        <li>
+                                                            <span class="mockp__owned-art"></span>
+                                                            <span class="mockp__owned-text">
+                                                                <span class="mockp__row-name">Mobility Masterclass</span>
+                                                                <span class="mockp__owned-bar"><i data-fill="88"></i></span>
+                                                            </span>
+                                                        </li>
+                                                        <li>
+                                                            <span class="mockp__owned-art"></span>
+                                                            <span class="mockp__owned-text">
+                                                                <span class="mockp__row-name">Recipe book, vol. 2</span>
+                                                                <span class="mockp__owned-bar"><i data-fill="34"></i></span>
+                                                            </span>
+                                                        </li>
+                                                    </ul>
+                                                    <p class="mockp__section">Downloads</p>
+                                                    <ul class="mockp__list">
+                                                        <li><span class="mockp__meal"></span><span class="mockp__row-name">Week 3 training log</span><span class="mockp__row-meta">PDF</span></li>
+                                                        <li><span class="mockp__meal"></span><span class="mockp__row-name">Shopping list</span><span class="mockp__row-meta">PDF</span></li>
+                                                    </ul>
+                                                    <span class="mockp__cta">Continue training</span>
+                                                </li>
+
+                                                <li class="mockp__slide">
+                                                    <div class="mockp__hero">
+                                                        <span class="mockp__hero-play"></span>
+                                                        <span class="mockp__hero-tag">Lower body · 48 min</span>
+                                                    </div>
+                                                    <p class="mockp__section">Today's session</p>
+                                                    <ul class="mockp__list">
+                                                        <li class="is-done"><span class="mockp__tick"></span><span class="mockp__row-name">Back squat</span><span class="mockp__row-meta">4 × 6</span></li>
+                                                        <li class="is-done"><span class="mockp__tick"></span><span class="mockp__row-name">Romanian deadlift</span><span class="mockp__row-meta">3 × 8</span></li>
+                                                        <li class="is-live"><span class="mockp__tick"></span><span class="mockp__row-name">Split squat</span><span class="mockp__row-meta">3 × 10</span></li>
+                                                        <li><span class="mockp__tick"></span><span class="mockp__row-name">Hip thrust</span><span class="mockp__row-meta">3 × 12</span></li>
+                                                    </ul>
+                                                    <span class="mockp__cta">Start rest timer</span>
+                                                </li>
+
+                                                <li class="mockp__slide">
+                                                    <div class="mockp__macro">
+                                                        <span class="mockp__ring">
+                                                            <svg viewBox="0 0 100 100" focusable="false">
+                                                                <circle class="mockp__ring-track" cx="50" cy="50" r="42"/>
+                                                                <circle class="mockp__ring-fill" cx="50" cy="50" r="42"/>
+                                                            </svg>
+                                                            <span class="mockp__ring-value">2340<i>kcal</i></span>
+                                                        </span>
+                                                        <ul class="mockp__macros">
+                                                            <li><span class="mockp__macro-name">Protein</span><span class="mockp__bar"><i data-fill="82"></i></span><span class="mockp__macro-val">186 g</span></li>
+                                                            <li><span class="mockp__macro-name">Carbs</span><span class="mockp__bar"><i data-fill="64"></i></span><span class="mockp__macro-val">240 g</span></li>
+                                                            <li><span class="mockp__macro-name">Fat</span><span class="mockp__bar"><i data-fill="48"></i></span><span class="mockp__macro-val">72 g</span></li>
+                                                        </ul>
+                                                    </div>
+                                                    <p class="mockp__section">Today's meals</p>
+                                                    <ul class="mockp__list">
+                                                        <li><span class="mockp__meal"></span><span class="mockp__row-name">Breakfast</span><span class="mockp__row-meta">520 kcal</span></li>
+                                                        <li><span class="mockp__meal"></span><span class="mockp__row-name">Lunch</span><span class="mockp__row-meta">740 kcal</span></li>
+                                                        <li><span class="mockp__meal"></span><span class="mockp__row-name">Dinner</span><span class="mockp__row-meta">810 kcal</span></li>
+                                                    </ul>
+                                                </li>
+
+                                                <li class="mockp__slide">
+                                                    <div class="mockp__video">
+                                                        <span class="mockp__hero-play"></span>
+                                                        <span class="mockp__video-scrub"><i data-fill="65"></i></span>
+                                                        <span class="mockp__video-time">12:04 / 18:30</span>
+                                                    </div>
+                                                    <p class="mockp__section">Lesson 14: Bracing under load</p>
+                                                    <ul class="mockp__list">
+                                                        <li class="is-live"><span class="mockp__chapter">01</span><span class="mockp__row-name">Setup and stance</span><span class="mockp__row-meta">4:12</span></li>
+                                                        <li><span class="mockp__chapter">02</span><span class="mockp__row-name">Breathing pattern</span><span class="mockp__row-meta">6:40</span></li>
+                                                        <li><span class="mockp__chapter">03</span><span class="mockp__row-name">Common faults</span><span class="mockp__row-meta">7:38</span></li>
+                                                        <li><span class="mockp__chapter">04</span><span class="mockp__row-name">Loading the pattern</span><span class="mockp__row-meta">5:26</span></li>
+                                                    </ul>
+                                                    <div class="mockp__attach">
+                                                        <span class="mockp__attach-icon"></span>
+                                                        <span class="mockp__attach-text">
+                                                            <span class="mockp__attach-name">Bracing cues</span>
+                                                            <span class="mockp__attach-meta">PDF · 640 KB</span>
+                                                        </span>
+                                                    </div>
+                                                    <span class="mockp__cta">Download lesson notes</span>
+                                                </li>
+
+                                                <!-- Progress. Closes the loop the library slide
+                                                     opened: what they bought, what they did with
+                                                     it, and what it produced. -->
+                                                <li class="mockp__slide">
+                                                    <p class="mockp__section">Your progress</p>
+                                                    <div class="mockp__figures">
+                                                        <span><b>12</b>day streak</span>
+                                                        <span><b>38</b>sessions</span>
+                                                        <span><b>86%</b>adherence</span>
+                                                    </div>
+                                                    <div class="mockp__bars">
+                                                        <i data-fill="34"></i><i data-fill="48"></i><i data-fill="42"></i>
+                                                        <i data-fill="61"></i><i data-fill="55"></i><i data-fill="72"></i>
+                                                        <i data-fill="68"></i><i data-fill="88"></i>
+                                                    </div>
+                                                    <ul class="mockp__list">
+                                                        <li class="is-done"><span class="mockp__tick"></span><span class="mockp__row-name">Block one complete</span><span class="mockp__row-meta">Week 4</span></li>
+                                                        <li class="is-done"><span class="mockp__tick"></span><span class="mockp__row-name">30 sessions logged</span><span class="mockp__row-meta">Week 9</span></li>
+                                                    </ul>
+                                                </li>
+
+                                            </ul>
+                                        </div>
+
+                                        <!-- One mark per slide. Kept in the markup rather than
+                                             generated so the phone reads correctly before the
+                                             script runs, same as everything else in the mock. -->
+                                        <div class="mockp__dots" id="presPhoneDots">
+                                            <i class="is-on"></i><i></i><i></i><i></i><i></i>
+                                        </div>
+
+                                        <nav class="mockp__tabs">
+                                            <span><i class="mockp__tab-icon"></i>Home</span>
+                                            <span class="is-active"><i class="mockp__tab-icon"></i>Library</span>
+                                            <span><i class="mockp__tab-icon"></i>Progress</span>
+                                            <span><i class="mockp__tab-icon"></i>Profile</span>
+                                        </nav>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="pres-stage__caption" id="presStageCaption" role="status">
+                    The member area on a laptop. Everything they own, one click from the front page.
+                </p>
+
+                <!-- Page rail. Drives the desktop deck directly and, on the
+                     phone, the equivalent slide — so the same four labels
+                     work whichever device is on the stage and a viewer who
+                     wants to see the nutrition screen can just ask for it
+                     instead of waiting for the rotation to come round. -->
+                <div class="pres-pager" id="presPager" role="tablist" aria-label="Browse the product">
+                    <button class="pres-pager__btn is-active" type="button" role="tab" aria-selected="true" data-page="library">Library</button>
+                    <button class="pres-pager__btn" type="button" role="tab" aria-selected="false" tabindex="-1" data-page="workout">Workout</button>
+                    <button class="pres-pager__btn" type="button" role="tab" aria-selected="false" tabindex="-1" data-page="nutrition">Nutrition</button>
+                    <button class="pres-pager__btn" type="button" role="tab" aria-selected="false" tabindex="-1" data-page="progress">Progress</button>
+                </div>
+
+                <!--IFPRODUCT-->
+                <!-- The showcase's own copy of the hero CTA. A viewer who has
+                     just watched the member area demo is at the point of
+                     maximum interest in the product itself, and making them
+                     scroll back to the hero to act on it is where that
+                     interest goes to die. Same destination, same admin pick. -->
+                <div class="pres-stage__cta">
+                    <!-- No nested IFPRODUCT here: the block is already inside
+                         one, and PRES_PRODUCT_META always resolves to at least
+                         "Presentation material" when a product resolved. -->
+                    <p class="pres-stage__cta-label">Showing <strong><!--PRES_PRODUCT_NAME--></strong> · <!--PRES_PRODUCT_META--></p>
+                    <a class="pres-btn pres-btn--primary pres-btn--product" href="<!--PRES_PRODUCT_URL-->" data-product-cta="showcase" target="_blank" rel="noopener">
+                        <span>View Product</span>
+                        <span class="pres-btn__arrow" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12h13"/><path d="M12.5 6.5 19 12l-6.5 5.5"/></svg>
+                        </span>
+                    </a>
+                </div>
+                <!--/IFPRODUCT-->
+            </div>
+        </section>
+        <!--/SECTION:showcase-->
+
+        <!--SECTION:partner-->
+        <!-- ============================================================
+             7b. THE PARTNER PROFILE
+
+             Placed straight after the Product Showcase on purpose: the deck
+             has just shown WHAT is sold, and this shows the public page that
+             sells it. Together they are the two halves of the same demo.
+
+             Everything inside .pres-partner__frame is rendered server-side by
+             renderPartnerMain() in routes/pages.js — the identical function
+             behind the public /partners/:slug page. Nothing about the profile
+             is authored here or stored on the presentation: the deck holds
+             only the partner's id, so a profile edited in Admin -> Partner
+             Profiles is updated here on the next load.
+
+             The whole section is removed server-side unless a profile is
+             selected AND published AND the section is switched on.
+             ============================================================ -->
+        <section class="pres-section pres-section--deep" id="pres-partner" data-section-id="partner" data-section-label="Partner profile">
+            <div class="pres-aura" aria-hidden="true" data-parallax="-0.05">
+                <span class="pres-aura__orb pres-aura__orb--b"></span>
+            </div>
+
+            <div class="pres-container">
+                <!-- Centred, using the deck's existing pres-head--center
+                     modifier, because the profile below it is a centred
+                     column — a left-aligned head over a centred body is the
+                     one place this section would read as bolted on. -->
+                <header class="pres-head pres-head--center">
+                    <p class="pres-eyebrow" data-reveal>Partner profile</p>
+                    <h2 class="pres-h2" data-reveal>Your audience gets one link.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Every program, every offer and every channel behind a single
+                        address you own — the page that turns a following into a
+                        storefront. This is the live profile, exactly as it appears
+                        to your audience.
+                    </p>
+                </header>
+
+                <!-- The frame is the ONLY presentation-side styling. It supplies
+                     the design tokens partner.css reads from style.css (absent
+                     on this page, which runs its own --p-* scale) and drops the
+                     profile's fixed-header clearance to zero, because the deck
+                     has no fixed header to clear. It changes no colour, radius,
+                     type ramp or spacing INSIDE the profile — see
+                     presentation.css, "Partner profile frame". -->
+                <div class="pres-partner__frame" data-reveal>
+                    <!--PRES_PARTNER-->
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:partner-->
+
+        <!--SECTION:catalogue-->
+        <!-- ============================================================
+             8. WHAT THEY ACTUALLY RECEIVE
+             ============================================================ -->
+        <section class="pres-section pres-section--deep" id="pres-catalogue" data-section-id="catalogue" data-section-label="What you sell">
+            <div class="pres-aura" aria-hidden="true" data-parallax="-0.06">
+                <span class="pres-aura__orb pres-aura__orb--d"></span>
+            </div>
+
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>What you sell</p>
+                    <h2 class="pres-h2" data-reveal>Twelve kinds of product, one delivery system.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Anything a creator knows how to teach can be packaged, priced and
+                        delivered here. The buying experience is identical whichever it is.
+                    </p>
+                </header>
+
+                <ul class="pres-catalogue" data-reveal-group>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 9v6"/><path d="M7.5 6.5v11"/><path d="M16.5 6.5v11"/><path d="M20 9v6"/><path d="M7.5 12h9"/></svg></span>
+                        <p class="pres-cat__name">Training Plans</p>
+                        <p class="pres-cat__meta">Week by week, sets and reps</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 21.2c-4 0-6.6-3.5-6.6-7.5C5.4 10 8 8 10.2 8c1 0 1.5.4 1.8.4s.8-.4 1.8-.4c2.2 0 4.8 2 4.8 5.7 0 4-2.6 7.5-6.6 7.5Z"/><path d="M12 8c0-2.1 1.5-3.7 3.5-4.1"/></svg></span>
+                        <p class="pres-cat__name">Nutrition Plans</p>
+                        <p class="pres-cat__meta">Macros, meals and swaps</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5.2A2.2 2.2 0 0 1 6.2 3H20v14.5H6.2A2.2 2.2 0 0 0 4 19.7V5.2Z"/><path d="M4 19.7A2.2 2.2 0 0 0 6.2 21.9H20v-4.4"/></svg></span>
+                        <p class="pres-cat__name">Recipe Books</p>
+                        <p class="pres-cat__meta">Photographed and printable</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 6.6a4.6 4.6 0 0 0-6.5 0L12 8.5l-1.9-1.9a4.6 4.6 0 1 0-6.5 6.5l8.4 8.3 8.4-8.3a4.6 4.6 0 0 0 0-6.5Z"/></svg></span>
+                        <p class="pres-cat__name">Recovery Guides</p>
+                        <p class="pres-cat__meta">Sleep, load and deloads</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20.6 12a8.6 8.6 0 1 1-2.5-6.1"/><path d="M20.6 3.6V10H14"/></svg></span>
+                        <p class="pres-cat__name">Mobility Programs</p>
+                        <p class="pres-cat__meta">Daily routines under ten minutes</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M10 9.2 15 12l-5 2.8V9.2Z"/></svg></span>
+                        <p class="pres-cat__name">Video Courses</p>
+                        <p class="pres-cat__meta">Chaptered, streamed, resumable</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M13.5 2.8H7a2 2 0 0 0-2 2v14.4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.3l-5.5-5.5Z"/><path d="M13.5 2.8v5.5H19"/></svg></span>
+                        <p class="pres-cat__name">PDF Guides</p>
+                        <p class="pres-cat__meta">Signed links, never public files</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="3.5" width="18" height="17" rx="2.4"/><path d="M3 9h18"/><path d="m8.5 14.2 2.2 2.2 4.6-4.8"/></svg></span>
+                        <p class="pres-cat__name">Habit Trackers</p>
+                        <p class="pres-cat__meta">Streaks that keep people paying</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="13.6" r="7.6"/><path d="M12 9.8v3.8l2.4 1.6"/><path d="M9.5 2.8h5"/></svg></span>
+                        <p class="pres-cat__name">Running Programs</p>
+                        <p class="pres-cat__meta">Paces, blocks and race weeks</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="9.2" r="6"/><path d="M8.2 14.3 7 21.6l5-2.7 5 2.7-1.2-7.3"/></svg></span>
+                        <p class="pres-cat__name">Strength Programs</p>
+                        <p class="pres-cat__meta">Percentages and progressions</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9.5" cy="8" r="3.6"/><path d="M3 20.2c.7-3.8 3.4-5.9 6.5-5.9s5.8 2.1 6.5 5.9"/><path d="M16.4 5.2a3.6 3.6 0 0 1 0 6.6"/><path d="M18 14.7c1.7.9 2.8 2.8 3.2 5"/></svg></span>
+                        <p class="pres-cat__name">Coaching Packages</p>
+                        <p class="pres-cat__meta">Recurring access with entitlements</p>
+                    </li>
+                    <li class="pres-cat" data-reveal data-magnetic>
+                        <span class="pres-cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3.5v11.2"/><path d="m7.4 10.3 4.6 4.4 4.6-4.4"/><path d="M4 19.8h16"/></svg></span>
+                        <p class="pres-cat__name">Digital Downloads</p>
+                        <p class="pres-cat__meta">Anything a file can carry</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:catalogue-->
+
+        <!--SECTION:journey-->
+        <!-- ============================================================
+             9. THE CUSTOMER JOURNEY
+             One ordered list, two authored layouts: a horizontal track with
+             a rule running through the nodes above 900px, a vertical spine
+             below it. The fill and the node states are driven by how far
+             the section has travelled through the viewport, so the sequence
+             plays at reading speed rather than on a timer.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint pres-section--deep" id="pres-journey" data-section-id="journey" data-section-label="Customer journey">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>The customer journey</p>
+                    <h2 class="pres-h2" data-reveal>Payment to first lesson, with nothing in between.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Seven things happen after someone taps Pay. Six of them are ours, and
+                        none of them need you awake.
+                    </p>
+                </header>
+
+                <div class="pres-journey" id="presJourney" data-reveal>
+                    <div class="pres-journey__line" aria-hidden="true">
+                        <span class="pres-journey__line-fill" id="presJourneyFill"></span>
+                    </div>
+
+                    <ol class="pres-journey__steps">
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M2.5 3.5h2.3l2.4 11.2h10.5l2.1-8.2H6.2"/><circle cx="9.2" cy="19.2" r="1.5"/><circle cx="17.2" cy="19.2" r="1.5"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Purchase</p>
+                            <p class="pres-journey__note">One checkout, card or wallet.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Instant payment</p>
+                            <p class="pres-journey__note">Stripe confirms in under a second.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3.2 13.7 8l4.8 1.7L13.7 11.4 12 16.2l-1.7-4.8L5.5 9.7 10.3 8 12 3.2Z"/><path d="M18.5 16.2 19.2 18l1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Magic Login</p>
+                            <p class="pres-journey__note">A sign-in link, no password to invent.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><circle cx="10" cy="8" r="3.7"/><path d="M3.2 20.2c.6-3.6 3.3-5.8 6.6-5.8 1 0 1.9.2 2.8.6"/><path d="M17.5 14v6.4"/><path d="M14.3 17.2h6.4"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Account created</p>
+                            <p class="pres-journey__note">Provisioned automatically, no signup step.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="4.5" y="10.4" width="15" height="10.2" rx="2.4"/><path d="M8.6 10.4V7.7a3.5 3.5 0 0 1 6.8-1.2"/><path d="M12 14.4v2.4"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Product unlocked</p>
+                            <p class="pres-journey__note">Entitlements resolve per customer.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="7.6" height="7.6" rx="1.6"/><rect x="13.4" y="4" width="7.6" height="7.6" rx="1.6"/><rect x="3" y="12.9" width="7.6" height="7.6" rx="1.6"/><rect x="13.4" y="12.9" width="7.6" height="7.6" rx="1.6"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Library access</p>
+                            <p class="pres-journey__note">Everything they own, in one place.</p>
+                        </li>
+                        <li class="pres-journey__step">
+                            <span class="pres-journey__node" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M10 8.6 16 12l-6 3.4V8.6Z"/></svg>
+                            </span>
+                            <p class="pres-journey__label">Start learning</p>
+                            <p class="pres-journey__note">The first lesson opens straight away.</p>
+                        </li>
+                    </ol>
+                </div>
+
+                <dl class="pres-journey__outcome" data-reveal-group>
+                    <div class="pres-journey__outcome-item" data-reveal>
+                        <dt>Elapsed time</dt>
+                        <dd>About seven seconds</dd>
+                    </div>
+                    <div class="pres-journey__outcome-item" data-reveal>
+                        <dt>Manual steps for you</dt>
+                        <dd>None of them</dd>
+                    </div>
+                    <div class="pres-journey__outcome-item" data-reveal>
+                        <dt>Who answers if it goes wrong</dt>
+                        <dd>We do</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+        <!--/SECTION:journey-->
+
+        <!--SECTION:value-->
+        <!-- ============================================================
+             10. WHAT IT'S WORTH
+             This slot used to hold a Technology section — Stripe, Resend,
+             magic login, signed download URLs. All true, all irrelevant to
+             an athlete deciding whether to sign: nobody picks a partner
+             because of their email provider, and a technical inventory in
+             the middle of a sales deck reads as a list of things that
+             could break.
+
+             Same seven capabilities, restated as the thing the viewer is
+             actually buying. Each figure is the outcome; the infrastructure
+             that produces it is the supporting line, where it belongs.
+             ============================================================ -->
+        <section class="pres-section" id="pres-value" data-section-id="value" data-section-label="What it's worth">
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>The business case</p>
+                    <h2 class="pres-h2" data-reveal>What changes the day you move onto the platform.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Not a feature list. These are the six differences you would notice in
+                        the first month, and every one of them is either revenue you were not
+                        collecting or work you were doing yourself.
+                    </p>
+                </header>
+
+                <ul class="pres-value" data-reveal-group>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">Day one</p>
+                        <h3 class="pres-value__name">You are selling immediately</h3>
+                        <p class="pres-value__desc">
+                            No build, no agency, no six-month website project to fund before the
+                            first sale. The storefront, the checkout and the member area already
+                            exist — your products go into them.
+                        </p>
+                    </li>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">Instant</p>
+                        <h3 class="pres-value__name">Access the second payment clears</h3>
+                        <p class="pres-value__desc">
+                            The account is created and the product is in it before the customer
+                            has closed the confirmation page. Nothing to fulfil by hand, and no
+                            refund requests from people who never got their download.
+                        </p>
+                    </li>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">Zero</p>
+                        <h3 class="pres-value__name">Support tickets you answer</h3>
+                        <p class="pres-value__desc">
+                            Lost access, receipts, card failures, refunds. Our team handles all
+                            of it under your brand, so the messages that reach you are the ones
+                            from people who want to train with you.
+                        </p>
+                    </li>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">Every card</p>
+                        <h3 class="pres-value__name">Paid the way your audience pays</h3>
+                        <p class="pres-value__desc">
+                            Cards and wallets in the currencies your followers actually hold,
+                            with 3D Secure handled and payouts reconciled — on the same payment
+                            rails the largest platforms run on.
+                        </p>
+                    </li>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">One place</p>
+                        <h3 class="pres-value__name">The whole business in one admin</h3>
+                        <p class="pres-value__desc">
+                            Products, customers, campaigns, discount codes, payouts and content
+                            in a single system. Not a storefront plus an email tool plus a
+                            spreadsheet plus a course platform that none of them talk to.
+                        </p>
+                    </li>
+                    <li class="pres-value__item" data-reveal data-magnetic>
+                        <p class="pres-value__figure">24/7</p>
+                        <h3 class="pres-value__name">It earns while you are training</h3>
+                        <p class="pres-value__desc">
+                            Selling, delivery, onboarding and follow-up all run without anybody
+                            being awake for them. A launch at 2am in another timezone is just
+                            another set of orders in the morning.
+                        </p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!--/SECTION:value-->
+
+        <!--SECTION:campaigns-->
+        <!-- ============================================================
+             11. PROMOTIONAL CAMPAIGNS
+             The platform's strongest commercial feature and, until now,
+             completely absent from the deck — creators were signing
+             without knowing the discount, influencer and partner code
+             machinery existed.
+
+             A bento rather than thirteen identical tiles: the thirteen
+             capabilities group naturally into five ideas (who a code is
+             for, how it is constrained, giveaways, what it reports, and
+             talking to the partner running it), and five well-sized cards
+             are read where thirteen small ones are skimmed.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-campaigns" data-section-id="campaigns" data-section-label="Campaigns">
+            <div class="pres-aura" aria-hidden="true" data-parallax="0.04">
+                <span class="pres-aura__orb pres-aura__orb--c"></span>
+            </div>
+
+            <div class="pres-container">
+                <header class="pres-head">
+                    <p class="pres-eyebrow" data-reveal>Promotional campaigns</p>
+                    <h2 class="pres-h2" data-reveal>Run a launch, not just a store.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Codes are how a fitness brand actually grows: a partner posts, their
+                        audience uses their code, and you can see exactly what it earned. All of
+                        it is built in — no third-party affiliate tool, no manual reconciliation,
+                        no spreadsheet of who owes whom.
+                    </p>
+                </header>
+
+                <div class="pres-camp" data-reveal-group>
+
+                    <!-- Code types -->
+                    <article class="pres-camp__card pres-camp__card--codes" data-reveal data-magnetic>
+                        <h3 class="pres-camp__title">A code for every relationship</h3>
+                        <p class="pres-camp__body">
+                            Three kinds, one system. Each is tracked separately, so a discount
+                            you ran at Christmas never gets confused with what a partner earned.
+                        </p>
+                        <ul class="pres-camp__codes">
+                            <li>
+                                <span class="pres-camp__code">SUMMER20</span>
+                                <span class="pres-camp__code-kind">Discount</span>
+                                <span class="pres-camp__code-note">A straight promotion you run yourself.</span>
+                            </li>
+                            <li>
+                                <span class="pres-camp__code">JORDAN</span>
+                                <span class="pres-camp__code-kind">Influencer</span>
+                                <span class="pres-camp__code-note">Given to a creator, attributed to their audience.</span>
+                            </li>
+                            <li>
+                                <span class="pres-camp__code">GYMCO</span>
+                                <span class="pres-camp__code-kind">Partner</span>
+                                <span class="pres-camp__code-note">A gym, a brand or a club, with its own terms.</span>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <!-- Limits -->
+                    <article class="pres-camp__card pres-camp__card--limits" data-reveal data-magnetic>
+                        <h3 class="pres-camp__title">Four ways to fence a code in</h3>
+                        <p class="pres-camp__body">
+                            Every code carries its own limits, enforced at checkout rather than
+                            trusted to whoever is holding it.
+                        </p>
+                        <ul class="pres-camp__limits">
+                            <li><span class="pres-camp__limit-key">Quantity</span><span class="pres-camp__limit-val">First 250 uses</span></li>
+                            <li><span class="pres-camp__limit-key">Expiry</span><span class="pres-camp__limit-val">Ends 31 Aug</span></li>
+                            <li><span class="pres-camp__limit-key">Products</span><span class="pres-camp__limit-val">Selected products only</span></li>
+                            <li><span class="pres-camp__limit-key">Users</span><span class="pres-camp__limit-val">One per customer</span></li>
+                        </ul>
+                    </article>
+
+                    <!-- Giveaways -->
+                    <article class="pres-camp__card pres-camp__card--giveaway" data-reveal data-magnetic>
+                        <h3 class="pres-camp__title">Giveaways</h3>
+                        <p class="pres-camp__body">
+                            Hand a product to a winner, a guest or a journalist without an order,
+                            a payment or a workaround. They get real access, and it shows up in
+                            the numbers as a giveaway rather than as a sale that never happened.
+                        </p>
+                        <span class="pres-camp__tag">Full access · No charge · Tracked</span>
+                    </article>
+
+                    <!-- Analytics -->
+                    <article class="pres-camp__card pres-camp__card--analytics pres-camp__card--dark" data-reveal>
+                        <h3 class="pres-camp__title">You can see what every code did</h3>
+                        <p class="pres-camp__body">
+                            Not "the campaign went well". Per code, per partner, per day: who
+                            used it, what they bought, what converted and what it earned.
+                        </p>
+                        <ul class="pres-camp__metrics">
+                            <li>
+                                <span class="pres-camp__metric-val">1,284</span>
+                                <span class="pres-camp__metric-key">Code uses</span>
+                            </li>
+                            <li>
+                                <span class="pres-camp__metric-val">6.8%</span>
+                                <span class="pres-camp__metric-key">Conversion</span>
+                            </li>
+                            <li>
+                                <span class="pres-camp__metric-val">$41,900</span>
+                                <span class="pres-camp__metric-key">Revenue generated</span>
+                            </li>
+                            <li>
+                                <span class="pres-camp__metric-val">14</span>
+                                <span class="pres-camp__metric-key">Active campaigns</span>
+                            </li>
+                        </ul>
+                        <div class="pres-camp__chart" aria-hidden="true">
+                            <i data-camp-bar="28"></i><i data-camp-bar="44"></i><i data-camp-bar="36"></i>
+                            <i data-camp-bar="62"></i><i data-camp-bar="54"></i><i data-camp-bar="78"></i>
+                            <i data-camp-bar="68"></i><i data-camp-bar="92"></i><i data-camp-bar="84"></i>
+                            <i data-camp-bar="100"></i>
+                        </div>
+                    </article>
+
+                    <!-- Partner comms -->
+                    <article class="pres-camp__card pres-camp__card--partners" data-reveal data-magnetic>
+                        <h3 class="pres-camp__title">Talk to partners where the numbers are</h3>
+                        <p class="pres-camp__body">
+                            Message the creator or brand running a code from inside the admin
+                            panel, with their performance on the same screen. No chasing an
+                            agreement through four months of direct messages.
+                        </p>
+                        <div class="pres-camp__thread" aria-hidden="true">
+                            <span class="pres-camp__msg">Your code did $4,120 last week — want to extend it?</span>
+                            <span class="pres-camp__msg pres-camp__msg--in">Yes. Can we add the nutrition plan too?</span>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:campaigns-->
+
+        <!--SECTION:philosophy-->
+        <!-- ============================================================
+             12. OUR PHILOSOPHY
+             The statement here used to BE the company slogan. That line has
+             moved to the hero, where it is one of the first things a viewer
+             reads — so this section needed its own, or the deck would say
+             exactly the same seven words twice and neither would land.
+
+             This one is the argument the slogan is the conclusion of, which
+             is the right order: the claim up top, the reasoning down here
+             next to the paragraph that has always supported it.
+             ============================================================ -->
+        <section class="pres-section pres-section--statement" id="pres-philosophy" data-section-id="philosophy" data-section-label="Philosophy">
+            <div class="pres-container pres-container--narrow">
+                <p class="pres-eyebrow" data-reveal>Our philosophy</p>
+                <blockquote class="pres-statement" data-reveal>
+                    Nobody ever built a following<br>
+                    by getting better at admin.
+                </blockquote>
+                <p class="pres-statement__body" data-reveal>
+                    An athlete's advantage is their method, their standard and the trust of the
+                    people who follow them. None of that is improved by learning to configure a
+                    payment processor or chase a failed download at midnight. So the whole
+                    operation became ours: platform, products, payments, production and
+                    support. What is left is the work only they can do, and a business that
+                    keeps running while they do it.
+                </p>
+            </div>
+        </section>
+        <!--/SECTION:philosophy-->
+
+        <!--SECTION:soon-->
+        <!-- ============================================================
+             13. COMING SOON
+             Two rows drifting in opposite directions, slowly and forever.
+
+             Explicitly NOT the benefit belt: that one is a carousel with a
+             resting pace, a fling and a drag, and putting a second draggable
+             strip on the page would make the deck feel like a slideshow of
+             sliders. This is ambient — nothing to interact with, nothing to
+             chase, cards entering on one edge and leaving on the other at a
+             pace closer to a clock hand than a carousel.
+
+             Duplicating the cards is what makes it seamless: the track holds
+             two identical sets and animates to exactly -50%, so the frame it
+             loops on is pixel-identical to the frame it started from. The
+             clone is made by presentation.js rather than typed twice here,
+             so there is one list to edit and the copy can never drift.
+             ============================================================ -->
+        <section class="pres-section pres-section--tint" id="pres-soon" data-section-id="soon" data-section-label="Coming soon">
+            <div class="pres-container">
+                <header class="pres-head pres-head--center">
+                    <p class="pres-eyebrow" data-reveal>Coming soon</p>
+                    <h2 class="pres-h2" data-reveal>What we are building next.</h2>
+                    <p class="pres-lead" data-reveal>
+                        The platform ships continuously, and everything below is already in
+                        design or development. Partners get all of it as it lands, at no change
+                        to the agreement they signed.
+                    </p>
+                </header>
+            </div>
+
+            <!-- Full-bleed: the rows have to run off both edges of the screen
+                 for the loop to read as endless rather than as a list that
+                 happens to be moving. -->
+            <div class="pres-soon" id="presSoon">
+                <div class="pres-soon__row" data-soon-row>
+                    <div class="pres-soon__track" data-soon-track>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 11 6-3.5v9l-6-3.5z"/></svg></span>
+                            <h3 class="pres-soon__name">Video Calls</h3>
+                            <p class="pres-soon__desc">One-to-one and group sessions, inside the platform and inside the purchase.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6.5 6.5l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4 5.7 2 2 0 0 1 6 3.5Z"/></svg></span>
+                            <h3 class="pres-soon__name">Voice Calls</h3>
+                            <p class="pres-soon__desc">A check-in that does not need a camera, a link or a third-party app.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+                            <h3 class="pres-soon__name">Meeting Scheduler</h3>
+                            <p class="pres-soon__desc">Your availability, their timezone, booked without a single email.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5.5h16v11H8.5L4 20V5.5Z"/><path d="M8.5 10h7M8.5 13h4"/></svg></span>
+                            <h3 class="pres-soon__name">Consultations</h3>
+                            <p class="pres-soon__desc">Paid consulting sold as a product, with the booking built into checkout.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M17 12h5M17 16h5"/></svg></span>
+                            <h3 class="pres-soon__name">Creator CRM</h3>
+                            <p class="pres-soon__desc">Every customer, every purchase, every conversation in one record.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m12 3 2.2 5.3L19.5 10l-5.3 2.2L12 17.5 9.8 12.2 4.5 10l5.3-1.7L12 3Z"/><path d="M18.5 16.5 19.4 19l2.5.9-2.5.9-.9 2.5"/></svg></span>
+                            <h3 class="pres-soon__name">AI Assistant</h3>
+                            <p class="pres-soon__desc">Drafts descriptions, answers routine questions, never touches a payout.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg></span>
+                            <h3 class="pres-soon__name">Calendar Sync</h3>
+                            <p class="pres-soon__desc">Two-way with the calendar you already live in. No double bookings.</p>
+                        </article>
+                    </div>
+                </div>
+
+                <!-- Second row runs the other way. Opposite directions at
+                     slightly different speeds is what stops the two rows
+                     reading as one block sliding sideways. -->
+                <div class="pres-soon__row pres-soon__row--reverse" data-soon-row>
+                    <div class="pres-soon__track" data-soon-track>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3.5 6.5h17v11h-17z"/><path d="m3.5 7 8.5 6 8.5-6"/><path d="m17 19 2 2 4-4.5"/></svg></span>
+                            <h3 class="pres-soon__name">Automatic Follow-ups</h3>
+                            <p class="pres-soon__desc">The message after the sale, the nudge after a lapse, sent without you.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 3.5h9L19.5 8v12.5h-13z"/><path d="M14.5 3.5V8h5"/><path d="M9.5 12.5h6M9.5 16h4"/></svg></span>
+                            <h3 class="pres-soon__name">Client Notes</h3>
+                            <p class="pres-soon__desc">Private notes per customer, so the next conversation starts informed.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3.5 5.5h17v13h-17z"/><path d="M3.5 12.5h4l1.5 2.5h6l1.5-2.5h4"/></svg></span>
+                            <h3 class="pres-soon__name">Creator Inbox</h3>
+                            <p class="pres-soon__desc">Every channel your audience reaches you on, in one queue.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3.5 19.5V9M9 19.5V4.5M14.5 19.5v-7M20 19.5V7"/><path d="M2 21.5h20"/></svg></span>
+                            <h3 class="pres-soon__name">Revenue Forecasting</h3>
+                            <p class="pres-soon__desc">What next quarter looks like, from what this one is actually doing.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="M10 7h5a2 2 0 0 1 2 2v5"/><path d="M14 17H9a2 2 0 0 1-2-2v-5"/></svg></span>
+                            <h3 class="pres-soon__name">Affiliate Marketplace</h3>
+                            <p class="pres-soon__desc">Creators find partners, partners find products, both sides get tracked.</p>
+                        </article>
+                        <article class="pres-soon__card">
+                            <span class="pres-soon__icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z"/><path d="M12 12 20 8M12 12v8.5M12 12 4 8"/></svg></span>
+                            <h3 class="pres-soon__name">Brand Collaboration Hub</h3>
+                            <p class="pres-soon__desc">Sponsorships and co-branded launches, negotiated and measured in one place.</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--/SECTION:soon-->
+
+        <!--SECTION:cta-->
+        <!-- ============================================================
+             14. SETUP WIZARD
+             Replaces the old "Next steps" block — three buttons and a
+             contact form that asked the viewer to do the work of saying
+             what they wanted.
+
+             This asks instead. Five steps, each one question, and the
+             estimated partnership percentage moves as they answer. The
+             number is the point: a creator's first question is always
+             "what does this cost me", and a deck that answers it in the
+             room closes better than one that promises a follow-up call.
+
+             The estimate is a rate, NOT a price — a revenue share. The
+             range is 10% (platform only) to 30% (every service), and the
+             disclaimer below the result is not boilerplate: nothing here
+             is an offer, and HQ confirms the real terms.
+
+             The section keeps the id and section key "cta" so decks that
+             had the closing section switched off still have it switched
+             off (see SECTION_KEYS in server/src/lib/presentations.js).
+             ============================================================ -->
+        <section class="pres-section pres-section--cta" id="pres-cta" data-section-id="cta" data-section-label="Setup wizard">
+            <div class="pres-container">
+                <header class="pres-head pres-head--center">
+                    <p class="pres-eyebrow" data-reveal>Setup wizard</p>
+                    <h2 class="pres-h2" data-reveal>Find out what a partnership looks like.</h2>
+                    <p class="pres-lead" data-reveal>
+                        Five questions about what you want us to run. The estimate updates as
+                        you answer — no email required to see it.
+                    </p>
+                </header>
+
+                <div class="pres-setup" id="presSetup" data-reveal>
+
+                    <!-- ---- Live estimate. Sticky on desktop so the number
+                         stays in view while the questions scroll under it,
+                         which is the whole reason a visitor keeps answering. -->
+                    <aside class="pres-setup__meter" aria-live="polite">
+                        <p class="pres-setup__meter-label">Estimated partnership</p>
+                        <p class="pres-setup__meter-value">
+                            <span id="presSetupPct">10</span><span class="pres-setup__meter-unit">%</span>
+                        </p>
+                        <div class="pres-setup__gauge" aria-hidden="true">
+                            <span class="pres-setup__gauge-fill" id="presSetupGauge"></span>
+                        </div>
+                        <p class="pres-setup__meter-scale" aria-hidden="true">
+                            <span>10%</span><span>30%</span>
+                        </p>
+                        <p class="pres-setup__meter-note" id="presSetupNote">
+                            Platform only. Add services and this moves.
+                        </p>
+                    </aside>
+
+                    <!-- ---- The steps ---- -->
+                    <div class="pres-setup__main">
+
+                        <div class="pres-setup__head">
+                            <ol class="pres-setup__dots" id="presSetupDots" aria-label="Progress"></ol>
+                            <p class="pres-setup__count"><span id="presSetupStepNum">1</span> of 5</p>
+                        </div>
+                        <div class="pres-setup__progress" aria-hidden="true">
+                            <span class="pres-setup__progress-fill" id="presSetupProgress"></span>
+                        </div>
+
+                        <div class="pres-setup__steps" id="presSetupSteps">
+
+                            <!-- Step 1 — scope. A single choice, and the only
+                                 branch in the wizard: "platform only" is a
+                                 complete answer, so it skips the four service
+                                 steps rather than walking somebody through
+                                 twelve questions they have already declined. -->
+                            <fieldset class="pres-setup__step is-active" data-setup-step="0">
+                                <legend class="pres-setup__q">Do you only need the platform?</legend>
+                                <p class="pres-setup__hint">The platform on its own is our floor: storefront, checkout, member area, delivery, payouts and support.</p>
+                                <div class="pres-setup__options">
+                                    <label class="pres-setup__opt">
+                                        <input type="radio" name="setupScope" value="platform" checked>
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Just the platform</span>
+                                            <span class="pres-setup__opt-desc">We run the technology and the customer side. You handle your own content and marketing.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="radio" name="setupScope" value="services">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Platform and services</span>
+                                            <span class="pres-setup__opt-desc">We also take on production, marketing and operations. Pick what you need next.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <!-- Steps 2-5 — services. Weights live in the
+                                 markup (data-weight) rather than in a table in
+                                 the script, so the copy and the number it moves
+                                 can never fall out of sync. -->
+                            <fieldset class="pres-setup__step" data-setup-step="1">
+                                <legend class="pres-setup__q">What should we produce?</legend>
+                                <p class="pres-setup__hint">Our studio, working to your brand. Select everything that applies.</p>
+                                <div class="pres-setup__options pres-setup__options--grid">
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Video editing" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Video editing</span>
+                                            <span class="pres-setup__opt-desc">Programme and lesson footage cut, graded and delivered.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Long-form editing" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Long-form editing</span>
+                                            <span class="pres-setup__opt-desc">YouTube and course-length edits on a publishing schedule.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Short-form editing" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Short-form editing</span>
+                                            <span class="pres-setup__opt-desc">Reels, Shorts and TikToks cut from what you already film.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Graphic design" data-weight="1.5">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Graphic design</span>
+                                            <span class="pres-setup__opt-desc">Covers, thumbnails, ad creative and product artwork.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="pres-setup__step" data-setup-step="2">
+                                <legend class="pres-setup__q">What should we operate?</legend>
+                                <p class="pres-setup__hint">The recurring work that keeps a store running once it is live.</p>
+                                <div class="pres-setup__options pres-setup__options--grid">
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Product uploads" data-weight="1">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Product uploads</span>
+                                            <span class="pres-setup__opt-desc">We build every product page, plan and lesson for you.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Customer support" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Customer support</span>
+                                            <span class="pres-setup__opt-desc">Your inbox, answered under your brand, in your voice.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Automation" data-weight="1.5">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Automation</span>
+                                            <span class="pres-setup__opt-desc">Onboarding, follow-ups and win-backs that send themselves.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="pres-setup__step" data-setup-step="3">
+                                <legend class="pres-setup__q">What should we grow?</legend>
+                                <p class="pres-setup__hint">Getting the product in front of the audience, and turning launches into revenue.</p>
+                                <div class="pres-setup__options pres-setup__options--grid">
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Social media publishing" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Social media publishing</span>
+                                            <span class="pres-setup__opt-desc">Scheduling and posting across every channel you run.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Campaign management" data-weight="2">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Campaign management</span>
+                                            <span class="pres-setup__opt-desc">Discount, influencer and partner codes, run and reported.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Launch support" data-weight="1.5">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Launch support</span>
+                                            <span class="pres-setup__opt-desc">A planned release: waitlist, sequence, launch week, follow-up.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="pres-setup__step" data-setup-step="4">
+                                <legend class="pres-setup__q">What should we build around the brand?</legend>
+                                <p class="pres-setup__hint">The longer-term work that outlives any single product.</p>
+                                <div class="pres-setup__options pres-setup__options--grid">
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Branding" data-weight="1.5">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Branding</span>
+                                            <span class="pres-setup__opt-desc">Identity, tone and the system everything else is built from.</span>
+                                        </span>
+                                    </label>
+                                    <label class="pres-setup__opt">
+                                        <input type="checkbox" data-service="Merchandise" data-weight="1">
+                                        <span class="pres-setup__opt-box">
+                                            <span class="pres-setup__opt-name">Merchandise</span>
+                                            <span class="pres-setup__opt-desc">Physical product, produced and fulfilled alongside the digital.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            <!-- ---- Result ---- -->
+                            <div class="pres-setup__step pres-setup__result" data-setup-step="5">
+                                <p class="pres-setup__result-label">Estimated Partnership Range</p>
+                                <p class="pres-setup__result-range" id="presSetupRange">10% – 12%</p>
+                                <p class="pres-setup__result-summary" id="presSetupSummary">Platform only.</p>
+
+                                <p class="pres-setup__disclaimer">
+                                    This is only an estimate. Final partnership terms are confirmed by
+                                    Fitness Agency HQ and may vary depending on project scope.
+                                </p>
+
+                                <!-- Lead capture, at the one moment the visitor
+                                     has a number in front of them and a reason
+                                     to want it confirmed. The estimate and the
+                                     services they picked ride along in the
+                                     message, so the reply can be specific. -->
+                                <form class="pres-form pres-setup__form" id="presContactForm" novalidate>
+                                    <p class="pres-form__intent" id="presFormIntent">Partnership estimate</p>
+
+                                    <div class="pres-field">
+                                        <label class="pres-field__label" for="presName">Full name</label>
+                                        <input class="pres-field__input" type="text" id="presName" name="name"
+                                            autocomplete="name" required>
+                                    </div>
+
+                                    <div class="pres-field">
+                                        <label class="pres-field__label" for="presEmail">Email address</label>
+                                        <input class="pres-field__input" type="email" id="presEmail" name="email"
+                                            autocomplete="email" inputmode="email" required>
+                                    </div>
+
+                                    <div class="pres-field">
+                                        <label class="pres-field__label" for="presMessage">Anything we should know <span class="pres-field__opt">optional</span></label>
+                                        <textarea class="pres-field__input pres-field__input--area" id="presMessage"
+                                            name="message" rows="3"></textarea>
+                                    </div>
+
+                                    <p class="pres-form__status u-hidden" id="presFormStatus" role="status"></p>
+
+                                    <button class="pres-btn pres-btn--primary pres-form__submit" type="submit" id="presFormSubmit">
+                                        <span>Send me these terms</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- ---- Navigation ---- -->
+                        <div class="pres-setup__nav">
+                            <button class="pres-btn pres-btn--secondary pres-setup__back" type="button" id="presSetupBack" disabled>
+                                <span>Back</span>
+                            </button>
+                            <button class="pres-btn pres-btn--primary pres-setup__next" type="button" id="presSetupNext">
+                                <span id="presSetupNextLabel">Continue</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- The admin's own per-deck destinations. Rendered as links
+                     under the wizard rather than as the three competing
+                     buttons they used to be: the wizard is the primary path
+                     now, and these are for the viewer who already knows
+                     which conversation they are in. -->
+                <div class="pres-cta__links" id="presCtaLinks"
+                    data-partnership="<!--PRES_CTA_PARTNERSHIP-->"
+                    data-meeting="<!--PRES_CTA_MEETING-->"
+                    data-demo="<!--PRES_CTA_DEMO-->"></div>
+            </div>
+        </section>
+        <!--/SECTION:cta-->
+
+        <footer class="pres-footer">
+            <div class="pres-container">
+                <p class="pres-footer__brand">Fitness Agency</p>
+                <p class="pres-footer__meta">Winnipeg, Canada · Private presentation, not for distribution.</p>
+                <!-- Ownership line. Same type stack as the meta line above it,
+                     one step further back in the colour ramp — it is the last
+                     thing on the page and should read as a mark, not as a
+                     second piece of information competing with the notice. -->
+                <p class="pres-footer__meta pres-footer__owner">Estimated 2026 by MITM HOLDING</p>
+            </div>
+        </footer>
+    </main>
+
+    <script src="/assets/js/presentation.js" defer></script>
+</body>
+
+</html>

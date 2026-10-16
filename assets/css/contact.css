@@ -1,0 +1,310 @@
+/* =====================================================================
+   CONTACT — hero + partnership wizard
+   =====================================================================
+   Replaces the template's generic contact page (placeholder address, a
+   Google Map of New York, lorem copy). Fitness Agency is an online
+   platform, so there is no location section at all.
+
+   Mobile-first: the base rules ARE the phone layout, and the only
+   breakpoint widens it for larger screens. Nothing here is a scaled-down
+   desktop view. */
+
+.ct-hero {
+    padding: 96px 0 40px;
+    text-align: center;
+}
+.ct-hero__inner {
+    max-width: 640px;
+    margin: 0 auto;
+}
+.ct-hero__eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    margin-bottom: 14px;
+}
+.ct-hero__title {
+    font-size: 32px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+}
+.ct-hero__lede {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--paragraph);
+    margin-bottom: 28px;
+}
+.ct-hero__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Shared button. 52px min-height keeps every action a comfortable target
+   without needing a separate mobile rule. */
+.ct-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 52px;
+    padding: 14px 26px;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+.ct-btn--primary {
+    background: var(--primary-color);
+    color: #fff !important;
+    box-shadow: 0 4px 16px rgba(26, 26, 26, 0.22);
+}
+.ct-btn--primary:hover { background: var(--primary-hover); color: #fff; }
+.ct-btn--primary:active { transform: translateY(1px); }
+.ct-btn--ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--heading-color);
+}
+.ct-btn--ghost:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.ct-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---- Wizard ---------------------------------------------------------- */
+.ct-wizard-section { padding: 8px 0 72px; }
+.ct-wizard {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 26px 20px 24px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--sub-bg);
+    /* The step panels are absolutely positioned during a transition, so the
+       wizard needs to be the positioning context. */
+    position: relative;
+    overflow: hidden;
+}
+
+.ct-progress { margin-bottom: 22px; }
+.ct-progress__bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    overflow: hidden;
+}
+.ct-progress__fill {
+    display: block;
+    height: 100%;
+    width: 25%;
+    border-radius: 2px;
+    background: var(--primary-color);
+    transition: width 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ct-progress__label {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: var(--paragraph-light);
+}
+.ct-progress__name {
+    display: block;
+    margin-top: 2px;
+    font-weight: 600;
+    color: var(--heading-color);
+    font-size: 13px;
+}
+
+/* Only the active step is in flow; the rest are removed entirely rather
+   than hidden, so a collapsed step can't be tabbed into. */
+.ct-step { display: none; }
+.ct-step.is-active { display: block; }
+
+/* Entry animation. Direction-aware: advancing slides in from the right,
+   Back slides in from the left, so the motion matches the mental model of
+   moving through a sequence. */
+.ct-step.is-entering { animation: ctIn 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.ct-step.is-entering-back { animation: ctInBack 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes ctIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ctInBack {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ct-step.is-entering,
+    .ct-step.is-entering-back { animation: none; }
+    .ct-progress__fill { transition: none; }
+}
+
+.ct-step__title {
+    font-size: 21px;
+    line-height: 1.25;
+    margin-bottom: 18px;
+}
+/* The heading is given tabindex="-1" and focused on each step change so a
+   screen reader announces the new question. That focus is programmatic, not
+   the result of tabbing, so the visible ring would just look like a stray
+   box drawn around the title — :focus-visible still shows it for anyone who
+   actually reaches it via the keyboard. */
+.ct-step__title:focus:not(:focus-visible) { outline: none; }
+
+/* Option grid — single column on a phone so each row is a wide, easy
+   target; two columns once there's room. */
+.ct-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+.ct-option {
+    display: flex;
+    align-items: center;
+    min-height: 54px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--color-bg);
+    color: var(--heading-color);
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.ct-option::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin-right: 12px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ct-option:active { transform: scale(0.995); }
+.ct-option.is-selected {
+    border-color: var(--primary-color);
+    background: var(--color-bg);
+}
+.ct-option.is-selected::before {
+    border-color: var(--primary-color);
+    /* Inset shadow draws the filled dot without a second element. */
+    box-shadow: inset 0 0 0 4px var(--primary-color);
+}
+.ct-option:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* ---- Step 4 fields --------------------------------------------------- */
+.ct-fields { display: flex; flex-direction: column; gap: 16px; }
+.ct-field { display: block; }
+.ct-field__label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--heading-color);
+}
+.ct-field__label em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--paragraph-light);
+}
+.ct-field input,
+.ct-field textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--color-bg);
+    color: var(--heading-color);
+    /* 16px exactly: iOS Safari zooms the viewport on focus for anything
+       smaller, which yanks the layout sideways mid-form. */
+    font-size: 16px;
+    line-height: 1.5;
+    transition: border-color 0.18s ease;
+}
+.ct-field textarea { resize: vertical; min-height: 104px; }
+.ct-field input:focus,
+.ct-field textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.ct-field input.has-error,
+.ct-field textarea.has-error { border-color: var(--danger, #dc2626); }
+
+.ct-error {
+    display: block;
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    color: var(--danger, #dc2626);
+}
+.ct-formerror {
+    margin: 14px 0 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--danger, #dc2626);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* ---- Nav ------------------------------------------------------------- */
+.ct-nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+}
+/* Back is secondary and stays narrow; the forward action always fills the
+   remaining width so the primary path is the obvious one. */
+.ct-nav .ct-btn--ghost { flex: 0 0 auto; padding-inline: 18px; }
+.ct-nav .ct-btn--primary { flex: 1 1 auto; }
+
+/* ---- Success --------------------------------------------------------- */
+.ct-done { text-align: center; padding: 12px 0 4px; }
+.ct-done__mark {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--success, #059669);
+    color: #fff;
+    font-size: 24px;
+    animation: ctPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes ctPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+.ct-done__text {
+    color: var(--paragraph);
+    font-size: 15px;
+    line-height: 1.65;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ct-done__mark { animation: none; }
+}
+
+/* ---- Larger screens -------------------------------------------------- */
+@media (min-width: 768px) {
+    .ct-hero { padding: 130px 0 56px; }
+    .ct-hero__title { font-size: 46px; }
+    .ct-hero__lede { font-size: 17px; }
+    .ct-hero__actions { flex-direction: row; justify-content: center; }
+    .ct-hero__actions .ct-btn { min-width: 220px; }
+
+    .ct-wizard { padding: 34px 34px 30px; }
+    .ct-step__title { font-size: 24px; }
+    .ct-options { grid-template-columns: 1fr 1fr; }
+    .ct-options--2 { grid-template-columns: 1fr 1fr; }
+    .ct-wizard-section { padding-bottom: 110px; }
+}

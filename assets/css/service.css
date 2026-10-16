@@ -1,0 +1,485 @@
+/* ---------------------------------------------------------------------
+   Service pages (/services and /services/:slug).
+
+   Scoped under .service-page. Every colour, radius, shadow, font and
+   easing below is an existing token from style.css's monochrome design
+   system — no new design language, no gradients, no glass, no accent
+   colour of its own.
+
+   Phone-first, like the rest of this pass: single column with generous
+   but not wasteful rhythm, widening to a real two-column composition
+   only where there is enough content to justify it.
+   --------------------------------------------------------------------- */
+
+.service-page {
+  background-color: var(--color-bg);
+}
+
+/* 68px clears the fixed site header. That is not a guessed number: the
+   header is `position: fixed` (65px tall below 992px, 42px above), and
+   style.css already reserves exactly 68px for it via `.page-banner
+   { margin-top: 68px }` on every existing inner page. Reusing the same
+   constant is what keeps these pages starting where every other page does
+   — without it the first line of content renders underneath the header. */
+.svc {
+  --svc-header-clearance: 68px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--svc-header-clearance) 20px 0;
+}
+
+@media (min-width: 768px) {
+  .svc { padding-left: 32px; padding-right: 32px; }
+}
+
+/* ----------------------------- Hero ----------------------------- */
+
+/* Deliberately short. The brief is explicit that the first screen answers
+   WHAT / FOR WHOM / WHY FITNESS AGENCY and then stops — so this is a
+   kicker, a headline, one paragraph and the actions, and nothing else. */
+.svc-hero {
+  padding: 34px 0 30px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.svc-hero__kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-bottom: 12px;
+}
+
+.svc-hero__title {
+  font-family: var(--prosto-one);
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin: 0 0 14px;
+  max-width: 20ch;
+}
+
+.svc-hero__lead {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  margin: 0 0 22px;
+  max-width: 58ch;
+}
+
+.svc-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Filled and outlined actions, both built from the site's existing button
+   treatment (near-black fill, pill radius, white ink on the filled one). */
+.svc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color var(--nav-dur) var(--nav-ease),
+              color var(--nav-dur) var(--nav-ease),
+              border-color var(--nav-dur) var(--nav-ease),
+              box-shadow var(--nav-dur) var(--nav-ease),
+              transform var(--nav-dur) var(--nav-ease);
+}
+
+.svc-btn--primary {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+.svc-btn--primary:hover,
+.svc-btn--primary:focus-visible {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+}
+
+.svc-btn--ghost {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.svc-btn--ghost:hover,
+.svc-btn--ghost:focus-visible {
+  background-color: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: rgba(26, 26, 26, 0.2);
+}
+
+.svc-btn:active { transform: scale(0.985); }
+
+/* style.css has a global `span { color: var(--span) }` that beats the colour
+   set on an anchor — without this, a label inside a filled button renders
+   near-black on near-black. Same trap as the partner profile CTA. */
+.svc-btn span { color: inherit; }
+
+/* ----------------------------- Sections ----------------------------- */
+
+.svc-section {
+  padding: 34px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.svc-section:last-of-type { border-bottom: 0; }
+
+.svc-section__eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-bottom: 10px;
+}
+
+.svc-section__title {
+  font-family: var(--prosto-one);
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 12px;
+  max-width: 28ch;
+}
+
+.svc-section__body p {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--color-text-muted);
+  margin: 0 0 14px;
+  max-width: 62ch;
+}
+.svc-section__body p:last-child { margin-bottom: 0; }
+
+/* The value proposition gets one quiet emphasis treatment — a rule and a
+   larger measure — rather than a coloured callout box. */
+.svc-value {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--color-text);
+  font-weight: 500;
+  margin: 0;
+  padding-left: 16px;
+  border-left: 2px solid var(--color-text);
+  max-width: 56ch;
+}
+
+/* ----------------------------- Card grids ----------------------------- */
+
+.svc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+@media (min-width: 600px) {
+  .svc-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+@media (min-width: 992px) {
+  .svc-grid--3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.svc-card {
+  padding: 16px 18px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.svc-card h3 {
+  font-family: var(--prosto-one);
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text);
+  margin: 0 0 6px;
+}
+
+.svc-card p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ----------------------------- Benefits ----------------------------- */
+
+.svc-benefits {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.svc-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.svc-benefits i {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--color-text-faint);
+}
+
+/* ----------------------------- Process ----------------------------- */
+
+.svc-steps {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  counter-reset: svc-step;
+  display: grid;
+  gap: 14px;
+}
+
+.svc-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.svc-step__num {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.svc-step__body { flex: 1 1 auto; min-width: 0; }
+
+.svc-step__body h3 {
+  font-family: var(--prosto-one);
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 4px 0 4px;
+}
+
+.svc-step__body p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* ----------------------------- CTA band ----------------------------- */
+
+.svc-cta {
+  margin: 34px 0;
+  padding: 28px 22px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.svc-cta h2 {
+  font-family: var(--prosto-one);
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 10px;
+}
+
+.svc-cta p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  margin: 0 auto 20px;
+  max-width: 52ch;
+}
+
+.svc-cta .svc-hero__actions { justify-content: center; }
+
+/* ----------------------------- Related ----------------------------- */
+
+.svc-related-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  transition: transform var(--nav-dur) var(--nav-ease),
+              box-shadow var(--nav-dur) var(--nav-ease),
+              border-color var(--nav-dur) var(--nav-ease);
+}
+
+@media (hover: hover) {
+  .svc-related-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(26, 26, 26, 0.18);
+    color: var(--color-text);
+  }
+}
+.svc-related-card:active { transform: scale(0.99); }
+
+.svc-related-card strong {
+  display: block;
+  font-family: var(--prosto-one);
+  font-size: 15.5px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.svc-related-card span {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.svc-related-card i {
+  flex: 0 0 auto;
+  color: var(--color-text-faint);
+  font-size: 13px;
+}
+
+/* ----------------------------- Index page ----------------------------- */
+
+.svc-index-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  height: 100%;
+  transition: transform var(--nav-dur) var(--nav-ease),
+              box-shadow var(--nav-dur) var(--nav-ease),
+              border-color var(--nav-dur) var(--nav-ease);
+}
+
+@media (hover: hover) {
+  .svc-index-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(26, 26, 26, 0.18);
+    color: var(--color-text);
+  }
+}
+.svc-index-card:active { transform: scale(0.99); }
+
+.svc-index-card h2 {
+  font-family: var(--prosto-one);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  color: var(--color-text);
+}
+
+.svc-index-card p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  margin: 0 0 14px;
+  flex: 1 1 auto;
+}
+
+.svc-index-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.svc-index-card__more span { color: inherit; }
+
+/* ----------------------------- Breadcrumb ----------------------------- */
+
+.svc-crumb {
+  padding: 6px 0 0;
+  font-size: 13px;
+  color: var(--color-text-faint);
+}
+
+/* Padded to a ~45px tap target rather than left at the 21px the text alone
+   occupies. Breadcrumbs are secondary navigation, but on a phone they are
+   still thumb targets, and two 21px links sitting side by side is exactly
+   the mis-tap case the 44px floor exists for. The padding grows the hit
+   area without changing the type size; the negative left margin keeps the
+   first crumb optically flush with the content column above it. */
+.svc-crumb a {
+  display: inline-block;
+  padding: 12px 6px;
+  color: var(--color-text-muted);
+}
+.svc-crumb a:first-child { margin-left: -6px; }
+.svc-crumb a:hover { color: var(--color-text); }
+.svc-crumb span { color: inherit; }
+
+/* --------------------------- Larger screens --------------------------- */
+
+@media (min-width: 768px) {
+  .svc-hero { padding: 48px 0 40px; }
+  .svc-hero__title { font-size: 42px; }
+  .svc-hero__lead { font-size: 17px; }
+  .svc-section { padding: 44px 0; }
+  .svc-section__title { font-size: 26px; }
+  .svc-cta { padding: 40px 32px; }
+  .svc-cta h2 { font-size: 26px; }
+}
+
+@media (min-width: 992px) {
+  .svc-hero__title { font-size: 48px; }
+}
+
+/* Motion: one subtle entrance, consistent with the partner profile's, and
+   nothing else. Reduced-motion users get the finished page immediately. */
+@media (prefers-reduced-motion: reduce) {
+  .svc-btn,
+  .svc-card,
+  .svc-related-card,
+  .svc-index-card {
+    transition: none;
+  }
+  .svc-btn:active,
+  .svc-related-card:active,
+  .svc-index-card:active {
+    transform: none;
+  }
+}

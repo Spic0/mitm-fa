@@ -1,0 +1,997 @@
+// Admin "Private Presentations" section — the list, plus a drawer that owns
+// both editing and analytics for one deck.
+//
+// Built entirely from the admin's existing components (a-card, a-table,
+// a-drawer, a-badge, a-btn, AdminUI toasts/confirm/skeletons) so this section
+// renders as part of the same dashboard rather than as a new surface. The one
+// thing it adds is the link row, which has no precedent anywhere else in the
+// admin: everything else here already existed.
+window.AdminPanels = window.AdminPanels || {};
+window.AdminPanels.presentations = (function () {
+  var container = null;
+  var tbody = null;
+  var rows = [];
+  var filters = { search: "", status: "", sort: "createdAt-desc" };
+  var searchTimer = null;
+
+  function esc(s) { return window.AdminUI.escapeHtml(s); }
+
+  // The public URL an admin actually pastes into an invite. Built from the
+  // browser's own origin rather than a configured base so a deck created on
+  // staging yields a staging link — copying a production URL out of a staging
+  // dashboard is a mistake worth making structurally impossible.
+  function publicUrl(slug) {
+    return window.location.origin + "/presentation/" + slug;
+  }
+
+  function formatDuration(ms) {
+    if (!ms) return "—";
+    var totalSeconds = Math.round(ms / 1000);
+    if (totalSeconds < 60) return totalSeconds + "s";
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+    if (minutes < 60) return minutes + "m " + seconds + "s";
+    return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m";
+  }
+
+  // "live" | "expired" | "disabled" — the server's effectiveState, which
+  // already folds a passed expiry date into the answer so the table never
+  // shows "Enabled" for a deck that stopped working last week.
+  function stateBadge(state) {
+    var map = {
+      live: { cls: "a-badge-success", label: "Live" },
+      expired: { cls: "a-badge-warning", label: "Expired" },
+      disabled: { cls: "a-badge-neutral", label: "Disabled" },
+    };
+    var entry = map[state] || map.disabled;
+    return '<span class="a-badge ' + entry.cls + '">' + entry.label + "</span>";
+  }
+
+  function mount(root) {
+    container = root;
+    tbody = root.querySelector("#presentationsTableBody");
+
+    root.querySelector("#createPresentationBtn").addEventListener("click", function () {
+      openDrawer(null);
+    });
+
+    var search = root.querySelector("#presentationSearch");
+    search.addEventListener("input", function () {
+      // Debounced: this refetches the list, and a keystroke-per-request would
+      // put one query per character on the database.
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(function () {
+        filters.search = search.value.trim();
+        load();
+      }, 250);
+    });
+
+    root.querySelector("#presentationStatusFilter").addEventListener("change", function () {
+      filters.status = this.value;
+      load();
+    });
+    root.querySelector("#presentationSortFilter").addEventListener("change", function () {
+      filters.sort = this.value;
+      load();
+    });
+
+    // One delegated listener on the tbody instead of per-row handlers — the
+    // table is re-rendered wholesale on every load(), and per-row listeners
+    // would be re-attached (and leak) each time.
+    tbody.addEventListener("click", onTableClick);
+
+    load();
+  }
+
+  function load() {
+    tbody.innerHTML = window.AdminUI.skeletonRows(8, 5);
+    window.AdminAPI.listPresentations(filters)
+      .then(function (data) {
+        rows = data.presentations || [];
+        render();
+      })
+      .catch(function () {
+        tbody.innerHTML =
+          '<tr><td colspan="8">' +
+          window.AdminUI.emptyState("fa-triangle-exclamation", "Failed to load presentations.") +
+          "</td></tr>";
+      });
+  }
+
+  function render() {
+    if (!rows.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8">' +
+        window.AdminUI.emptyState(
+          "fa-lock",
+          filters.search || filters.status
+            ? "No presentations match those filters."
+            : "No presentations yet — create the first one to generate a private link."
+        ) +
+        "</td></tr>";
+      return;
+    }
+
+    tbody.innerHTML = rows.map(renderRow).join("");
+    window.AdminUI.animateRowsIn(Array.prototype.slice.call(tbody.querySelectorAll("tr")));
+  }
+
+  function renderRow(p) {
+    var access = p.hasPassword
+      ? '<span class="a-badge a-badge-neutral"><i class="fa-solid fa-key"></i> Password</span>'
+      : '<span class="pres-admin-muted">Link only</span>';
+
+    return (
+      '<tr data-id="' + p.id + '">' +
+      "<td>" +
+      '<div class="pres-admin-title">' + esc(p.title) + "</div>" +
+      (p.recipient ? '<div class="pres-admin-sub">For ' + esc(p.recipient) + "</div>" : "") +
+      "</td>" +
+      "<td>" + stateBadge(p.state) + "</td>" +
+      "<td>" + access + "</td>" +
+      "<td>" + (p.expiresAt ? window.AdminUI.formatDate(p.expiresAt) : '<span class="pres-admin-muted">Never</span>') + "</td>" +
+      "<td>" + p.visits + "</td>" +
+      "<td>" + p.contactSubmissions + "</td>" +
+      "<td>" + window.AdminUI.formatDate(p.createdAt) + "</td>" +
+      '<td class="a-row-actions">' +
+      '<button class="a-btn a-btn-secondary a-btn-sm" data-action="copy" data-slug="' + esc(p.slug) + '" title="Copy private link"><i class="fa-solid fa-link"></i></button> ' +
+      '<button class="a-btn a-btn-secondary a-btn-sm" data-action="open" title="Open presentation"><i class="fa-solid fa-arrow-up-right-from-square"></i></button> ' +
+      '<button class="a-btn a-btn-secondary a-btn-sm" data-action="duplicate" title="Duplicate"><i class="fa-solid fa-copy"></i></button> ' +
+      '<button class="a-btn a-btn-secondary a-btn-sm" data-action="edit" title="Edit &amp; analytics"><i class="fa-solid fa-pen"></i></button> ' +
+      '<button class="a-btn a-btn-secondary a-btn-sm" data-action="delete" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
+      "</td></tr>"
+    );
+  }
+
+  function findRow(id) {
+    return rows.filter(function (r) { return r.id === id; })[0];
+  }
+
+  function onTableClick(e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    var tr = btn.closest("tr[data-id]");
+    if (!tr) return;
+    var id = tr.dataset.id;
+    var row = findRow(id);
+    if (!row) return;
+
+    var action = btn.dataset.action;
+    if (action === "copy") return copyLink(row);
+    if (action === "open") return window.open(publicUrl(row.slug), "_blank", "noopener");
+    if (action === "edit") return openDrawer(id);
+    if (action === "duplicate") return duplicate(row);
+    if (action === "delete") return remove(row, tr);
+  }
+
+  function copyLink(row) {
+    var url = publicUrl(row.slug);
+    // navigator.clipboard is unavailable on insecure origins (a plain-HTTP
+    // staging box), which is exactly where an admin is most likely to be
+    // testing — so there's a fallback rather than a silent no-op.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        function () { window.AdminUI.toast("Private link copied to clipboard", "success"); },
+        function () { promptCopy(url); }
+      );
+    } else {
+      promptCopy(url);
+    }
+  }
+
+  function promptCopy(url) {
+    window.prompt("Copy this private link:", url);
+  }
+
+  function duplicate(row) {
+    window.AdminAPI.duplicatePresentation(row.id)
+      .then(function () {
+        window.AdminUI.toast("Duplicated — the copy is disabled until you enable it", "success");
+        load();
+      })
+      .catch(function (err) {
+        window.AdminUI.toast(err.message || "Failed to duplicate", "error");
+      });
+  }
+
+  function remove(row, tr) {
+    window.AdminUI.confirmDialog({
+      title: "Delete this presentation?",
+      message:
+        'Deleting "' + row.title + '" also deletes its visit history and analytics, and the private link stops working immediately. This cannot be undone.',
+      confirmLabel: "Delete",
+      danger: true,
+    }).then(function (ok) {
+      if (!ok) return;
+      window.AdminAPI.deletePresentation(row.id)
+        .then(function () {
+          return window.AdminUI.animateRowRemoval(tr);
+        })
+        .then(function () {
+          window.AdminUI.toast("Presentation deleted", "success");
+          load();
+        })
+        .catch(function (err) {
+          window.AdminUI.toast(err.message || "Failed to delete", "error");
+        });
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // Drawer — create, edit, and analytics for one presentation.
+  //
+  // Analytics is fetched only when an existing deck is opened, never on the
+  // list's load(), matching how promotion-drawer.js defers the same work.
+  // -------------------------------------------------------------------
+  // Mirrors SECTION_KEYS in server/src/lib/presentations.js — same order as
+  // the deck itself, so the checkbox list reads like a table of contents.
+  var SECTION_FIELDS = [
+    { key: "who", label: "Who We Are" },
+    { key: "services", label: "Everything We Handle" },
+    { key: "studio", label: "Creative Studio" },
+    { key: "process", label: "How It Works" },
+    { key: "why", label: "Why Fitness Agency" },
+    { key: "showcase", label: "Product Showcase" },
+    { key: "partner", label: "Partner Profile" },
+    { key: "catalogue", label: "What You Sell" },
+    { key: "journey", label: "Customer Journey" },
+    { key: "value", label: "What It's Worth" },
+    { key: "campaigns", label: "Promotional Campaigns" },
+    { key: "philosophy", label: "Our Philosophy" },
+    { key: "soon", label: "Coming Soon" },
+    { key: "cta", label: "Setup Wizard" },
+  ];
+
+  function fieldRow(id, label, value, hint, type) {
+    return (
+      '<div class="pres-form-row">' +
+      '<label for="' + id + '">' + esc(label) + "</label>" +
+      (type === "textarea"
+        ? '<textarea id="' + id + '" rows="3">' + esc(value || "") + "</textarea>"
+        : '<input type="' + (type || "text") + '" id="' + id + '" value="' + esc(value || "") + '">') +
+      (hint ? '<p class="pres-form-hint">' + esc(hint) + "</p>" : "") +
+      "</div>"
+    );
+  }
+
+  function openDrawer(id) {
+    var isNew = !id;
+
+    var backdrop = document.createElement("div");
+    backdrop.className = "a-modal-backdrop a-drawer-backdrop";
+    backdrop.innerHTML =
+      '<div class="a-drawer">' +
+      '<div class="a-drawer-header">' +
+      "<div><h5 id=\"presDrawerTitle\">" + (isNew ? "New Presentation" : "Loading…") + "</h5>" +
+      '<p class="a-modal-desc u-mb-0" id="presDrawerSubtitle"></p></div>' +
+      '<button class="a-drawer-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>' +
+      "</div>" +
+      '<div class="a-drawer-tabs">' +
+      '<button class="a-drawer-tab active" data-tab="details">Details</button>' +
+      '<button class="a-drawer-tab" data-tab="content">Content</button>' +
+      (isNew ? "" : '<button class="a-drawer-tab" data-tab="analytics">Analytics</button>') +
+      "</div>" +
+      '<div class="a-drawer-panel active" data-panel="details"></div>' +
+      '<div class="a-drawer-panel" data-panel="content"></div>' +
+      (isNew ? "" : '<div class="a-drawer-panel" data-panel="analytics">' + window.AdminUI.skeletonBlock(200) + "</div>") +
+      "</div>";
+
+    window.AdminUI.openModal(backdrop);
+    backdrop.querySelector(".a-drawer-close").addEventListener("click", function () {
+      window.AdminUI.closeModal(backdrop);
+    });
+    backdrop.querySelectorAll(".a-drawer-tab").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        backdrop.querySelectorAll(".a-drawer-tab").forEach(function (t) {
+          t.classList.toggle("active", t === tab);
+        });
+        backdrop.querySelectorAll(".a-drawer-panel").forEach(function (p) {
+          p.classList.toggle("active", p.dataset.panel === tab.dataset.tab);
+        });
+      });
+    });
+
+    if (isNew) {
+      renderForm(backdrop, null);
+      return;
+    }
+
+    window.AdminAPI.getPresentation(id)
+      .then(function (data) {
+        renderForm(backdrop, data.presentation);
+        renderAnalytics(backdrop, data.analytics);
+      })
+      .catch(function (err) {
+        window.AdminUI.toast(err.message || "Failed to load presentation", "error");
+        window.AdminUI.closeModal(backdrop);
+      });
+  }
+
+  function renderForm(backdrop, p) {
+    var isNew = !p;
+    var content = p ? p.content : {};
+    var sections = (content && content.sections) || {};
+
+    backdrop.querySelector("#presDrawerTitle").textContent = isNew ? "New Presentation" : p.title;
+    backdrop.querySelector("#presDrawerSubtitle").textContent = isNew
+      ? "A private link is generated on save."
+      : "Updated " + window.AdminUI.formatDateTime(p.updatedAt);
+
+    // ---- Details tab ----
+    var linkBlock = isNew
+      ? '<p class="pres-form-hint u-mb-16">The private URL is generated when you save, and is unguessable by design.</p>'
+      : '<div class="pres-link">' +
+        '<span class="pres-link__label">Private link</span>' +
+        '<code class="pres-link__url" id="presLinkUrl">' + esc(publicUrl(p.slug)) + "</code>" +
+        '<div class="pres-link__actions">' +
+        '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-drawer-action="copy"><i class="fa-solid fa-link"></i> Copy</button>' +
+        '<button type="button" class="a-btn a-btn-secondary a-btn-sm" data-drawer-action="regenerate"><i class="fa-solid fa-rotate"></i> Regenerate</button>' +
+        "</div></div>";
+
+    var passwordBlock = isNew
+      ? fieldRow("presPassword", "Password (optional)", "", "Leave empty for a link-only presentation.", "password")
+      : '<div class="pres-form-row">' +
+        '<label for="presPassword">Password</label>' +
+        '<input type="password" id="presPassword" placeholder="' +
+        (p.hasPassword ? "Set — type to replace" : "Not set") + '">' +
+        '<p class="pres-form-hint">Leave empty to keep the current setting.</p>' +
+        (p.hasPassword
+          ? '<label class="pres-check"><input type="checkbox" id="presRemovePassword"> <span>Remove password protection</span></label>'
+          : "") +
+        "</div>";
+
+    backdrop.querySelector('[data-panel="details"]').innerHTML =
+      linkBlock +
+      fieldRow("presTitle", "Title", isNew ? "" : p.title, "Internal label — never shown on the presentation.") +
+      fieldRow("presRecipient", "Prepared for (optional)", isNew ? "" : p.recipient, "Shown in the hero, e.g. a company or a person's name.") +
+      '<div class="pres-form-row">' +
+      '<label for="presStatus">Status</label>' +
+      '<select id="presStatus">' +
+      '<option value="enabled"' + (isNew || p.status === "enabled" ? " selected" : "") + ">Enabled</option>" +
+      '<option value="disabled"' + (!isNew && p.status === "disabled" ? " selected" : "") + ">Disabled</option>" +
+      "</select>" +
+      '<p class="pres-form-hint">A disabled presentation returns the site\'s normal 404 — it never reveals that the link once existed.</p>' +
+      "</div>" +
+      fieldRow(
+        "presExpiresAt",
+        "Expires (optional)",
+        isNew || !p.expiresAt ? "" : new Date(p.expiresAt).toISOString().slice(0, 10),
+        "After this date the link shows an expiry notice instead of the deck.",
+        "date"
+      ) +
+      passwordBlock +
+      '<div class="a-drawer-footer">' +
+      '<button type="button" class="a-btn a-btn-secondary" data-drawer-action="cancel">Cancel</button>' +
+      '<button type="button" class="a-btn a-btn-primary" data-drawer-action="save">' +
+      (isNew ? "Create presentation" : "Save changes") +
+      "</button></div>";
+
+    // ---- Content tab ----
+    backdrop.querySelector('[data-panel="content"]').innerHTML =
+      '<p class="pres-form-hint u-mb-16">The deck\'s sections are fixed brand content. These override the hero copy, the featured product and the call-to-action destinations for this presentation only.</p>' +
+      fieldRow("presHeroEyebrow", "Hero eyebrow", content.heroEyebrow, "") +
+      fieldRow("presHeroTitle", "Hero headline", content.heroTitle, "") +
+      fieldRow("presHeroSubtitle", "Hero subheadline", content.heroSubtitle, "", "textarea") +
+      fieldRow("presWelcomeNote", "Personal note (optional)", content.welcomeNote, "One line addressed to this specific viewer.", "textarea") +
+      '<h6 class="pres-form-heading">Presentation product</h6>' +
+      '<p class="pres-form-hint u-mb-16">Drives both "View Product" buttons, the Product Showcase and both device previews. ' +
+      "<strong>Every product is listed</strong>, whatever its status — search by name, creator or ID. " +
+      "Where the buttons link depends on what the visitor is allowed to open: a published product links to its " +
+      "storefront page, a presentation product to its unlisted showcase, and anything still unreleased is shown " +
+      "in the deck without an outbound link.</p>" +
+      '<div class="pres-form-row">' +
+      '<label for="presProductSearch">Product</label>' +
+      '<div class="pres-picker" data-product-picker>' +
+      '<input type="hidden" id="presFeaturedProduct" value="' + esc(content.featuredProductId || "") + '">' +
+      '<div class="pres-picker__current" data-picker-current>Loading…</div>' +
+      '<input type="text" id="presProductSearch" class="pres-picker__search" autocomplete="off" spellcheck="false"' +
+      ' placeholder="Search by name, creator or ID…" role="combobox" aria-expanded="false"' +
+      ' aria-controls="presProductList" aria-autocomplete="list">' +
+      '<ul class="pres-picker__list" id="presProductList" role="listbox" aria-label="Products" hidden></ul>' +
+      '<p class="pres-picker__meta" data-picker-meta></p>' +
+      "</div>" +
+      '<p class="pres-form-hint">Swap this at any time — the deck picks the new product up on its next load, with nothing to rebuild. ' +
+      'Choose "No product" to hide the View Product buttons entirely.</p>' +
+      "</div>" +
+      // ---- Partner profile ----
+      // A peer of the product above, not a replacement for it: a deck can
+      // carry either, both or neither. Same heading, same picker component,
+      // same hint voice — it is the same panel doing the same job for a
+      // second kind of content.
+      '<h6 class="pres-form-heading">Partner profile</h6>' +
+      '<p class="pres-form-hint u-mb-16">Adds the Partner Profile section to the deck, showing an existing profile from ' +
+      '<strong>Partner Profiles</strong> exactly as it appears at its public address. ' +
+      "The deck stores only a reference — edit the profile there and every presentation using it updates on its next load. " +
+      "Search by name, slug or handle.</p>" +
+      '<div class="pres-form-row">' +
+      '<label for="presPartnerSearch">Partner</label>' +
+      '<div class="pres-picker" data-partner-picker>' +
+      '<input type="hidden" id="presPartnerProfile" value="' + esc(content.partnerProfileId || "") + '">' +
+      '<div class="pres-picker__current" data-picker-current>Loading…</div>' +
+      '<input type="text" id="presPartnerSearch" class="pres-picker__search" autocomplete="off" spellcheck="false"' +
+      ' placeholder="Search by name, slug or handle…" role="combobox" aria-expanded="false"' +
+      ' aria-controls="presPartnerList" aria-autocomplete="list">' +
+      '<ul class="pres-picker__list" id="presPartnerList" role="listbox" aria-label="Partner profiles" hidden></ul>' +
+      '<p class="pres-picker__meta" data-picker-meta></p>' +
+      "</div>" +
+      '<p class="pres-form-hint">Choose "No partner profile" to remove it — the section disappears from the deck. ' +
+      "The section is also listed under <strong>Sections</strong> below, so it can be switched off for one audience without losing the selection.</p>" +
+      "</div>" +
+      '<h6 class="pres-form-heading">Call-to-action links</h6>' +
+      '<p class="pres-form-hint u-mb-16">Leave a field empty and that button scrolls to the enquiry form instead of opening a link.</p>' +
+      fieldRow("presCtaPartnershipUrl", "Continue Partnership", content.ctaPartnershipUrl, "", "url") +
+      fieldRow("presCtaMeetingUrl", "Schedule Meeting", content.ctaMeetingUrl, "Booking or calendar URL.", "url") +
+      fieldRow("presCtaDemoUrl", "Request Demo", content.ctaDemoUrl, "", "url") +
+      '<h6 class="pres-form-heading">Sections</h6>' +
+      '<p class="pres-form-hint u-mb-16">Unchecked sections are removed server-side — they are never sent to the browser at all.</p>' +
+      '<div class="pres-sections">' +
+      SECTION_FIELDS.map(function (s) {
+        var on = sections[s.key] !== false;
+        return (
+          '<label class="pres-check"><input type="checkbox" data-section="' + s.key + '"' +
+          (on ? " checked" : "") + "> <span>" + esc(s.label) + "</span></label>"
+        );
+      }).join("") +
+      "</div>";
+
+    // ---- Wiring ----
+    populateProductPicker(backdrop);
+    populatePartnerPicker(backdrop);
+
+    backdrop.querySelectorAll("[data-drawer-action]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var action = btn.dataset.drawerAction;
+        if (action === "cancel") return window.AdminUI.closeModal(backdrop);
+        if (action === "copy") return copyLink(p);
+        if (action === "regenerate") return regenerate(backdrop, p);
+        if (action === "save") return save(backdrop, p, btn);
+      });
+    });
+  }
+
+  // How many rows the list shows at once. Search is server-side, so this caps
+  // what is RENDERED, never what is reachable — the meta line always states
+  // the true total, and any product is one search away. That distinction is
+  // the whole point: this picker previously filtered to status "presentation"
+  // and a real catalogue product simply could not be found in it.
+  var PICKER_PAGE = 50;
+  var PICKER_DEBOUNCE_MS = 250;
+
+  function statusLabel(status) {
+    if (status === "presentation") return "showcase only";
+    return status || "unknown";
+  }
+
+  // What the deck will do with this product, said plainly at the moment of
+  // choosing rather than discovered later by loading the deck. Mirrors the
+  // productUrl logic in server/src/routes/presentation.js.
+  function linkNote(status) {
+    if (status === "published") return "links to its storefront page";
+    if (status === "presentation") return "links to its unlisted showcase";
+    return "shown in the deck, no outbound link";
+  }
+
+  // Fills the presentation-product picker after the drawer is already on
+  // screen. The saved id lives in the hidden input rather than in the rendered
+  // list, so a failed or slow request can never quietly reset a deck's chosen
+  // product to "none" — on failure the picker keeps the stored id and says so.
+  function populateProductPicker(backdrop) {
+    var root = backdrop.querySelector("[data-product-picker]");
+    if (!root) return;
+    var hidden = root.querySelector("#presFeaturedProduct");
+    var searchInput = root.querySelector("#presProductSearch");
+    var list = root.querySelector("#presProductList");
+    var current = root.querySelector("[data-picker-current]");
+    var meta = root.querySelector("[data-picker-meta]");
+
+    var debounce = null;
+    var requestSeq = 0;
+    var rows = [];
+    var activeIndex = -1;
+
+    function renderCurrent(product) {
+      var id = hidden.value;
+      if (!id) {
+        current.innerHTML = '<span class="pres-picker__none">No product — the View Product buttons are hidden</span>';
+        return;
+      }
+      if (!product) {
+        // Selected, but we could not resolve it — deleted, or the lookup
+        // failed. Never silently clear it: show the raw id so the admin can
+        // decide, exactly as before.
+        current.innerHTML =
+          '<span class="pres-picker__warn">Saved product <code>' + esc(id) + "</code> could not be loaded — it may have been deleted. " +
+          "It stays selected until you change it.</span>";
+        return;
+      }
+      current.innerHTML =
+        '<span class="pres-picker__name">' + esc(product.name) + "</span>" +
+        ' <span class="pres-badge pres-badge--' + esc(product.status || "unknown") + '">' + esc(statusLabel(product.status)) + "</span>" +
+        (product.creator ? ' <span class="pres-picker__by">' + esc(product.creator) + "</span>" : "") +
+        ' <span class="pres-picker__link-note">' + esc(linkNote(product.status)) + "</span>";
+    }
+
+    function closeList() {
+      list.hidden = true;
+      searchInput.setAttribute("aria-expanded", "false");
+      activeIndex = -1;
+    }
+
+    function choose(product) {
+      hidden.value = product ? product.id : "";
+      renderCurrent(product);
+      searchInput.value = "";
+      closeList();
+      render([], null, false);
+    }
+
+    function setActive(next) {
+      var items = list.querySelectorAll("[data-idx]");
+      if (!items.length) return;
+      activeIndex = (next + items.length) % items.length;
+      items.forEach(function (el, i) {
+        el.classList.toggle("is-active", i === activeIndex);
+        if (i === activeIndex) {
+          el.setAttribute("aria-selected", "true");
+          if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+        } else el.removeAttribute("aria-selected");
+      });
+    }
+
+    // rows[0] is always the explicit "No product" choice, so clearing the
+    // product is a normal selection rather than a special gesture.
+    function render(products, total, truncated) {
+      rows = [{ id: "", name: "No product — hide the buttons", none: true }].concat(products);
+      list.innerHTML = rows
+        .map(function (p, i) {
+          if (p.none) {
+            return '<li class="pres-picker__opt pres-picker__opt--none" role="option" data-idx="' + i + '">' + esc(p.name) + "</li>";
+          }
+          return (
+            '<li class="pres-picker__opt" role="option" data-idx="' + i + '" title="' + esc(p.id) + '">' +
+            '<span class="pres-picker__name">' + esc(p.name) + "</span>" +
+            ' <span class="pres-badge pres-badge--' + esc(p.status || "unknown") + '">' + esc(statusLabel(p.status)) + "</span>" +
+            (p.creator ? '<span class="pres-picker__by">' + esc(p.creator) + "</span>" : "") +
+            "</li>"
+          );
+        })
+        .join("");
+
+      if (total == null) { meta.textContent = ""; return; }
+      meta.textContent = truncated
+        ? "Showing " + products.length + " of " + total + " products — keep typing to narrow it down."
+        : products.length + " of " + total + " products";
+    }
+
+    function search(term) {
+      var seq = ++requestSeq;
+      // compact: the picker shows a name, a status and a creator — it has no
+      // use for 80KB of exercise JSON per row.
+      var params = { limit: PICKER_PAGE, compact: 1 };
+      if (term) params.search = term;
+      return window.AdminAPI.listProducts(params)
+        .then(function (data) {
+          // A slower earlier request must never overwrite a newer one's
+          // results — the classic out-of-order autocomplete bug.
+          if (seq !== requestSeq) return;
+          var products = window.AdminAPI.rows(data, "products");
+          render(products, data.total != null ? data.total : products.length, !!data.truncated);
+          list.hidden = false;
+          searchInput.setAttribute("aria-expanded", "true");
+          setActive(0);
+        })
+        .catch(function (err) {
+          if (seq !== requestSeq) return;
+          list.innerHTML = '<li class="pres-picker__opt pres-picker__opt--error">' + esc(err.message) + "</li>";
+          list.hidden = false;
+          meta.textContent = "";
+        });
+    }
+
+    searchInput.addEventListener("input", function () {
+      clearTimeout(debounce);
+      var term = searchInput.value.trim();
+      debounce = setTimeout(function () { search(term); }, PICKER_DEBOUNCE_MS);
+    });
+    searchInput.addEventListener("focus", function () {
+      if (!list.hidden) return;
+      search(searchInput.value.trim());
+    });
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) search(searchInput.value.trim()); else setActive(activeIndex + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+      else if (e.key === "Enter") {
+        if (list.hidden || activeIndex < 0) return;
+        // Enter inside the drawer would otherwise submit/save; this key press
+        // belongs to the open listbox.
+        e.preventDefault();
+        choose(rows[activeIndex].none ? null : rows[activeIndex]);
+      } else if (e.key === "Escape") {
+        if (list.hidden) return;
+        e.stopPropagation();   // don't let it close the whole drawer
+        closeList();
+      }
+    });
+    list.addEventListener("mousedown", function (e) {
+      // mousedown, not click: blur would close the list first and the click
+      // would land on nothing.
+      var li = e.target.closest("[data-idx]");
+      if (!li) return;
+      e.preventDefault();
+      var row = rows[parseInt(li.dataset.idx, 10)];
+      choose(row && row.none ? null : row);
+    });
+    document.addEventListener("mousedown", function (e) {
+      if (!root.contains(e.target)) closeList();
+    });
+
+    // Resolve whatever is already saved, so the drawer opens showing the real
+    // product rather than a bare id — including a product whose status means
+    // it would never have appeared in the old, filtered list.
+    var savedId = hidden.value;
+    if (!savedId) { renderCurrent(null); return; }
+    window.AdminAPI.getProduct(savedId)
+      .then(function (data) { renderCurrent(data && data.product); })
+      .catch(function () { renderCurrent(null); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Partner profile picker
+  //
+  // Same component, same keyboard contract and the same out-of-order request
+  // guard as the product picker above — an admin should not have to learn a
+  // second control for the second thing on the same panel.
+  //
+  // Two things it does that the product picker does not, both because a
+  // profile is a page rather than an object:
+  //
+  //   * It states the consequence of an unpublished selection instead of
+  //     just labelling it. A draft profile saves fine, but the deck will not
+  //     render it, and the admin needs to know that at the moment they pick
+  //     it rather than mid-meeting.
+  //   * It offers Preview, which opens the profile's real public URL. An
+  //     admin session already sees drafts there behind a banner, so this
+  //     needs no preview route, no token and no second renderer.
+  // ---------------------------------------------------------------------
+  function partnerStateNote(status) {
+    if (status === "published") return "live — the deck will show this profile";
+    if (status === "draft") return "draft — the deck will NOT show it until this profile is published";
+    if (status === "archived") return "archived — the deck will not show it";
+    return "unknown state — the deck will not show it";
+  }
+
+  function populatePartnerPicker(backdrop) {
+    var root = backdrop.querySelector("[data-partner-picker]");
+    if (!root) return;
+    var hidden = root.querySelector("#presPartnerProfile");
+    var searchInput = root.querySelector("#presPartnerSearch");
+    var list = root.querySelector("#presPartnerList");
+    var current = root.querySelector("[data-picker-current]");
+    var meta = root.querySelector("[data-picker-meta]");
+
+    var debounce = null;
+    var requestSeq = 0;
+    var rows = [];
+    var activeIndex = -1;
+
+    // 32px circle. Rendered from avatarThumb (the pipeline's narrowest
+    // derivative) so opening the drawer never pulls a full-size portrait.
+    function avatar(p) {
+      var src = p.avatarThumb || p.avatarUrl;
+      if (src) {
+        return '<img class="pres-picker__avatar" src="' + esc(src) + '" alt="" width="32" height="32" loading="lazy" decoding="async">';
+      }
+      // Initials, matching what the profile itself draws with no image.
+      var initials = String(p.displayName || "")
+        .split(/\s+/).filter(Boolean).slice(0, 2)
+        .map(function (w) { return w[0]; }).join("").toUpperCase();
+      return '<span class="pres-picker__avatar pres-picker__avatar--initials">' + esc(initials) + "</span>";
+    }
+
+    function renderCurrent(partner) {
+      var id = hidden.value;
+      if (!id) {
+        current.innerHTML = '<span class="pres-picker__none">No partner profile — the section is hidden</span>';
+        return;
+      }
+      if (!partner) {
+        // Same rule as the product picker: never silently clear a saved
+        // reference just because this one lookup failed.
+        current.innerHTML =
+          '<span class="pres-picker__warn">Saved partner profile <code>' + esc(id) + "</code> could not be loaded — it may have been deleted. " +
+          "It stays selected until you change it.</span>";
+        return;
+      }
+      var warn = partner.status !== "published";
+      current.innerHTML =
+        avatar(partner) +
+        '<span class="pres-picker__name">' + esc(partner.displayName) + "</span>" +
+        ' <span class="pres-badge pres-badge--' + esc(partner.status || "unknown") + '">' + esc(partner.status || "unknown") + "</span>" +
+        ' <span class="pres-picker__by">' + esc(partner.typeLabel || partner.partnerType || "") + " · /" + esc(partner.slug) + "</span>" +
+        ' <span class="pres-picker__link-note' + (warn ? " pres-picker__link-note--warn" : "") + '">' + esc(partnerStateNote(partner.status)) + "</span>" +
+        ' <a class="pres-picker__preview" href="' + esc(partner.publicUrl) + '" target="_blank" rel="noopener">Preview</a>';
+    }
+
+    function closeList() {
+      list.hidden = true;
+      searchInput.setAttribute("aria-expanded", "false");
+      activeIndex = -1;
+    }
+
+    function choose(partner) {
+      hidden.value = partner ? partner.id : "";
+      renderCurrent(partner);
+      searchInput.value = "";
+      closeList();
+      render([], null, false);
+    }
+
+    function setActive(next) {
+      var items = list.querySelectorAll("[data-idx]");
+      if (!items.length) return;
+      activeIndex = (next + items.length) % items.length;
+      items.forEach(function (el, i) {
+        el.classList.toggle("is-active", i === activeIndex);
+        if (i === activeIndex) {
+          el.setAttribute("aria-selected", "true");
+          if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
+        } else el.removeAttribute("aria-selected");
+      });
+    }
+
+    // rows[0] is the explicit "no profile" choice, so removing the profile is
+    // an ordinary selection rather than a special gesture — the same shape the
+    // product picker uses.
+    function render(partners, total, truncated) {
+      rows = [{ id: "", displayName: "No partner profile — hide the section", none: true }].concat(partners);
+      list.innerHTML = rows
+        .map(function (p, i) {
+          if (p.none) {
+            return '<li class="pres-picker__opt pres-picker__opt--none" role="option" data-idx="' + i + '">' + esc(p.displayName) + "</li>";
+          }
+          return (
+            '<li class="pres-picker__opt" role="option" data-idx="' + i + '" title="' + esc(p.id) + '">' +
+            avatar(p) +
+            '<span class="pres-picker__name">' + esc(p.displayName) + "</span>" +
+            ' <span class="pres-badge pres-badge--' + esc(p.status || "unknown") + '">' + esc(p.status || "unknown") + "</span>" +
+            '<span class="pres-picker__by">' + esc(p.typeLabel || p.partnerType || "") + " · /" + esc(p.slug) + "</span>" +
+            "</li>"
+          );
+        })
+        .join("");
+
+      if (total == null) { meta.textContent = ""; return; }
+      meta.textContent = truncated
+        ? "Showing the first " + partners.length + " profiles — keep typing to narrow it down."
+        : partners.length + (partners.length === 1 ? " profile" : " profiles");
+    }
+
+    function search(term) {
+      var seq = ++requestSeq;
+      var params = {};
+      if (term) params.search = term;
+      return window.AdminAPI.listPresentationPartnerOptions(params)
+        .then(function (data) {
+          if (seq !== requestSeq) return;
+          var partners = window.AdminAPI.rows(data, "partners");
+          render(partners, partners.length, !!data.truncated);
+          list.hidden = false;
+          searchInput.setAttribute("aria-expanded", "true");
+          setActive(0);
+        })
+        .catch(function (err) {
+          if (seq !== requestSeq) return;
+          list.innerHTML = '<li class="pres-picker__opt pres-picker__opt--error">' + esc(err.message) + "</li>";
+          list.hidden = false;
+          meta.textContent = "";
+        });
+    }
+
+    searchInput.addEventListener("input", function () {
+      clearTimeout(debounce);
+      var term = searchInput.value.trim();
+      debounce = setTimeout(function () { search(term); }, PICKER_DEBOUNCE_MS);
+    });
+    searchInput.addEventListener("focus", function () {
+      if (!list.hidden) return;
+      search(searchInput.value.trim());
+    });
+    searchInput.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); if (list.hidden) search(searchInput.value.trim()); else setActive(activeIndex + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+      else if (e.key === "Enter") {
+        if (list.hidden || activeIndex < 0) return;
+        e.preventDefault();
+        choose(rows[activeIndex].none ? null : rows[activeIndex]);
+      } else if (e.key === "Escape") {
+        if (list.hidden) return;
+        e.stopPropagation();
+        closeList();
+      }
+    });
+    list.addEventListener("mousedown", function (e) {
+      var li = e.target.closest("[data-idx]");
+      if (!li) return;
+      e.preventDefault();
+      var row = rows[parseInt(li.dataset.idx, 10)];
+      choose(row && row.none ? null : row);
+    });
+    document.addEventListener("mousedown", function (e) {
+      if (!root.contains(e.target)) closeList();
+    });
+    // Preview is a real link in the current selection; let it through rather
+    // than having the picker's own mousedown handler swallow it.
+    current.addEventListener("mousedown", function (e) {
+      if (e.target.closest(".pres-picker__preview")) e.stopPropagation();
+    });
+
+    var savedId = hidden.value;
+    if (!savedId) { renderCurrent(null); return; }
+    window.AdminAPI.getPresentationPartnerOption(savedId)
+      .then(function (data) { renderCurrent(data && data.partner); })
+      .catch(function () { renderCurrent(null); });
+  }
+
+  function regenerate(backdrop, p) {
+    window.AdminUI.confirmDialog({
+      title: "Generate a new private link?",
+      message:
+        "The current link stops working immediately. Anyone you have already sent it to — including anyone mid-meeting — will get a 404 until you send them the new one.",
+      confirmLabel: "Regenerate link",
+      danger: true,
+    }).then(function (ok) {
+      if (!ok) return;
+      window.AdminAPI.regeneratePresentationLink(p.id)
+        .then(function (data) {
+          var updated = data.presentation;
+          p.slug = updated.slug;
+          var urlEl = backdrop.querySelector("#presLinkUrl");
+          if (urlEl) urlEl.textContent = publicUrl(updated.slug);
+          window.AdminUI.toast("New private link generated", "success");
+          load();
+        })
+        .catch(function (err) {
+          window.AdminUI.toast(err.message || "Failed to regenerate link", "error");
+        });
+    });
+  }
+
+  function save(backdrop, p, btn) {
+    var isNew = !p;
+    var val = function (id) {
+      var el = backdrop.querySelector("#" + id);
+      return el ? el.value.trim() : "";
+    };
+
+    var title = val("presTitle");
+    if (!title) {
+      window.AdminUI.toast("Title is required", "error");
+      var titleEl = backdrop.querySelector("#presTitle");
+      if (titleEl) {
+        // Switch back to the tab holding the invalid field before focusing it —
+        // focusing an input inside a hidden panel scrolls nowhere and looks
+        // like the save silently did nothing.
+        backdrop.querySelector('.a-drawer-tab[data-tab="details"]').click();
+        titleEl.focus();
+      }
+      return;
+    }
+
+    var sections = {};
+    backdrop.querySelectorAll("[data-section]").forEach(function (cb) {
+      sections[cb.dataset.section] = cb.checked;
+    });
+
+    var payload = {
+      title: title,
+      recipient: val("presRecipient"),
+      status: val("presStatus"),
+      expiresAt: val("presExpiresAt") || null,
+      content: {
+        heroEyebrow: val("presHeroEyebrow"),
+        heroTitle: val("presHeroTitle"),
+        heroSubtitle: val("presHeroSubtitle"),
+        welcomeNote: val("presWelcomeNote"),
+        featuredProductId: val("presFeaturedProduct"),
+        partnerProfileId: val("presPartnerProfile"),
+        ctaPartnershipUrl: val("presCtaPartnershipUrl"),
+        ctaMeetingUrl: val("presCtaMeetingUrl"),
+        ctaDemoUrl: val("presCtaDemoUrl"),
+        sections: sections,
+      },
+    };
+
+    var password = val("presPassword");
+    if (password) payload.password = password;
+    var removeCb = backdrop.querySelector("#presRemovePassword");
+    if (removeCb && removeCb.checked) payload.removePassword = true;
+
+    btn.classList.add("is-loading");
+    btn.disabled = true;
+
+    var request = isNew
+      ? window.AdminAPI.createPresentation(payload)
+      : window.AdminAPI.updatePresentation(p.id, payload);
+
+    request
+      .then(function (data) {
+        window.AdminUI.closeModal(backdrop);
+        load();
+        if (isNew) {
+          // A new deck is useless until its link is in hand, so the toast
+          // isn't the end of the flow — the link is offered immediately.
+          var created = data.presentation;
+          window.AdminUI.toast("Presentation created", "success");
+          copyLink(created);
+        } else {
+          window.AdminUI.toast("Presentation saved", "success");
+        }
+      })
+      .catch(function (err) {
+        btn.classList.remove("is-loading");
+        btn.disabled = false;
+        window.AdminUI.toast(err.message || "Failed to save", "error");
+      });
+  }
+
+  function renderAnalytics(backdrop, stats) {
+    var panel = backdrop.querySelector('[data-panel="analytics"]');
+    if (!panel) return;
+
+    function tile(label, value, sub) {
+      return (
+        '<div class="a-card metric-card">' +
+        '<div class="metric-card__label">' + label + "</div>" +
+        '<div class="metric-card__value pres-metric-value">' + value + "</div>" +
+        (sub ? '<div class="pres-metric-sub">' + esc(sub) + "</div>" : "") +
+        "</div>"
+      );
+    }
+
+    var visitsTable = stats.recentVisits.length
+      ? '<div class="a-table-wrap"><table class="a-table"><thead><tr>' +
+        "<th>When</th><th>Time spent</th><th>Reached</th><th>Wizard</th>" +
+        "</tr></thead><tbody>" +
+        stats.recentVisits
+          .map(function (v) {
+            return (
+              "<tr><td>" + window.AdminUI.formatDateTime(v.startedAt) + "</td>" +
+              "<td>" + formatDuration(v.dwellMs) + "</td>" +
+              "<td>Section " + (v.maxSectionIndex + 1) + "</td>" +
+              "<td>" +
+              (v.wizardCompleted
+                ? '<span class="a-badge a-badge-success">Completed</span>'
+                : '<span class="a-badge a-badge-neutral">Partial</span>') +
+              "</td></tr>"
+            );
+          })
+          .join("") +
+        "</tbody></table></div>"
+      : window.AdminUI.emptyState("fa-chart-line", "No visits recorded yet.");
+
+    panel.innerHTML =
+      '<div class="metric-grid metric-grid-compact u-mb-20">' +
+      tile("Visits", stats.visits) +
+      tile("Unique visitors", stats.uniqueVisitors) +
+      tile("Typical time spent", formatDuration(stats.medianDwellMs), "Median across all visits") +
+      tile("Wizard completed", stats.wizardCompletionPct + "%", stats.wizardCompleted + " of " + stats.visits + " visits") +
+      tile("CTA clicks", stats.ctaClicks) +
+      tile("Enquiries", stats.contactSubmissions) +
+      "</div>" +
+      (stats.failedUnlocks
+        ? '<div class="a-alert a-alert--warning u-mb-16">' +
+          stats.failedUnlocks +
+          " failed password attempt" +
+          (stats.failedUnlocks === 1 ? "" : "s") +
+          " on this presentation.</div>"
+        : "") +
+      '<h6 class="pres-form-heading">Recent visits</h6>' +
+      visitsTable;
+  }
+
+  // _populateProductPicker is exposed for tools/test-presentation-picker.js,
+  // which mounts the picker on its own against a stub catalogue rather than
+  // booting the whole admin shell. Underscored because nothing in the app
+  // should call it directly — openDrawer already does.
+  return { mount: mount, _populateProductPicker: populateProductPicker };
+})();

@@ -1,0 +1,287 @@
+/* ===========================================================================
+   PUBLIC PROGRAM PREVIEW  (/demo)
+   ===========================================================================
+   A thin layer on top of program.css — the stylesheet the PURCHASED program
+   uses. Nothing here redefines a token, a button, a heading scale or a
+   surface: the preview has to be the product's own interface, not a landing
+   page dressed up as one, so everything that already exists over there is
+   used as-is and only what the real viewer has no concept of is added here.
+
+   That is exactly two things:
+     1. the spec table — the counted contents of the program;
+     2. the lock boundary — where the preview stops.
+
+   Mobile-first, like program.css: the base rules are the phone layout and the
+   wider arrangements are added at min-width. There is no separate desktop
+   composition to maintain.
+   ------------------------------------------------------------------------ */
+
+/* program.css drops .pg-main's own max-width and padding at 1080px because in
+   the purchased viewer the .pg-shell GRID takes over the measure at that point
+   — the rail becomes column 1 and the main column is sized by the grid. This
+   page has no rail and no shell, so without this the content would run edge to
+   edge on desktop with lines several hundred characters long. Restoring the
+   SAME --pg-max the shell resolves to keeps the reading measure identical to
+   the program a customer actually buys, which is the whole point of the page. */
+.dm-main {
+  padding-bottom: clamp(40px, 8vw, 80px);
+}
+@media (min-width: 1080px) {
+  .pg-main.dm-main {
+    max-width: var(--pg-max);
+    padding: 0 var(--pg-shell-x);
+  }
+}
+
+/* The overview's first paragraph. Capped well inside the readability ceiling
+   so it stays a lede and never becomes the wall of copy this whole exercise
+   exists to remove. */
+.dm-lede {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--pg-muted);
+  margin: 0 0 var(--pg-gap);
+  max-width: 62ch;
+}
+
+.dm-panel {
+  padding-top: clamp(28px, 5vw, 48px);
+}
+
+/* ---- The spec table -------------------------------------------------------
+   A definition list, because that is what it is: a term and its measured
+   value. Rows are separated by one hairline each — no cards, no icons, no
+   tiles. The number leads because the number is the information. */
+.dm-spec {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.dm-spec__row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid var(--pg-border-soft);
+}
+.dm-spec__row:last-child { border-bottom: 1px solid var(--pg-border-soft); }
+.dm-spec__value {
+  flex: 0 0 auto;
+  min-width: 3.2em;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--pg-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dm-spec__term {
+  margin: 0;
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--pg-muted);
+}
+.dm-spec__term b {
+  display: block;
+  font-weight: 650;
+  color: var(--pg-ink);
+}
+
+/* ---- The sample session --------------------------------------------------- */
+.dm-session {
+  margin-bottom: var(--pg-gap);
+}
+/* --pg-muted, not --pg-faint. Both are in the program's palette, but faint
+   (#9c9993) measures 2.7:1 on this background — below the 4.5:1 AA minimum
+   for 11px bold text. The two labels this page introduces use the muted stop
+   (7.4:1) instead. The faint token is left alone everywhere else: it is
+   shared with the purchased-program viewer and the whole storefront, so
+   changing it is a palette decision rather than a change to this page. */
+.dm-session__week {
+  margin: 0 0 6px;
+  font-size: var(--pg-micro, 11px);
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pg-muted);
+}
+.dm-session__day {
+  margin: 0 0 10px;
+  font-size: clamp(19px, 4.6vw, 24px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--pg-ink);
+}
+.dm-session__notes {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--pg-muted);
+  max-width: 68ch;
+}
+.dm-session__notes:empty { display: none; }
+
+/* ---- The lock boundary ----------------------------------------------------
+   The ghosts are SHAPES, not obscured content. The server never sent the rest
+   of the program (see server/src/lib/demo.js), so there is nothing in this
+   DOM to reveal — no blur to defeat, no hidden node to inspect. They exist to
+   say "this list continues" and to give the panel below something to sit on.
+
+   They fade rather than blur: a blur filter on a phone is a compositor layer
+   for no benefit, and a mask reads as "cut off here" more honestly than a
+   smear reads as "hidden here". */
+.dm-lock {
+  position: relative;
+  margin-top: 4px;
+}
+.dm-lock__ghosts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  /* The stack fades out downward — the crop, drawn rather than described. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 62%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 62%, transparent 100%);
+  pointer-events: none;
+}
+/* Each ghost mirrors the shape of a .pg-ex row — a square media block and two
+   text bars — so the fade reads as "more sessions like the two above", not as
+   an empty grey band. Built from gradients rather than elements: it is
+   decoration, and it should not put nine more nodes in the document. */
+.dm-ghost {
+  display: block;
+  height: 62px;
+  border-radius: var(--pg-radius);
+  background:
+    linear-gradient(var(--pg-surface-2), var(--pg-surface-2)) left center / 62px 62px no-repeat,
+    linear-gradient(var(--pg-border-soft), var(--pg-border-soft)) 76px 18px / 45% 11px no-repeat,
+    linear-gradient(var(--pg-border-soft), var(--pg-border-soft)) 76px 37px / 26% 9px no-repeat;
+}
+
+.dm-lock__panel {
+  margin-top: -18px;
+  position: relative;
+  border: 1px solid var(--pg-border);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-surface);
+  box-shadow: var(--pg-shadow-md);
+  padding: clamp(18px, 4.5vw, 30px);
+}
+.dm-lock__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pg-muted);
+}
+.dm-lock__icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+
+/* The counts. These are the whole claim the lock makes, so they are set at
+   body weight and read as a list of facts, not as a teaser. */
+.dm-lock__counts {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.dm-lock__counts li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--pg-muted);
+}
+.dm-lock__counts b {
+  flex: 0 0 auto;
+  min-width: 1.6em;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--pg-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Real day titles from the rest of week 1 — enough to show the week has a
+   shape, never enough to train from. */
+.dm-lock__days {
+  margin: 0 0 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pg-border-soft);
+  display: grid;
+  gap: 9px;
+}
+.dm-lock__days:empty { display: none; }
+.dm-lock__day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  color: var(--pg-muted);
+}
+.dm-lock__day::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pg-border);
+}
+
+.dm-lock__cta { margin-top: 2px; }
+.dm-lock__price {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--pg-muted);
+}
+.dm-lock__price b { color: var(--pg-ink); font-weight: 700; }
+
+/* ---- Wider screens --------------------------------------------------------
+   Two columns for the spec table once there is room for two, and the lock
+   panel stops spanning the full measure. The CTA stops being full-width at
+   the same point the rest of the platform's buttons do. */
+@media (min-width: 700px) {
+  .dm-spec {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(28px, 4vw, 56px);
+  }
+  /* With two columns the last-child border would underline one cell only. */
+  .dm-spec__row:last-child { border-bottom: 0; }
+  .dm-spec__row:nth-last-child(-n + 2) { border-bottom: 1px solid var(--pg-border-soft); }
+  .dm-lock__counts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .dm-lock__counts li { flex-direction: column; gap: 2px; }
+  .dm-lock__cta { width: auto; min-width: 260px; }
+  .dm-lock__price { text-align: left; }
+}
+
+@media (min-width: 992px) {
+  .dm-lock__panel { padding: 34px; }
+  .dm-ghost { height: 74px; }
+}
+
+/* Nothing on this page animates on scroll; the only motion is the shared
+   .pg-btn press state. Declared anyway so the skeleton's pulse stops for
+   anyone who has asked for less movement. */
+@media (prefers-reduced-motion: reduce) {
+  .pg-boot__cover,
+  .pg-boot__line { animation: none; }
+}

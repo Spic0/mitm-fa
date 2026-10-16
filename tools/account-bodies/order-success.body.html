@@ -1,0 +1,89 @@
+        <div class="ac-page">
+            <div class="ac-shell ac-shell--narrow">
+                <div class="ac-conf">
+
+                    <!-- Still confirming / no session / not found. The page
+                         never decides payment state itself — it reads the
+                         order back from the server, which only has one
+                         because a verified provider event created it. -->
+                    <div id="osProblem" class="ac-hidden">
+                        <div class="ac-empty">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-clock" aria-hidden="true"></i></span>
+                            <h1 class="ac-h2">We're still confirming this order</h1>
+                            <p class="ac-lead" id="osProblemDetail">Payment confirmations can take a moment to reach us. Refresh in a minute — and check your email, your receipt has a direct sign-in link.</p>
+                            <a href="/my-library" class="ac-btn ac-btn--ghost"><span>Go to my library</span></a>
+                        </div>
+                    </div>
+
+                    <div id="osRevoked" class="ac-hidden">
+                        <div class="ac-empty">
+                            <span class="ac-empty__mark"><i class="fa-regular fa-circle-xmark" aria-hidden="true"></i></span>
+                            <h1 class="ac-h2">This order was cancelled</h1>
+                            <p class="ac-lead">If you think that is wrong, contact us and we will sort it out.</p>
+                            <a href="/contact" class="ac-btn ac-btn--ghost"><span>Contact support</span></a>
+                        </div>
+                    </div>
+
+                    <div id="osLoading">
+                        <div class="ac-skel ac-skel--title"></div>
+                        <div class="ac-skel ac-skel--line"></div>
+                        <div class="ac-skel ac-skel--line"></div>
+                    </div>
+
+                    <div id="osSuccess" class="ac-hidden">
+
+                        <!-- Success state. A drawn tick, not a celebration
+                             graphic: the product below is the thing that
+                             should look valuable. -->
+                        <div class="ac-conf__mark ac-reveal ac-reveal--1" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+                        </div>
+                        <span class="ac-eyebrow ac-reveal ac-reveal--1">Purchase complete</span>
+                        <h1 class="ac-conf__title ac-reveal ac-reveal--1">You're in.</h1>
+                        <p class="ac-conf__sub ac-reveal ac-reveal--2" id="osSub">Your program is ready in your library.</p>
+
+                        <!-- The purchased product, given the weight of the
+                             page. Populated from the order. -->
+                        <div class="ac-conf__product ac-reveal ac-reveal--2" id="osHero"></div>
+
+                        <!-- Additional items on a multi-product order -->
+                        <ul class="ac-conf__items ac-hidden" id="osItems"></ul>
+
+                        <!-- The next step, unmissable -->
+                        <div class="ac-conf__next ac-reveal ac-reveal--3">
+                            <div class="ac-conf__actions">
+                                <a href="/my-library" class="ac-btn ac-btn--primary" id="osPrimary">
+                                    <span id="osPrimaryText">Open my program</span>
+                                    <i class="fa-regular fa-arrow-right" aria-hidden="true"></i>
+                                </a>
+                                <a href="/my-library" class="ac-btn ac-btn--ghost" id="osSecondary"><span>Go to my library</span></a>
+                            </div>
+                        </div>
+
+                        <!-- Shown only when the buyer has no session: the
+                             account exists, they just have to claim it. -->
+                        <div class="ac-note ac-hidden" id="osClaimNote">
+                            <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+                            <span id="osClaimText"></span>
+                        </div>
+
+                        <!-- Order summary. Deliberately quiet and below the
+                             action — concise, and no card or gateway detail. -->
+                        <section class="ac-conf__summary ac-reveal ac-reveal--4" aria-labelledby="osSummaryHeading">
+                            <h2 class="ac-eyebrow" id="osSummaryHeading">Order summary</h2>
+                            <div class="ac-card">
+                                <div class="ac-sum">
+                                    <div class="ac-sum__row"><span class="ac-sum__k">Order</span><span class="ac-sum__v" id="osOrderId"></span></div>
+                                    <div class="ac-sum__row"><span class="ac-sum__k">Date</span><span class="ac-sum__v" id="osOrderDate"></span></div>
+                                    <div class="ac-sum__row"><span class="ac-sum__k">Payment</span><span class="ac-sum__v" id="osOrderProvider"></span></div>
+                                    <div class="ac-sum__row ac-hidden" id="osDiscountRow"><span class="ac-sum__k">Discount</span><span class="ac-sum__v" id="osDiscount"></span></div>
+                                    <div class="ac-sum__row ac-sum__row--total"><span class="ac-sum__k">Total paid</span><span class="ac-sum__v" id="osTotal"></span></div>
+                                </div>
+                            </div>
+                            <p class="ac-hint">A receipt is on its way to <span id="osEmail">your email address</span>.</p>
+                        </section>
+
+                    </div>
+                </div>
+            </div>
+        </div>

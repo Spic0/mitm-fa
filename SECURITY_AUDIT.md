@@ -1,4 +1,4 @@
-# Security Audit Report — ProFit E-Commerce Platform
+# Security Audit Report — Fitness Agency E-Commerce Platform
 
 **Date:** 2026-07-10
 **Scope:** Full application — Express/Prisma/PostgreSQL backend, vanilla JS storefront, admin dashboard, Stripe + PayPal payments, file uploads.
@@ -242,7 +242,7 @@ The previous CSP (from Phase 1 of this audit) still had `'unsafe-inline'` in `st
 ### Eliminating two CDN dependencies, not just allowlisting them
 
 Two existing dependencies — Google Fonts and jsDelivr (for Chart.js) — weren't in your allowed list either. Rather than adding two more undocumented exceptions, both were **self-hosted**, which is strictly better than an exception: one less third-party origin in scope, one less thing that can go down and take styling/charts with it, and it fully complies with "only required domains" instead of asking for a pass on it.
-- **Inter webfont**: vendored via `@fontsource/inter` (latin subset only, the exact weights the site uses — 400/500/600/700/800 + 400 italic) into `assets/fonts/inter/`, referenced by local `@font-face` rules. `fonts.googleapis.com`/`fonts.gstatic.com` no longer appear anywhere.
+- **Montserrat webfont**: vendored via `@fontsource/montserrat` (latin subset only, the exact weights the site uses: 400/500/600/700/800 + 400 italic) into `assets/fonts/montserrat/`, referenced by local `@font-face` rules. `fonts.googleapis.com`/`fonts.gstatic.com` no longer appear anywhere.
 - **Chart.js**: the official v4.4.4 UMD build copied into `assets/js/vendor/chart.umd.js`, loaded from `/assets/js/vendor/chart.umd.js` instead of `cdn.jsdelivr.net`.
 
 ### Final policy — every directive, every domain justified

@@ -134,13 +134,14 @@ window.AdminPanels.promotions = {
       Object.keys(params).forEach(function (k) { if (!params[k]) delete params[k]; });
 
       window.AdminAPI.listPromotions(params).then(function (data) {
-        if (!data.promotions.length) {
+        var promotions = window.AdminAPI.rows(data, "promotions");
+        if (!promotions.length) {
           tbody.innerHTML = '<tr><td colspan="10">' + window.AdminUI.emptyState("fa-tag", "No promotions match your filters.") + "</td></tr>";
           tbody.classList.add("a-fade-in");
           return;
         }
         var frag = document.createDocumentFragment();
-        data.promotions.forEach(function (p) {
+        promotions.forEach(function (p) {
           var tr = document.createElement("tr");
           tr.dataset.rowKey = p.id;
           tr.innerHTML = rowInnerHtml(p);

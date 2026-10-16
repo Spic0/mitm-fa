@@ -94,14 +94,17 @@ window.AdminUI = (function () {
     if (openModalCount === 0) document.body.classList.remove("a-modal-body-lock");
   }
 
-  function openModal(backdrop) {
+  // onEscape lets a caller intercept Escape instead of closing immediately —
+  // e.g. a wizard with unsaved changes needs to run its own leave-confirmation
+  // flow rather than discarding work the instant Escape is pressed.
+  function openModal(backdrop, onEscape) {
     document.body.appendChild(backdrop);
     void backdrop.offsetWidth; // force layout so the transition actually plays
     backdrop.classList.add("a-modal-open");
     lockBodyScroll();
 
     function onKeydown(e) {
-      if (e.key === "Escape") closeModal(backdrop);
+      if (e.key === "Escape") { if (onEscape) onEscape(); else closeModal(backdrop); }
     }
     document.addEventListener("keydown", onKeydown);
     backdrop._removeKeydown = function () { document.removeEventListener("keydown", onKeydown); };
@@ -138,6 +141,36 @@ window.AdminUI = (function () {
       }
       backdrop.querySelector('[data-action="cancel"]').addEventListener("click", function () { close(false); });
       backdrop.querySelector('[data-action="confirm"]').addEventListener("click", function () { close(true); });
+    });
+  }
+
+  // Three-way variant used when leaving a wizard mid-edit — "cancel" isn't
+  // enough because there are two distinct ways to actually leave (keep the
+  // draft vs. throw it away), and collapsing that into a plain confirm would
+  // force a guess about which one the admin means. Resolves to one of
+  // "continue" | "save" | "discard".
+  function leaveDialog(options) {
+    return new Promise(function (resolve) {
+      var backdrop = document.createElement("div");
+      backdrop.className = "a-modal-backdrop";
+      backdrop.innerHTML =
+        '<div class="a-modal">' +
+        '<h5>' + escapeHtml(options.title || "You have unfinished changes.") + "</h5>" +
+        '<p class="a-modal-desc">' + escapeHtml(options.message || "") + "</p>" +
+        '<div class="a-modal-actions">' +
+        '<button class="a-btn a-btn-secondary" data-action="continue">Continue Editing</button>' +
+        '<button class="a-btn a-btn-secondary" data-action="discard" style="color:var(--a-danger)">Discard Changes</button>' +
+        '<button class="a-btn a-btn-primary" data-action="save">Save Draft &amp; Exit</button>' +
+        "</div></div>";
+      openModal(backdrop);
+
+      function close(result) {
+        closeModal(backdrop);
+        resolve(result);
+      }
+      backdrop.querySelector('[data-action="continue"]').addEventListener("click", function () { close("continue"); });
+      backdrop.querySelector('[data-action="discard"]').addEventListener("click", function () { close("discard"); });
+      backdrop.querySelector('[data-action="save"]').addEventListener("click", function () { close("save"); });
     });
   }
 
@@ -242,6 +275,7 @@ window.AdminUI = (function () {
   return {
     toast: toast,
     confirmDialog: confirmDialog,
+    leaveDialog: leaveDialog,
     openModal: openModal,
     closeModal: closeModal,
     animateRowRemoval: animateRowRemoval,

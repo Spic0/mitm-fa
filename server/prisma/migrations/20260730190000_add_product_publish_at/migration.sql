@@ -1,0 +1,11 @@
+-- Scheduled publishing for the Product Builder's publish flow.
+--
+-- Purely additive and nullable: existing rows get NULL, and code that predates
+-- this column ignores it entirely, so this is safe to apply before the
+-- application deploy that uses it.
+--
+-- The "private" and "scheduled" states themselves need no migration — status
+-- is already a free-text column, and every public read path filters on
+-- status = 'published', so any new value is invisible to the storefront by
+-- construction rather than by enforcement.
+ALTER TABLE "Product" ADD COLUMN "publishAt" TIMESTAMP(3);

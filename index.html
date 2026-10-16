@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-brand-title="{brand} - Training &amp; Diet Plans">ProFit - Training &amp; Diet Plans</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-brand-title="{brand} - Training &amp; Diet Plans">Fitness Agency - Training &amp; Diet Plans</title>
     <!-- Canonical always points at the clean "/" URL, never /index.html — see
          server/src/index.js's /index.html -> / redirect. -->
     <!--HOME_CANONICAL-->
@@ -13,23 +13,60 @@
          image only — every other slide loads lazily/on-demand from the
          client. See server/src/index.js -> applyHeroContext. -->
     <!--HERO_PRELOAD-->
+    <!-- The hero <h1> is the largest text on the site and is set in Montserrat
+         800. Montserrat is self-hosted with `font-display: swap`, so without
+         this the headline first paints in the fallback, then reflows when the
+         real font arrives: measured at 390px that moved the whole hero up 34px
+         (the headline went from three lines to two), which was the single
+         largest layout shift on the page. 19KB, fetched in parallel with the
+         CSS that declares it. Only the 800 weight, which is the weight the
+         headline actually uses; the rest are body-sized, where a swap costs a
+         line-height, not a line. (This preload named the 700 file while the
+         headline was set in 800, so it was warming a face the largest text on
+         the page never asked for.) -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-800-normal.woff2" crossorigin>
     <!-- Favicon img -->
-    <link rel="shortcut icon" href="assets/images/favicon.png" data-brand-favicon>
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
     <!-- Bootstarp min css -->
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/critical.css">
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/bootstrap.min.css" data-preload-style>
     <!-- All min css -->
-    <link rel="stylesheet" href="assets/css/all.min.css">
+    <link rel="stylesheet" href="/assets/css/all.min.css">
     <!-- Swiper bundle min css -->
-    <link rel="stylesheet" href="assets/css/swiper-bundle.min.css">
+    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
+         select-widget styling only -- not needed for first paint -- loaded
+         as rel="preload" so they can't block rendering; assets/js/css-
+         preload-swap.js flips them to active stylesheets once the DOM is
+         parsed. animate.css stays render-blocking: the .wow scroll-reveal
+         system depends on its initial opacity:0 state site-wide, and
+         deferring it risks a visible flash/flicker. -->
+    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
     <!-- Magnigic popup css -->
-    <link rel="stylesheet" href="assets/css/magnific-popup.css">
+    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
     <!-- Animate css -->
-    <link rel="stylesheet" href="assets/css/animate.css">
+    <link rel="stylesheet" href="/assets/css/animate.css">
     <!-- Nice select css -->
-    <link rel="stylesheet" href="assets/css/nice-select.css">
+    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <noscript>
+      <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/assets/css/style.css">
+      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
+      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
+      <link rel="stylesheet" href="/assets/css/nice-select.css">
+    </noscript>
     <!-- Style css -->
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/home-dynamic.css">
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <!-- brand-blocks.css carries the shared eyebrow/landing-slot/trust styles
+         (about.html loads it too); home-dynamic.css layers this page's own
+         section composition on top and must come after it. -->
+    <link rel="stylesheet" href="/assets/css/brand-blocks.css">
+    <link rel="stylesheet" href="/assets/css/home-dynamic.css">
+    <link rel="stylesheet" href="/assets/css/media-container.css">
 </head>
 
 <body>
@@ -52,7 +89,7 @@
                 <span>Subtotal:</span>
                 <strong id="cartTotal">$0.00</strong>
             </div>
-            <a href="checkout.html" class="cart-btn-checkout">Checkout</a>
+            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
             <div class="cart-drawer__payments">
                 <span class="card-brand visa">VISA</span>
                 <span class="card-brand mc">MC</span>
@@ -87,489 +124,399 @@
 
     <main>
 
-        <!-- Banner area start here: fully dynamic hero product slideshow.
-             Data source: GET /api/products + GET /api/taxonomy (see
-             assets/js/hero-slideshow.js) — featured products first, falling
-             back to the newest published products if none are featured.
-             Nothing here is hardcoded.
+        <!-- Hero start here.
+             ================================================================
+             Rebuilt for conversion. The previous hero used each product cover
+             as a FULL-BLEED BACKGROUND at blur(22px) brightness(0.55) under a
+             dark scrim, with six stacked text elements over it: a badge, a
+             creator/category meta line, the product name as <h1>, a
+             description, a price and a CTA. Two problems compounded — the
+             product was unrecognisable (that much blur destroys it), and the
+             <h1> was a PRODUCT NAME that swapped every 6 seconds, so the page
+             never actually said what Fitness Agency is.
 
-             Slide 0 is server-rendered directly into this markup (see
-             server/src/index.js -> applyHeroContext, which mirrors the
-             existing applyShopContext pattern used for shop.html) so a
-             crawler or no-JS visitor sees a real product headline,
-             description, price and image immediately — not an empty shell.
-             assets/js/hero-slideshow.js recognizes the SSR'd slide via
-             data-hero-id and reuses it as swiper slide 0 rather than
-             re-rendering a duplicate/flash. Every other slide is added
-             client-side. -->
-        <section class="hero-slideshow" data-hero-id="">
-            <div class="hero-slideshow__bg-layer">
-                <div class="swiper hero-slideshow__swiper" id="heroSwiper">
-                    <div class="swiper-wrapper" id="heroSwiperWrapper">
-                        <div class="swiper-slide hero-slideshow__slide">
-                            <img class="hero-slideshow__bg-img" data-hero-bg-img alt="" src="">
+             Now: one fixed brand headline, one supporting line, one CTA, and
+             the products rendered as SHARP CARDS that are the dominant visual.
+             Depth comes from scale and opacity on the neighbouring cards, not
+             from blurring the thing the visitor is meant to look at.
+
+             Still fully dynamic — GET /api/products + GET /api/taxonomy via
+             assets/js/hero-slideshow.js, featured products first, falling back
+             to newest published. Card 0 is server-rendered (applyHeroContext
+             in server/src/routes/pages.js) so a crawler or no-JS visitor gets a
+             real product with a real link, and it doubles as the LCP preload
+             target. The script recognises it by data-hero-id and reuses it
+             rather than re-rendering a duplicate. -->
+        <section class="hero" data-hero-id="">
+            <div class="container">
+                <div class="hero__grid">
+                    <div class="hero__copy">
+                        <!-- ONE headline, set at ONE display size, broken into
+                             two spans only so the line break is art-directed
+                             rather than left to the measure.
+
+                             What was here before: `.hero__title-lead` set
+                             "Train like" at 13px/0.36em tracking above
+                             "THE ONES YOU FOLLOW" at 68px. That is a small
+                             uppercase tag sitting on a big heading, which is
+                             the decorative-eyebrow pattern this pass exists to
+                             remove — and it also demoted the verb of the
+                             sentence to a caption. Both spans are now the
+                             headline, at the same size and weight.
+
+                             Uppercasing stays in CSS so the DOM text and the
+                             accessible name remain sentence case
+                             ("Train like the ones you follow"). -->
+                        <h1 class="hero__title">
+                            <span class="hero__title-line">Train like</span>
+                            <span class="hero__title-line">the ones you follow</span>
+                        </h1>
+                        <!-- Six words. It names the goods ("training and
+                             nutrition programs") and who they are cut for
+                             ("everyday lifters"), which is the half the
+                             headline cannot carry: without it, "train like the
+                             ones you follow" reads as "for professional
+                             athletes", the opposite of who buys here. It is now
+                             short enough to show on a phone too, where it costs
+                             one line instead of the paragraph that used to be
+                             hidden there. -->
+                        <p class="hero__sub">Training and nutrition programs for everyday lifters.</p>
+                        <!-- TWO actions, and they are not equals.
+                             Primary: buy-path. Secondary: the low-friction
+                             discovery path — /demo opens a real, server-limited
+                             sneak peek of a real paid program.
+
+                             A secondary was previously rejected here because
+                             the only candidate ("Browse by goal") pointed at
+                             /shop, the same destination as the primary, and so
+                             competed for nothing. That objection does not apply
+                             to this one: it goes somewhere else, and it answers
+                             the question the primary cannot ("what is actually
+                             in one of these?") without asking for a commitment.
+
+                             The rank is carried by the components themselves —
+                             .btn-one is the filled sitewide primary, .btn-two
+                             the outlined secondary — not by a bespoke pair. -->
+                        <div class="hero__actions">
+                            <a class="btn-one hero__cta" href="/shop">
+                                <span>Explore Programs <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            </a>
+                            <a class="btn-two hero__cta-alt" href="/demo">
+                                <span>See Demo</span>
+                            </a>
                         </div>
                     </div>
-                </div>
-                <div class="hero-slideshow__scrim" aria-hidden="true"></div>
-            </div>
-            <div class="container">
-                <div class="hero-slideshow__content" id="heroContent">
-                    <span class="hero-slideshow__badge">
-                        <img src="assets/images/icon/fire.svg" alt="" aria-hidden="true">
-                        Get 20% off your first plan
-                    </span>
-                    <p class="hero-slideshow__meta" data-hero-meta></p>
-                    <h1 data-hero-title></h1>
-                    <p class="hero-slideshow__desc" data-hero-desc></p>
-                    <div class="hero-slideshow__cta-row">
-                        <a href="shop.html" class="btn-one hero-slideshow__cta" data-hero-cta><span>Shop Now</span></a>
-                        <span class="hero-slideshow__price" data-hero-price></span>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Banner area end here -->
 
-        <!-- People marquee area start here: slim, continuously-scrolling strip
-             directly under the hero. Replaces the old oversized (80px font,
-             105px-tall) static category-name ticker that used to live much
-             lower on the page — that markup and its hardcoded labels
-             (Strength Programs, Training Plans, Cardio & HIIT, ...) are gone.
-             Reuses the theme's existing marquee CSS animation
-             (.marquee-inner.to-left / @keyframes marqueeLeft in style.css);
-             .people-marquee below only overrides size/spacing, scoped so it
-             doesn't affect any other page still using the full-size ticker.
-             Content is populated by assets/js/home-dynamic.js from the same
-             GET /api/taxonomy Athletes/Creators data as the strip beneath
-             it — no hardcoded names. -->
-        <div class="marquee-wrapper text-slider people-marquee">
-            <div class="marquee-inner to-left" id="peopleMarqueeInner">
-                <ul class="marqee-list d-flex" id="peopleMarqueeList">
-                    <!-- Populated dynamically by assets/js/home-dynamic.js -->
-                </ul>
-            </div>
-        </div>
-        <!-- People marquee area end here -->
-
-        <!-- People strip area start here: "Shop by Athlete & Creator" —
-             slimmer card-style strip of the same admin-managed Athletes/
-             Creators data, directly below the marquee above. Populated by
-             assets/js/home-dynamic.js from GET /api/taxonomy — no hardcoded
-             names here, so a person added/renamed/removed in Admin ->
-             Navigation shows up on next load with zero HTML edits. -->
-        <section class="people-strip-area pt-20 pb-20">
-            <div class="container">
-                <div class="people-strip__head">
-                    <h3><span class="title-icon"></span> Shop by Athlete &amp; Creator</h3>
-                </div>
-                <div class="people-strip__track" id="peopleStripTrack" aria-live="polite">
-                    <!-- Populated dynamically by assets/js/home-dynamic.js -->
-                </div>
-            </div>
-        </section>
-        <!-- People strip area end here -->
-
-        <!-- Deal cards area start here: real admin-managed products (image,
-             name, admin-set price), replacing the old static "gallery-area"
-             goal tiles that lived further down the page. Whole card is one
-             tap target; no description text. Populated by
-             assets/js/home-dynamic.js from GET /api/products. -->
-        <section class="deal-cards-area pt-10 pb-60">
-            <div class="container">
-                <div class="deal-cards__track" id="dealCardsTrack" aria-live="polite">
-                    <!-- Populated dynamically by assets/js/home-dynamic.js -->
-                </div>
-            </div>
-        </section>
-        <!-- Deal cards area end here -->
-
-        <!-- View area start here -->
-        <section class="view-area">
-            <div class="bg-image view__bg" data-background="assets/images/bg/view-bg.jpg"></div>
-            <div class="container">
-                <div class="row g-4">
-                    <div class="col-lg-6 wow fadeInLeft" data-wow-delay=".1s">
-                        <div class="view__left-item">
-                            <div class="image">
-                                <img src="assets/images/view/view-image1.jpg" alt="image">
-                            </div>
-                            <div class="view__left-content sub-bg">
-                                <h2><a class="primary-hover" href="shop-single.html">12-Week Strength Builder</a>
-                                </h2>
-                                <p class="fw-600">Sell globally in minutes with localized currencies languages, and
-                                    experie
-                                    for every fitness goal. Expert plans for muscle gain, fat loss, and performance.</p>
-                                <a class="btn-two" href="shop-single.html"><span>Shop Now</span></a>
-                                <a class="off-btn" href="#0"><img class="mr-10" src="assets/images/icon/fire.svg"
-                                        alt="icon"> GET
-                                    <span class="primary-color">25%
-                                        OFF</span> NOW</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="view__item mb-25 wow fadeInDown" data-wow-delay=".2s">
-                            <div class="view__content">
-                                <h3><a class="primary-hover" href="shop-single.html">New to fitness?</a></h3>
-                                <p>Whereas recognition of the inherent dignity</p>
-                                <a class="btn-two" href="shop-single.html"><span>Shop Now</span></a>
-                            </div>
-                            <div class="view__image">
-                                <img src="assets/images/view/view-image2.jpg" alt="image">
-                            </div>
-                        </div>
-                        <div class="view__item wow fadeInUp" data-wow-delay=".3s">
-                            <div class="view__content">
-                                <h3><a class="primary-hover" href="shop-single.html">Fat Loss Diet Plan</a></h3>
-                                <p>Whereas recognition of the inherent dignity</p>
-                                <a class="btn-two" href="shop-single.html"><span>Shop Now</span></a>
-                            </div>
-                            <div class="view__image">
-                                <img src="assets/images/view/view-image3.jpg" alt="image">
-                            </div>
-                        </div>
+                    <!-- The deck. Card 0 is server-rendered inside; every other
+                         card is appended by hero-slideshow.js, which attaches
+                         image sources only for the cards in view and strips
+                         them again on the way out, so a catalog of 300 featured
+                         products never means 300 hero images. -->
+                    <div class="hero__stage">
+                        <ul class="hero__deck" id="heroDeck">
+                            <li class="hero-card is-active" data-hero-card>
+                                <a class="hero-card__link" href="/shop" data-hero-cta>
+                                    <span class="hero-card__media pmedia" data-hero-media></span>
+                                    <!-- The caption lives INSIDE the card, so the
+                                         name can never be showing one product
+                                         while the plate shows another — they are
+                                         the same element and move together. -->
+                                    <span class="hero-card__info">
+                                        <span class="hero-card__eyebrow" data-hero-eyebrow></span>
+                                        <span class="hero-card__name" data-hero-title></span>
+                                        <span class="hero-card__meta" data-hero-meta></span>
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
+                        <!-- One hairline per product, filled by hero-slideshow.js.
+                             Decorative: the same products are reachable in the
+                             grids below and through the CTA. -->
+                        <div class="hero__progress" data-hero-progress aria-hidden="true"></div>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- View area end here -->
+        <!-- Hero end here -->
+
+
+
+
+
+        <!-- Product showcase. THE FIRST SECTION AFTER THE HERO.
+             ================================================================
+             Third rebuild (2026-08-26): the spec-table composition is gone,
+             replaced by the product ITSELF — a device mockup whose screen is
+             the real program interface painted with real data, switchable
+             between the phone and laptop experience, plus a way into the
+             real handbook viewer. The customer looks at the product instead
+             of reading about it. There is no feature copy in this section.
+
+             Data: one GET /api/demo — the same server-cut slice the /demo
+             page renders (1 week, 1 day, 2 exercises; the rest of the paid
+             program never leaves the server, see server/src/lib/demo.js).
+             The handbook button lazy-loads assets/js/program-viewer.js — the
+             SAME component a customer reads a purchased program in — and
+             feeds it GET /api/demo/handbook, a viewer-shaped payload cut to
+             the same slice, ending on a locked boundary page.
+
+             If GET /api/demo fails the whole section removes itself rather
+             than showing an empty frame.
+
+             See changelogs/2026-08-19-demo-preview.md for the slice, and
+             changelogs/2026-08-26-product-showcase.md for this section. -->
+        <section class="value-area" id="valueArea" hidden>
+            <div class="container">
+                <header class="value__masthead">
+                    <h2 class="value__title">See the program before you buy.</h2>
+                    <p class="value__sub">Workouts, coaching and the handbook, in one place.</p>
+                </header>
+
+                <div class="dv">
+                    <!-- The product, in the device a customer will actually use it on.
+                         Everything painted inside either screen is real data from
+                         GET /api/demo — the same server-cut slice the /demo page
+                         renders (1 week, 1 day, 2 exercises; the rest of the paid
+                         program never leaves the server). home-dynamic.js builds the
+                         screens; an empty screen means the fetch failed and the whole
+                         section stays hidden. -->
+                    <div class="dv__show">
+                        <div class="dv__toggle" data-dv-toggle>
+                            <button type="button" class="dv__mode is-active" data-dv-mode="phone" aria-pressed="true">Phone</button>
+                            <button type="button" class="dv__mode" data-dv-mode="laptop" aria-pressed="false">Laptop</button>
+                        </div>
+
+                        <div class="dv__stage" data-dv-stage data-mode="phone">
+                            <div class="dv-phone" data-dv-device="phone">
+                                <span class="dv-phone__speaker" aria-hidden="true"></span>
+                                <div class="dv-phone__screen" data-dv-screen="phone"></div>
+                            </div>
+                            <div class="dv-laptop" data-dv-device="laptop" aria-hidden="true">
+                                <div class="dv-laptop__lid">
+                                    <div class="dv-laptop__screen" data-dv-screen="laptop"></div>
+                                </div>
+                                <span class="dv-laptop__base" aria-hidden="true"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Concrete facts only, every one read from the product row —
+                         nothing here is written by hand, so nothing here can drift
+                         from what is actually sold. -->
+                    <div class="dv__info">
+                        <p class="dv__creator" data-dv-creator></p>
+                        <h3 class="dv__name" data-dv-name></h3>
+                        <dl class="dv__facts" data-dv-facts></dl>
+                        <div class="dv__act">
+                            <button type="button" class="btn-one dv__handbook-btn" data-dv-handbook>
+                                <span>Open the handbook <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            </button>
+                            <a class="btn-two dv__product-btn" data-dv-product href="/shop">
+                                <span>Get the full program</span>
+                            </a>
+                        </div>
+                        <p class="dv__note">The preview is free. The full program unlocks with purchase.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Program preview end -->
+
+        <!-- Shop by goal.
+             ================================================================
+             REPLACES the three "promo tile" image cards that used to sit
+             here ("Browse Every Plan" / "New to Training" / "Nutrition &
+             Diet"). Why they went, rather than being restyled:
+
+               * All three linked to the SAME destination, plain /shop. Three
+                 tiles offering one choice is not navigation.
+               * Their goal names were written into the template and matched
+                 nothing in the taxonomy, so they could not filter anything
+                 even in principle.
+               * Each was mostly a `data-landing-slot` image, and those slots
+                 are EMPTY in production (assets/images/landing/ contains only
+                 a README) — so the section rendered as ~1,390px of grey
+                 placeholder with the FA mark in the middle of it. That is a
+                 large part of what read as "unfinished".
+
+             What is here now is the real `goals` taxonomy: the same rows the
+             header's "Shop by Goal" menu is built from, with each goal's real
+             product count, each linking to its real /goal/<slug> listing.
+             Server-rendered from the same helper the nav uses, so it needs no
+             fetch, cannot shift layout, and a goal renamed in Admin ->
+             Navigation is correct here on the next request. A goal with no
+             published products is not listed. -->
+        <section class="goal-nav-area">
+            <div class="container">
+                <div class="goal-nav__head">
+                    <h2>Shop by goal</h2>
+                    <a class="goal-nav__all" href="/shop">All plans <i class="fa-regular fa-arrow-right"
+                            aria-hidden="true"></i></a>
+                </div>
+                <ul class="goal-nav"><!--HOME_GOALS--></ul>
+            </div>
+        </section>
+        <!-- Shop by goal end -->
 
         <!-- Product area start here -->
-        <section class="product-area pt-130 pb-130 mt-130">
+        <section class="product-area">
             <div class="container">
                 <div
                     class="product__wrp pb-30 mb-65 bor-bottom d-flex flex-wrap align-items-center justify-content-xl-between justify-content-center">
                     <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".1s">
-                        <span class="title-icon mr-10"></span>
-                        <h2>latest plans & programs</h2>
+                        <!-- The `.title-icon` dot that sat here was a filled
+                             circle in front of the heading. It labels nothing
+                             and marks nothing; it is the template's ornament,
+                             so it is gone. The bootstrap `pt-130 pb-130
+                             mt-130` on the section went with it: 130px top
+                             padding plus a 130px top MARGIN is 260px of gap
+                             above one grid, three times the rhythm every
+                             other section on this page uses. The section now
+                             takes its spacing from .product-area in
+                             home-dynamic.css like its neighbours. -->
+                        <h2>Every plan</h2>
                     </div>
-                    <ul class="nav nav-pills mt-4 mt-xl-0">
+                    <!-- Filter labels in Title Case so the accessible name and
+                         DOM text stay readable; the uppercase treatment is CSS
+                         presentation. Was "latest item" / "top ratting" /
+                         "featured products" — lowercase against a Title Case
+                         heading, with "ratting" misspelled.
+
+                         The middle tab is now real: ranked by paid-order volume
+                         via bestsellerRank from GET /api/products. It previously
+                         rendered THE SAME list as Latest, because no rating model
+                         exists. home-products.js hides it when nothing has sold. -->
+                    <ul class="nav nav-pills mt-4 mt-xl-0" id="homeProductTabs">
                         <li class="nav-item wow fadeInUp" data-wow-delay=".1s">
                             <a href="#latest-item" data-bs-toggle="tab" class="nav-link px-4 active">
-                                latest item
+                                Latest
                             </a>
                         </li>
-                        <li class="nav-item wow fadeInUp" data-wow-delay=".2s">
-                            <a href="#top-ratting" data-bs-toggle="tab" class="nav-link px-4 bor-left bor-right">
-                                top ratting
+                        <li class="nav-item wow fadeInUp" data-wow-delay=".2s" data-tab="best-sellers" hidden>
+                            <a href="#best-sellers" data-bs-toggle="tab" class="nav-link px-4 bor-left bor-right">
+                                Best Sellers
                             </a>
                         </li>
                         <li class="nav-item wow fadeInUp" data-wow-delay=".3s">
                             <a href="#featured-products" data-bs-toggle="tab" class="nav-link ps-4">
-                                featured products
+                                Featured
                             </a>
                         </li>
                     </ul>
                 </div>
                 <div class="tab-content">
                     <div id="latest-item" class="tab-pane fade show active">
-                        <div class="row g-4" id="homeGridLatest" data-col-class="col-xxl-3 col-xl-4 col-md-6"></div>
+                        <div class="row g-4" id="homeGridLatest" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
                     </div>
-                    <div id="top-ratting" class="tab-pane fade">
-                        <div class="row g-4" id="homeGridTopRated" data-col-class="col-xxl-3 col-xl-4 col-md-6"></div>
+                    <div id="best-sellers" class="tab-pane fade">
+                        <div class="row g-4" id="homeGridBestSellers" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
                     </div>
                     <div id="featured-products" class="tab-pane fade">
-                        <div class="row g-4" id="homeGridFeatured" data-col-class="col-xxl-3 col-xl-4 col-md-6"></div>
+                        <div class="row g-4" id="homeGridFeatured" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
                     </div>
                 </div>
             </div>
         </section>
         <!-- Product area end here -->
 
-        <!-- Discount area start here -->
-        <section class="discount-area bg-image" data-background="assets/images/bg/discount-bg2.jpg">
-            <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-lg-6">
-                        <div class="image mb-5 mb-lg-0"><img src="assets/images/discount/discount-image2.png"
-                                alt="image"></div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="discount__item ps-0 pb-5 pb-lg-0 ps-lg-5">
-                            <div class="section-header">
-                                <div class="section-title-icon wow fadeInUp" data-wow-delay=".1s">
-                                    <span class="title-icon mr-10"></span>
-                                    <h2>find the plan that fits your goal</h2>
-                                </div>
-                                <p class="mt-30 mb-55 wow fadeInUp" data-wow-delay=".2s">Sell globally in minutes with
-                                    localized currencies languages, and
-                                    <br>
-                                    experie for every fitness goal. Expert plans for muscle gain, fat loss, and performance.
-                                </p>
-                                <a class="btn-one wow fadeInUp" data-wow-delay=".3s" href="shop.html"><span>Shop
-                                        Now</span></a>
-                                <a class="off-btn wow fadeInUp" data-wow-delay=".4s" href="#0"><img class="mr-10"
-                                        src="assets/images/icon/fire.svg" alt="icon"> GET <span
-                                        class="primary-color">25%
-                                        OFF</span> NOW</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Discount area end here -->
+        <!-- Featured plan showcase start here.
+             THIS IS WHERE THE "410x432" GREY BOX CAME FROM: the theme's
+             "get-now-area" carried a Swiper of two 2KB grey PNGs with "410X432"
+             painted into them. Also removed here: a fabricated "20% OFF" claim,
+             a "$79.00 -> $49.00" price matching no product, a rolling 48h
+             countdown that re-armed itself forever, and a duplicate
+             "Latest Plans & Programs" heading. See
+             changelogs/2026-08-11-landing-brand-typography-assets.md.
 
-        <!-- Get now area start here -->
-        <section class="get-now-area pt-130 pb-130">
+             What renders now is ONE REAL PRODUCT resolved server-side
+             (applyShowcaseContext in server/src/routes/pages.js). The image can
+             be overridden by dropping assets/images/landing/showcase.* ; the
+             product's own cover is used when that slot is empty. -->
+        <section class="showcase-area" data-showcase-id="">
             <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-xl-6">
-                        <h4 class="mb-30 wow fadeInUp" data-wow-delay=".1s"><img src="assets/images/icon/fire.svg"
-                                alt="icon">
-                            GET <span class="primary-color">20% OFF</span> YOUR FIRST PLAN</h4>
-                        <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".2s">
-                            <span class="title-icon mr-10"></span>
-                            <h2>latest plans & programs</h2>
-                        </div>
-                        <div class="get-now__content">
-                            <div class="get-info py-4 wow fadeInUp" data-wow-delay=".2s">
-                                <del>$79.00</del> <span>$49.00</span>
-                            </div>
-                            <p class="fw-600 wow fadeInUp" data-wow-delay=".3s">Every plan is built by experienced
-                                coaches and delivered as a downloadable guide you can start using the moment you
-                                purchase it.</p>
-                            <ul class="pt-30 pb-30 bor-bottom wow fadeInUp" data-wow-delay=".3s">
-                                <li>Instant Download</li>
-                                <li>Lifetime Access</li>
-                                <li>30 Day Refund</li>
-                            </ul>
-                            <div class="time-up d-flex flex-wrap align-items-center gap-5 mt-30 wow fadeInUp"
-                                data-wow-delay=".4s">
-                                <div class="info">
-                                    <h4>HURRY UP !</h4>
-                                    <span>Offer end in :</span>
-                                </div>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <div class="get-time">
-                                        <h3 id="day">00</h3>
-                                        <span>Day</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="hour">00</h3>
-                                        <span>Hr</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="min">00</h3>
-                                        <span>Min</span>
-                                    </div>
-                                    <div class="get-time">
-                                        <h3 id="sec">00</h3>
-                                        <span>Sec</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div class="showcase">
+                    <div class="showcase__media wow fadeInUp" data-wow-delay=".1s">
+                        <div class="landing-slot showcase__slot" data-landing-slot="showcase"
+                            data-landing-alt="Featured Fitness Agency plan"></div>
                     </div>
-                    <div class="col-xl-6">
-                        <div class="get-now__image mt-5 mt-xl-0">
-                            <div class="get-bg-image">
-                                <img src="assets/images/shop/get-bg.png" alt="image">
-                            </div>
-                            <div class="swiper get__slider">
-                                <div class="swiper-wrapper">
-                                    <div class="swiper-slide">
-                                        <div class="image">
-                                            <img src="assets/images/shop/get-image.png" alt="image">
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide">
-                                        <div class="image">
-                                            <img src="assets/images/shop/get-image2.png" alt="image">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="get-now-arry get-now__arry-left">
-                                <i class="fa-light fa-chevron-left"></i>
-                            </button>
-                            <button class="get-now-arry get-now__arry-right text-warning">
-                                <i class="fa-light fa-chevron-right"></i>
-                            </button>
+                    <div class="showcase__body wow fadeInUp" data-wow-delay=".2s">
+                        <!-- No "FEATURED PLAN" tag above the title: the
+                             heading here IS a product name, and a label
+                             announcing that a product is being shown is the
+                             decoration this pass removes. -->
+                        <h2 class="showcase__title" data-showcase-title></h2>
+                        <p class="showcase__meta" data-showcase-meta></p>
+                        <p class="showcase__desc" data-showcase-desc></p>
+                        <span class="showcase__price" data-showcase-price></span>
+                        <div class="showcase__cta-row">
+                            <a class="btn-one showcase__cta" href="/shop" data-showcase-cta><span>View Plan</span></a>
                         </div>
+                        <!-- Structural facts, not marketing claims: a paid
+                             OrderItem grants access immediately and carries no
+                             expiry field (server/prisma/schema.prisma), and
+                             checkout runs through Stripe/PayPal. The theme's
+                             third bullet was "30 Day Refund" — a policy nothing
+                             in the codebase backs, whose own footer link points
+                             at /coming-soon — so it is not repeated. -->
+                        <ul class="showcase__assurances">
+                            <li>Instant download after purchase</li>
+                            <li>Lifetime access, no subscription</li>
+                            <li>Secure Stripe &amp; PayPal checkout</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- Get now area end here -->
+        <!-- Featured plan showcase end here -->
 
-        <!-- Category area start here: "Our Top Categories" — moved down from
-             its original early slot (right after the hero), which is now
-             occupied by the dynamic people-strip-area and deal-cards-area
-             above. Content/behavior unchanged, position only. -->
-        <section class="category-area category-two pb-130 pt-130">
-            <div class="container">
-                <div class="bor-bottom pb-130">
-                    <div class="sub-title text-center mb-65 wow fadeInUp" data-wow-delay=".1s">
-                        <h3><span class="title-icon"></span> OUR TOP CATEGORIES <span class="title-icon"></span>
-                        </h3>
-                    </div>
-                    <div class="swiper category__slider">
-                        <div class="swiper-wrapper">
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image1.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon1.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Training Plans</a></h4>
-                                </div>
-                            </div>
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image2.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon2.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Diet Plans</a></h4>
-                                </div>
-                            </div>
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image3.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon3.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Strength Programs</a></h4>
-                                </div>
-                            </div>
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image4.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon4.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Cardio &amp; HIIT</a></h4>
-                                </div>
-                            </div>
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image5.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon5.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Nutrition Guides</a></h4>
-                                </div>
-                            </div>
-                            <div class="swiper-slide">
-                                <div class="category__item category-two__item text-center">
-                                    <a href="shop.html" class="category__image d-block">
-                                        <img src="assets/images/category/category-image6.png" alt="image">
-                                        <div class="category-icon">
-                                            <img src="assets/images/category/category-icon6.png" alt="icon">
-                                        </div>
-                                    </a>
-                                    <h4 class="mt-30"><a href="shop.html">Bundle Packages</a></h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Category area end here -->
 
-        <!-- Brand area start here -->
-        <section class="brand-area pt-130 pb-130">
-            <div class="container">
-                <div class="sub-title text-center mb-65">
-                    <h3><span class="title-icon"></span> trusted by athletes &amp; coaches <span class="title-icon"></span>
-                    </h3>
-                </div>
-                <div class="swiper brand__slider">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand1.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand2.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand3.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand4.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand5.png" alt="icon">
-                            </div>
-                        </div>
-                        <div class="swiper-slide">
-                            <div class="brand__item bor radius-10 text-center p-4">
-                                <img src="assets/images/brand/brand6.png" alt="icon">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Brand area end here -->
     </main>
 
     <!-- Footer area start here -->
-    <footer class="footer-area bg-image" data-background="assets/images/footer/footer-bg.jpg">
+    <footer class="footer-area bg-image" data-background="/assets/images/footer/footer-bg.jpg">
         <div class="container">
             <div class="footer__wrp pt-65 pb-65 bor-top bor-bottom">
                 <div class="row g-4">
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.1s" data-wow-delay=".1s">
                         <div class="footer__item">
-                            <h4 class="footer-title">Customer Service</h4>
+                            <h4 class="footer-title">Support</h4>
                             <ul>
-                                <li><a href="contact.html"><span></span>Help Portal</a></li>
-                                <li><a href="contact.html"><span></span>Contact Us</a></li>
-                                <li><a href="error.html"><span></span>Plan Information</a></li>
-                                <li><a href="error.html"><span></span>FAQ</a></li>
-                                <li><a href="error.html"><span></span>Refund Policy</a></li>
+                                <li><a href="/contact"><span></span>Help Portal</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
+                                <li><a href="/coming-soon"><span></span>Plan Information</a></li>
+                                <li><a href="/coming-soon"><span></span>FAQ</a></li>
+                                <li><a href="/coming-soon"><span></span>Refund Policy</a></li>
                             </ul>
                         </div>
                     </div>
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.2s" data-wow-delay=".2s">
                         <div class="footer__item">
-                            <h4 class="footer-title">Get to Know Us</h4>
+                            <h4 class="footer-title">Company</h4>
                             <ul>
-                                <li><a href="about.html"><span></span>About Us</a></li>
-                                <li><a href="blog-grid.html"><span></span>News & Blog</a></li>
-                                <li><a href="error.html"><span></span>Careers</a></li>
-                                <li><a href="error.html"><span></span>Investors</a></li>
-                                <li><a href="contact.html"><span></span>Contact Us</a></li>
+                                <li><a href="/about"><span></span>About Us</a></li>
+                                <li><a href="/services"><span></span>Services</a></li>
+                                <li><a href="/blog/grid"><span></span>News & Blog</a></li>
+                                <li><a href="/coming-soon"><span></span>Careers</a></li>
+                                <li><a href="/coming-soon"><span></span>Investors</a></li>
+                                <li><a href="/contact"><span></span>Contact Us</a></li>
                             </ul>
                         </div>
                     </div>
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.3s" data-wow-delay=".3s">
                         <div class="footer__item">
-                            <h4 class="footer-title">our plans</h4>
+                            <h4 class="footer-title">Our Plans</h4>
                             <ul>
-                                <li><a href="shop.html"><span></span>Training Plans</a></li>
-                                <li><a href="shop.html"><span></span>Diet Plans</a></li>
-                                <li><a href="shop.html"><span></span>Strength Programs</a></li>
-                                <li><a href="shop.html"><span></span>Cardio Programs</a></li>
-                                <li><a href="shop.html"><span></span>Nutrition Guides</a></li>
+                                <li><a href="/shop"><span></span>Training Plans</a></li>
+                                <li><a href="/shop"><span></span>Diet Plans</a></li>
+                                <li><a href="/shop"><span></span>Strength Programs</a></li>
+                                <li><a href="/shop"><span></span>Cardio Programs</a></li>
+                                <li><a href="/shop"><span></span>Nutrition Guides</a></li>
                             </ul>
                         </div>
                     </div>
                     <div class="col-xl-3 col-lg-6 col-md-6 wow fadeInUp" data-wow-duration="1.4s" data-wow-delay=".4s">
                         <div class="footer__item newsletter">
-                            <h4 class="footer-title">get newsletter</h4>
+                            <h4 class="footer-title">Get Newsletter</h4>
                             <div class="subscribe">
                                 <input type="email" placeholder="Your Email">
                                 <button><i class="fa-solid fa-paper-plane"></i></button>
@@ -586,20 +533,20 @@
             </div>
             <div class="footer__copy-text pt-50 pb-50">
     <a href="/" class="logo d-block">
-                    <img src="assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+                    <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112" data-brand-logo>
                 </a>
 </div>
 <div class="footer__bottombar">
-    <p class="footer__bottombar-copy">&copy; Copyright 2024 <a href="#0" class="primary-hover" data-brand-name>ProFit</a> All Rights Reserved</p>
+    <p class="footer__bottombar-copy">&copy; Copyright 2026 <a href="#0" class="primary-hover" data-brand-name>Fitness Agency</a> All Rights Reserved</p>
     <div class="footer__bottombar-right">
         <div class="footer__legal">
-            <a href="error.html">Terms and Conditions</a>
-            <a href="error.html">Terms of Use</a>
-            <a href="error.html">Privacy Notice</a>
-            <a href="error.html">Cookie Policy</a>
+            <a href="/coming-soon">Terms and Conditions</a>
+            <a href="/coming-soon">Terms of Use</a>
+            <a href="/coming-soon">Privacy Notice</a>
+            <a href="/coming-soon">Cookie Policy</a>
         </div>
         <a href="#0" class="payment d-block image">
-                    <img src="assets/images/icon/payment.png" alt="icon">
+                    <img src="/assets/images/icon/payment.png" alt="icon">
                 </a>
     </div>
 </div>
@@ -616,28 +563,29 @@
     <!-- Back to top area end here -->
 
     <!-- Jquery 3. 7. 1 Min Js -->
-    <script src="assets/js/jquery-3.7.1.min.js"></script>
+    <script src="/assets/js/css-preload-swap.js" defer></script>
+    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
     <!-- Bootstrap min Js -->
-    <script src="assets/js/bootstrap.min.js"></script>
+    <script src="/assets/js/bootstrap.min.js" defer></script>
     <!-- Swiper bundle min Js -->
-    <script src="assets/js/swiper-bundle.min.js"></script>
+    <script src="/assets/js/swiper-bundle.min.js" defer></script>
     <!-- Wow min Js -->
-    <script src="assets/js/wow.min.js"></script>
+    <script src="/assets/js/wow.min.js" defer></script>
     <!-- Magnific popup min Js -->
-    <script src="assets/js/magnific-popup.min.js"></script>
+    <script src="/assets/js/magnific-popup.min.js" defer></script>
     <!-- Nice select min Js -->
-    <script src="assets/js/nice-select.min.js"></script>
+    <script src="/assets/js/nice-select.min.js" defer></script>
     <!-- Pace min Js -->
-    <script src="assets/js/pace.min.js"></script>
+    <script src="/assets/js/pace.min.js" defer></script>
     <!-- Script Js -->
-    <script src="assets/js/script.js"></script>
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/branding.js"></script>
-    <script src="assets/js/hero-slideshow.js"></script>
-    <script src="assets/js/nav-featured.js"></script>
-    <script src="assets/js/product-card.js"></script>
-    <script src="assets/js/home-products.js"></script>
-    <script src="assets/js/home-dynamic.js"></script>
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/media-container.js" defer></script>
+    <script src="/assets/js/script.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/hero-slideshow.js" defer></script>
+    <script src="/assets/js/product-card.js" defer></script>
+    <script src="/assets/js/home-products.js" defer></script>
+    <script src="/assets/js/home-dynamic.js" defer></script>
 </body>
 
 </html>

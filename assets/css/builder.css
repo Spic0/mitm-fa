@@ -1,0 +1,806 @@
+/* Product Builder workspace.
+
+   Built on admin.css's tokens (--a-surface / --a-border / --a-primary / the
+   motion scale) rather than a new palette, so the builder reads as the same
+   product as the rest of the admin panel even though its layout is nothing
+   like a CRUD page. Everything here is namespaced `.fab-` / `.fa-builder` and
+   scoped inside the workspace overlay, so none of it can leak into the
+   existing admin screens.
+
+   The density is deliberate. This is a power-user surface: rows are 30px, cards
+   are one line until expanded, and the type scale tops out at 13px, because the
+   whole point is fitting a week of work on screen at once. */
+
+.fa-builder {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  background: var(--a-surface);
+  color: var(--a-text);
+  font-size: 13px;
+  animation: fab-in var(--a-dur) var(--a-ease-out);
+}
+.fa-builder.is-closing { animation: fab-out 180ms var(--a-ease) forwards; }
+@keyframes fab-in { from { opacity: 0; transform: scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes fab-out { to { opacity: 0; transform: scale(0.995); } }
+
+/* The workspace owns the viewport while open. */
+body.fab-open { overflow: hidden; }
+
+.fa-builder *, .fa-builder *::before, .fa-builder *::after { box-sizing: border-box; }
+
+/* ---------------------------------------------------------------- topbar - */
+.fab-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--a-border);
+  background: var(--a-surface);
+  position: relative;
+  z-index: 3;
+}
+.fab-title { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.fab-title-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+.fab-title-meta { font-size: 11px; color: var(--a-text-muted); display: flex; align-items: center; gap: 6px; }
+
+.fab-tabs { display: flex; gap: 2px; margin-left: 8px; }
+.fab-tab {
+  border: 0;
+  background: transparent;
+  color: var(--a-text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease);
+}
+.fab-tab:hover { background: var(--a-surface-2); color: var(--a-text); }
+.fab-tab.is-active { background: var(--a-surface-2); color: var(--a-text); font-weight: 600; }
+
+.fab-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.fab-icon-btn {
+  width: 30px; height: 30px;
+  display: inline-grid; place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--a-text-muted);
+  cursor: pointer;
+  transition: background-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease);
+}
+.fab-icon-btn:hover:not(:disabled) { background: var(--a-surface-2); color: var(--a-text); }
+.fab-icon-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* Save status is the builder's contract with the admin: it is always visible,
+   always current, and never a button they have to remember to press. */
+.fab-save {
+  font-size: 12px;
+  color: var(--a-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 128px;
+  justify-content: flex-end;
+}
+.fab-save.is-saved { color: var(--a-success); }
+.fab-save.is-saving { color: var(--a-text-muted); }
+.fab-save.is-dirty { color: var(--a-warning); }
+.fab-save.is-failed { color: var(--a-danger); }
+.fab-retry {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fab-status {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--a-radius-pill);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--a-surface-2);
+  color: var(--a-text-muted);
+}
+.fab-status-published { background: color-mix(in srgb, var(--a-success) 16%, transparent); color: var(--a-success); }
+.fab-status-scheduled { background: color-mix(in srgb, var(--a-primary) 16%, transparent); color: var(--a-primary); }
+.fab-status-private, .fab-status-draft { background: color-mix(in srgb, var(--a-warning) 18%, transparent); color: var(--a-warning); }
+.fab-status-archived { background: var(--a-surface-2); color: var(--a-text-muted); }
+
+/* ------------------------------------------------------------------ body - */
+.fab-body {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr) 280px;
+  min-height: 0;
+  overflow: hidden;
+}
+.fa-builder.is-settings .fab-body { grid-template-columns: 268px minmax(0, 1fr) 0; }
+.fa-builder.is-settings .fab-inspector { display: none; }
+
+.fab-outline, .fab-inspector { overflow-y: auto; background: var(--a-surface); }
+.fab-outline { border-right: 1px solid var(--a-border); display: flex; flex-direction: column; }
+.fab-inspector { border-left: 1px solid var(--a-border); padding: 14px; }
+.fab-canvas { overflow-y: auto; padding: 0 0 96px; min-width: 0; }
+
+/* --------------------------------------------------------------- outline - */
+.fab-outline-head { padding: 14px 14px 6px; }
+.fab-outline-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-text-muted); }
+.fab-outline-stats { font-size: 11.5px; color: var(--a-text-muted); margin-top: 3px; }
+.fab-outline-actions { display: flex; gap: 6px; padding: 6px 12px 10px; flex-wrap: wrap; }
+.fab-tree { padding: 0 8px 24px; flex: 1; }
+
+.fab-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 7px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color var(--a-dur-fast) var(--a-ease);
+}
+.fab-row:hover { background: var(--a-surface-2); }
+.fab-row.is-selected { background: color-mix(in srgb, var(--a-primary) 14%, transparent); }
+.fab-row.is-focused { box-shadow: inset 2px 0 0 var(--a-primary); }
+.fab-row:focus-visible { outline: 2px solid var(--a-primary); outline-offset: -2px; }
+.fab-row.is-hidden .fab-row-label { opacity: 0.5; text-decoration: line-through; }
+.fab-row-week { font-weight: 600; }
+.fab-row-day { margin-left: 16px; }
+
+.fab-row-twisty {
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border: 0; background: transparent; padding: 0;
+  color: var(--a-text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  flex: none;
+}
+.fab-row-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--a-border); flex: none; margin: 0 6px 0 2px; }
+.fab-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fab-row-count { font-size: 10.5px; color: var(--a-text-muted); flex: none; }
+.fab-row-flag { font-size: 10px; color: var(--a-text-muted); flex: none; }
+.fab-row-menu {
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  border: 0; background: transparent; padding: 0;
+  border-radius: 5px;
+  color: var(--a-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  flex: none;
+  transition: opacity var(--a-dur-fast) var(--a-ease), background-color var(--a-dur-fast) var(--a-ease);
+}
+.fab-row:hover .fab-row-menu, .fab-card:hover .fab-row-menu, .fab-row-menu:focus-visible { opacity: 1; }
+.fab-row-menu:hover { background: var(--a-border); }
+
+.fab-tree-days { position: relative; }
+.fab-row-add {
+  display: flex; align-items: center; gap: 7px;
+  margin-left: 22px;
+  height: 26px; padding: 0 8px;
+  border: 0; background: transparent;
+  color: var(--a-text-muted);
+  font: inherit; font-size: 12px;
+  border-radius: 6px; cursor: pointer;
+  width: calc(100% - 22px);
+}
+.fab-row-add:hover { background: var(--a-surface-2); color: var(--a-text); }
+
+/* Drop markers: a 2px rule where the node would land, and a ring for "into". */
+.fab-row.is-drop-before::before, .fab-row.is-drop-after::before,
+.fab-card.is-drop-before::before, .fab-card.is-drop-after::before,
+.fab-daycard.is-drop-before::before, .fab-daycard.is-drop-after::before {
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 2px;
+  background: var(--a-primary);
+  border-radius: 2px;
+}
+.fab-row.is-drop-before::before, .fab-card.is-drop-before::before, .fab-daycard.is-drop-before::before { top: -1px; }
+.fab-row.is-drop-after::before, .fab-card.is-drop-after::before, .fab-daycard.is-drop-after::before { bottom: -1px; }
+.is-drop-into { box-shadow: inset 0 0 0 2px var(--a-primary); border-radius: 7px; }
+.is-dragging { opacity: 0.4; }
+
+/* ---------------------------------------------------------------- canvas - */
+.fab-canvas-head { padding: 22px 28px 14px; border-bottom: 1px solid var(--a-border); }
+.fab-breadcrumb { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-text-muted); margin-bottom: 6px; }
+.fab-canvas-title {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--a-text);
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+}
+.fab-canvas-title:focus { outline: none; border-bottom-color: var(--a-primary); }
+.fab-canvas-title::placeholder { color: var(--a-border); }
+.fab-canvas-notes {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  color: var(--a-text-muted);
+  padding: 6px 8px;
+  resize: vertical;
+}
+.fab-canvas-notes:hover { border-color: var(--a-border); }
+.fab-canvas-notes:focus { outline: none; border-color: var(--a-primary); color: var(--a-text); }
+.fab-canvas-sub { font-size: 12px; color: var(--a-text-muted); margin-top: 4px; }
+.fab-canvas-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+.fab-canvas-empty, .fab-empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--a-text-muted);
+}
+.fab-canvas-empty i, .fab-empty i { font-size: 28px; opacity: 0.35; }
+.fab-canvas-empty h4 { font-size: 16px; color: var(--a-text); margin: 0; }
+.fab-canvas-empty p { max-width: 380px; margin: 0; font-size: 12.5px; }
+.fab-empty { padding: 28px 12px; font-size: 12px; }
+
+/* ------------------------------------------------------------- day cards - */
+.fab-sections { padding: 18px 28px 0; display: grid; gap: 22px; }
+.fab-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.fab-section-head h6 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-text-muted);
+}
+.fab-section-count {
+  font-size: 10.5px;
+  background: var(--a-surface-2);
+  color: var(--a-text-muted);
+  border-radius: var(--a-radius-pill);
+  padding: 1px 7px;
+}
+.fab-section-empty { font-size: 12px; color: var(--a-text-muted); padding: 8px 2px; }
+.fab-cards { display: grid; gap: 5px; }
+
+.fab-card {
+  border: 1px solid var(--a-border);
+  border-radius: 9px;
+  background: var(--a-surface);
+  position: relative;
+  transition: border-color var(--a-dur-fast) var(--a-ease), box-shadow var(--a-dur-fast) var(--a-ease);
+}
+.fab-card:hover { border-color: color-mix(in srgb, var(--a-primary) 40%, var(--a-border)); }
+.fab-card.is-selected { border-color: var(--a-primary); box-shadow: 0 0 0 1px var(--a-primary); }
+.fab-card-main { display: flex; align-items: center; gap: 7px; padding: 6px 8px; }
+.fab-card-grip { color: var(--a-border); cursor: grab; font-size: 11px; flex: none; padding: 0 2px; }
+.fab-card:hover .fab-card-grip { color: var(--a-text-muted); }
+.fab-card-icon { color: var(--a-text-muted); font-size: 11px; width: 16px; text-align: center; flex: none; }
+.fab-card-tag {
+  font-size: 10px;
+  color: var(--a-text-muted);
+  background: var(--a-surface-2);
+  padding: 2px 7px;
+  border-radius: var(--a-radius-pill);
+  flex: none;
+}
+.fab-card-expand {
+  width: 22px; height: 22px;
+  border: 0; background: transparent; padding: 0;
+  color: var(--a-text-muted);
+  border-radius: 5px; cursor: pointer;
+  font-size: 10px; flex: none;
+  transition: transform var(--a-dur-fast) var(--a-ease);
+}
+.fab-card.is-expanded .fab-card-expand { transform: rotate(180deg); }
+.fab-card-more { padding: 0 10px 10px 34px; display: grid; gap: 8px; }
+
+.fab-input {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--a-text);
+  padding: 5px 7px;
+  width: 100%;
+  transition: border-color var(--a-dur-fast) var(--a-ease), background-color var(--a-dur-fast) var(--a-ease);
+}
+.fab-input:hover { border-color: var(--a-border); }
+.fab-input:focus { outline: none; border-color: var(--a-primary); background: var(--a-surface); }
+.fab-input::placeholder { color: var(--a-text-muted); opacity: 0.6; }
+textarea.fab-input { resize: vertical; line-height: 1.5; }
+select.fab-input { border-color: var(--a-border); }
+.fab-input-grow { flex: 1; min-width: 0; }
+.fab-input-reps { width: 96px; flex: none; text-align: right; }
+.fab-input-macros { width: 150px; flex: none; }
+.fab-input-num { width: 84px; }
+.fab-input-sm { width: auto; border-color: var(--a-border); }
+
+.fab-minifield { display: grid; gap: 3px; }
+.fab-minifield > span { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--a-text-muted); }
+.fab-minifield .fab-input { border-color: var(--a-border); }
+.fab-inline-row { display: flex; gap: 6px; align-items: center; }
+
+.fab-media-chip, .fab-media-add {
+  width: 34px; height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--a-border);
+  background: var(--a-surface-2);
+  color: var(--a-text-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 11px;
+}
+.fab-media-chip img, .fab-media-chip video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fab-media-add:hover { border-color: var(--a-primary); color: var(--a-primary); }
+
+/* ------------------------------------------------------------- week grid - */
+.fab-weekgrid {
+  padding: 20px 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.fab-daycard {
+  border: 1px solid var(--a-border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: var(--a-surface);
+  cursor: pointer;
+  position: relative;
+  transition: border-color var(--a-dur-fast) var(--a-ease), transform var(--a-dur-fast) var(--a-ease-out);
+  text-align: left;
+}
+.fab-daycard:hover { border-color: color-mix(in srgb, var(--a-primary) 45%, var(--a-border)); transform: translateY(-1px); }
+.fab-daycard.is-selected { border-color: var(--a-primary); box-shadow: 0 0 0 1px var(--a-primary); }
+.fab-daycard.is-hidden { opacity: 0.55; }
+.fab-daycard-head { display: flex; align-items: center; gap: 6px; }
+.fab-daycard-title { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fab-daycard-meta { font-size: 10.5px; color: var(--a-text-muted); margin-top: 2px; }
+.fab-daycard-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.fab-daycard-list li {
+  font-size: 11.5px;
+  color: var(--a-text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fab-daycard-add {
+  display: grid; place-items: center; gap: 6px;
+  color: var(--a-text-muted);
+  border-style: dashed;
+  font: inherit; font-size: 12px;
+  min-height: 90px;
+}
+.fab-more { color: var(--a-text-muted); font-style: italic; }
+
+/* -------------------------------------------------------------- quickadd - */
+/* Pinned to the bottom of the canvas so adding the ninth exercise costs the
+   same one click as the first, with no scroll back to a toolbar. */
+.fab-quickadd {
+  position: sticky;
+  bottom: 0;
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 28px;
+  border-top: 1px solid var(--a-border);
+  background: color-mix(in srgb, var(--a-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+.fab-quickadd-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-text-muted); margin-right: 2px; }
+.fab-quickadd-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--a-border);
+  background: var(--a-surface);
+  color: var(--a-text);
+  font: inherit; font-size: 12px;
+  padding: 5px 11px;
+  border-radius: var(--a-radius-pill);
+  cursor: pointer;
+  transition: border-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease), transform var(--a-dur-fast) var(--a-ease-out);
+}
+.fab-quickadd-btn:hover { border-color: var(--a-primary); color: var(--a-primary); transform: translateY(-1px); }
+.fab-quickadd-btn i { font-size: 11px; }
+
+/* ------------------------------------------------------------- inspector - */
+.fab-inspector-head { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-text-muted); margin-bottom: 12px; }
+.fab-inspector-section { margin-bottom: 18px; }
+.fab-inspector-section h6 {
+  margin: 0 0 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-text-muted);
+}
+.fab-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 18px; }
+.fab-stat { border: 1px solid var(--a-border); border-radius: 9px; padding: 9px 10px; display: grid; gap: 1px; }
+.fab-stat-value { font-size: 19px; font-weight: 700; line-height: 1.1; }
+.fab-stat-label { font-size: 10.5px; color: var(--a-text-muted); }
+.fab-sel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 220px; overflow-y: auto; }
+.fab-sel-list li { font-size: 11.5px; color: var(--a-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ------------------------------------------------------------- buttons -- */
+.fab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--a-border);
+  background: var(--a-surface);
+  color: var(--a-text);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: border-color var(--a-dur-fast) var(--a-ease), background-color var(--a-dur-fast) var(--a-ease), color var(--a-dur-fast) var(--a-ease);
+  white-space: nowrap;
+}
+.fab-btn:hover { border-color: var(--a-primary); color: var(--a-primary); }
+.fab-btn-sm { font-size: 11.5px; padding: 4px 9px; }
+.fab-btn-block { width: 100%; justify-content: flex-start; margin-bottom: 5px; }
+.fab-btn-block kbd { margin-left: auto; }
+.fab-btn-primary { background: var(--a-primary); border-color: var(--a-primary); color: #fff; }
+.fab-btn-primary:hover { background: var(--a-primary-hover); border-color: var(--a-primary-hover); color: #fff; }
+.fab-btn-ghost { border-color: transparent; }
+.fab-btn-ghost:hover { border-color: var(--a-border); }
+.fab-btn-danger:hover { border-color: var(--a-danger); color: var(--a-danger); }
+.fab-btn i { font-size: 11px; }
+
+.fa-builder kbd, .fab-dialog kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  border: 1px solid var(--a-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--a-text-muted);
+  background: var(--a-surface-2);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------- selection bar - */
+/* Appears only on multi-select, pinned centre-bottom — the standard "you have
+   things selected, here is what you can do to all of them" affordance. */
+.fab-selectionbar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 1210;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--a-border);
+  background: var(--a-surface);
+  box-shadow: var(--a-shadow-modal);
+  animation: fab-pop 180ms var(--a-ease-out);
+}
+.fab-selectionbar[hidden] { display: none; }
+@keyframes fab-pop { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translateX(-50%); } }
+.fab-selcount { font-size: 12px; font-weight: 600; margin-right: 4px; }
+
+/* ---------------------------------------------------------- context menu - */
+.fab-menu {
+  position: fixed;
+  z-index: 1300;
+  min-width: 208px;
+  padding: 5px;
+  border-radius: 10px;
+  border: 1px solid var(--a-border);
+  background: var(--a-surface);
+  box-shadow: var(--a-shadow-modal);
+  animation: fab-menu-in 120ms var(--a-ease-out);
+}
+@keyframes fab-menu-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--a-text);
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.fab-menu-item span { flex: 1; }
+.fab-menu-item i { width: 14px; font-size: 11px; color: var(--a-text-muted); }
+.fab-menu-item:hover { background: var(--a-surface-2); }
+.fab-menu-item.is-danger { color: var(--a-danger); }
+.fab-menu-item.is-danger i { color: var(--a-danger); }
+.fab-menu-sep { height: 1px; background: var(--a-border); margin: 4px 6px; }
+
+/* --------------------------------------------------------------- loading - */
+.fab-loading {
+  position: absolute;
+  inset: 56px 0 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  grid-auto-flow: column;
+  align-items: center;
+  color: var(--a-text-muted);
+  background: var(--a-surface);
+  z-index: 4;
+}
+
+/* --------------------------------------------------------------- dialogs - */
+/* The workspace is a full-viewport overlay at z-index 1200, which puts it ABOVE
+   admin.css's modal backdrop (100) and toast stack (200). Left alone, every
+   dialog and every toast the builder opens would render behind it — present in
+   the DOM, invisible and unclickable on screen.
+   These two rules only apply while the builder is open, so the admin panel's
+   own stacking is untouched everywhere else. They deliberately cover ALL
+   `.a-modal-backdrop`s rather than just `.fab-dialog-backdrop`, because the
+   builder also opens AdminUI.confirmDialog / leaveDialog, which carry only the
+   shared class. */
+body.fab-open .a-modal-backdrop { z-index: 1400; }
+body.fab-open .a-toast-stack { z-index: 1500; }
+
+/* A dismissed backdrop lingers in the DOM for its 200ms fade. Because the
+   builder's dialogs sit above a full-screen workspace, that fading backdrop
+   would otherwise keep swallowing clicks — so an admin who confirms a dialog
+   and immediately clicks a day loses that click. Nothing on a closing backdrop
+   is interactive anyway. */
+body.fab-open .a-modal-closing { pointer-events: none; }
+
+.fab-dialog { width: min(560px, calc(100vw - 32px)); }
+.fab-dialog-wide { width: min(820px, calc(100vw - 32px)); }
+.fab-dialog-body { max-height: min(60vh, 560px); overflow-y: auto; margin: 4px 0 8px; }
+.fab-dialog-empty { color: var(--a-text-muted); font-size: 12.5px; padding: 20px 4px; text-align: center; }
+.fab-dialog-actions { margin-top: 4px; }
+
+.fab-field { margin-bottom: 14px; }
+.fab-field > label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+.fab-field .fab-input { border-color: var(--a-border); }
+.fab-hint { font-size: 11.5px; color: var(--a-text-muted); margin: 5px 0 0; }
+.fab-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fab-check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 400; margin-bottom: 5px; cursor: pointer; }
+.fab-check input { margin: 0; }
+.fab-inline-checks { display: flex; gap: 16px; flex-wrap: wrap; }
+.fab-subhead { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-text-muted); margin: 22px 0 10px; }
+
+.fab-chiprow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.fab-chip {
+  border: 1px solid var(--a-border);
+  background: var(--a-surface);
+  color: var(--a-text);
+  font: inherit; font-size: 12px;
+  padding: 4px 12px;
+  border-radius: var(--a-radius-pill);
+  cursor: pointer;
+}
+.fab-chip:hover, .fab-chip.is-active { border-color: var(--a-primary); color: var(--a-primary); }
+
+.fab-picker-tools { display: flex; gap: 6px; margin-bottom: 8px; }
+.fab-picker { border: 1px solid var(--a-border); border-radius: 9px; max-height: 240px; overflow-y: auto; margin-bottom: 14px; }
+.fab-picker-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--a-border);
+}
+.fab-picker-item:last-child { border-bottom: 0; }
+.fab-picker-item:hover { background: var(--a-surface-2); }
+.fab-picker-item > span:first-of-type { flex: 1; }
+.fab-picker-meta { font-size: 11px; color: var(--a-text-muted); }
+
+.fab-replace-preview { border-top: 1px solid var(--a-border); padding-top: 10px; margin-top: 4px; }
+.fab-replace-count { font-size: 13px; margin: 0 0 8px; }
+.fab-replace-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; display: grid; gap: 3px; }
+.fab-replace-list li { font-size: 12px; display: flex; gap: 8px; align-items: baseline; }
+.fab-replace-kind {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--a-text-muted); min-width: 62px;
+}
+
+.fab-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 9px; }
+.fab-tpl-card { border: 1px solid var(--a-border); border-radius: 10px; padding: 11px; display: grid; gap: 3px; align-content: start; }
+.fab-tpl-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--a-text-muted); }
+.fab-tpl-name { font-weight: 600; font-size: 13px; }
+.fab-tpl-meta { font-size: 11px; color: var(--a-text-muted); }
+.fab-tpl-actions { display: flex; gap: 6px; margin-top: 7px; }
+.fab-tpl-actions .fab-btn:first-child { flex: 1; justify-content: center; }
+
+.fab-media-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.fab-media-tools .fab-input { flex: 1; min-width: 160px; border-color: var(--a-border); }
+.fab-upload { cursor: pointer; }
+
+/* Upload progress. Driven by real XHR upload events (AdminAPI.formRequest),
+   so the width is bytes actually sent, never a timer. */
+.fab-upload-progress { padding: 22px 4px; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.fab-upload-name { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--a-text); word-break: break-all; }
+.fab-progress-track {
+  width: 100%;
+  max-width: 320px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--a-border);
+  overflow: hidden;
+}
+.fab-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--a-primary);
+  transition: width 0.18s ease-out;
+}
+/* Used only when the body length isn't computable, so the bar shows motion
+   instead of a number the browser can't actually justify. */
+.fab-progress-bar.is-indeterminate {
+  width: 35% !important;
+  animation: fab-progress-slide 1.1s ease-in-out infinite;
+}
+@keyframes fab-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.fab-progress-pct { margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .fab-progress-bar { transition: none; }
+  .fab-progress-bar.is-indeterminate { animation: none; width: 100% !important; opacity: 0.55; }
+}
+
+.fab-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 9px; }
+.fab-media-tile {
+  border: 1px solid var(--a-border);
+  border-radius: 9px;
+  padding: 6px;
+  background: var(--a-surface);
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  font: inherit;
+  transition: border-color var(--a-dur-fast) var(--a-ease), transform var(--a-dur-fast) var(--a-ease-out);
+}
+.fab-media-tile:hover:not(:disabled) { border-color: var(--a-primary); transform: translateY(-1px); }
+.fab-media-tile:disabled { opacity: 0.55; cursor: default; }
+.fab-media-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--a-surface-2);
+  display: grid;
+  place-items: center;
+}
+.fab-media-thumb img, .fab-media-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fab-media-file { color: var(--a-text-muted); font-size: 20px; }
+.fab-media-name { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fab-media-src { font-size: 10px; color: var(--a-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.fab-states { display: grid; gap: 7px; margin-bottom: 14px; }
+.fab-state {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "radio label" "radio hint";
+  gap: 1px 10px;
+  align-items: center;
+  border: 1px solid var(--a-border);
+  border-radius: 9px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.fab-state input { grid-area: radio; margin: 0; }
+.fab-state-label { grid-area: label; font-weight: 600; font-size: 13px; }
+.fab-state-hint { grid-area: hint; font-size: 11.5px; color: var(--a-text-muted); }
+.fab-state.is-active { border-color: var(--a-primary); background: color-mix(in srgb, var(--a-primary) 6%, transparent); }
+
+.fab-shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 22px; }
+.fab-shortcut { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.fab-shortcut kbd { min-width: 132px; text-align: center; }
+
+/* ------------------------------------------------------- settings panels - */
+.fab-settings { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 100%; }
+.fab-settings-nav { border-right: 1px solid var(--a-border); padding: 18px 10px; display: grid; gap: 2px; align-content: start; }
+.fab-settings-tab {
+  display: flex; align-items: center; gap: 9px;
+  border: 0; background: transparent;
+  font: inherit; font-size: 12.5px;
+  color: var(--a-text-muted);
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+.fab-settings-tab i { width: 14px; font-size: 11px; }
+.fab-settings-tab:hover { background: var(--a-surface-2); color: var(--a-text); }
+.fab-settings-tab.is-active { background: var(--a-surface-2); color: var(--a-text); font-weight: 600; }
+.fab-settings-body { padding: 22px 28px 60px; max-width: 720px; }
+.fab-settings-body h5 { font-size: 17px; margin: 0 0 16px; }
+.fab-statusline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; margin: 0 0 10px; }
+
+.fab-gallery { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.fab-gallery-item {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--a-border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+.fab-gallery-item > span:nth-of-type(3) { flex: 1; }
+.fab-gallery-thumb { width: 54px; height: 38px; border-radius: 6px; overflow: hidden; background: var(--a-surface-2); flex: none; }
+.fab-gallery-thumb img, .fab-gallery-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.fab-faq { border: 1px solid var(--a-border); border-radius: 10px; padding: 11px; display: grid; gap: 7px; margin-bottom: 9px; }
+.fab-faq .fab-input { border-color: var(--a-border); }
+.fab-faq-actions { display: flex; gap: 6px; }
+.fab-faq-new { border-style: dashed; }
+.fab-resource { display: flex; align-items: center; gap: 10px; border: 1px solid var(--a-border); border-radius: 9px; padding: 8px 11px; margin-bottom: 6px; font-size: 12.5px; }
+.fab-resource .fab-hint { margin: 0; flex: 1; }
+
+.fab-tagwrap {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  border: 1px solid var(--a-border);
+  border-radius: 9px;
+  padding: 7px 9px;
+}
+.fab-tagwrap .fab-input { border: 0; flex: 1; min-width: 140px; padding: 2px; }
+.fab-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--a-surface-2);
+  border-radius: var(--a-radius-pill);
+  padding: 2px 5px 2px 10px;
+  font-size: 12px;
+}
+.fab-tag button { border: 0; background: transparent; cursor: pointer; color: var(--a-text-muted); font-size: 14px; line-height: 1; padding: 0 4px; }
+
+/* ------------------------------------------------------------ responsive - */
+/* Below 1200px the inspector folds away — its actions all exist in the
+   context menu and selection bar, so nothing becomes unreachable. */
+@media (max-width: 1200px) {
+  .fab-body { grid-template-columns: 240px minmax(0, 1fr); }
+  .fab-inspector { display: none; }
+}
+@media (max-width: 900px) {
+  .fab-body { grid-template-columns: 1fr; }
+  .fab-outline { display: none; }
+  .fab-tabs .fab-tab span { display: none; }
+  .fab-canvas-head, .fab-sections, .fab-quickadd, .fab-weekgrid { padding-left: 16px; padding-right: 16px; }
+  .fab-settings { grid-template-columns: 1fr; }
+  .fab-settings-nav { border-right: 0; border-bottom: 1px solid var(--a-border); grid-auto-flow: column; overflow-x: auto; }
+  .fab-grid2, .fab-shortcuts { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-brand-title="{brand} - Welcome">Fitness Agency - Welcome</title>
+    <!-- description/canonical/OpenGraph/Twitter/robots, injected server-side per route — see server/src/routes/pages.js -> applyStaticSeo. -->
+    <!--PAGE_SEO-->
+    <!-- Favicon img -->
+    <link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png" data-brand-favicon>
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/images/favicon/site.webmanifest">
+    <meta name="theme-color" content="#fafaf9">
+    <!-- Bootstarp min css -->
+    <link rel="stylesheet" href="/assets/css/critical.css">
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/bootstrap.min.css" data-preload-style>
+    <!-- All min css -->
+    <link rel="stylesheet" href="/assets/css/all.min.css">
+    <!-- Swiper bundle min css -->
+    <!-- swiper/magnific-popup/nice-select are carousel, lightbox, and
+         select-widget styling only -- not needed for first paint -- loaded
+         as rel="preload" so they can't block rendering; assets/js/css-
+         preload-swap.js flips them to active stylesheets once the DOM is
+         parsed. animate.css stays render-blocking: the .wow scroll-reveal
+         system depends on its initial opacity:0 state site-wide, and
+         deferring it risks a visible flash/flicker. -->
+    <link rel="preload" as="style" href="/assets/css/swiper-bundle.min.css" data-preload-style>
+    <!-- Magnigic popup css -->
+    <link rel="preload" as="style" href="/assets/css/magnific-popup.css" data-preload-style>
+    <!-- Animate css -->
+    <link rel="stylesheet" href="/assets/css/animate.css">
+    <!-- Nice select css -->
+    <link rel="preload" as="style" href="/assets/css/nice-select.css" data-preload-style>
+    <noscript>
+      <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/assets/css/style.css">
+      <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css">
+      <link rel="stylesheet" href="/assets/css/magnific-popup.css">
+      <link rel="stylesheet" href="/assets/css/nice-select.css">
+    </noscript>
+    <!-- Style css -->
+    <link rel="preload" as="style" fetchpriority="low" href="/assets/css/style.css" data-preload-style>
+    <link rel="stylesheet" href="/assets/css/account.css">
+</head>
+
+<body>
+
+    <!--SHARED_HEADER-->
+
+
+
+    <!-- Cart Drawer -->
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-drawer__head">
+            <h5>Shopping Cart (<span id="cartDrawerCount">0</span>)</h5>
+            <button class="cart-drawer__close" id="cartClose" aria-label="Close cart">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="cart-drawer__body" id="cartItems">
+            <p class="cart-empty-msg">Your cart is empty.</p>
+        </div>
+        <div class="cart-drawer__foot" id="cartFooter">
+            <div class="cart-subtotal">
+                <span>Subtotal:</span>
+                <strong id="cartTotal">$0.00</strong>
+            </div>
+            <a href="/checkout" class="cart-btn-checkout">Checkout</a>
+            <div class="cart-drawer__payments">
+                <span class="card-brand visa">VISA</span>
+                <span class="card-brand mc">MC</span>
+                <span class="card-brand amex">AMEX</span>
+                <span class="card-brand paypal">PayPal</span>
+                <span class="card-brand applepay">Pay</span>
+            </div>
+        </div>
+    </div>
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <!-- Cart Drawer end -->
+
+    <!-- Preloader area start -->
+    <div class="loading">
+        <span class="text-capitalize">L</span>
+        <span>o</span>
+        <span>a</span>
+        <span>d</span>
+        <span>i</span>
+        <span>n</span>
+        <span>g</span>
+    </div>
+
+    <div id="preloader">
+    </div>
+    <!-- Preloader area end -->
+
+    <!-- Mouse cursor area start here -->
+    <div class="mouse-cursor cursor-outer"></div>
+    <div class="mouse-cursor cursor-inner"></div>
+    <!-- Mouse cursor area end here -->
+
+
+    <main>
+        <!-- SETUP WIZARD — /welcome
+             Reached only by redirect from the magic-link handler, which has
+             already consumed the single-use token and established the
+             session. There is no token in this page's URL, none in its
+             markup and none in its JS: it is an ordinary authenticated page,
+             which is what makes it impossible to replay.
+
+             The site header is hidden here (HIDDEN_HEADER_PAGES in
+             routes/pages.js) — a nav drawer offering "Shop" mid-onboarding
+             is an exit, not a convenience. -->
+        <div class="ac-page ac-page--wizard">
+            <div class="ac-wz">
+
+                <div class="ac-wz__top">
+                    <span class="ac-wz__brand">
+                        <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" data-brand-logo height="30">
+                    </span>
+                    <div class="ac-wz__steps" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" id="wzSteps" aria-label="Setup progress">
+                        <span class="ac-wz__seg"><span></span></span>
+                        <span class="ac-wz__seg"><span></span></span>
+                        <span class="ac-wz__seg"><span></span></span>
+                        <span class="ac-wz__seg"><span></span></span>
+                        <span class="ac-wz__seg"><span></span></span>
+                    </div>
+                    <span class="ac-wz__count" id="wzCount">Step 1 of 5</span>
+                </div>
+
+                <div class="ac-wz__body">
+
+                    <!-- 1. WELCOME -->
+                    <section class="ac-wz__panel is-active" data-step="1" aria-labelledby="wzT1">
+                        <!-- The name is added by welcome.js, which rewrites this
+                             whole heading as one text node. Left nameless here so
+                             it reads correctly for the moment before the profile
+                             arrives. -->
+                        <h1 class="ac-wz__title" id="wzT1">Welcome to Fitness Agency.</h1>
+                        <p class="ac-wz__sub">Your program is ready. Let's finish setting up your account. It takes about a minute.</p>
+                        <div class="ac-card" id="wzOwned"></div>
+                    </section>
+
+                    <!-- 2. PASSWORD -->
+                    <section class="ac-wz__panel" data-step="2" aria-labelledby="wzT2">
+                        <h1 class="ac-wz__title" id="wzT2">Create a password</h1>
+                        <p class="ac-wz__sub">So you can sign back in any time without waiting for an email link.</p>
+
+                        <div class="ac-field">
+                            <label class="ac-label" for="wzPwd">Password</label>
+                            <div class="ac-pwd">
+                                <input class="ac-input" type="password" id="wzPwd" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+                                <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                            </div>
+                            <div class="ac-strength" id="wzStrength" aria-hidden="true">
+                                <span class="ac-strength__bar"></span><span class="ac-strength__bar"></span><span class="ac-strength__bar"></span>
+                            </div>
+                            <ul class="ac-req" id="wzReq">
+                                <li data-req="len"><i class="fa-regular fa-circle" aria-hidden="true"></i> At least 8 characters</li>
+                                <li data-req="mix"><i class="fa-regular fa-circle" aria-hidden="true"></i> A mix of letters and numbers makes it stronger</li>
+                            </ul>
+                        </div>
+
+                        <div class="ac-field">
+                            <label class="ac-label" for="wzPwd2">Confirm password</label>
+                            <div class="ac-pwd">
+                                <input class="ac-input" type="password" id="wzPwd2" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+                                <button type="button" class="ac-pwd__toggle" aria-label="Show password"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+                            </div>
+                            <p class="ac-error ac-hidden" id="wzPwdError"></p>
+                            <p class="ac-ok ac-hidden" id="wzPwdOk">Passwords match.</p>
+                        </div>
+                    </section>
+
+                    <!-- 3. ACCOUNT DETAILS — prefilled from checkout -->
+                    <section class="ac-wz__panel" data-step="3" aria-labelledby="wzT3">
+                        <h1 class="ac-wz__title" id="wzT3">Your details</h1>
+                        <p class="ac-wz__sub">Taken from your checkout. Change anything that isn't right.</p>
+
+                        <div class="ac-field">
+                            <label class="ac-label" for="wzFullName">Full name</label>
+                            <input class="ac-input" type="text" id="wzFullName" autocomplete="name">
+                        </div>
+                        <div class="ac-field">
+                            <label class="ac-label" for="wzEmail">Email</label>
+                            <input class="ac-input" type="email" id="wzEmail" readonly>
+                            <p class="ac-hint">Your purchases are tied to this address. Contact us if it needs to change.</p>
+                        </div>
+                        <div class="ac-grid2">
+                            <div class="ac-field">
+                                <label class="ac-label" for="wzPhone">Phone <span class="ac-faint">(optional)</span></label>
+                                <input class="ac-input" type="tel" id="wzPhone" autocomplete="tel">
+                            </div>
+                            <div class="ac-field">
+                                <label class="ac-label" for="wzCountry">Country <span class="ac-faint">(optional)</span></label>
+                                <select class="ac-select" id="wzCountry"></select>
+                            </div>
+                        </div>
+                        <p class="ac-error ac-hidden" id="wzDetailsError"></p>
+                    </section>
+
+                    <!-- 4. OPTIONAL PROFILE -->
+                    <section class="ac-wz__panel" data-step="4" aria-labelledby="wzT4">
+                        <h1 class="ac-wz__title" id="wzT4">Make it yours</h1>
+                        <p class="ac-wz__sub">Entirely optional. You can skip this and do it later.</p>
+
+                        <div class="ac-pick">
+                            <span id="wzAvatar"></span>
+                            <div class="ac-pick__actions">
+                                <button type="button" class="ac-btn ac-btn--ghost" id="wzPhotoBtn"><span>Choose photo</span></button>
+                                <button type="button" class="ac-btn ac-btn--quiet ac-hidden" id="wzPhotoRemove"><span>Remove</span></button>
+                            </div>
+                            <input type="file" id="wzPhotoInput" accept="image/png,image/jpeg,image/webp" class="ac-hidden">
+                        </div>
+
+                        <div class="ac-field">
+                            <label class="ac-label" for="wzDisplayName">Display name</label>
+                            <input class="ac-input" type="text" id="wzDisplayName" maxlength="40" autocomplete="nickname">
+                            <p class="ac-hint">What we'll call you. Your receipts keep your full name.</p>
+                        </div>
+                        <p class="ac-error ac-hidden" id="wzProfileError"></p>
+                    </section>
+
+                    <!-- 5. DONE -->
+                    <section class="ac-wz__panel" data-step="5" aria-labelledby="wzT5">
+                        <div class="ac-wz__done">
+                            <div class="ac-conf__mark" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+                            </div>
+                            <h1 class="ac-wz__title" id="wzT5">You're all set.</h1>
+                            <p class="ac-wz__sub">Your programs are waiting for you.</p>
+                        </div>
+                    </section>
+
+                </div>
+
+                <div class="ac-wz__foot">
+                    <button type="button" class="ac-btn ac-btn--primary ac-btn--block" id="wzNext">
+                        <span id="wzNextText">Get started</span>
+                        <i class="fa-regular fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="ac-btn ac-btn--quiet ac-wz__back ac-hidden" id="wzBack"><span>Back</span></button>
+                    <button type="button" class="ac-btn ac-btn--quiet ac-wz__back ac-hidden" id="wzSkip"><span>Skip for now</span></button>
+                </div>
+
+            </div>
+        </div>
+    </main></main>
+
+    <!-- Footer area start here -->
+    
+    <!-- Footer area end here -->
+
+    <!-- Back to top area start here -->
+    
+    <!-- Back to top area end here -->
+
+    <!-- Jquery 3. 7. 1 Min Js -->
+    <script src="/assets/js/css-preload-swap.js" defer></script>
+    <script src="/assets/js/jquery-3.7.1.min.js" defer></script>
+    <!-- Bootstrap min Js -->
+    <script src="/assets/js/bootstrap.min.js" defer></script>
+    <!-- Swiper bundle min Js -->
+    <script src="/assets/js/swiper-bundle.min.js" defer></script>
+    <!-- Wow min Js -->
+    <script src="/assets/js/wow.min.js" defer></script>
+    <!-- Magnific popup min Js -->
+    <script src="/assets/js/magnific-popup.min.js" defer></script>
+    <!-- Nice select min Js -->
+    <script src="/assets/js/nice-select.min.js" defer></script>
+    <!-- Pace min Js -->
+    <script src="/assets/js/pace.min.js" defer></script>
+    <!-- Script Js -->
+    <script src="/assets/js/api.js" defer></script>
+    <script src="/assets/js/media-container.js" defer></script>
+    <script src="/assets/js/script.js" defer></script>
+    <script src="/assets/js/branding.js" defer></script>
+    <script src="/assets/js/countries.js" defer></script>
+    <script src="/assets/js/account-common.js" defer></script>
+    <script src="/assets/js/welcome.js" defer></script>
+</body>
+
+</html>

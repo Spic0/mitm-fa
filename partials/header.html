@@ -2,91 +2,111 @@
     <div class="container">
         <div class="header-inner">
             <a href="/" class="header-logo">
-                <img src="assets/images/logo/logo.svg" alt="logo" data-brand-logo>
+                <img src="/assets/images/logo/fa-logo.svg" alt="Fitness Agency" width="200" height="112" data-brand-logo>
             </a>
+            <!-- Font Awesome 6 Pro glyph (fully self-hosted in assets/webfonts —
+                 every weight, including fa-solid-900, ships with the project), not
+                 an <img>/inline SVG that can 404, and not hand-built CSS bars.
+                 assets/js/script.js swaps fa-bars <-> fa-xmark on open/close. -->
             <button type="button" class="header-bar d-lg-none" aria-label="Open menu" aria-expanded="false" aria-controls="mainMenu">
-                <span></span>
-                <span></span>
-                <span></span>
+                <i class="fa-solid fa-bars header-bar__icon" aria-hidden="true"></i>
             </button>
             <ul class="main-menu" id="mainMenu">
-                <li class="mobile-quicklinks d-lg-none">
-                    <a href="shop.html?featured=true">Bestsellers</a>
-                    <a href="shop.html?sort=new">New Plans</a>
-                </li>
-                <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaGoal">
-                        Shop by Goal <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                <!-- EVERY category menu is generated here, by ONE renderer, from the
+                     Taxonomy table: server/src/lib/navigation.js, injected into the
+                     empty <li data-nav-slot> below, by inlineHeader in
+                     server/src/routes/pages.js. It is an ELEMENT rather than an HTML
+                     comment on purpose: the injection is a replace on the first match,
+                     and an earlier version used a comment token that this very
+                     paragraph also mentioned — so the entire menu was substituted into
+                     the comment and the header rendered with no categories at all,
+                     silently. The same reasoning is why applyLandingAssets fills a real
+                     <div class="landing-slot">. There is deliberately
+                     no per-category markup in this file — a category added, renamed,
+                     reordered, hidden or deleted in Admin -> Navigation changes the header
+                     with no frontend edit, and so does a category that does not exist yet.
+                     See lib/navigation.js for how a panel's layout is derived.
+
+                     Mobile: this is a shopping drawer, not an account menu — the product
+                     categories come first, each an inline single-open accordion (see
+                     .mega-menu__panel-inner + assets/js/script.js). Account/My Library/
+                     Orders/Cart/Settings are demoted to a footer block at the very
+                     bottom of the list (see .mobile-account-links below) — someone
+                     arriving from an ad should see product categories before account
+                     management. -->
+                <li data-nav-slot></li>
+                <li class="mobile-account-links d-lg-none">
+                    <a href="/login" class="mobile-account-links__item js-account-link" id="drawerAccountLink">
+                        <i class="fa-regular fa-user" aria-hidden="true"></i>
+                        <span class="js-account-text" id="drawerAccountText">Sign In</span>
                     </a>
-                    <div class="mega-menu" id="megaGoal" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Shop by Goal</h3>
-                        <div class="mega-menu__col mega-menu__col--goals">
-                            <span class="mega-menu__heading">Training Goals</span>
-                            <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
-                                 from the Goals taxonomy in the database (Admin -> Navigation) — create,
-                                 rename, or delete a goal there and it shows up here automatically. -->
-                            <ul><!--NAV_GOALS_TRAINING--></ul>
-                            <a href="shop.html" class="mega-menu__view-all">View All Plans <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>
-                        </div>
-                        <div class="mega-menu__col mega-menu__col--picks" data-role="top-picks">
-                            <span class="mega-menu__heading">Top Picks</span>
-                            <div class="mega-menu__cards" data-role="top-picks-cards"></div>
-                        </div>
-                    </div>
-                </li>
-                <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaAthletes">
-                        Browse Athletes <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                    <a href="/my-library" class="mobile-account-links__item">
+                        <i class="fa-regular fa-book-open" aria-hidden="true"></i>
+                        <span>My Library</span>
                     </a>
-                    <div class="mega-menu mega-menu--athletes" id="megaAthletes" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Browse Athletes</h3>
-                        <!-- Generated server-side (server/src/index.js -> applyNavContexts) live
-                             from the Athletes taxonomy in the database (Admin -> Navigation, or inline
-                             from the product wizard) — each sport category and its athlete
-                             subcategories render straight from real ProductTaxonomy assignments. -->
-                        <!--NAV_SPORTS_COLUMNS-->
-                    </div>
-                </li>
-                <li class="nav-mega">
-                    <a href="shop.html" class="nav-top-link" aria-haspopup="true" aria-expanded="false" aria-controls="megaCreators">
-                        Browse Creators <i class="fa-regular fa-angle-down" aria-hidden="true"></i>
+                    <a href="/my-profile" class="mobile-account-links__item u-hidden js-account-only" id="drawerProfileItem">
+                        <i class="fa-regular fa-id-badge" aria-hidden="true"></i>
+                        <span>My Profile</span>
                     </a>
-                    <div class="mega-menu mega-menu--creators" id="megaCreators" data-menu-panel>
-                        <button type="button" class="mobile-nav-back d-lg-none">
-                            <i class="fa-regular fa-angle-left" aria-hidden="true"></i> Back
-                        </button>
-                        <h3 class="mobile-nav-panel-title d-lg-none">Browse Creators</h3>
-                        <div class="mega-menu__col mega-menu__col--featured" data-role="featured-creators">
-                            <span class="mega-menu__heading">Featured Creators</span>
-                            <div class="mega-menu__cards" data-role="featured-creator-cards"></div>
-                        </div>
-                        <div class="mega-menu__col mega-menu__col--directory">
-                            <label class="mega-menu__search">
-                                <i class="fa-regular fa-magnifying-glass" aria-hidden="true"></i>
-                                <input type="search" placeholder="Search creators" aria-label="Search creators" data-role="creator-search" autocomplete="off">
-                            </label>
-                            <span class="mega-menu__heading" data-role="creator-list-heading">Popular Creators</span>
-                            <ul data-role="creator-list"></ul>
-                            <button type="button" class="mega-menu__view-all" data-role="creator-az-toggle" aria-pressed="false">
-                                Browse All A&ndash;Z <i class="fa-regular fa-arrow-right" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
+                    <a href="/orders" class="mobile-account-links__item u-hidden js-account-only" id="drawerOrdersItem">
+                        <i class="fa-regular fa-receipt" aria-hidden="true"></i>
+                        <span>Orders</span>
+                    </a>
+                    <button type="button" class="mobile-account-links__item js-cart-toggle" id="drawerCartToggle">
+                        <i class="fa-regular fa-cart-shopping" aria-hidden="true"></i>
+                        <span>Cart</span>
+                        <span class="cart-badge" id="drawerCartCount">0</span>
+                    </button>
+                    <button type="button" class="mobile-account-links__item u-hidden js-account-only js-signout" id="drawerSignOut">
+                        <i class="fa-regular fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                        <span>Sign Out</span>
+                    </button>
                 </li>
             </ul>
             <div class="header-actions">
-                <a href="login.html" id="headerAccountLink" class="header-account d-flex align-items-center">
-                    <div class="user-icon">
-                        <i class="fa-regular fa-user"></i>
+                <!-- Two states in one slot. Signed out it is a plain link to
+                     /login. Signed in it becomes a menu carrying the same rows
+                     the drawer shows on mobile (.mobile-account-links above) —
+                     My Library, My Profile, Orders, Sign Out. Without the menu
+                     those rows existed ONLY inside the drawer, which is
+                     d-lg-none, so a desktop customer had no route to their own
+                     account settings at all. api.js does the swap once a
+                     session is confirmed; both start in the signed-out state so
+                     an API failure leaves a clean "Sign In" header. -->
+                <div class="header-account-wrap" id="headerAccountWrap">
+                    <a href="/login" id="headerAccountLink" class="header-account d-flex align-items-center js-account-link">
+                        <div class="user-icon">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                        <span class="acc-text js-account-text" id="headerAccountText">Sign In</span>
+                    </a>
+                    <button type="button" class="header-account header-account--menu u-hidden" id="headerAccountBtn"
+                            aria-expanded="false" aria-haspopup="true" aria-controls="headerAccountMenu">
+                        <div class="user-icon">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                        <span class="acc-text" id="headerAccountBtnText">My Account</span>
+                        <i class="fa-regular fa-chevron-down header-account__caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="header-account-menu" id="headerAccountMenu" role="menu" aria-labelledby="headerAccountBtn" hidden>
+                        <a href="/my-library" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-book-open" aria-hidden="true"></i>
+                            <span>My Library</span>
+                        </a>
+                        <a href="/my-profile" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-id-badge" aria-hidden="true"></i>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="/orders" class="header-account-menu__item" role="menuitem">
+                            <i class="fa-regular fa-receipt" aria-hidden="true"></i>
+                            <span>Orders</span>
+                        </a>
+                        <button type="button" class="header-account-menu__item header-account-menu__item--quiet js-signout" role="menuitem">
+                            <i class="fa-regular fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                            <span>Sign Out</span>
+                        </button>
                     </div>
-                    <span class="acc-text" id="headerAccountText">Sign In</span>
-                </a>
+                </div>
                 <button class="header-cart-btn" id="cartToggle" aria-label="Open cart">
                     <i class="fa-regular fa-cart-shopping"></i>
                     <span class="cart-badge" id="cartCount">0</span>

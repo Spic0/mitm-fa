@@ -1492,7 +1492,7 @@ function applyHomeSeo(html) {
     `    <meta name="twitter:title" content="${escapeHtml(title)}">\n` +
     `    <meta name="twitter:description" content="${description}">\n` +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
-  return html.replace("<!--HOME_SEO-->", block);
+  return html.replace("<!--HOME_SEO-->", () => block);
 }
 
 async function applyHeroContext(html, product) {

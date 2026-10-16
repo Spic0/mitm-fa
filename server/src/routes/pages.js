@@ -386,12 +386,14 @@ function applyProductSeo(html, product) {
     name: product.name,
     description: rawDescription,
     image: image || undefined,
+    brand: product.creator ? { "@type": "Brand", name: product.creator } : undefined,
     offers: {
       "@type": "Offer",
       price: price,
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
       url: url,
+      seller: { "@type": "Organization", name: ORGANIZATION.name, url: appUrl("/") },
     },
   };
 
@@ -1454,6 +1456,45 @@ function heroMeta(product) {
   return parts.join("  ·  ");
 }
 
+// The homepage's search snippet, share card and site-level structured data.
+// The description names what people actually search for (workout plans, meal
+// plans, mobility) rather than the hero's brand line, which carries no query.
+const HOME_DESCRIPTION =
+  "Workout plans, meal plans and mobility programs from pro athletes and fitness creators. Shop by goal. One-time purchase, lifetime access.";
+
+function applyHomeSeo(html) {
+  const title = "Workout & Meal Plans from Pro Athletes and Creators | Fitness Agency";
+  const description = escapeHtml(HOME_DESCRIPTION);
+  const image = appUrl("/assets/images/banner/inner-banner.jpg");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "WebSite",
+        "@id": appUrl("/#website"),
+        name: ORGANIZATION.name,
+        url: appUrl("/"),
+        publisher: { "@id": appUrl("/#organization") },
+        inLanguage: "en",
+      },
+    ],
+  };
+  const block =
+    `<meta name="description" content="${description}">\n` +
+    `    <meta property="og:type" content="website">\n` +
+    `    <meta property="og:site_name" content="Fitness Agency">\n` +
+    `    <meta property="og:title" content="${escapeHtml(title)}">\n` +
+    `    <meta property="og:description" content="${description}">\n` +
+    `    <meta property="og:url" content="${appUrl("/")}">\n` +
+    `    <meta property="og:image" content="${image}">\n` +
+    `    <meta name="twitter:card" content="summary_large_image">\n` +
+    `    <meta name="twitter:title" content="${escapeHtml(title)}">\n` +
+    `    <meta name="twitter:description" content="${description}">\n` +
+    `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
+  return html.replace("<!--HOME_SEO-->", () => block);
+}
+
 async function applyHeroContext(html, product) {
   if (process.env.APP_URL) {
     html = html.replace("<!--HOME_CANONICAL-->", `<link rel="canonical" href="${appUrl("/")}">`);
@@ -1666,6 +1707,7 @@ router.get("/", async (req, res, next) => {
     console.error("Failed to load homepage products; rendering shells only.", err);
   }
 
+  html = applyHomeSeo(html);
   html = await applyHeroContext(html, heroProduct);
   html = applyShowcaseContext(html, showcaseProduct);
   html = applyLandingAssets(html);

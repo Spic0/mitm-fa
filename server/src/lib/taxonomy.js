@@ -94,7 +94,7 @@ function singularize(value) {
 }
 
 // Finds a value not already taken by ANY taxonomy's nodeRoute or groupRoute.
-// The two share one URL namespace — /sport/football and /athlete/mbappe are
+// The two share one URL namespace — /sport/football and /athlete/marcus-reyes are
 // resolved from the same lookup — so a collision would make one of them
 // unreachable rather than merely ugly.
 async function uniqueTaxonomySegment(base, excludeTaxonomyId) {

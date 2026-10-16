@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // category and everything under it" matching (e.g. /sport/football must
   // also match products tagged directly to an athlete under Football). ----
   // The walk returns the node's direct PARENT alongside it: a leaf URL
-  // (/athlete/mbappe) carries no branch segment, so the "All <Branch>" chip
+  // (/athlete/marcus-reyes) carries no branch segment, so the "All <Branch>" chip
   // still needs a way to find which sport an athlete belongs to.
   function findNodeWithParent(nodes, slug, parent) {
     for (var i = 0; i < nodes.length; i++) {

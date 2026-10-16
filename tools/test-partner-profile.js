@@ -7,7 +7,7 @@
 // this codebase — that no ORIGINAL full-resolution image is ever fetched when
 // a derivative exists.
 //
-// Usage: node test-partner-profile.js [--url http://127.0.0.1:3200/partners/sam-sulek] [--shots]
+// Usage: node test-partner-profile.js [--url http://127.0.0.1:3200/partners/elena-cho] [--shots]
 const fs = require("fs");
 const path = require("path");
 const puppeteer = require("puppeteer-core");
@@ -16,7 +16,7 @@ const arg = (name, fallback) => {
   const i = process.argv.indexOf(name);
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 };
-const URL = arg("--url", "http://127.0.0.1:3200/partners/sam-sulek");
+const URL = arg("--url", "http://127.0.0.1:3200/partners/elena-cho");
 const SHOTS = process.argv.includes("--shots");
 const SHOT_DIR = path.join(__dirname, ".shots");
 

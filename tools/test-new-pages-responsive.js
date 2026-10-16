@@ -49,7 +49,7 @@ function check(label, cond, detail) {
   const PAGES = [
     { name: "services-index", url: "/services" },
     ...listServices().map((s) => ({ name: "service-" + s.slug, url: "/services/" + s.slug })),
-    { name: "partner-profile", url: "/partners/sam-sulek" },
+    { name: "partner-profile", url: "/partners/elena-cho" },
   ];
 
   const browser = await puppeteer.launch({

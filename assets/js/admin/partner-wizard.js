@@ -213,14 +213,14 @@ window.AdminPartnerWizard = (function () {
         '<form id="pwBasics">' +
         '<div class="a-form-grid">' +
         '<div class="a-form-row"><label>Partner name</label>' +
-        '<input name="displayName" required maxlength="' + LIMITS.displayName + '" value="' + esc(nameValue) + '" placeholder="Sam Sulek"></div>' +
+        '<input name="displayName" required maxlength="' + LIMITS.displayName + '" value="' + esc(nameValue) + '" placeholder="Elena Cho"></div>' +
         '<div class="a-form-row"><label>Handle (optional)</label>' +
-        '<input name="handle" maxlength="' + LIMITS.handle + '" value="' + esc(p.handle || "") + '" placeholder="samsulek">' +
+        '<input name="handle" maxlength="' + LIMITS.handle + '" value="' + esc(p.handle || "") + '" placeholder="elenacho">' +
         '<small class="a-form-hint">Shown as @handle. A label only — never a link.</small></div>' +
         "</div>" +
         '<div class="a-form-row"><label>Profile URL</label>' +
         '<div class="partner-slug-row"><span class="partner-slug-prefix">' + esc(window.location.origin) + "/partners/</span>" +
-        '<input name="slug" value="' + esc(p.slug || "") + '" placeholder="sam-sulek"></div>' +
+        '<input name="slug" value="' + esc(p.slug || "") + '" placeholder="elena-cho"></div>' +
         '<small class="a-form-hint">Lowercase letters, numbers and hyphens. Changing this changes the public address of a profile that may already be shared.</small></div>' +
         "<h6>Partner type</h6>" +
         '<div class="a-wizard-type-grid">' +

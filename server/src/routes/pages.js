@@ -1440,7 +1440,7 @@ function applyShowcaseContext(html, product) {
 // The eyebrow is the ATTRIBUTION — "train like the ones you follow" only means
 // anything if the name behind the program is the first thing read. It falls
 // back to difficulty when the creator's name is already inside the product
-// title, because "SAM SULEK / Sam Sulek Strength & Size Peak" reads as a
+// title, because "ELENA CHO / Elena Cho Strength & Size Peak" reads as a
 // stutter rather than a credit.
 function heroEyebrow(product) {
   const creator = (product.creator || "").trim();
@@ -1895,7 +1895,7 @@ router.get("/program.html", (req, res) => {
 
 // ---------------------------------------------------------------------
 // The taxonomy catch-all: /<segment>/<slug> for every taxonomy segment there
-// is or ever will be — /goal/lose-fat, /sport/football, /athlete/mbappe,
+// is or ever will be — /goal/lose-fat, /sport/football, /athlete/marcus-reyes,
 // /creator/nadia-fischer, and whatever an admin creates next.
 //
 // Registered LAST on purpose. Every specific two-segment route in this file

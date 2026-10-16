@@ -215,7 +215,7 @@ window.AdminPanels.navigation = (function () {
   }
 
   // A new category needs one decision beyond its name — whether its items
-  // are grouped (Football -> Ronaldo) or a flat list — because that is what
+  // are grouped (Football -> Marcus Reyes) or a flat list — because that is what
   // the item editor below has to offer, and it cannot be inferred from an
   // empty tree.
   function beginAddCategory(btn) {

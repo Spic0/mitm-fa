@@ -419,7 +419,7 @@ function serializeListRow(product) {
 }
 
 // Search matches NAME, CREATOR or ID. Name alone was not enough for the
-// presentation picker, where an admin reasonably looks for "Sam Sulek" (the
+// presentation picker, where an admin reasonably looks for "Elena Cho" (the
 // creator) or pastes an id straight out of a URL and expects a hit.
 //
 // The id match is exact rather than a `contains`: a cuid is not something

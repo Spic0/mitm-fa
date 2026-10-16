@@ -140,7 +140,7 @@ const PRODUCTS = [
     name: "Advanced Powerlifting Peak",
     priceCents: 7900,
     category: "Powerlifting",
-    creator: "Big Sam Coleman",
+    creator: "Rowan Kessler",
     platform: "youtube",
     sport: "boxing",
     featured: false,
@@ -375,7 +375,7 @@ const GOAL_BY_CATEGORY = {
 const CREATOR_CATEGORIES = {
   Fitness: ["Marcus Reyes", "Jordan Blake", "Amara Chen", "Tom Whitfield", "Dr. Lisa Moreno", "Elena Cho"],
   Nutrition: ["Priya Nair", "Nadia Fischer"],
-  Powerlifting: ["Big Sam Coleman"],
+  Powerlifting: ["Rowan Kessler"],
   Bodybuilding: ["Derrick Owens"],
 };
 const CREATOR_CATEGORY_BY_NAME = {};
@@ -408,7 +408,7 @@ async function upsertNode(taxonomyId, parentId, name, order) {
 // creators by "Category/Leaf Name".
 async function seedTaxonomies() {
   // nodeRoute/groupRoute are the URL segments a taxonomy's pages live under
-  // (/goal/lose-fat, /sport/football, /athlete/mbappe) and navLayout is how
+  // (/goal/lose-fat, /sport/football, /athlete/marcus-reyes) and navLayout is how
   // its header panel presents. They are columns, not code, precisely so an
   // admin-created category gets the same treatment — see
   // server/src/lib/navigation.js. A creator category (Fitness, Nutrition)
@@ -458,7 +458,7 @@ async function seedTaxonomies() {
     Football: ["Marcus Reyes", "Jordan Blake", "Tom Whitfield"],
     Basketball: ["Derrick Owens", "Amara Chen"],
     MMA: ["Elena Cho", "Dr. Lisa Moreno"],
-    Boxing: ["Priya Nair", "Big Sam Coleman", "Nadia Fischer"],
+    Boxing: ["Priya Nair", "Rowan Kessler", "Nadia Fischer"],
   });
 
   await seedTwoLevel("creators", CREATOR_CATEGORIES);

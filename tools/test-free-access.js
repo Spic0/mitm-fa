@@ -20,7 +20,7 @@ const dep = (m) => require(require.resolve(m, { paths: [path.join(SERVER, "src",
 const express = dep("express");
 
 const FREE_ID = "prod-free-id";
-const FREE_SLUG = "sulek-strength-size-peak";
+const FREE_SLUG = "elena-cho-strength-size-peak";
 const PAID_ID = "prod-paid-id";
 const MEDIA_DIR = path.join(SERVER, "storage", "media", FREE_ID);
 const PAID_MEDIA_DIR = path.join(SERVER, "storage", "media", PAID_ID);

@@ -306,7 +306,7 @@ async function swipe(client, from, to, y) {
   // ---- 2. every card is internally consistent ----------------------------
   // The caption lives inside the card, so a mismatch would be structural — but
   // that is exactly the guarantee worth pinning, since the brief calls out
-  // "Sam Sulek image + Bradley Martyn title" as the forbidden state.
+  // "Elena Cho image + Jordan Blake title" as the forbidden state.
   let mismatches = 0;
   for (const s of samples) {
     for (const c of s.cards) {

@@ -49,7 +49,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.setViewport(vp);
     // A populated cart is what makes /cart and /checkout render their real
     // rows at all; empty, both redirect and their markup is never exercised.
-    await page.goto(BASE + "/program/sulek-strength-size-peak", { waitUntil: "load", timeout: 120000 }).catch(() => {});
+    await page.goto(BASE + "/program/elena-cho-strength-size-peak", { waitUntil: "load", timeout: 120000 }).catch(() => {});
     await page.evaluate(() => { const b = document.querySelector(".btn-add-to-bag"); if (b) b.click(); }).catch(() => {});
     await sleep(1200);
 

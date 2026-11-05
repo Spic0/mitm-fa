@@ -28,6 +28,7 @@ const {
 } = require("../lib/services");
 const { getPlanGuide, listPlanGuides } = require("../lib/plans");
 const PARTNERSHIP = require("../lib/partnership");
+const { inlineOfferWizard } = require("../lib/offerWizard");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -1498,97 +1499,228 @@ router.get("/partners/:slug", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// /partnership: business offers and partnership proposals. Content and the
-// form's option lists are in lib/partnership.js (shared with the validator
-// in routes/partnership.js); layout reuses the service template and styles.
+// /partnership: business offers and partnership proposals. Copy in
+// lib/partnership.js; styles in assets/css/partnership.css; behaviour (hero
+// video, demo dialog, Calendly, wizard frame, PostHog) in
+// assets/js/partnership.js; scroll reveals in assets/js/reveal.js. The offer
+// form is the private decks' setup wizard, served at /partnership/offer and
+// framed here, because the deck stylesheet carries a global reset.
 // ---------------------------------------------------------------------
-function optionsHtml(list, placeholder) {
+const PT_ICON_PATHS = {
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  dumbbell: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
+  card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6l-5 4H4a1 1 0 0 0-1 1zM16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>',
+  headset: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1"/><rect x="17" y="14" width="4" height="6" rx="1"/>',
+  map: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2a5 5 0 0 1 5.5 4.8"/>',
+  layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  play: '<path d="M8 5v14l11-7z"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  external: '<path d="M7 17 17 7M9 7h8v8"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+};
+function ptIcon(name, cls = "pt-icon") {
+  return `<svg class="${cls}" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${PT_ICON_PATHS[name]}</svg>`;
+}
+
+const PT_IMG = "/assets/images/partnership";
+// <picture> with AVIF then WebP, explicit size, lazy unless told otherwise.
+function ptPicture({ name, widths, w, h, alt, sizes, cls, eager }) {
+  const set = (ext) => widths.map((x) => `${PT_IMG}/${name}-${x}.${ext} ${x}w`).join(", ");
+  const largest = widths[widths.length - 1];
   return (
-    `<option value="">${escapeHtml(placeholder)}</option>` +
-    list.map((o) => `<option value="${escapeHtml(o.value || o)}">${escapeHtml(o.label || o)}</option>`).join("")
+    "<picture>" +
+    `<source type="image/avif" srcset="${set("avif")}" sizes="${sizes}">` +
+    `<source type="image/webp" srcset="${set("webp")}" sizes="${sizes}">` +
+    `<img${cls ? ` class="${cls}"` : ""} src="${PT_IMG}/${name}-${largest}.webp" width="${w}" height="${h}" alt="${escapeHtml(alt)}"` +
+    (eager ? ' fetchpriority="high"' : ' loading="lazy"') +
+    ' decoding="async"></picture>'
   );
 }
 
-function offerCta(label, location, offer, ghost) {
+function ptDevice(device, key, alt) {
+  if (device === "phone") {
+    return (
+      '<div class="dev dev--phone"><div class="dev__screen">' +
+      ptPicture({ name: `mock-${key}-mobile`, widths: [390], w: 390, h: 844, alt, sizes: "200px" }) +
+      "</div></div>"
+    );
+  }
   return (
-    `<a class="svc-btn svc-btn--${ghost ? "ghost" : "primary"}" href="#offer-form" data-cta-location="${location}"` +
-    (offer ? ` data-offer="${offer}"` : "") +
-    `><span>${escapeHtml(label)}</span></a>`
+    '<div class="dev dev--laptop"><div class="dev__screen">' +
+    ptPicture({ name: `mock-${key}-desktop`, widths: [640, 1280], w: 1280, h: 800, alt, sizes: "(min-width: 1200px) 560px, (min-width: 768px) 46vw, 88vw" }) +
+    '</div><div class="dev__base" aria-hidden="true"></div></div>'
   );
 }
 
-function cardsHtml(items) {
-  return items.map((i) => `<div class="svc-card"><h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.body)}</p></div>`).join("");
+function ptHead(kicker, title, intro, id) {
+  return (
+    '<header class="pt-head">' +
+    `<p class="pt-kicker" data-reveal>${escapeHtml(kicker)}</p>` +
+    `<h2 class="pt-h2"${id ? ` id="${id}"` : ""} data-reveal>${escapeHtml(title)}</h2>` +
+    (intro ? `<p class="pt-intro" data-reveal>${escapeHtml(intro)}</p>` : "") +
+    "</header>"
+  );
+}
+
+function ptCards(items) {
+  return (
+    '<div class="pt-grid">' +
+    items
+      .map(
+        (i) =>
+          `<div class="pt-card${i.inverted ? " pt-card--inv" : ""}" data-reveal>` +
+          `<span class="pt-card__icon">${ptIcon(i.icon)}</span>` +
+          `<h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.body)}</p></div>`
+      )
+      .join("") +
+    "</div>"
+  );
+}
+
+function ptCalendlyLink(label, location, cls) {
+  return (
+    `<a class="${cls}" href="${PARTNERSHIP.CALENDLY_URL}" target="_blank" rel="noopener" data-calendly-popup data-cta-location="${location}">` +
+    `${ptIcon("calendar", "pt-btn__icon")}<span>${escapeHtml(label)}</span></a>`
+  );
 }
 
 function renderPartnershipMain() {
   const P = PARTNERSHIP;
-  const field = (id, label, control, opts = {}) =>
-    `<div class="svc-form__field"${opts.showFor ? ` data-show-for="${opts.showFor}" hidden` : ""}>` +
-    `<label for="${id}">${escapeHtml(label)}${opts.optional ? ' <span class="svc-form__opt">(optional)</span>' : ""}</label>${control}</div>`;
+  const words = P.PAGE.h1.split(" ").map((w) => `<span class="ph-w"><span>${escapeHtml(w)}</span></span>`).join(" ");
+  const demoLink = (location, cls) =>
+    `<a class="${cls}" href="${P.DEMO_URL}" data-demo-open data-cta-location="${location}">${ptIcon("play", "pt-btn__icon pt-btn__icon--fill")}<span>See a demo</span></a>`;
+
+  const hero =
+    '<section class="ph" aria-labelledby="ptTitle">' +
+    `<div class="ph__media" data-hero-media data-video="${PT_IMG}/hero-loop" data-video-m="${PT_IMG}/hero-loop-m">` +
+    "<picture>" +
+    `<source media="(max-width: 767px) and (orientation: portrait)" type="image/avif" srcset="${PT_IMG}/hero-poster-m.avif">` +
+    `<source media="(max-width: 767px) and (orientation: portrait)" type="image/webp" srcset="${PT_IMG}/hero-poster-m.webp">` +
+    `<source type="image/avif" srcset="${PT_IMG}/hero-poster-768.avif 768w, ${PT_IMG}/hero-poster-1344.avif 1344w" sizes="100vw">` +
+    `<source type="image/webp" srcset="${PT_IMG}/hero-poster-768.webp 768w, ${PT_IMG}/hero-poster-1344.webp 1344w" sizes="100vw">` +
+    `<img class="ph__poster" src="${PT_IMG}/hero-poster-1344.webp" width="1344" height="752" alt="" fetchpriority="high" decoding="async">` +
+    "</picture></div>" +
+    '<div class="ph__shade" aria-hidden="true"></div>' +
+    '<div class="ph__inner">' +
+    '<p class="ph__kicker">Business partnerships</p>' +
+    `<h1 class="ph__title" id="ptTitle">${words}</h1>` +
+    `<p class="ph__sub">${escapeHtml(P.PAGE.sub)}</p>` +
+    '<div class="ph__actions">' +
+    ptCalendlyLink("Book a 30-min call", "hero", "pt-btn pt-btn--primary") +
+    demoLink("hero_demo", "pt-btn pt-btn--ghost") +
+    "</div>" +
+    '<a class="ph__offer" href="#offer" data-cta-location="hero_offer">or send an offer</a>' +
+    "</div>" +
+    '<div class="ph__float" aria-hidden="true">' + ptDevice("phone", "storefront", "") + "</div>" +
+    `<a class="ph__cue" href="#pt-what" aria-label="Scroll to what we do">${ptIcon("chevron")}</a>` +
+    "</section>";
+
+  const what =
+    '<section class="pt-sec" id="pt-what">' +
+    '<div class="pt-wrap">' +
+    ptHead("For creators and athletes", "Your business, built and run", "Custom site, real products, checkout and growth. One team runs all of it.") +
+    ptCards(P.WHAT_WE_DO) +
+    "</div></section>";
+
+  const mockups =
+    '<section class="pt-sec pt-sec--tint">' +
+    '<div class="pt-wrap">' +
+    ptHead("What you get", "See it before you sign", "Real pages from the platform: storefront, product, checkout and mobile.") +
+    '<div class="pt-mocks">' +
+    P.MOCKUPS.map(
+      (m) =>
+        `<figure class="pt-mock pt-mock--${m.device}" data-reveal>` +
+        ptDevice(m.device, m.key, `${m.label} on the Fitness Agency platform`) +
+        `<figcaption>${escapeHtml(m.label)}</figcaption></figure>`
+    ).join("") +
+    "</div>" +
+    `<div class="pt-actions" data-reveal>${demoLink("mockups_demo", "pt-btn pt-btn--dark")}</div>` +
+    "</div></section>";
+
+  const steps =
+    '<section class="pt-sec pt-sec--dark">' +
+    '<div class="pt-wrap">' +
+    ptHead("How it works", "From first message to launch", "") +
+    '<ol class="pt-steps">' +
+    P.STEPS.map((s, i) => `<li class="pt-step" data-reveal><span class="pt-step__n">${i + 1}</span><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.body)}</p></li>`).join("") +
+    "</ol></div></section>";
+
+  const brands =
+    '<section class="pt-sec">' +
+    '<div class="pt-wrap">' +
+    ptHead("For brands and companies", "Collaborate with our creators", "Sponsorships, collaborations and co-branded programs for brands and business partners.") +
+    ptCards(P.BRAND_OFFERS) +
+    '<ul class="pt-chips" aria-label="Who we work with">' +
+    P.PARTNER_TYPES.map((t) => `<li data-reveal>${escapeHtml(t)}</li>`).join("") +
+    "</ul></div></section>";
+
+  const model =
+    '<section class="pt-sec pt-sec--inv">' +
+    '<div class="pt-wrap pt-model">' +
+    '<div class="pt-model__media" data-reveal>' +
+    ptPicture({ name: "studio", widths: [640, 960], w: 960, h: 723, alt: "A creator studio with a camera, laptop and phone", sizes: "(min-width: 992px) 520px, 92vw", cls: "pt-model__img" }) +
+    "</div>" +
+    '<div class="pt-model__body">' +
+    '<p class="pt-kicker" data-reveal>The model</p>' +
+    '<p class="pt-model__big" data-reveal><span>15-30%</span> of net profit</p>' +
+    '<p class="pt-model__line" data-reveal>A revenue share. Final terms confirmed in a written agreement.</p>' +
+    '<ul class="pt-chips pt-chips--inv"><li data-reveal>Custom branded site</li><li data-reveal>US and Canada</li><li data-reveal>Written agreement</li></ul>' +
+    "</div></div></section>";
+
+  const calUrl = `${P.CALENDLY_URL}?primary_color=1a1a1a&text_color=1a1a1a&background_color=fdfdfc`;
+  const book =
+    '<section class="pt-sec" id="book">' +
+    '<div class="pt-wrap">' +
+    ptHead("Book a call", "Talk to us for 30 minutes", "Pick a time below. It books right here on this page.") +
+    `<div class="pt-cal" data-calendly-inline data-url="${calUrl}" data-reveal>` +
+    `<a class="pt-btn pt-btn--dark pt-cal__fallback" href="${P.CALENDLY_URL}" target="_blank" rel="noopener" data-cta-location="book_fallback">${ptIcon("calendar", "pt-btn__icon")}<span>Open the booking page</span></a>` +
+    "</div></div></section>";
+
+  const offer =
+    '<section class="pt-sec pt-sec--dark pt-sec--texture" id="offer">' +
+    '<div class="pt-wrap">' +
+    ptHead("Send an offer", "Prefer to write? Start here", "Five quick questions, an estimate, then your details.") +
+    '<div class="pt-offer" data-reveal>' +
+    '<iframe class="pt-offer__frame" src="/partnership/offer" title="Partnership setup wizard" loading="lazy" data-offer-frame></iframe>' +
+    "</div></div></section>";
+
+  const faq =
+    '<section class="pt-sec">' +
+    '<div class="pt-wrap">' +
+    ptHead("FAQ", "Common questions", "") +
+    '<div class="pt-faq">' +
+    P.FAQ.map((f) => `<details class="pt-faq__item" data-reveal><summary><h3>${escapeHtml(f.q)}</h3>${ptIcon("chevron", "pt-faq__chev")}</summary><p>${escapeHtml(f.a)}</p></details>`).join("") +
+    "</div></div></section>";
+
+  const demo =
+    '<dialog class="pt-demo" id="ptDemo" aria-labelledby="ptDemoTitle">' +
+    '<div class="pt-demo__inner">' +
+    `<button class="pt-demo__close" type="button" data-demo-close aria-label="Close demo">${ptIcon("close")}</button>` +
+    '<p class="pt-kicker">Demo</p>' +
+    '<h2 class="pt-demo__title" id="ptDemoTitle">A creator storefront</h2>' +
+    '<p class="pt-demo__line">A live page on the platform, filled with demo content.</p>' +
+    '<div class="pt-demo__devices">' +
+    ptDevice("laptop", "storefront", "Demo creator storefront on desktop") +
+    ptDevice("phone", "storefront", "Demo creator storefront on mobile") +
+    "</div>" +
+    `<a class="pt-btn pt-btn--dark" href="${P.DEMO_URL}" target="_blank" rel="noopener" data-cta-location="demo_open_full"><span>Open full demo</span>${ptIcon("external", "pt-btn__icon")}</a>` +
+    "</div></dialog>";
 
   return (
-    '<main class="svc">' +
-    '<nav class="svc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">/</span> <span>Partnership</span></nav>' +
-    '<header class="svc-hero">' +
-    '<span class="svc-hero__kicker">Business offers and partnership proposals</span>' +
-    `<h1 class="svc-hero__title">${escapeHtml(P.PAGE.h1)}</h1>` +
-    `<p class="svc-hero__lead">${escapeHtml(P.PAGE.lead)}</p>` +
-    `<div class="svc-hero__actions">${offerCta("Send a business offer", "hero")}` +
-    '<a class="svc-btn svc-btn--ghost" href="/services"><span>See our services</span></a></div>' +
-    "</header>" +
-    '<section class="svc-section">' +
-    '<span class="svc-section__eyebrow">For creators and athletes</span>' +
-    '<h2 class="svc-section__title">We build and run your business</h2>' +
-    '<div class="svc-section__body"><p>For fitness creators, coaches and athletes who want a real business behind their method, without running it themselves.</p></div>' +
-    `<div class="svc-grid svc-grid--3">${cardsHtml(P.CREATOR_SERVICES)}</div>` +
-    '<div class="svc-section__body"><p><strong>The model:</strong> a revenue share of 15-30% of net profit. The final terms are confirmed in a written agreement.</p></div>' +
-    `<div class="svc-hero__actions">${offerCta("Apply as a creator", "creators", "creator")}</div>` +
-    "</section>" +
-    '<section class="svc-section">' +
-    '<span class="svc-section__eyebrow">For brands and companies</span>' +
-    '<h2 class="svc-section__title">Collaborate with us and our creators</h2>' +
-    '<div class="svc-section__body"><p>For brands, sponsors and other business partners: gyms, supplement and apparel companies, media and investors.</p></div>' +
-    `<div class="svc-grid svc-grid--3">${cardsHtml(P.BRAND_OFFERS)}</div>` +
-    `<div class="svc-hero__actions">${offerCta("Propose a collaboration", "brands", "brand")}</div>` +
-    "</section>" +
-    '<section class="svc-section">' +
-    '<span class="svc-section__eyebrow">How it works</span>' +
-    '<h2 class="svc-section__title">From offer to reply</h2>' +
-    '<ol class="svc-steps">' +
-    P.STEPS.map((s) => `<li><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.body)}</p></li>`).join("") +
-    "</ol></section>" +
-    '<section class="svc-section">' +
-    '<span class="svc-section__eyebrow">FAQ</span>' +
-    '<h2 class="svc-section__title">Common questions</h2>' +
-    '<div class="svc-section__body">' +
-    P.FAQ.map((f) => `<h3>${escapeHtml(f.q)}</h3><p>${escapeHtml(f.a)}</p>`).join("") +
-    "</div></section>" +
-    '<section class="svc-section" id="offer-form">' +
-    '<span class="svc-section__eyebrow">Business offer form</span>' +
-    '<h2 class="svc-section__title">Send us your offer</h2>' +
-    '<form class="svc-form" id="partnershipForm">' +
-    field("pf-type", "Offer type", `<select id="pf-type" name="offerType" required>${optionsHtml(P.OFFER_TYPES, "Choose one")}</select>`) +
-    field("pf-name", "Name", '<input id="pf-name" name="name" type="text" autocomplete="name" maxlength="120" required>') +
-    field("pf-company", "Company", '<input id="pf-company" name="company" type="text" autocomplete="organization" maxlength="160">', { optional: true }) +
-    field("pf-email", "Email", '<input id="pf-email" name="email" type="email" autocomplete="email" maxlength="200" required>') +
-    field("pf-links", "Website or social handles", '<input id="pf-links" name="links" type="text" maxlength="300" placeholder="yoursite.com, @handle">', { optional: true }) +
-    field("pf-audience", "Audience size", `<select id="pf-audience" name="audience" required disabled>${optionsHtml(P.AUDIENCE_RANGES, "Choose a range")}</select>`, { showFor: "creator" }) +
-    field("pf-budget", "Budget range", `<select id="pf-budget" name="budget" disabled>${optionsHtml(P.BUDGET_RANGES, "Choose a range")}</select>`, { showFor: "brand", optional: true }) +
-    field("pf-country", "Country", `<select id="pf-country" name="country" autocomplete="country" required>${optionsHtml(P.COUNTRIES, "Choose one")}</select>`) +
-    field("pf-message", "Your proposal", '<textarea id="pf-message" name="message" rows="6" minlength="10" maxlength="4000" required></textarea>') +
-    // Honeypot: off-screen, skipped by keyboard and screen readers, filled by bots.
-    '<div class="svc-form__hp" aria-hidden="true"><label for="pf-hp">Leave this empty</label><input id="pf-hp" name="hp_url" type="text" tabindex="-1" autocomplete="off"></div>' +
-    '<p class="svc-form__error" id="pfError" role="alert" hidden></p>' +
-    '<button class="svc-btn svc-btn--primary" type="submit" id="pfSubmit"><span>Send offer</span></button>' +
-    '<p class="svc-form__note">Prefer email? Write to <a href="mailto:info@fitness.agency">info@fitness.agency</a>.</p>' +
-    "</form>" +
-    '<div class="svc-form__done" id="pfDone" tabindex="-1" hidden><h3>Thanks, we have your offer.</h3><p>Our team reads every offer and will be in touch by email.</p></div>' +
-    "</section>" +
-    "</main>" +
-    '<script src="/assets/js/partnership.js" defer></script>'
+    '<main class="pt">' + hero + what + mockups + steps + brands + model + book + offer + faq + "</main>" + demo +
+    '<script src="/assets/js/reveal.js" defer></script><script src="/assets/js/partnership.js" defer></script>'
   );
 }
+
+// The poster is the LCP candidate: preload exactly what <picture> will pick.
+const PT_HEAD =
+  '<link rel="stylesheet" href="/assets/css/partnership.css">\n' +
+  `    <link rel="preload" as="image" type="image/avif" media="(max-width: 767px) and (orientation: portrait)" href="${PT_IMG}/hero-poster-m.avif" fetchpriority="high">\n` +
+  `    <link rel="preload" as="image" type="image/avif" media="(min-width: 768px), (orientation: landscape)" imagesrcset="${PT_IMG}/hero-poster-768.avif 768w, ${PT_IMG}/hero-poster-1344.avif 1344w" imagesizes="100vw" fetchpriority="high">\n`;
 
 router.get("/partnership", async (req, res, next) => {
   // Exactly /partnership: the non-strict router would also serve "/partnership/".
@@ -1612,7 +1744,7 @@ router.get("/partnership", async (req, res, next) => {
         "@type": "Service",
         name: "Business partnerships",
         serviceType: "Business partnership",
-        description: PARTNERSHIP.PAGE.lead,
+        description: PARTNERSHIP.PAGE.sub,
         url,
         provider: { "@id": appUrl("/#organization") },
         areaServed: [
@@ -1638,8 +1770,43 @@ router.get("/partnership", async (req, res, next) => {
     ],
   };
   html = applyServiceSeo(html, { title: PARTNERSHIP.PAGE.title, description: PARTNERSHIP.PAGE.description, canonical: url, jsonLd });
+  html = html.replace("</head>", PT_HEAD + "</head>").replace('<body class="service-page">', '<body class="service-page partnership-page">');
   html = html.replace("<!--SERVICE_MAIN-->", renderPartnershipMain());
   res.type("html").send(html);
+});
+
+// The setup wizard alone, framed by /partnership. The deck's own stylesheet
+// and script, unchanged; the boot element points the form at /api/partnership
+// and starts the estimate at 15% (decks start at 10%).
+const OFFER_FRAME_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Partnership setup wizard | Fitness Agency</title>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-400-normal.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/montserrat/montserrat-latin-600-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/css/presentation.css">
+    <link rel="stylesheet" href="/assets/css/offer-frame.css">
+    <script src="/assets/js/presentation-boot.js"></script>
+</head>
+<body class="offer-frame">
+    <div id="presBoot" class="u-hidden" data-contact-endpoint="/api/partnership" data-setup-base="15"></div>
+    <main class="pres-section pres-section--cta" id="pres-cta">
+        <div class="pres-container">
+            <!--OFFER_WIZARD-->
+        </div>
+    </main>
+    <script src="/assets/js/presentation.js" defer></script>
+    <script src="/assets/js/offer-frame.js" defer></script>
+</body>
+</html>
+`;
+
+router.get("/partnership/offer", async (req, res) => {
+  res.set("X-Robots-Tag", "noindex, nofollow");
+  res.type("html").send(await inlineOfferWizard(OFFER_FRAME_HTML));
 });
 
 // ---------------------------------------------------------------------

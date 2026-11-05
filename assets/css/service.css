@@ -484,37 +484,6 @@
   }
 }
 
-/* /partnership: steps, business offer form, and the CTA's business link. */
+/* The services CTA's line for brands and other business offers. */
 .svc-cta .svc-cta__more { margin: 16px auto 0; font-size: 14px; }
-.svc-cta__more a,
-.svc-form__note a { color: var(--color-primary); text-decoration: underline; }
-
-.svc-steps { list-style: none; counter-reset: svc-step; margin: 0; padding: 0; display: grid; gap: 12px; }
-.svc-steps li { counter-increment: svc-step; position: relative; padding: 14px 16px 14px 52px; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
-.svc-steps li::before { content: counter(svc-step); position: absolute; left: 16px; top: 14px; width: 24px; height: 24px; border-radius: 50%; background-color: var(--color-primary); color: #ffffff; font-size: 13px; font-weight: 700; line-height: 24px; text-align: center; }
-.svc-steps h3 { font-size: 15px; font-weight: 700; color: var(--color-text); margin: 0 0 4px; }
-.svc-steps p { font-size: 14px; line-height: 1.55; color: var(--color-text-muted); margin: 0; }
-@media (min-width: 768px) { .svc-steps { grid-template-columns: repeat(2, 1fr); } }
-
-.svc-section > .svc-hero__actions { margin-top: 18px; }
-
-.svc-form { display: grid; gap: 14px; max-width: 640px; }
-.svc-form__field { display: grid; gap: 6px; }
-.svc-form__field[hidden] { display: none; }
-.svc-form label { font-size: 14px; font-weight: 600; color: var(--color-text); }
-.svc-form__opt { font-weight: 400; color: var(--color-text-faint); }
-.svc-form input,
-.svc-form select,
-.svc-form textarea { width: 100%; min-height: 46px; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--color-text); background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
-.svc-form textarea { resize: vertical; }
-.svc-form input:focus-visible,
-.svc-form select:focus-visible,
-.svc-form textarea:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-.svc-form button { justify-self: start; min-height: 46px; }
-.svc-form button[disabled] { opacity: 0.6; cursor: progress; }
-.svc-form__hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-.svc-form__error { margin: 0; padding: 10px 12px; font-size: 14px; color: #9b1c1c; background-color: #fdecec; border-radius: var(--radius); }
-.svc-form__note { margin: 0; font-size: 13px; color: var(--color-text-muted); }
-.svc-form__done { max-width: 640px; padding: 18px; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
-.svc-form__done h3 { font-size: 17px; font-weight: 700; color: var(--color-text); margin: 0 0 6px; }
-.svc-form__done p { margin: 0; color: var(--color-text-muted); }
+.svc-cta__more a { color: var(--color-primary); text-decoration: underline; }

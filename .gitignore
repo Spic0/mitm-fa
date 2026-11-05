@@ -78,3 +78,7 @@ ssl/
 
 # Source media for generated/optimised assets (originals, raw screenshots).
 assets-src/
+
+# Raw generated product images (Higgsfield originals); the imported copies live in
+# assets/images/product/uploads/, which is itself per checkout.
+.product-images/

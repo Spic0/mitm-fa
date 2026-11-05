@@ -1,0 +1,51 @@
+# Files written by tools/import-product-covers.js (2026-11-05) into assets/images/product/uploads/.
+# That dir is gitignored and per checkout: copy these 40 files to production BEFORE running update.sql.
+# slug -> imageUrl, then its files (original JPEG, 320/640/960/1280 AVIF+WebP, .media.json).
+
+elena-cho-strength-size-peak -> assets/images/product/uploads/c240553a-d099-40ee-8675-4eb7f0a64ed2.jpg
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-1280.avif
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-1280.webp
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-320.avif
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-320.webp
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-640.avif
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-640.webp
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-960.avif
+  c240553a-d099-40ee-8675-4eb7f0a64ed2-960.webp
+  c240553a-d099-40ee-8675-4eb7f0a64ed2.jpg
+  c240553a-d099-40ee-8675-4eb7f0a64ed2.media.json
+
+jordan-blake-mass-strength-split -> assets/images/product/uploads/0e15bda5-81d8-4340-a386-7d6d53337c59.jpg
+  0e15bda5-81d8-4340-a386-7d6d53337c59-1280.avif
+  0e15bda5-81d8-4340-a386-7d6d53337c59-1280.webp
+  0e15bda5-81d8-4340-a386-7d6d53337c59-320.avif
+  0e15bda5-81d8-4340-a386-7d6d53337c59-320.webp
+  0e15bda5-81d8-4340-a386-7d6d53337c59-640.avif
+  0e15bda5-81d8-4340-a386-7d6d53337c59-640.webp
+  0e15bda5-81d8-4340-a386-7d6d53337c59-960.avif
+  0e15bda5-81d8-4340-a386-7d6d53337c59-960.webp
+  0e15bda5-81d8-4340-a386-7d6d53337c59.jpg
+  0e15bda5-81d8-4340-a386-7d6d53337c59.media.json
+
+marcus-reyes-elite-athleticism -> assets/images/product/uploads/78f596d0-608e-401b-b5d3-7a3cb9c06312.jpg
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-1280.avif
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-1280.webp
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-320.avif
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-320.webp
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-640.avif
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-640.webp
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-960.avif
+  78f596d0-608e-401b-b5d3-7a3cb9c06312-960.webp
+  78f596d0-608e-401b-b5d3-7a3cb9c06312.jpg
+  78f596d0-608e-401b-b5d3-7a3cb9c06312.media.json
+
+derrick-owens-longevity-power -> assets/images/product/uploads/b85443ad-ac32-4904-bd6c-beb108bf304a.jpg
+  b85443ad-ac32-4904-bd6c-beb108bf304a-1280.avif
+  b85443ad-ac32-4904-bd6c-beb108bf304a-1280.webp
+  b85443ad-ac32-4904-bd6c-beb108bf304a-320.avif
+  b85443ad-ac32-4904-bd6c-beb108bf304a-320.webp
+  b85443ad-ac32-4904-bd6c-beb108bf304a-640.avif
+  b85443ad-ac32-4904-bd6c-beb108bf304a-640.webp
+  b85443ad-ac32-4904-bd6c-beb108bf304a-960.avif
+  b85443ad-ac32-4904-bd6c-beb108bf304a-960.webp
+  b85443ad-ac32-4904-bd6c-beb108bf304a.jpg
+  b85443ad-ac32-4904-bd6c-beb108bf304a.media.json

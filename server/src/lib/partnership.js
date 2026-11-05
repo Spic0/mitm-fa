@@ -44,12 +44,22 @@ const WHAT_WE_DO = [
   { icon: "map", title: "US and Canada", body: "Built for creators selling in the United States and Canada." },
 ];
 
-const MOCKUPS = [
-  { key: "storefront", device: "laptop", label: "Creator storefront" },
-  { key: "product", device: "laptop", label: "Product page" },
-  { key: "checkout", device: "laptop", label: "Checkout" },
-  { key: "product", device: "phone", label: "Mobile view" },
+// "What you get": the partnership cycle (assets/js/pt-process.js animates it).
+// Titles <= 4 words, captions <= 8, and only what this page already says:
+// the 15-30% of net profit and the written agreement (FAQ / model band), and
+// the WHAT_WE_DO cards. No payout schedule, timeline or count is stated
+// anywhere, so none is given here. After step 8 the cycle returns to step 5.
+const PROCESS = [
+  { title: "Book a call", body: "Or send an offer in five questions." },
+  { title: "Estimate and agreement", body: "15-30% of net profit, in writing." },
+  { title: "We build your site", body: "Your name and brand, built and hosted." },
+  { title: "Your method, as products", body: "Programs and meal plans people buy." },
+  { title: "Launch and marketing", body: "Launches, emails and campaigns, planned and scheduled." },
+  { title: "Checkout and delivery", body: "Payments, accounts and instant access, handled." },
+  { title: "Support and operations", body: "Support, refunds and reconciliation, run by us." },
+  { title: "Your share, paid out", body: "Net profit shared as agreed in writing." },
 ];
+const PROCESS_LOOP = "Grow: new products and campaigns";
 
 const STEPS = [
   { title: "Book a call or send an offer", body: "Pick a time, or answer five quick questions." },
@@ -76,4 +86,4 @@ const FAQ = [
   { q: "Can brands work with your creators?", a: "Yes: sponsorships, creator collaborations and co-branded programs. Book a call or send an offer to start." },
 ];
 
-module.exports = { CALENDLY_URL, DEMO_URL, DEMO_TABS, PAGE, WHAT_WE_DO, MOCKUPS, STEPS, BRAND_OFFERS, PARTNER_TYPES, FAQ };
+module.exports = { CALENDLY_URL, DEMO_URL, DEMO_TABS, PAGE, WHAT_WE_DO, PROCESS, PROCESS_LOOP, STEPS, BRAND_OFFERS, PARTNER_TYPES, FAQ };

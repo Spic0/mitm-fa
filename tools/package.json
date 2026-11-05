@@ -33,7 +33,9 @@
     "test:product-showcase": "node test-product-showcase.js",
     "test:demo-preview": "node test-demo-preview.js",
     "test:partnership": "node test-partnership.js",
-    "test:partnership-demo": "node test-partnership-demo.js"
+    "test:partnership-demo": "node test-partnership-demo.js",
+    "test:partnership-polish": "node test-partnership-polish.js",
+    "record:process-loop": "node record-process-loop.js"
   },
   "devDependencies": {
     "postcss": "^8.5.26",

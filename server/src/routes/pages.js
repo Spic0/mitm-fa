@@ -1526,18 +1526,12 @@ function ptPicture({ name, widths, w, h, alt, sizes, cls, eager }) {
   );
 }
 
-function ptDevice(device, key, alt) {
-  if (device === "phone") {
-    return (
-      '<div class="dev dev--phone"><div class="dev__screen">' +
-      ptPicture({ name: `mock-${key}-mobile`, widths: [390], w: 390, h: 844, alt, sizes: "200px" }) +
-      "</div></div>"
-    );
-  }
+// The hero's floating phone: a real storefront screenshot in a phone frame.
+function ptDevice(key, alt) {
   return (
-    '<div class="dev dev--laptop"><div class="dev__screen">' +
-    ptPicture({ name: `mock-${key}-desktop`, widths: [640, 1280], w: 1280, h: 800, alt, sizes: "(min-width: 1200px) 560px, (min-width: 768px) 46vw, 88vw" }) +
-    '</div><div class="dev__base" aria-hidden="true"></div></div>'
+    '<div class="dev dev--phone"><div class="dev__screen">' +
+    ptPicture({ name: `mock-${key}-mobile`, widths: [390], w: 390, h: 844, alt, sizes: "200px" }) +
+    "</div></div>"
   );
 }
 
@@ -1601,7 +1595,7 @@ function renderPartnershipMain() {
     "</div>" +
     '<a class="ph__offer" href="#offer" data-cta-location="hero_offer">or send an offer</a>' +
     "</div>" +
-    '<div class="ph__float" aria-hidden="true">' + ptDevice("phone", "storefront", "") + "</div>" +
+    '<div class="ph__float" aria-hidden="true">' + ptDevice("storefront", "") + "</div>" +
     `<a class="ph__cue" href="#pt-what" aria-label="Scroll to what we do">${ptIcon("chevron")}</a>` +
     "</section>";
 
@@ -1612,19 +1606,25 @@ function renderPartnershipMain() {
     ptCards(P.WHAT_WE_DO) +
     "</div></section>";
 
-  const mockups =
-    '<section class="pt-sec pt-sec--tint">' +
+  // "What you get": the partnership cycle as a real ordered list; the SVG is
+  // drawn over it by assets/js/pt-process.js (connectors from the badges'
+  // positions, a pulse that walks the steps). Without JS it is the list.
+  const process =
+    '<section class="pt-sec pt-sec--dark pt-proc-sec" aria-labelledby="ptProcTitle">' +
     '<div class="pt-wrap">' +
-    ptHead("What you get", "See it before you sign", "Real pages from the platform: storefront, product, checkout and mobile.") +
-    '<div class="pt-mocks">' +
-    P.MOCKUPS.map(
-      (m) =>
-        `<figure class="pt-mock pt-mock--${m.device}" data-reveal>` +
-        ptDevice(m.device, m.key, `${m.label} on the Fitness Agency platform`) +
-        `<figcaption>${escapeHtml(m.label)}</figcaption></figure>`
+    ptHead("What you get", "The whole cycle, run by one team", "From the first call to your share of net profit. Then it repeats.", "ptProcTitle") +
+    '<div class="pt-proc" data-process>' +
+    '<svg class="pt-proc__svg" role="img" aria-label="The partnership cycle: steps 1 to 8 in order, then from step 8 back to step 5 to grow with new products and campaigns." focusable="false"></svg>' +
+    '<ol class="pt-proc__steps" role="list">' +
+    P.PROCESS.map(
+      (st, i) =>
+        `<li class="pt-proc__step" data-reveal><span class="pt-proc__n" aria-hidden="true">${i + 1}</span>` +
+        `<div class="pt-proc__card"><h3>${escapeHtml(st.title)}</h3><p>${escapeHtml(st.body)}</p></div></li>`
     ).join("") +
+    "</ol>" +
+    `<p class="pt-proc__grow" data-reveal><span>${escapeHtml(P.PROCESS_LOOP)}</span><span class="pt-sr"> (then back to step 5)</span></p>` +
     "</div>" +
-    `<div class="pt-actions" data-reveal>${demoLink("mockups_demo", "pt-btn pt-btn--dark")}</div>` +
+    `<div class="pt-actions" data-reveal>${demoLink("process_demo", "pt-btn pt-btn--primary")}</div>` +
     "</div></section>";
 
   const steps =
@@ -1725,8 +1725,8 @@ function renderPartnershipMain() {
     "</div></div></dialog>";
 
   return (
-    '<main class="pt">' + hero + what + mockups + steps + brands + model + book + offer + faq + "</main>" + demo +
-    '<script src="/assets/js/reveal.js" defer></script><script src="/assets/js/partnership.js" defer></script>'
+    '<main class="pt">' + hero + what + process + steps + brands + model + book + offer + faq + "</main>" + demo +
+    '<script src="/assets/js/reveal.js" defer></script><script src="/assets/js/partnership.js" defer></script><script src="/assets/js/pt-process.js" defer></script>'
   );
 }
 

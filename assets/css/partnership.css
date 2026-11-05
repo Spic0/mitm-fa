@@ -205,34 +205,9 @@
   .pt-card:nth-child(odd).is-revealed:hover, html:not(.reveal-on) .pt-card:nth-child(odd):hover { background-color: #2b2b29; border-color: transparent; box-shadow: 0 14px 34px rgba(26, 26, 26, 0.28); }
 }
 
-/* ---- Device frames ---- */
+/* ---- Device frame (the hero's floating phone) ---- */
 .dev__screen { position: relative; overflow: hidden; background-color: #111110; }
 .dev__screen picture, .dev__screen img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.dev--laptop .dev__screen {
-  aspect-ratio: 16 / 10;
-  border: 9px solid #1d1d1c;
-  border-bottom-width: 13px;
-  border-radius: 14px 14px 4px 4px;
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.18);
-}
-.dev__base {
-  position: relative;
-  height: 11px;
-  margin: 0 -6%;
-  border-radius: 0 0 14px 14px;
-  background: linear-gradient(#dcdbd7, #b7b6b1);
-}
-.dev__base::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 18%;
-  height: 4px;
-  border-radius: 0 0 6px 6px;
-  background-color: #a3a29d;
-  transform: translateX(-50%);
-}
 .dev--phone .dev__screen {
   aspect-ratio: 390 / 844;
   border: 7px solid #1d1d1c;
@@ -252,24 +227,67 @@
   transform: translateX(-50%);
 }
 
-/* ---- "What you get": a snap carousel on phones, one row on desktop ---- */
-.pt-mocks {
-  display: flex;
-  gap: 18px;
-  margin-inline: calc(-1 * var(--pt-gutter));
-  padding: 8px var(--pt-gutter) 18px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
+/* ---- "What you get": the partnership cycle (assets/js/pt-process.js).
+   Phones and tablets: a vertical timeline, the line down the badges on the
+   left and the "grow" return to the left of it. >=1024px: a snake, row 1
+   left to right (1-4), row 2 right to left (5-8), the return loop under
+   row 2. Each step's --h (0..1, set by the script) is its highlight. ---- */
+.pt .pt-proc-sec { background-color: #0a0a09; }
+.pt-proc { --badge: 40px; position: relative; max-width: 1180px; margin: 0 auto; padding-left: 30px; }
+.pt-proc__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.pt-proc__base { fill: none; stroke: rgba(255, 255, 255, 0.26); stroke-width: 1.5; }
+.pt-proc__lit { fill: none; stroke: #ffffff; stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55)); }
+.pt-proc__arrow { fill: rgba(255, 255, 255, 0.55); }
+.pt-proc__pulse { fill: #ffffff; filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)); }
+.pt-proc__steps { position: relative; display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.pt-proc__step { --h: 0; position: relative; display: grid; grid-template-columns: var(--badge) minmax(0, 1fr); align-items: start; gap: 14px; text-align: left; }
+.pt-proc__n {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--badge);
+  height: var(--badge);
+  margin-top: 10px;
+  border: 1.5px solid rgba(255, 255, 255, calc(0.45 + var(--h) * 0.55));
+  border-radius: 50%;
+  background-color: #0a0a09;
+  box-shadow: 0 0 calc(var(--h) * 22px) rgba(255, 255, 255, calc(var(--h) * 0.45));
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
 }
-.pt-mocks::-webkit-scrollbar { display: none; }
-.pt-mock { flex: 0 0 84%; margin: 0; text-align: center; scroll-snap-align: center; }
-.pt-mock--phone { flex-basis: 52%; }
-.pt-mock--phone .dev--phone { width: min(190px, 100%); margin-inline: auto; }
-.pt-mock figcaption { margin-top: 14px; font-size: 14px; font-weight: 600; color: var(--color-text); }
-@media (min-width: 768px) { .pt-mock { flex-basis: 46%; } .pt-mock--phone { flex-basis: 30%; } }
-@media (min-width: 1100px) {
-  .pt-mocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 0.48fr); align-items: end; gap: 24px; margin-inline: 0; padding-inline: 0; overflow: visible; }
+.pt-proc__n::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 50%; background-color: #ffffff; opacity: var(--h); }
+.pt-proc__step.is-on .pt-proc__n { color: #0a0a09; }
+.pt-proc__card {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, calc(0.12 + var(--h) * 0.5));
+  border-radius: 14px;
+  background-color: #141413;
+  box-shadow: 0 0 calc(var(--h) * 28px) rgba(255, 255, 255, calc(var(--h) * 0.12));
+}
+.pt .pt-proc__card h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; line-height: 1.3; color: #ffffff; }
+.pt .pt-proc__card p { margin: 0; font-size: 14px; line-height: 1.45; color: rgba(255, 255, 255, 0.72); }
+.pt-proc__grow { --h: 0; margin: 16px 0 0 calc(var(--badge) + 14px); font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, calc(0.72 + var(--h) * 0.28)); }
+.pt-proc__grow > span:first-child { display: inline-block; padding: 7px 14px; border: 1px dashed rgba(255, 255, 255, calc(0.3 + var(--h) * 0.6)); border-radius: var(--radius-pill); background-color: #0a0a09; }
+.pt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 1024px) {
+  .pt-proc { padding: 0 44px 96px; }
+  .pt-proc__steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 44px 28px; }
+  .pt-proc__step { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .pt-proc__n { flex: none; margin-top: 0; }
+  .pt-proc__card { flex: 1 1 auto; align-self: stretch; padding: 18px 16px; }
+  .pt-proc__step:nth-child(-n + 4) { grid-row: 1; }
+  .pt-proc__step:nth-child(n + 5) { grid-row: 2; }
+  .pt-proc__step:nth-child(1) { grid-column: 1; }
+  .pt-proc__step:nth-child(2) { grid-column: 2; }
+  .pt-proc__step:nth-child(3) { grid-column: 3; }
+  .pt-proc__step:nth-child(4), .pt-proc__step:nth-child(5) { grid-column: 4; }
+  .pt-proc__step:nth-child(6) { grid-column: 3; }
+  .pt-proc__step:nth-child(7) { grid-column: 2; }
+  .pt-proc__step:nth-child(8) { grid-column: 1; }
+  /* Centred under the loop's straight run; the script sets its top. */
+  .pt-proc__grow { position: absolute; left: 44px; right: 44px; margin: 0; text-align: center; }
 }
 
 /* ---- Steps ---- */

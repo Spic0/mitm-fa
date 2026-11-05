@@ -233,3 +233,10 @@
 
     .product-creator { font-size: 13px; margin-bottom: 8px; }
 }
+
+/* Reserve the phone gallery box before shop-single.js fills it. The image is
+   capped at 38vh and an empty <img src=""> has no size, so the details column
+   used to jump down ~320px when the cover arrived (CLS 0.3-0.4 at 390x844). */
+@media (max-width: 991px) {
+    #productGallery .shop-single-slide { min-height: 38vh; }
+}

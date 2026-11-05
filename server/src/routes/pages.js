@@ -408,7 +408,8 @@ const SHIPPING_DETAILS = {
 function applyProductSeo(html, product) {
   const title = escapeHtml(product.name);
   const rawDescription = product.description || `${product.name}: a training & nutrition plan on Fitness Agency.`;
-  const description = escapeHtml(rawDescription.length > 300 ? rawDescription.slice(0, 297) + "..." : rawDescription);
+  // Meta description only; the JSON-LD keeps the full text. Search shows ~160 chars.
+  const description = escapeHtml(rawDescription.length > 160 ? rawDescription.slice(0, 157).replace(/\s+\S*$/, "") + "..." : rawDescription);
   const url = appUrl(`/program/${encodeURIComponent(product.slug)}`);
   const normalizedImage = product.imageUrl ? normalizeImageUrl(product.imageUrl) : "";
   const image = normalizedImage
@@ -448,11 +449,29 @@ function applyProductSeo(html, product) {
     `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
     `    <meta name="twitter:description" content="${description}">\n` +
     (image ? `    <meta name="twitter:image" content="${image}">\n` : "") +
+    galleryPreload(product) +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
   return html
     .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
     .replace("<!--PROGRAM_SEO-->", seoBlock);
+}
+
+// The first gallery slide is this page's LCP image, but shop-single.js only
+// learns its URL after an API round trip. Preloading the exact source it will
+// pick (same first item as mediaListFor, same srcset, same MAIN_SIZES; keep
+// GALLERY_MAIN_SIZES in sync with assets/js/shop-single.js) starts the
+// download with the HTML instead.
+const GALLERY_MAIN_SIZES = "(min-width: 1200px) 615px, (min-width: 992px) 50vw, (min-width: 768px) 90vw, 60vw";
+function galleryPreload(product) {
+  const first = (product.media && product.media[0]) || (product.imageUrl ? { url: product.imageUrl } : null);
+  if (!first || first.type === "video" || /\.(mp4|webm|mov)(\?|$)/i.test(first.url)) return "";
+  const cover = coverMedia(first.url);
+  const s = cover && cover.sources && cover.sources[0];
+  if (s) {
+    return `    <link rel="preload" as="image" type="${escapeHtml(s.type)}" imagesrcset="${escapeHtml(s.srcset)}" imagesizes="${GALLERY_MAIN_SIZES}" fetchpriority="high">\n`;
+  }
+  return `    <link rel="preload" as="image" href="${escapeHtml(normalizeImageUrl(first.url))}" fetchpriority="high">\n`;
 }
 
 router.get("/program/:slug", async (req, res, next) => {
@@ -461,6 +480,8 @@ router.get("/program/:slug", async (req, res, next) => {
       status: "published",
       OR: [{ id: req.params.slug }, { slug: req.params.slug }],
     },
+    // Only the first gallery item, for the LCP preload (same order as the API).
+    include: { media: { select: { url: true, type: true }, orderBy: [{ order: "asc" }, { id: "asc" }], take: 1 } },
   });
   if (!product) return render404(req, res);
 
@@ -724,8 +745,16 @@ function renderServicesIndex() {
   return out;
 }
 
+// Search results cut titles at about 60 characters, so the brand suffix is
+// dropped rather than truncated when a page title is already long.
+function brandedTitle(title) {
+  return title.length + " | Fitness Agency".length <= 60 ? `${title} | Fitness Agency` : title;
+}
+
 function applyServiceSeo(html, meta) {
   const title = escapeHtml(meta.title);
+  const full = escapeHtml(brandedTitle(meta.title));
+  const brandAttr = full === title ? title : `${title} | {brand}`;
   const description = escapeHtml(meta.description);
   const url = meta.canonical;
   const image = appUrl("/assets/images/banner/inner-banner.jpg");
@@ -734,18 +763,18 @@ function applyServiceSeo(html, meta) {
     `<meta name="description" content="${description}">\n` +
     `    <link rel="canonical" href="${url}">\n` +
     `    <meta property="og:type" content="website">\n` +
-    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
+    `    <meta property="og:title" content="${full}">\n` +
     `    <meta property="og:description" content="${description}">\n` +
     `    <meta property="og:url" content="${url}">\n` +
     `    <meta property="og:image" content="${image}">\n` +
     `    <meta name="twitter:card" content="summary_large_image">\n` +
-    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
+    `    <meta name="twitter:title" content="${full}">\n` +
     `    <meta name="twitter:description" content="${description}">\n` +
     `    <meta name="twitter:image" content="${image}">\n` +
     `    <script type="application/ld+json">${JSON.stringify(meta.jsonLd)}</script>`;
 
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${brandAttr}">${full}</title>`)
     .replace("<!--SERVICE_SEO-->", block);
 }
 
@@ -779,9 +808,9 @@ router.get("/services", async (req, res) => {
   };
 
   html = applyServiceSeo(html, {
-    title: "Services",
+    title: "Creator Platform and Partnership Services",
     description:
-      "Platform, production and partnership services for athletes, influencers, creators and coaches: storefront, products, payments, video, design and support as one system.",
+      "Platform, production and partnership services for athletes, influencers, creators and coaches: storefront, products, payments, video, design and support.",
     canonical: appUrl("/services"),
     jsonLd,
   });
@@ -1851,7 +1880,7 @@ const HOME_DESCRIPTION =
   "Workout plans, meal plans and mobility programs from pro athletes and fitness creators. Shop by goal. One-time purchase, lifetime access.";
 
 function applyHomeSeo(html) {
-  const title = "Workout & Meal Plans from Pro Athletes and Creators | Fitness Agency";
+  const title = "Workout & Meal Plans from Pro Athletes | Fitness Agency";
   const description = escapeHtml(HOME_DESCRIPTION);
   const image = appUrl("/assets/images/banner/inner-banner.jpg");
   const jsonLd = {

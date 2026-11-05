@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // revealed once the fetch resolves, so a failed request leaves no heading,
   // no empty device frame and no gap.
   var CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>';
-  var FA_LOGO = '<img src="/assets/images/logo/fa-logo.svg" alt="" loading="lazy" decoding="async">';
+  var FA_LOGO = '<img src="/assets/images/logo/fa-logo.svg" alt="" width="200" height="112" loading="lazy" decoding="async">';
 
   function el(tag, className, text) {
     var node = document.createElement(tag);

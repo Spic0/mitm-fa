@@ -313,6 +313,9 @@ app.use("/api/webhooks/paypal", express.raw({ type: "application/json" }), paypa
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(attachUser);
+// ?demo=1 (the /partnership demo viewer): noindex, no analytics, and checkout
+// refused. Before every router, so /api/checkout never sees a demo request.
+app.use(require("./lib/demo-mode").demoMode);
 app.use("/api", csrfProtection);
 
 app.use("/api/auth", authRoutes);

@@ -1,0 +1,28 @@
+/* Demo mode (?demo=1): see assets/js/demo-mode.js. */
+html[data-demo] [data-demo-off] { cursor: not-allowed; opacity: 0.72; }
+html[data-demo] .product__cart[data-demo-off],
+html[data-demo] .product__buy-now[data-demo-off],
+html[data-demo] .cart-btn-checkout[data-demo-off] { justify-content: center; text-align: center; white-space: normal; }
+html[data-demo] .fa-demo-spot { box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.55); animation: fa-demo-spot 1.6s ease-out 2; }
+.fa-demo-toast {
+  position: fixed;
+  z-index: 2147483000;
+  left: 50%;
+  bottom: 24px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background-color: #1d1d1c;
+  color: #ffffff;
+  font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fa-demo-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+@keyframes fa-demo-spot { 50% { box-shadow: 0 0 0 9px rgba(26, 26, 26, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-demo] .fa-demo-spot { animation: none; }
+  .fa-demo-toast { transition: none; }
+}

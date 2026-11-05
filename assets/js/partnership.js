@@ -70,19 +70,184 @@
     }, { passive: true });
   }
 
-  // ---- Demo dialog. Native <dialog>: modal, Esc closes, focus returns to
-  // the opener. Without showModal the link opens the demo page itself.
+  // ---- Demo viewer. Native <dialog>: modal (the page behind is inert, so
+  // focus stays inside), Esc closes, and focus returns to the opener. Inside:
+  // REAL pages in same-origin iframes with ?demo=1, which the server and
+  // assets/js/demo-mode.js turn into a no-sale, noindex, untracked copy.
+  // No iframe exists before the visitor shows intent (hover, focus, touch on
+  // a "See a demo" button warms the first tab); each other tab's iframe is
+  // built the first time that tab is shown. Without showModal the button
+  // stays a plain link to the storefront.
   var dialog = document.getElementById("ptDemo");
-  document.querySelectorAll("[data-demo-open]").forEach(function (a) {
-    a.addEventListener("click", function (e) {
-      if (!dialog || typeof dialog.showModal !== "function") return;
+  if (dialog && typeof dialog.showModal === "function") wireDemo(dialog);
+
+  function wireDemo(dialog) {
+    var stage = dialog.querySelector(".pt-demo__stage");
+    var screen = dialog.querySelector(".pt-demo__screen");
+    var view = dialog.querySelector(".pt-demo__view");
+    var tabs = [].slice.call(dialog.querySelectorAll("[data-demo-tab]"));
+    var devs = [].slice.call(dialog.querySelectorAll("[data-demo-device]"));
+    var full = dialog.querySelector("[data-demo-full]");
+    var book = dialog.querySelector("[data-demo-book]");
+    // Real viewports: a 1440 x 900 laptop and a 390 x 844 phone.
+    var SIZE = { desktop: [1440, 900], phone: [390, 844] };
+    var BASE = 10; // the laptop base under the screen (.pt-demo__device::after)
+    var phoneScreen = window.matchMedia("(max-width: 767px)");
+    var frames = {};
+    var tab = tabs[0];
+    var device = phoneScreen.matches ? "phone" : "desktop";
+    var opener = null;
+    var returnTo = null;
+
+    function key() { return tab.getAttribute("data-demo-tab"); }
+
+    function fit() {
+      var size = SIZE[device];
+      var native = device === "phone" && phoneScreen.matches;
+      stage.classList.toggle("is-native", native);
+      if (native) {
+        screen.style.width = screen.style.height = "";
+        view.style.width = view.style.height = "100%";
+        view.style.transform = "none";
+        return;
+      }
+      var st = getComputedStyle(stage);
+      var sc = getComputedStyle(screen);
+      var w = stage.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight) - parseFloat(sc.borderLeftWidth) - parseFloat(sc.borderRightWidth);
+      var h = stage.clientHeight - parseFloat(st.paddingTop) - parseFloat(st.paddingBottom) - parseFloat(sc.borderTopWidth) - parseFloat(sc.borderBottomWidth) - (device === "desktop" ? BASE : 0);
+      var s = Math.max(0.1, Math.min(1, w / size[0], h / size[1]));
+      screen.style.width = Math.floor(size[0] * s) + "px";
+      screen.style.height = Math.floor(size[1] * s) + "px";
+      view.style.width = size[0] + "px";
+      view.style.height = size[1] + "px";
+      view.style.transform = "scale(" + s + ")";
+    }
+
+    // Esc inside a frame belongs to the viewer too. Each load is a new
+    // window (the visitor clicked through), so this re-attaches every time.
+    function onFrameLoad(f) {
+      f.faLoaded = true;
+      if (frames[key()] === f) view.classList.add("is-loaded");
+      try {
+        f.contentWindow.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !e.defaultPrevented) dialog.close();
+        });
+      } catch (err) { /* not same-origin: nothing to attach to */ }
+    }
+
+    function show(t, quiet) {
+      tab = t;
+      var k = key();
+      tabs.forEach(function (b) {
+        var on = b === t;
+        b.setAttribute("aria-selected", String(on));
+        b.tabIndex = on ? 0 : -1;
+      });
+      stage.setAttribute("aria-labelledby", t.id);
+      var f = frames[k];
+      if (!f) {
+        f = frames[k] = document.createElement("iframe");
+        f.title = t.textContent + " (live demo)";
+        f.addEventListener("load", function () { onFrameLoad(f); });
+        f.src = t.getAttribute("data-src");
+        view.appendChild(f);
+      }
+      Object.keys(frames).forEach(function (n) { frames[n].hidden = n !== k; });
+      view.classList.toggle("is-loaded", !!f.faLoaded);
+      full.href = t.getAttribute("data-src");
+      if (!quiet) track("partnership_demo_tab_viewed", { tab: k, device: device });
+    }
+
+    function setDevice(d, quiet) {
+      device = d;
+      devs.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-demo-device") === d)); });
+      stage.setAttribute("data-device", d);
+      fit();
+      if (!quiet) track("partnership_demo_tab_viewed", { tab: key(), device: d });
+    }
+
+    // Warm: lay the closed dialog out off screen (never reparent an iframe:
+    // that reloads it) and start the first tab at its real viewport size.
+    function warm() {
+      if (dialog.open || frames[key()]) return;
+      dialog.classList.add("is-warming");
+      setDevice(device, true);
+      show(tab, true);
+    }
+
+    function open(e) {
       e.preventDefault();
+      opener = e.currentTarget;
+      returnTo = null;
+      dialog.classList.remove("is-warming");
+      document.documentElement.classList.add("pt-demo-lock");
       dialog.showModal();
+      track("partnership_demo_opened", { location: opener.getAttribute("data-cta-location") });
+      setDevice(device, true);
+      show(tab);
+    }
+
+    document.querySelectorAll("[data-demo-open]").forEach(function (a) {
+      a.addEventListener("pointerenter", warm);
+      a.addEventListener("focus", warm);
+      a.addEventListener("touchstart", warm, { passive: true });
+      a.addEventListener("click", open);
     });
-  });
-  if (dialog) {
+    tabs.forEach(function (b) {
+      b.addEventListener("click", function () { if (b !== tab) show(b); });
+    });
+    // Arrow keys move between tabs (one tab stop for the whole list).
+    dialog.querySelector(".pt-demo__tabs").addEventListener("keydown", function (e) {
+      var i = tabs.indexOf(document.activeElement);
+      var n = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (i < 0 || n === undefined) return;
+      e.preventDefault();
+      var next = tabs[(n + tabs.length) % tabs.length];
+      next.focus();
+      show(next);
+    });
+    devs.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var d = b.getAttribute("data-demo-device");
+        if (d !== device) setDevice(d);
+      });
+    });
+    full.addEventListener("click", function () {
+      // Where the visitor has clicked to inside the frame, not where the tab began.
+      try {
+        var loc = frames[key()].contentWindow.location;
+        if (loc.origin === location.origin && /[?&]demo=1\b/.test(loc.search)) full.href = loc.href;
+      } catch (err) { /* keep the tab's own URL */ }
+      track("partnership_demo_full_opened", { tab: key(), device: device });
+    });
+    book.addEventListener("click", function (e) {
+      var target = document.getElementById("book");
+      if (!target) return;
+      e.preventDefault();
+      returnTo = target;
+      dialog.close();
+    });
     dialog.querySelector("[data-demo-close]").addEventListener("click", function () { dialog.close(); });
     dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", function () {
+      document.documentElement.classList.remove("pt-demo-lock");
+      if (returnTo) {
+        if (!returnTo.hasAttribute("tabindex")) returnTo.setAttribute("tabindex", "-1");
+        returnTo.focus({ preventScroll: true });
+        returnTo.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      } else if (opener) {
+        opener.focus({ preventScroll: true });
+      }
+    });
+
+    var raf = 0;
+    function refit() {
+      if (raf) return;
+      raf = requestAnimationFrame(function () { raf = 0; if (dialog.open) fit(); });
+    }
+    if ("ResizeObserver" in window) new ResizeObserver(refit).observe(stage);
+    else window.addEventListener("resize", refit);
+    if (phoneScreen.addEventListener) phoneScreen.addEventListener("change", refit);
   }
 
   // ---- Calendly. Every booking button is a real link to the booking page,

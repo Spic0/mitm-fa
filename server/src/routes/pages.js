@@ -1504,6 +1504,8 @@ const PT_ICON_PATHS = {
   chevron: '<path d="M6 9l6 6 6-6"/>',
   external: '<path d="M7 17 17 7M9 7h8v8"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  laptop: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
 };
 function ptIcon(name, cls = "pt-icon") {
   return `<svg class="${cls}" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${PT_ICON_PATHS[name]}</svg>`;
@@ -1690,18 +1692,34 @@ function renderPartnershipMain() {
     P.FAQ.map((f) => `<details class="pt-faq__item" data-reveal><summary><h3>${escapeHtml(f.q)}</h3>${ptIcon("chevron", "pt-faq__chev")}</summary><p>${escapeHtml(f.a)}</p></details>`).join("") +
     "</div></div></section>";
 
+  // The live demo viewer: real pages in a same-origin iframe, ?demo=1 (see
+  // lib/demo-mode.js). No iframe exists until it opens; assets/js/partnership.js
+  // builds one per tab on first view, at a real 1440 or 390 CSS px viewport.
+  const demoSrc = (t) => `${t.path}?demo=1${t.hash || ""}`;
   const demo =
     '<dialog class="pt-demo" id="ptDemo" aria-labelledby="ptDemoTitle">' +
-    '<div class="pt-demo__inner">' +
-    `<button class="pt-demo__close" type="button" data-demo-close aria-label="Close demo">${ptIcon("close")}</button>` +
-    '<p class="pt-kicker">Demo</p>' +
-    '<h2 class="pt-demo__title" id="ptDemoTitle">A creator storefront</h2>' +
-    '<p class="pt-demo__line">A live page on the platform, filled with demo content.</p>' +
-    '<div class="pt-demo__devices">' +
-    ptDevice("laptop", "storefront", "Demo creator storefront on desktop") +
-    ptDevice("phone", "storefront", "Demo creator storefront on mobile") +
+    '<div class="pt-demo__bar">' +
+    '<h2 class="pt-demo__title" id="ptDemoTitle">Live demo</h2>' +
+    '<div class="pt-demo__tabs" role="tablist" aria-label="Creator journey">' +
+    P.DEMO_TABS.map(
+      (t, i) =>
+        `<button class="pt-demo__tab" type="button" role="tab" id="ptDemoTab-${t.key}" aria-controls="ptDemoStage" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ""} data-demo-tab="${t.key}" data-src="${escapeHtml(demoSrc(t))}">${escapeHtml(t.label)}</button>`
+    ).join("") +
     "</div>" +
-    `<a class="pt-btn pt-btn--dark" href="${P.DEMO_URL}" target="_blank" rel="noopener" data-cta-location="demo_open_full"><span>Open full demo</span>${ptIcon("external", "pt-btn__icon")}</a>` +
+    '<div class="pt-demo__devs" role="group" aria-label="Device">' +
+    `<button class="pt-demo__dev" type="button" aria-pressed="true" data-demo-device="desktop">${ptIcon("laptop")}<span>Desktop</span></button>` +
+    `<button class="pt-demo__dev" type="button" aria-pressed="false" data-demo-device="phone">${ptIcon("phone")}<span>Phone</span></button>` +
+    "</div>" +
+    `<button class="pt-demo__close" type="button" data-demo-close aria-label="Close demo">${ptIcon("close")}</button>` +
+    "</div>" +
+    `<div class="pt-demo__stage" id="ptDemoStage" role="tabpanel" aria-labelledby="ptDemoTab-${P.DEMO_TABS[0].key}" data-device="desktop">` +
+    '<div class="pt-demo__device"><div class="pt-demo__screen"><div class="pt-demo__view">' +
+    '<div class="pt-demo__skel" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' +
+    "</div></div></div></div>" +
+    '<div class="pt-demo__foot">' +
+    '<p class="pt-demo__note">Live pages with demo content. Checkout is disabled.</p>' +
+    `<a class="pt-btn pt-btn--ghost" href="${escapeHtml(demoSrc(P.DEMO_TABS[0]))}" target="_blank" rel="noopener" data-demo-full><span>Open full demo</span>${ptIcon("external", "pt-btn__icon")}</a>` +
+    `<a class="pt-btn pt-btn--primary" href="#book" data-demo-book data-cta-location="demo_book">${ptIcon("calendar", "pt-btn__icon")}<span>Book a 30-min call</span></a>` +
     "</div></dialog>";
 
   return (

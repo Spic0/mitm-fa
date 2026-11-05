@@ -32,7 +32,8 @@
     "test:email": "node send-test-emails.js && node test-email-rendering.js",
     "test:product-showcase": "node test-product-showcase.js",
     "test:demo-preview": "node test-demo-preview.js",
-    "test:partnership": "node test-partnership.js"
+    "test:partnership": "node test-partnership.js",
+    "test:partnership-demo": "node test-partnership-demo.js"
   },
   "devDependencies": {
     "postcss": "^8.5.26",

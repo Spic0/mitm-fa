@@ -15,6 +15,16 @@
 const CALENDLY_URL = "https://calendly.com/mitmfitnessagency/30min";
 // The demo creator storefront (fictional partner, demo content).
 const DEMO_URL = "/partners/elena-cho";
+// The "See a demo" viewer: real pages, framed with ?demo=1 (lib/demo-mode.js).
+// The product is the homepage's pinned demo program (Setting.demoProductSlug),
+// the same one /demo previews, so the plan viewer shows that product's slice.
+const DEMO_PRODUCT = "/program/elena-cho-strength-size-peak";
+const DEMO_TABS = [
+  { key: "storefront", label: "Creator storefront", path: DEMO_URL },
+  { key: "product", label: "Product page", path: DEMO_PRODUCT },
+  { key: "plan", label: "Plan viewer", path: "/demo" },
+  { key: "checkout", label: "Checkout preview", path: DEMO_PRODUCT, hash: "#buy" },
+];
 
 const PAGE = {
   title: "Fitness Business Partnerships and Offers",
@@ -66,4 +76,4 @@ const FAQ = [
   { q: "Can brands work with your creators?", a: "Yes: sponsorships, creator collaborations and co-branded programs. Book a call or send an offer to start." },
 ];
 
-module.exports = { CALENDLY_URL, DEMO_URL, PAGE, WHAT_WE_DO, MOCKUPS, STEPS, BRAND_OFFERS, PARTNER_TYPES, FAQ };
+module.exports = { CALENDLY_URL, DEMO_URL, DEMO_TABS, PAGE, WHAT_WE_DO, MOCKUPS, STEPS, BRAND_OFFERS, PARTNER_TYPES, FAQ };

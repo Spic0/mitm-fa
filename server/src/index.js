@@ -373,7 +373,9 @@ app.use("/private", (req, res) => res.sendStatus(404));
 // /changelogs holds internal release notes: nothing on the site links to
 // them, they are referenced only from source comments.
 app.use(
-  ["/server", "/tools", "/.git", "/changelogs", "/SECURITY_AUDIT.md", "/INCIDENT_RESPONSE.md"],
+  // /assets-src holds source media (generated originals, raw screenshots);
+  // only the optimised copies under /assets are public.
+  ["/server", "/tools", "/.git", "/changelogs", "/assets-src", "/SECURITY_AUDIT.md", "/INCIDENT_RESPONSE.md"],
   (req, res) => res.sendStatus(404)
 );
 

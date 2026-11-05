@@ -33,6 +33,8 @@ server/_apitest.js
 *-960.webp
 *-1280.avif
 *-1280.webp
+# Hand-made /partnership assets share those suffixes but are not derivatives.
+!assets/images/partnership/*
 # Email renditions of product covers (server/src/lib/emailImage.js): the same
 # kind of derived artifact, built on first use because a cover can be uploaded
 # at any time. A missing one degrades to a receipt with no thumbnail, never to
@@ -70,3 +72,9 @@ tools/.shots/
 *.pfx
 SSL/
 ssl/
+
+# Local Playwright screenshots of pages under review.
+.screens/
+
+# Source media for generated/optimised assets (originals, raw screenshots).
+assets-src/

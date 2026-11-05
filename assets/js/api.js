@@ -72,6 +72,14 @@ window.ProFitAPI = (function () {
     return cents === 0 ? "Free" : formatPrice(cents);
   }
 
+  // PostHog checkout_started, once per page load, whichever provider is first.
+  var checkoutTracked = false;
+  function checkoutStarted(provider, items) {
+    if (checkoutTracked || !window.faTrack) return;
+    checkoutTracked = true;
+    window.faTrack.capture("checkout_started", { provider: provider, item_count: (items || []).length });
+  }
+
   return {
     formatPrice: formatPrice,
     formatProductPrice: formatProductPrice,
@@ -98,6 +106,7 @@ window.ProFitAPI = (function () {
     // the server validates all four and persists them onto the User record,
     // so the email alone is no longer enough.
     createStripeIntent: function (items, customer, promoCode) {
+      checkoutStarted("stripe", items);
       return post("/checkout/stripe/create-intent", {
         items: items,
         name: customer.name, email: customer.email,
@@ -129,6 +138,7 @@ window.ProFitAPI = (function () {
       });
     },
     createPaypalOrder: function (items, customer, promoCode) {
+      checkoutStarted("paypal", items);
       return post("/checkout/paypal/create-order", {
         items: items,
         name: customer.name, email: customer.email,
@@ -203,6 +213,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   window.ProFitAPI.me().then(function (data) {
     if (!data.user) return;
+    // Session restore covers sign-in and sign-up too: both land on a page via
+    // the magic link with the session already set.
+    if (window.faTrack) {
+      window.faTrack.identify(data.user.id, { email: data.user.email, name: data.user.displayName || data.user.greetingName || null, role: data.user.role });
+    }
     links.forEach(function (a) { a.href = "/my-library"; });
     // The greeting name when we have one — "Sam" reads as an account,
     // "My Library" reads as a menu item.

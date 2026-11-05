@@ -135,7 +135,19 @@ async function inlineHeader(html, templateFile) {
   } else {
     console.error("Header navigation slot not found in partials/header.html — rendering header with no category menus.");
   }
-  return html.replace(HEADER_MARKER, headerHtml);
+  return html.replace(HEADER_MARKER, headerHtml + analyticsScripts());
+}
+
+// PostHog, on every page that has the shared header, only when a key is set.
+// Config travels as data attributes because CSP forbids inline scripts.
+function analyticsScripts() {
+  const key = process.env.POSTHOG_KEY;
+  if (!key) return "";
+  const host = (process.env.POSTHOG_HOST || "https://us.i.posthog.com").replace(/\/+$/, "");
+  return (
+    '<script src="/assets/vendor/posthog/array.js" defer></script>' +
+    `<script src="/assets/js/analytics.js" defer data-key="${escapeHtml(key)}" data-host="${escapeHtml(host)}"></script>`
+  );
 }
 
 // Shared per-page SEO injection for every static page (and error.html/

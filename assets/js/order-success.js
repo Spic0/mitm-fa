@@ -96,6 +96,20 @@
     }
   }
 
+  // PostHog purchase_completed, once per order: a reload of this page must not
+  // count the same purchase twice.
+  function trackPurchase(order) {
+    if (!window.faTrack) return;
+    var flag = "fa_purchase_tracked_" + order.id;
+    try { if (localStorage.getItem(flag)) return; localStorage.setItem(flag, "1"); } catch (e) { /* storage blocked: track anyway */ }
+    window.faTrack.capture("purchase_completed", {
+      order_id: order.id,
+      value: (order.totalCents || 0) / 100,
+      currency: "USD",
+      item_count: (order.items || []).length,
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var orderId = new URLSearchParams(window.location.search).get("order");
     if (!orderId) {
@@ -146,6 +160,7 @@
 
       renderOrder(order, me && me.user);
       A.panel(PANELS, "osSuccess");
+      trackPurchase(order);
       A.reveal(A.$("osSuccess"));
 
       // The purchase completed, so whatever was in the cart (or the buy-now

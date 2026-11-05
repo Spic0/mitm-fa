@@ -193,6 +193,12 @@ app.use((req, res, next) => {
 // section for the full domain-by-domain rationale, including why Resend,
 // Supabase, and Cloudflare — all named in the original hardening brief —
 // have no entries here.
+// PostHog ingestion plus its "-assets" twin, which serves remote config.
+function posthogOrigins(host) {
+  const origin = new URL(host).origin;
+  return [origin, origin.replace(".i.posthog.com", "-assets.i.posthog.com")];
+}
+
 const cspDirectives = {
   defaultSrc: ["'self'"],
   // js.stripe.com: Stripe Elements (card entry UI + fraud detection).
@@ -212,7 +218,10 @@ const cspDirectives = {
   fontSrc: ["'self'", "data:"],
   // api.stripe.com: Stripe Elements' own XHR calls (tokenization, Radar).
   // www.paypal.com: PayPal SDK's own XHR calls.
-  connectSrc: ["'self'", "https://api.stripe.com", "https://www.paypal.com"],
+  // POSTHOG_HOST: product analytics ingestion, only when a key is configured.
+  connectSrc: ["'self'", "https://api.stripe.com", "https://www.paypal.com"].concat(
+    process.env.POSTHOG_KEY ? posthogOrigins(process.env.POSTHOG_HOST || "https://us.i.posthog.com") : []
+  ),
   // hooks.stripe.com: 3D Secure / bank-redirect authentication flows.
   // www.paypal.com: PayPal's own checkout/login iframes and popups.
   // youtube.com: the video lightbox on about.html/blog.html, and the
@@ -393,6 +402,11 @@ app.use(
     setHeaders: (res) => res.setHeader("Cache-Control", "public, max-age=300"),
   })
 );
+
+// posthog-js, self-hosted from node_modules so script-src stays 'self'. One
+// file only; pages load it when POSTHOG_KEY is set (see inlineHeader).
+const POSTHOG_ARRAY_JS = path.join(__dirname, "..", "node_modules", "posthog-js", "dist", "array.js");
+app.get("/assets/vendor/posthog/array.js", (req, res) => res.sendFile(POSTHOG_ARRAY_JS, { maxAge: "1d" }));
 
 // Private presentations: unlisted, link-only, and mounted BEFORE the static
 // handler so /presentation/:slug resolves here rather than 404ing against a

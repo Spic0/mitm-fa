@@ -1703,7 +1703,10 @@
     var nextLabel = document.getElementById("presSetupNextLabel");
     if (steps.length < 2 || !nextBtn) return;
 
-    var BASE = 10;
+    // The public /partnership frame starts higher (data-setup-base); decks keep 10.
+    var BASE = Number(boot.dataset.setupBase) || 10;
+    var scaleLow = root.querySelector(".pres-setup__meter-scale span");
+    if (scaleLow) scaleLow.textContent = BASE + "%";
     var CEILING = 30;
     var RESULT = steps.length - 1; // the result panel is the last step
     var QUESTIONS = RESULT; // 5 question steps
@@ -2038,7 +2041,8 @@
       submitBtn.classList.add("is-busy");
       submitBtn.disabled = true;
 
-      fetch("/api/presentation/" + encodeURIComponent(SLUG) + "/contact", {
+      // The /partnership frame has no deck, so it names its own endpoint.
+      fetch(boot.dataset.contactEndpoint || "/api/presentation/" + encodeURIComponent(SLUG) + "/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -2075,6 +2079,7 @@
             '<p class="pres-form__done-body">We\'ll follow up personally within one business day.</p>';
           form.replaceWith(done);
           done.setAttribute("role", "status");
+          document.dispatchEvent(new CustomEvent("pres:contact-sent", { detail: { intent: intent } }));
         })
         .catch(function (err) {
           showStatus(err.message || "We couldn't send that just now.", "error");

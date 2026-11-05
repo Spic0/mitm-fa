@@ -1,0 +1,5 @@
+/* /partnership/offer: the decks' setup wizard on its own, framed inside
+   /partnership. presentation.css does all the styling; this only trims the
+   deck's section spacing so the frame fits its card. */
+.offer-frame .pres-section { padding-top: clamp(20px, 4vw, 40px); padding-bottom: clamp(20px, 4vw, 40px); border-top: 0; }
+.offer-frame .pres-container { padding-left: clamp(12px, 3vw, 32px); padding-right: clamp(12px, 3vw, 32px); }

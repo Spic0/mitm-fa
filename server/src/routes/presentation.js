@@ -39,6 +39,7 @@ const { sendContactNotificationEmail } = require("../lib/email");
 
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
 const TEMPLATE_PATH = path.join(SITE_ROOT, "private", "presentation.html");
+const { inlineOfferWizard } = require("../lib/offerWizard");
 const VISITOR_COOKIE = "fa_pres_visitor";
 const VISITOR_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 const CONTACT_INBOX = process.env.CONTACT_INBOX || "info@fitness.agency";
@@ -68,7 +69,7 @@ function safeUrl(value) {
 
 async function readTemplate() {
   try {
-    return await fs.promises.readFile(TEMPLATE_PATH, "utf8");
+    return await inlineOfferWizard(await fs.promises.readFile(TEMPLATE_PATH, "utf8"));
   } catch {
     return null;
   }

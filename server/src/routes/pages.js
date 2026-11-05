@@ -383,6 +383,28 @@ router.get("/shop/:key", (req, res, next) =>
 // "read your purchased program" viewer (today's program.html) — same-
 // sounding names, deliberately different routes and templates.
 // ---------------------------------------------------------------------
+// Merchant listing facts for every product Offer, kept in ONE place.
+// NEEDS OWNER CONFIRMATION: the Refund Policy page is still /coming-soon, so
+// returns default to "not permitted" (a digital product) with no
+// merchantReturnLink. Change RETURN_POLICY once the real policy is published.
+// Inlined per Offer rather than referenced by @id: a product page emits a
+// single Product node with no Organization node to reference.
+const OFFER_CURRENCY = "USD";
+const MERCHANT_COUNTRIES = ["US", "CA"];
+const RETURN_POLICY = {
+  "@type": "MerchantReturnPolicy",
+  applicableCountry: MERCHANT_COUNTRIES,
+  returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+};
+const ZERO_DAYS = { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" };
+// Digital delivery: free and instant, to the countries we sell in.
+const SHIPPING_DETAILS = {
+  "@type": "OfferShippingDetails",
+  shippingRate: { "@type": "MonetaryAmount", value: 0, currency: OFFER_CURRENCY },
+  shippingDestination: MERCHANT_COUNTRIES.map((c) => ({ "@type": "DefinedRegion", addressCountry: c })),
+  deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: ZERO_DAYS, transitTime: ZERO_DAYS },
+};
+
 function applyProductSeo(html, product) {
   const title = escapeHtml(product.name);
   const rawDescription = product.description || `${product.name}: a training & nutrition plan on Fitness Agency.`;
@@ -404,10 +426,12 @@ function applyProductSeo(html, product) {
     offers: {
       "@type": "Offer",
       price: price,
-      priceCurrency: "USD",
+      priceCurrency: OFFER_CURRENCY,
       availability: "https://schema.org/InStock",
       url: url,
       seller: { "@type": "Organization", name: ORGANIZATION.name, url: appUrl("/") },
+      shippingDetails: SHIPPING_DETAILS,
+      hasMerchantReturnPolicy: RETURN_POLICY,
     },
   };
 

@@ -304,6 +304,7 @@ app.use("/api", csrfProtection);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/contact", require("./routes/contact"));
+app.use("/api/partnership", require("./routes/partnership"));
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/library", libraryRoutes);
 // The customer's own record. account.js applies requireAuth to its own

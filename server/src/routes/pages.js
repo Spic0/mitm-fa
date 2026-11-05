@@ -27,6 +27,7 @@ const {
   audienceEntries,
 } = require("../lib/services");
 const { getPlanGuide, listPlanGuides } = require("../lib/plans");
+const PARTNERSHIP = require("../lib/partnership");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -471,6 +472,12 @@ function organizationLd() {
       addressLocality: ORGANIZATION.addressLocality,
       addressCountry: ORGANIZATION.addressCountry,
     },
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "business inquiries",
+      email: ORGANIZATION.email,
+      url: appUrl("/partnership"),
+    },
   };
 }
 
@@ -488,7 +495,9 @@ function renderServiceCta(service) {
     '<div class="svc-hero__actions">' +
     '<a class="svc-btn svc-btn--primary" href="/contact"><span>Start a conversation</span> <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></a>' +
     '<a class="svc-btn svc-btn--ghost" href="/shop"><span>See what partners sell</span></a>' +
-    "</div></section>"
+    "</div>" +
+    '<p class="svc-cta__more">A brand, sponsor or other business? <a href="/partnership">Send us a business offer</a>.</p>' +
+    "</section>"
   );
 }
 
@@ -1424,6 +1433,151 @@ router.get("/partners/:slug", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+// /partnership: business offers and partnership proposals. Content and the
+// form's option lists are in lib/partnership.js (shared with the validator
+// in routes/partnership.js); layout reuses the service template and styles.
+// ---------------------------------------------------------------------
+function optionsHtml(list, placeholder) {
+  return (
+    `<option value="">${escapeHtml(placeholder)}</option>` +
+    list.map((o) => `<option value="${escapeHtml(o.value || o)}">${escapeHtml(o.label || o)}</option>`).join("")
+  );
+}
+
+function offerCta(label, location, offer, ghost) {
+  return (
+    `<a class="svc-btn svc-btn--${ghost ? "ghost" : "primary"}" href="#offer-form" data-cta-location="${location}"` +
+    (offer ? ` data-offer="${offer}"` : "") +
+    `><span>${escapeHtml(label)}</span></a>`
+  );
+}
+
+function cardsHtml(items) {
+  return items.map((i) => `<div class="svc-card"><h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.body)}</p></div>`).join("");
+}
+
+function renderPartnershipMain() {
+  const P = PARTNERSHIP;
+  const field = (id, label, control, opts = {}) =>
+    `<div class="svc-form__field"${opts.showFor ? ` data-show-for="${opts.showFor}" hidden` : ""}>` +
+    `<label for="${id}">${escapeHtml(label)}${opts.optional ? ' <span class="svc-form__opt">(optional)</span>' : ""}</label>${control}</div>`;
+
+  return (
+    '<main class="svc">' +
+    '<nav class="svc-crumb" aria-label="Breadcrumb"><a href="/">Home</a> <span aria-hidden="true">/</span> <span>Partnership</span></nav>' +
+    '<header class="svc-hero">' +
+    '<span class="svc-hero__kicker">Business offers and partnership proposals</span>' +
+    `<h1 class="svc-hero__title">${escapeHtml(P.PAGE.h1)}</h1>` +
+    `<p class="svc-hero__lead">${escapeHtml(P.PAGE.lead)}</p>` +
+    `<div class="svc-hero__actions">${offerCta("Send a business offer", "hero")}` +
+    '<a class="svc-btn svc-btn--ghost" href="/services"><span>See our services</span></a></div>' +
+    "</header>" +
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">For creators and athletes</span>' +
+    '<h2 class="svc-section__title">We build and run your business</h2>' +
+    '<div class="svc-section__body"><p>For fitness creators, coaches and athletes who want a real business behind their method, without running it themselves.</p></div>' +
+    `<div class="svc-grid svc-grid--3">${cardsHtml(P.CREATOR_SERVICES)}</div>` +
+    '<div class="svc-section__body"><p><strong>The model:</strong> a revenue share of 15-30% of net profit. The final terms are confirmed in a written agreement.</p></div>' +
+    `<div class="svc-hero__actions">${offerCta("Apply as a creator", "creators", "creator")}</div>` +
+    "</section>" +
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">For brands and companies</span>' +
+    '<h2 class="svc-section__title">Collaborate with us and our creators</h2>' +
+    '<div class="svc-section__body"><p>For brands, sponsors and other business partners: gyms, supplement and apparel companies, media and investors.</p></div>' +
+    `<div class="svc-grid svc-grid--3">${cardsHtml(P.BRAND_OFFERS)}</div>` +
+    `<div class="svc-hero__actions">${offerCta("Propose a collaboration", "brands", "brand")}</div>` +
+    "</section>" +
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">How it works</span>' +
+    '<h2 class="svc-section__title">From offer to reply</h2>' +
+    '<ol class="svc-steps">' +
+    P.STEPS.map((s) => `<li><h3>${escapeHtml(s.title)}</h3><p>${escapeHtml(s.body)}</p></li>`).join("") +
+    "</ol></section>" +
+    '<section class="svc-section">' +
+    '<span class="svc-section__eyebrow">FAQ</span>' +
+    '<h2 class="svc-section__title">Common questions</h2>' +
+    '<div class="svc-section__body">' +
+    P.FAQ.map((f) => `<h3>${escapeHtml(f.q)}</h3><p>${escapeHtml(f.a)}</p>`).join("") +
+    "</div></section>" +
+    '<section class="svc-section" id="offer-form">' +
+    '<span class="svc-section__eyebrow">Business offer form</span>' +
+    '<h2 class="svc-section__title">Send us your offer</h2>' +
+    '<form class="svc-form" id="partnershipForm">' +
+    field("pf-type", "Offer type", `<select id="pf-type" name="offerType" required>${optionsHtml(P.OFFER_TYPES, "Choose one")}</select>`) +
+    field("pf-name", "Name", '<input id="pf-name" name="name" type="text" autocomplete="name" maxlength="120" required>') +
+    field("pf-company", "Company", '<input id="pf-company" name="company" type="text" autocomplete="organization" maxlength="160">', { optional: true }) +
+    field("pf-email", "Email", '<input id="pf-email" name="email" type="email" autocomplete="email" maxlength="200" required>') +
+    field("pf-links", "Website or social handles", '<input id="pf-links" name="links" type="text" maxlength="300" placeholder="yoursite.com, @handle">', { optional: true }) +
+    field("pf-audience", "Audience size", `<select id="pf-audience" name="audience" required disabled>${optionsHtml(P.AUDIENCE_RANGES, "Choose a range")}</select>`, { showFor: "creator" }) +
+    field("pf-budget", "Budget range", `<select id="pf-budget" name="budget" disabled>${optionsHtml(P.BUDGET_RANGES, "Choose a range")}</select>`, { showFor: "brand", optional: true }) +
+    field("pf-country", "Country", `<select id="pf-country" name="country" autocomplete="country" required>${optionsHtml(P.COUNTRIES, "Choose one")}</select>`) +
+    field("pf-message", "Your proposal", '<textarea id="pf-message" name="message" rows="6" minlength="10" maxlength="4000" required></textarea>') +
+    // Honeypot: off-screen, skipped by keyboard and screen readers, filled by bots.
+    '<div class="svc-form__hp" aria-hidden="true"><label for="pf-hp">Leave this empty</label><input id="pf-hp" name="hp_url" type="text" tabindex="-1" autocomplete="off"></div>' +
+    '<p class="svc-form__error" id="pfError" role="alert" hidden></p>' +
+    '<button class="svc-btn svc-btn--primary" type="submit" id="pfSubmit"><span>Send offer</span></button>' +
+    '<p class="svc-form__note">Prefer email? Write to <a href="mailto:info@fitness.agency">info@fitness.agency</a>.</p>' +
+    "</form>" +
+    '<div class="svc-form__done" id="pfDone" tabindex="-1" hidden><h3>Thanks, we have your offer.</h3><p>Our team reads every offer and will be in touch by email.</p></div>' +
+    "</section>" +
+    "</main>" +
+    '<script src="/assets/js/partnership.js" defer></script>'
+  );
+}
+
+router.get("/partnership", async (req, res, next) => {
+  // Exactly /partnership: the non-strict router would also serve "/partnership/".
+  if (req.path !== "/partnership") return next();
+  let html = await readTemplate("service.html");
+  if (html == null) return render404(req, res);
+  html = await inlineHeader(html, "service.html");
+  const url = appUrl("/partnership");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      organizationLd(),
+      {
+        "@type": "WebPage",
+        name: PARTNERSHIP.PAGE.title,
+        description: PARTNERSHIP.PAGE.description,
+        url,
+        publisher: { "@id": appUrl("/#organization") },
+      },
+      {
+        "@type": "Service",
+        name: "Business partnerships",
+        serviceType: "Business partnership",
+        description: PARTNERSHIP.PAGE.lead,
+        url,
+        provider: { "@id": appUrl("/#organization") },
+        areaServed: [
+          { "@type": "Country", name: "United States" },
+          { "@type": "Country", name: "Canada" },
+        ],
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: PARTNERSHIP.FAQ.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: appUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Partnership", item: url },
+        ],
+      },
+    ],
+  };
+  html = applyServiceSeo(html, { title: PARTNERSHIP.PAGE.title, description: PARTNERSHIP.PAGE.description, canonical: url, jsonLd });
+  html = html.replace("<!--SERVICE_MAIN-->", renderPartnershipMain());
+  res.type("html").send(html);
+});
+
+// ---------------------------------------------------------------------
 // Plain static routes — clean paths for pages with no per-request
 // server-side context. Gating (or lack thereof) matches exactly what these
 // pages already did as flat .html files: my-library.html/program.html are
@@ -1964,7 +2118,7 @@ router.get("/robots.txt", (req, res) => {
 });
 
 router.get("/sitemap.xml", async (req, res) => {
-  const staticUrls = ["/", "/shop", "/plans", "/about", "/contact", "/blog", "/services"];
+  const staticUrls = ["/", "/shop", "/plans", "/about", "/contact", "/blog", "/services", "/partnership"];
   const planUrls = listPlanGuides().map((g) => `/plans/${encodeURIComponent(g.slug)}`);
 
   // Every service page. Static content, so these come from the catalogue in

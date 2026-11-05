@@ -78,7 +78,11 @@ window.ProFitAPI = (function () {
     me: function () { return get("/auth/me"); },
     getConfig: function () { return get("/config"); },
     requestMagicLink: function (email) { return post("/auth/magic-link", { email: email }); },
-    logout: function () { return post("/auth/logout"); },
+    logout: function () {
+      if (window.faTrack) window.faTrack.reset();
+      return post("/auth/logout");
+    },
+    submitPartnershipOffer: function (offer) { return post("/partnership", offer); },
     setPassword: function (password, currentPassword) { return post("/auth/set-password", { password: password, currentPassword: currentPassword }); },
     loginWithPassword: function (email, password) { return post("/auth/login-password", { email: email, password: password }); },
     listProducts: function () { return get("/products"); },

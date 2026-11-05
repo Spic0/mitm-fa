@@ -93,7 +93,18 @@ const adminLimiter = rateLimit({
   message: { error: "Too many requests. Give it a moment and try again." },
 });
 
+// The /partnership business offer form: anonymous and it emails the office,
+// so far tighter than apiLimiter. A real sender needs one or two tries.
+const offerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many offers sent from this connection. Please try again later." },
+});
+
 module.exports = {
+  offerLimiter,
   authLimiter,
   magicLinkLimiter,
   apiLimiter,

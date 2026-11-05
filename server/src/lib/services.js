@@ -30,6 +30,9 @@ const ORGANIZATION = {
   addressLocality: "Winnipeg",
   addressCountry: "CA",
   contactPath: "/contact",
+  // The address the site already publishes, and where the contact wizard and
+  // the /partnership form deliver (CONTACT_INBOX default).
+  email: "info@fitness.agency",
 };
 
 // The four audiences the deck names, reused verbatim across pages so the

@@ -41,7 +41,7 @@ const WHAT_WE_DO = [
   { icon: "card", title: "Checkout and delivery", body: "Payments, accounts and instant access, handled." },
   { icon: "megaphone", title: "Marketing", body: "Launches, emails and campaigns, planned and scheduled." },
   { icon: "headset", title: "Operations", body: "Support, refunds and reconciliation, run by our team." },
-  { icon: "map", title: "US and Canada", body: "Built for creators selling in the United States and Canada.", inverted: true },
+  { icon: "map", title: "US and Canada", body: "Built for creators selling in the United States and Canada." },
 ];
 
 const MOCKUPS = [

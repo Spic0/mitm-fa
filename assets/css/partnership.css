@@ -192,10 +192,18 @@
 .pt-icon { width: 24px; height: 24px; }
 .pt-card h3 { margin: 0 0 6px; font-size: 17px; font-weight: 700; color: var(--color-text); }
 .pt-card p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--color-text-muted); }
-.pt-card--inv { background-color: var(--pt-dark); border-color: transparent; }
-.pt-card--inv h3 { color: #ffffff; }
-.pt-card--inv p { color: var(--pt-on-dark-muted); }
-.pt .pt-card--inv .pt-card__icon { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
+/* Cards 1, 3, 5... (DOM order, every grid, every width) are reversed. AA on
+   both: #fff 17:1 and the muted line ~10:1 on #1a1a1a; #55534f 7.4:1 on #fdfdfc.
+   The transition list keeps reveal.js's opacity/transform fade. */
+.pt-grid .pt-card { transition: opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.pt-card:nth-child(odd) { background-color: var(--pt-dark); border-color: transparent; }
+.pt-card:nth-child(odd) h3 { color: #ffffff; }
+.pt-card:nth-child(odd) p { color: var(--pt-on-dark-muted); }
+.pt .pt-card:nth-child(odd) .pt-card__icon { background-color: rgba(255, 255, 255, 0.12); color: #ffffff; }
+@media (hover: hover) {
+  .pt-card.is-revealed:hover, html:not(.reveal-on) .pt-card:hover { transform: translateY(-3px); border-color: rgba(26, 26, 26, 0.22); box-shadow: 0 14px 34px rgba(26, 26, 26, 0.12); }
+  .pt-card:nth-child(odd).is-revealed:hover, html:not(.reveal-on) .pt-card:nth-child(odd):hover { background-color: #2b2b29; border-color: transparent; box-shadow: 0 14px 34px rgba(26, 26, 26, 0.28); }
+}
 
 /* ---- Device frames ---- */
 .dev__screen { position: relative; overflow: hidden; background-color: #111110; }
@@ -506,4 +514,6 @@ html.reveal-on [data-reveal]:not(.is-revealed) { opacity: 0; transform: translat
   .ph-w > span, .ph__kicker, .ph__sub, .ph__actions, .ph__offer, .ph__float, .ph__cue, .pt-demo[open] .pt-demo__panel { animation: none; }
   .pt-btn, .pt-faq__chev, .pt-cal iframe, .pt-cal__skel, .pt-demo__tab, .pt-demo__dev, .pt-demo__skel { transition: none; }
   .pt-demo__skel span { animation: none; }
+  .pt-grid .pt-card { transition: none; }
+  .pt-card.is-revealed:hover, html:not(.reveal-on) .pt-card:hover { transform: none; }
 }

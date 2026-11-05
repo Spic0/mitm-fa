@@ -1557,7 +1557,8 @@ function ptCards(items) {
     items
       .map(
         (i) =>
-          `<div class="pt-card${i.inverted ? " pt-card--inv" : ""}" data-reveal>` +
+          // Odd cards are reversed by CSS (.pt-card:nth-child(odd)), not per card.
+          '<div class="pt-card" data-reveal>' +
           `<span class="pt-card__icon">${ptIcon(i.icon)}</span>` +
           `<h3>${escapeHtml(i.title)}</h3><p>${escapeHtml(i.body)}</p></div>`
       )

@@ -1,5 +1,5 @@
 // /partnership behaviour: hero video and parallax, the demo dialog, Calendly
-// (inline widget and popup, both loaded lazily), the setup wizard frame, and
+// (inline iframe loaded early, popup widget.js only off-page), the setup wizard frame, and
 // PostHog events (only when analytics is configured: assets/js/analytics.js).
 (function () {
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -85,11 +85,71 @@
     dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
   }
 
-  // ---- Calendly, loaded on first use. Every booking button is a real link
-  // to the booking page, so a failed load or no JS still gets there.
+  // ---- Calendly. Every booking button is a real link to the booking page,
+  // so a failed load or no JS still gets there.
+  //
+  // Inline: a plain iframe, no widget.js. It starts loading well before the
+  // section is reached (1200px ahead, or when the page goes idle after load,
+  // whichever is first) behind a same-size skeleton, and cross-fades in once
+  // Calendly has drawn. Its height follows Calendly's own calendly.page_height so it never
+  // scrolls inside; CSS sets the month-view floor it can never shrink below.
   var CAL_BASE = "https://assets.calendly.com/assets/external/widget";
   var inline = document.querySelector("[data-calendly-inline]");
-  var calUrl = inline ? inline.getAttribute("data-url") : null;
+  var calFrame = null;
+  function startInline() {
+    if (!inline || calFrame) return;
+    calFrame = document.createElement("iframe");
+    calFrame.title = "Book a 30-minute call";
+    // Desktop: Calendly draws its own bordered card inside the (>=1000px,
+    // two-column) frame, so the frame blends into the page (#fafaf9).
+    // Mobile: Calendly fills the frame, which is our card (#fdfdfc).
+    var wide = window.matchMedia("(min-width: 1064px)").matches;
+    calFrame.src = inline.getAttribute("data-src") + "&background_color=" + (wide ? "fafaf9" : "fdfdfc") +
+      "&embed_domain=" + encodeURIComponent(location.host);
+    calFrame.addEventListener("load", watchStall, { once: true });
+    inline.classList.add("is-loading");
+    inline.appendChild(calFrame);
+  }
+  // The skeleton stays until Calendly says the calendar is drawn, not until
+  // iframe load: Calendly renders nothing while the frame is off screen, and
+  // load also fires for a blocked or error page. On screen for 5s with no
+  // word from Calendly at all means it was blocked: offer the link instead.
+  var calSeen = false;
+  function calShow() { inline.classList.add("is-ready"); }
+  function watchStall() {
+    if (!("IntersectionObserver" in window)) { calShow(); return; }
+    var timer = null;
+    var io = new IntersectionObserver(function (entries) {
+      clearTimeout(timer);
+      if (!entries.some(function (e) { return e.isIntersecting; })) return;
+      timer = setTimeout(function () {
+        io.disconnect();
+        if (inline.classList.contains("is-ready")) return;
+        if (calSeen) calShow();
+        else inline.classList.add("is-slow");
+      }, 5000);
+    }, { threshold: 0.25 });
+    io.observe(inline);
+  }
+  if (inline) {
+    if ("IntersectionObserver" in window) {
+      var calIo = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { calIo.disconnect(); startInline(); }
+      }, { rootMargin: "1200px 0px" });
+      calIo.observe(inline);
+    }
+    var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 1); };
+    if (document.readyState === "complete") idle(startInline, { timeout: 2000 });
+    else window.addEventListener("load", function () { idle(startInline, { timeout: 2000 }); });
+  }
+  function headerBottom() {
+    var h = document.querySelector(".header-section, header");
+    if (!h || getComputedStyle(h).position !== "fixed") return 0;
+    return Math.max(0, Math.round(h.getBoundingClientRect().bottom));
+  }
+
+  // Popup: only where the inline section is not on the page. widget.js is
+  // prefetched on the first hover/focus/touch of a booking button, not on load.
   var calLoading = null;
   function loadCalendly() {
     if (window.Calendly) return Promise.resolve();
@@ -111,26 +171,25 @@
     return calLoading;
   }
   document.querySelectorAll("[data-calendly-popup]").forEach(function (a) {
+    if (!inline) {
+      var prefetch = function () { loadCalendly().catch(function () {}); };
+      ["pointerenter", "focus", "touchstart"].forEach(function (t) { a.addEventListener(t, prefetch, { once: true, passive: true }); });
+    }
     a.addEventListener("click", function (e) {
       e.preventDefault();
+      if (inline) {
+        // The calendar is on this page: bring it up under the fixed header.
+        startInline();
+        var section = inline.closest("section") || inline;
+        var top = section.getBoundingClientRect().top + window.pageYOffset - headerBottom();
+        window.scrollTo({ top: top, behavior: reduceMotion ? "auto" : "smooth" });
+        return;
+      }
       loadCalendly()
-        .then(function () { window.Calendly.initPopupWidget({ url: calUrl || a.href }); })
+        .then(function () { window.Calendly.initPopupWidget({ url: a.href }); })
         .catch(function () { window.open(a.href, "_blank", "noopener"); });
     });
   });
-  if (inline && "IntersectionObserver" in window) {
-    var calIo = new IntersectionObserver(function (entries) {
-      if (!entries.some(function (e) { return e.isIntersecting; })) return;
-      calIo.disconnect();
-      loadCalendly()
-        .then(function () {
-          window.Calendly.initInlineWidget({ url: calUrl, parentElement: inline });
-          inline.classList.add("is-loaded");
-        })
-        .catch(function () {});
-    }, { rootMargin: "400px 0px" });
-    calIo.observe(inline);
-  }
 
   // ---- Messages: Calendly booking events (no invitee data is forwarded)
   // and the setup wizard frame's height and sent notices.
@@ -139,6 +198,15 @@
     var d = e.data;
     if (!d) return;
     if (e.origin === "https://calendly.com" && typeof d.event === "string") {
+      if (calFrame && e.source === calFrame.contentWindow) {
+        calSeen = true;
+        if (d.event === "calendly.event_type_viewed") calShow();
+        if (d.event === "calendly.page_height") {
+          var ph = parseFloat(d.payload && d.payload.height);
+          if (ph > 0) inline.style.setProperty("--cal-content", Math.ceil(ph) + "px");
+          return;
+        }
+      }
       if (d.event === "calendly.event_scheduled") track("partnership_call_booked");
       else if (d.event === "calendly.date_and_time_selected") track("partnership_call_time_selected");
       return;

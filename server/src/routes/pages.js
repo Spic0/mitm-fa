@@ -1654,12 +1654,23 @@ function renderPartnershipMain() {
     '<ul class="pt-chips pt-chips--inv"><li data-reveal>Custom branded site</li><li data-reveal>US and Canada</li><li data-reveal>Written agreement</li></ul>' +
     "</div></div></section>";
 
-  const calUrl = `${P.CALENDLY_URL}?primary_color=1a1a1a&text_color=1a1a1a&background_color=fdfdfc`;
+  // A plain iframe, built by partnership.js (which appends embed_domain from
+  // location.host, as widget.js would, and the per-breakpoint
+  // background_color): no widget.js round trip for the inline embed.
+  // hide_gdpr_banner is deliberately absent: the site has no cookie consent
+  // of its own that covers this embed.
+  const calUrl = `${P.CALENDLY_URL}?embed_type=Inline&hide_event_type_details=1&primary_color=1a1a1a&text_color=1a1a1a`;
   const book =
-    '<section class="pt-sec" id="book">' +
+    '<section class="pt-sec pt-sec--book" id="book">' +
     '<div class="pt-wrap">' +
-    ptHead("Book a call", "Talk to us for 30 minutes", "Pick a time below. It books right here on this page.") +
-    `<div class="pt-cal" data-calendly-inline data-url="${calUrl}" data-reveal>` +
+    '<header class="pt-head" data-reveal>' +
+    '<p class="pt-kicker">Book a call</p>' +
+    '<h2 class="pt-h2">Talk to us for 30 minutes</h2>' +
+    '<p class="pt-intro">Pick a time. It books right here.</p>' +
+    "</header>" +
+    `<div class="pt-cal" data-calendly-inline data-src="${calUrl}" data-reveal>` +
+    // Same-size placeholder until the iframe fires load; no layout shift.
+    '<div class="pt-cal__skel" aria-hidden="true"><i class="pt-cal__bar"></i><i class="pt-cal__bar pt-cal__bar--nav"></i><i class="pt-cal__grid"></i></div>' +
     `<a class="pt-btn pt-btn--dark pt-cal__fallback" href="${P.CALENDLY_URL}" target="_blank" rel="noopener" data-cta-location="book_fallback">${ptIcon("calendar", "pt-btn__icon")}<span>Open the booking page</span></a>` +
     "</div></div></section>";
 
@@ -1702,6 +1713,11 @@ function renderPartnershipMain() {
 // The poster is the LCP candidate: preload exactly what <picture> will pick.
 const PT_HEAD =
   '<link rel="stylesheet" href="/assets/css/partnership.css">\n' +
+  // The booking iframe: its document is a credentialed navigation (plain
+  // pool), its fonts are CORS (crossorigin pool), so assets gets both.
+  '    <link rel="preconnect" href="https://calendly.com">\n' +
+  '    <link rel="preconnect" href="https://assets.calendly.com">\n' +
+  '    <link rel="preconnect" href="https://assets.calendly.com" crossorigin>\n' +
   `    <link rel="preload" as="image" type="image/avif" media="(max-width: 767px) and (orientation: portrait)" href="${PT_IMG}/hero-poster-m.avif" fetchpriority="high">\n` +
   `    <link rel="preload" as="image" type="image/avif" media="(min-width: 768px), (orientation: landscape)" imagesrcset="${PT_IMG}/hero-poster-768.avif 768w, ${PT_IMG}/hero-poster-1344.avif 1344w" imagesizes="100vw" fetchpriority="high">\n`;
 

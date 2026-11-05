@@ -207,11 +207,14 @@ const cspDirectives = {
     "'self'",
     "https://js.stripe.com",
     "https://www.paypal.com",
+    // assets.calendly.com: the official Calendly embed on /partnership,
+    // loaded only when the booking section or a booking button is used.
+    "https://assets.calendly.com",
     (req, res) => `'nonce-${res.locals.cspNonce}'`,
   ],
-  styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+  styleSrc: ["'self'", "https://assets.calendly.com", (req, res) => `'nonce-${res.locals.cspNonce}'`],
   // paypalobjects.com: card-brand/PayPal logo icons rendered by the PayPal SDK.
-  imgSrc: ["'self'", "data:", "https://www.paypalobjects.com"],
+  imgSrc: ["'self'", "data:", "https://www.paypalobjects.com", "https://assets.calendly.com"],
   // data:: swiper-bundle.min.css embeds its nav-arrow/pagination icon font
   // as a base64 data URI — unrelated to the Inter webfont (self-hosted,
   // covered by 'self' alone), this is a bundled vendor library's own asset.
@@ -245,6 +248,8 @@ const cspDirectives = {
     "https://www.paypal.com",
     "https://www.youtube.com",
     "https://player.vimeo.com",
+    // The Calendly booking iframe on /partnership.
+    "https://calendly.com",
   ],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],

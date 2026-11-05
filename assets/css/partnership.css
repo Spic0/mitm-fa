@@ -313,11 +313,15 @@
 #book .pt-head[data-reveal] { transition-delay: 0s !important; }
 #book .pt-cal[data-reveal] { transition-delay: 0.1s !important; }
 
+/* Compact: 520px is under Calendly's 1000px two-column breakpoint, so it draws
+   its one-column view. 602px is that view's own height for a five-row month
+   (calendly.page_height, measured 2026-11-05); six-row months and the time
+   list after a date is picked grow the card through --cal-content. */
 .pt-cal {
-  --cal-floor: 610px;
+  --cal-floor: 602px;
   position: relative;
   width: 100%;
-  max-width: 1020px;
+  max-width: 520px;
   height: max(var(--cal-floor), var(--cal-content, 0px));
   margin: 0 auto;
   overflow: hidden;
@@ -325,7 +329,6 @@
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(26, 26, 26, 0.05), 0 10px 30px rgba(26, 26, 26, 0.08);
 }
-@media (min-width: 1064px) { .pt-cal { --cal-floor: 714px; width: 1020px; } }
 .pt-cal iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; opacity: 0; transition: opacity 0.2s ease-out; }
 .pt-cal.is-ready iframe { opacity: 1; }
 
@@ -343,15 +346,6 @@
   height: 236px;
   border-radius: 0;
   background: radial-gradient(circle closest-side, #f2f1ee 92%, transparent 97%) 0 0 / calc(100% / 7) 20%;
-}
-@media (min-width: 1064px) {
-  /* The frame is wider than Calendly's own 680px card: drop our chrome so
-     that card is the only one, and outline it in the skeleton. */
-  .pt-cal { background-color: transparent; box-shadow: none; border-radius: 0; }
-  .pt-cal__skel::before { content: ""; position: absolute; top: 66px; left: 50%; box-sizing: border-box; width: 680px; height: 615px; margin-left: -340px; border: 1px solid #d4e0ed; border-radius: 8px; }
-  .pt-cal__skel .pt-cal__bar { top: 101px; width: 200px; }
-  .pt-cal__skel .pt-cal__bar--nav { top: 166px; width: 150px; }
-  .pt-cal__skel .pt-cal__grid { top: 237px; width: 362px; height: 252px; }
 }
 
 /* No-JS: the link is the booking UI. With JS it waits behind the skeleton

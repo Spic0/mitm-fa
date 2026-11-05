@@ -275,11 +275,10 @@
     if (!inline || calFrame) return;
     calFrame = document.createElement("iframe");
     calFrame.title = "Book a 30-minute call";
-    // Desktop: Calendly draws its own bordered card inside the (>=1000px,
-    // two-column) frame, so the frame blends into the page (#fafaf9).
-    // Mobile: Calendly fills the frame, which is our card (#fdfdfc).
-    var wide = window.matchMedia("(min-width: 1064px)").matches;
-    calFrame.src = inline.getAttribute("data-src") + "&background_color=" + (wide ? "fafaf9" : "fdfdfc") +
+    // The card is at most 520px wide, under Calendly's 1000px two-column
+    // breakpoint, so Calendly always draws its compact one-column view and
+    // fills the frame, which is our card (#fdfdfc).
+    calFrame.src = inline.getAttribute("data-src") + "&background_color=fdfdfc" +
       "&embed_domain=" + encodeURIComponent(location.host);
     calFrame.addEventListener("load", watchStall, { once: true });
     inline.classList.add("is-loading");

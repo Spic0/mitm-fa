@@ -35,7 +35,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (logoUrl) {
       var favicon = document.querySelector("link[data-brand-favicon]");
-      if (favicon) favicon.href = logoUrl;
+      if (favicon) {
+        // The marked link is the SVG icon; a non-SVG logoUrl under a stale
+        // type="image/svg+xml" would be skipped by the browser.
+        favicon.removeAttribute("type");
+        favicon.href = logoUrl;
+      }
     }
   }).catch(function () {
     // Config unreachable — leave the page's hardcoded defaults in place.

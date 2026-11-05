@@ -29,6 +29,7 @@ const {
 const { getPlanGuide, listPlanGuides } = require("../lib/plans");
 const PARTNERSHIP = require("../lib/partnership");
 const { inlineOfferWizard } = require("../lib/offerWizard");
+const { socialMeta, pageImage } = require("../lib/headMeta");
 
 const router = express.Router();
 const SITE_ROOT = path.join(__dirname, "..", "..", "..");
@@ -160,23 +161,18 @@ function analyticsScripts() {
 function applyStaticSeo(html, meta, canonicalPath) {
   const title = escapeHtml(meta.title);
   const description = escapeHtml(meta.description);
-  const image = appUrl("/assets/images/banner/inner-banner.jpg");
   const block =
     `<meta name="description" content="${description}">\n` +
     (canonicalPath ? `    <link rel="canonical" href="${appUrl(canonicalPath)}">\n` : "") +
     (meta.noindex ? `    <meta name="robots" content="noindex, nofollow">\n` : "") +
-    `    <meta property="og:type" content="website">\n` +
-    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
-    `    <meta property="og:description" content="${description}">\n` +
-    (canonicalPath ? `    <meta property="og:url" content="${appUrl(canonicalPath)}">\n` : "") +
-    `    <meta property="og:image" content="${image}">\n` +
-    `    <meta name="twitter:card" content="summary">\n` +
-    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
-    `    <meta name="twitter:description" content="${description}">`;
+    "    " +
+    socialMeta({ title: `${meta.title} | Fitness Agency`, description: meta.description, url: canonicalPath });
 
+  // Function replacers: a `$` in a title or description must not be read
+  // as a backreference (see fillBetween).
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
-    .replace("<!--PAGE_SEO-->", block);
+    .replace(/<title[^>]*>[^<]*<\/title>/, () => `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace("<!--PAGE_SEO-->", () => block);
 }
 
 async function render404(req, res) {
@@ -319,18 +315,9 @@ async function applyShopContext(html, ctx) {
     );
   }
 
-  const ogTitle = escapeHtml(ctx && !ctx.notFound ? `${ctx.title} | Fitness Agency` : "Fitness Agency - Training & Diet Plans");
-  const ogDesc = escapeHtml(ctx && !ctx.notFound ? ctx.description : "Training and nutrition plans from elite athletes and coaches. Browse by goal, sport, or creator and download instantly.");
-  html = html.replace(
-    "<!--SHOP_OG-->",
-    `<meta property="og:type" content="website">\n` +
-      `    <meta property="og:title" content="${ogTitle}">\n` +
-      `    <meta property="og:description" content="${ogDesc}">\n` +
-      `    <meta property="og:url" content="${appUrl(canonicalPath)}">\n` +
-      `    <meta name="twitter:card" content="summary">\n` +
-      `    <meta name="twitter:title" content="${ogTitle}">\n` +
-      `    <meta name="twitter:description" content="${ogDesc}">`
-  );
+  const ogTitle = ctx && !ctx.notFound ? `${ctx.title} | Fitness Agency` : "Fitness Agency - Training & Diet Plans";
+  const ogDesc = ctx && !ctx.notFound ? ctx.description : "Training and nutrition plans from elite athletes and coaches. Browse by goal, sport, or creator and download instantly.";
+  html = html.replace("<!--SHOP_OG-->", () => socialMeta({ title: ogTitle, description: ogDesc, url: canonicalPath }));
 
   // Hand the server-resolved context to shop.js via data-* attributes on the
   // grid it's about to render into, instead of making it re-fetch
@@ -410,7 +397,8 @@ function applyProductSeo(html, product) {
   const title = escapeHtml(product.name);
   const rawDescription = product.description || `${product.name}: a training & nutrition plan on Fitness Agency.`;
   // Meta description only; the JSON-LD keeps the full text. Search shows ~160 chars.
-  const description = escapeHtml(rawDescription.length > 160 ? rawDescription.slice(0, 157).replace(/\s+\S*$/, "") + "..." : rawDescription);
+  const metaDescription = rawDescription.length > 160 ? rawDescription.slice(0, 157).replace(/\s+\S*$/, "") + "..." : rawDescription;
+  const description = escapeHtml(metaDescription);
   const url = appUrl(`/program/${encodeURIComponent(product.slug)}`);
   const normalizedImage = product.imageUrl ? normalizeImageUrl(product.imageUrl) : "";
   const image = normalizedImage
@@ -441,21 +429,21 @@ function applyProductSeo(html, product) {
     `<meta name="description" content="${description}">\n` +
     (product.seoTags && product.seoTags.length ? `    <meta name="keywords" content="${escapeHtml(product.seoTags.join(", "))}">\n` : "") +
     `    <link rel="canonical" href="${url}">\n` +
-    `    <meta property="og:type" content="product">\n` +
-    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
-    `    <meta property="og:description" content="${description}">\n` +
-    `    <meta property="og:url" content="${url}">\n` +
-    (image ? `    <meta property="og:image" content="${image}">\n` : "") +
-    `    <meta name="twitter:card" content="summary_large_image">\n` +
-    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
-    `    <meta name="twitter:description" content="${description}">\n` +
-    (image ? `    <meta name="twitter:image" content="${image}">\n` : "") +
+    "    " +
+    socialMeta({
+      type: "product",
+      title: `${product.name} | Fitness Agency`,
+      description: metaDescription,
+      url,
+      image: pageImage(product.imageUrl, product.name),
+    }) +
+    "\n" +
     galleryPreload(product) +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
-    .replace("<!--PROGRAM_SEO-->", seoBlock);
+    .replace(/<title[^>]*>[^<]*<\/title>/, () => `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace("<!--PROGRAM_SEO-->", () => seoBlock);
 }
 
 // The first gallery slide is this page's LCP image, but shop-single.js only
@@ -758,25 +746,18 @@ function applyServiceSeo(html, meta) {
   const brandAttr = full === title ? title : `${title} | {brand}`;
   const description = escapeHtml(meta.description);
   const url = meta.canonical;
-  const image = appUrl("/assets/images/banner/inner-banner.jpg");
 
   const block =
     `<meta name="description" content="${description}">\n` +
     `    <link rel="canonical" href="${url}">\n` +
-    `    <meta property="og:type" content="website">\n` +
-    `    <meta property="og:title" content="${full}">\n` +
-    `    <meta property="og:description" content="${description}">\n` +
-    `    <meta property="og:url" content="${url}">\n` +
-    `    <meta property="og:image" content="${image}">\n` +
-    `    <meta name="twitter:card" content="summary_large_image">\n` +
-    `    <meta name="twitter:title" content="${full}">\n` +
-    `    <meta name="twitter:description" content="${description}">\n` +
-    `    <meta name="twitter:image" content="${image}">\n` +
+    "    " +
+    socialMeta({ title: brandedTitle(meta.title), description: meta.description, url }) +
+    "\n" +
     `    <script type="application/ld+json">${JSON.stringify(meta.jsonLd)}</script>`;
 
   return html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${brandAttr}">${full}</title>`)
-    .replace("<!--SERVICE_SEO-->", block);
+    .replace(/<title[^>]*>[^<]*<\/title>/, () => `<title data-brand-title="${brandAttr}">${full}</title>`)
+    .replace("<!--SERVICE_SEO-->", () => block);
 }
 
 router.get("/services", async (req, res) => {
@@ -1388,6 +1369,8 @@ function applyPartnerSeo(html, profile, opts) {
   const url = appUrl(`/partners/${encodeURIComponent(profile.slug)}`);
 
   const normalizedAvatar = profile.avatarUrl ? normalizeImageUrl(profile.avatarUrl) : "";
+  // JSON-LD keeps the raw (escaped) avatar URL exactly as before; the
+  // og:image goes through pageImage, which drops SVG/missing files.
   const image = normalizedAvatar
     ? escapeHtml(/^https?:\/\//.test(normalizedAvatar) ? normalizedAvatar : appUrl(normalizedAvatar))
     : "";
@@ -1429,20 +1412,20 @@ function applyPartnerSeo(html, profile, opts) {
     `<meta name="description" content="${description}">\n` +
     (indexable ? `    <link rel="canonical" href="${url}">\n` : "") +
     (indexable ? "" : `    <meta name="robots" content="noindex, nofollow">\n`) +
-    `    <meta property="og:type" content="profile">\n` +
-    `    <meta property="og:title" content="${title} | Fitness Agency">\n` +
-    `    <meta property="og:description" content="${description}">\n` +
-    `    <meta property="og:url" content="${url}">\n` +
-    (image ? `    <meta property="og:image" content="${image}">\n` : "") +
-    `    <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">\n` +
-    `    <meta name="twitter:title" content="${title} | Fitness Agency">\n` +
-    `    <meta name="twitter:description" content="${description}">\n` +
-    (image ? `    <meta name="twitter:image" content="${image}">\n` : "") +
+    "    " +
+    socialMeta({
+      type: "profile",
+      title: `${profile.displayName} | Fitness Agency`,
+      description: rawDescription,
+      url,
+      image: pageImage(profile.avatarUrl, profile.displayName),
+    }) +
+    "\n" +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
   let result = html
-    .replace(/<title[^>]*>[^<]*<\/title>/, `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
-    .replace("<!--PARTNER_SEO-->", block);
+    .replace(/<title[^>]*>[^<]*<\/title>/, () => `<title data-brand-title="${title} | {brand}">${title} | Fitness Agency</title>`)
+    .replace("<!--PARTNER_SEO-->", () => block);
 
   // Preload the avatar — the profile's first meaningful pixel.
   //
@@ -2049,7 +2032,6 @@ const HOME_DESCRIPTION =
 function applyHomeSeo(html) {
   const title = "Workout & Meal Plans from Pro Athletes | Fitness Agency";
   const description = escapeHtml(HOME_DESCRIPTION);
-  const image = appUrl("/assets/images/banner/inner-banner.jpg");
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -2066,15 +2048,9 @@ function applyHomeSeo(html) {
   };
   const block =
     `<meta name="description" content="${description}">\n` +
-    `    <meta property="og:type" content="website">\n` +
-    `    <meta property="og:site_name" content="Fitness Agency">\n` +
-    `    <meta property="og:title" content="${escapeHtml(title)}">\n` +
-    `    <meta property="og:description" content="${description}">\n` +
-    `    <meta property="og:url" content="${appUrl("/")}">\n` +
-    `    <meta property="og:image" content="${image}">\n` +
-    `    <meta name="twitter:card" content="summary_large_image">\n` +
-    `    <meta name="twitter:title" content="${escapeHtml(title)}">\n` +
-    `    <meta name="twitter:description" content="${description}">\n` +
+    "    " +
+    socialMeta({ title, description: HOME_DESCRIPTION, url: "/" }) +
+    "\n" +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
   return html.replace("<!--HOME_SEO-->", () => block);
 }
@@ -2441,6 +2417,16 @@ const SIMPLE_REDIRECTS = [
   ["/blog-grid.html", "/blog/grid"],
   ["/blog-list.html", "/blog/list"],
   ["/blog-single.html", "/blog/article"],
+  // The pre-2026-11 icon set, replaced by the root-level set that
+  // tools/build-icons.js writes. Browsers and Google re-read the <head>, but
+  // anything that cached a bare icon URL lands on its replacement, not a 404.
+  ["/assets/images/favicon/favicon.ico", "/favicon.ico"],
+  ["/assets/images/favicon/favicon-16x16.png", "/icon-48.png"],
+  ["/assets/images/favicon/favicon-32x32.png", "/icon-48.png"],
+  ["/assets/images/favicon/apple-touch-icon.png", "/apple-touch-icon.png"],
+  ["/assets/images/favicon/android-chrome-192x192.png", "/icon-192.png"],
+  ["/assets/images/favicon/android-chrome-512x512.png", "/icon-512.png"],
+  ["/assets/images/favicon/site.webmanifest", "/site.webmanifest"],
 ];
 for (const [from, to] of SIMPLE_REDIRECTS) {
   router.get(from, (req, res) => {

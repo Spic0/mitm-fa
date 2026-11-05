@@ -21,6 +21,7 @@ const fs = require("fs");
 const express = require("express");
 const { prisma } = require("../db");
 const { logEvent } = require("../lib/adminLog");
+const { ICON_LINKS } = require("../lib/headMeta");
 const {
   presentationUnlockLimiter,
   presentationTrackLimiter,
@@ -489,10 +490,7 @@ function renderShowcasePage(product) {
     `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n` +
     `<meta name="robots" content="noindex, nofollow, noarchive">\n` +
     `<title>${escapeHtml(product.name)} | Fitness Agency</title>\n` +
-    `<link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">\n` +
-    `<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png">\n` +
-    `<link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">\n` +
-    `<link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">\n` +
+    ICON_LINKS.map((tag) => tag + "\n").join("") +
     `<meta name="theme-color" content="#fafaf9">\n` +
     `<link rel="stylesheet" href="/assets/css/presentation.css">\n` +
     `</head>\n<body class="pres-body shw-body">\n` +
@@ -582,10 +580,7 @@ function renderGateScreen({ title, heading, body, formSlug }) {
     `<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n` +
     `<meta name="robots" content="noindex, nofollow, noarchive">\n` +
     `<title>${escapeHtml(title)}</title>\n` +
-    `<link rel="icon" href="/assets/images/favicon/favicon.ico" sizes="32x32">\n` +
-    `<link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon/favicon-32x32.png">\n` +
-    `<link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon/favicon-16x16.png">\n` +
-    `<link rel="apple-touch-icon" href="/assets/images/favicon/apple-touch-icon.png">\n` +
+    ICON_LINKS.map((tag) => tag + "\n").join("") +
     `<meta name="theme-color" content="#fafaf9">\n` +
     `<link rel="stylesheet" href="/assets/css/presentation.css">\n` +
     `</head>\n<body class="pres-body pres-body--gate">\n` +

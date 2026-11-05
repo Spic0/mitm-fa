@@ -360,8 +360,10 @@ app.use("/private", (req, res) => res.sendStatus(404));
 // the paired half that closes .git/* (send@0.19.2's legacy dotfile handling
 // only checks the LAST path segment, so /.git/config would otherwise be
 // served even though /.gitignore is not).
+// /changelogs holds internal release notes: nothing on the site links to
+// them, they are referenced only from source comments.
 app.use(
-  ["/server", "/tools", "/.git", "/SECURITY_AUDIT.md", "/INCIDENT_RESPONSE.md"],
+  ["/server", "/tools", "/.git", "/changelogs", "/SECURITY_AUDIT.md", "/INCIDENT_RESPONSE.md"],
   (req, res) => res.sendStatus(404)
 );
 
@@ -558,7 +560,13 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
+// Loopback only. nginx is the one public entry point (TLS, the HTTPS
+// redirect, X-Forwarded-Proto). Bound to every interface, :3000 answered the
+// internet directly over plain HTTP, and a forged `x-forwarded-proto: https`
+// header got the whole site and API served unencrypted around nginx. HOST is
+// an override for local experiments, never something production should set.
+const HOST = process.env.HOST || "127.0.0.1";
+const server = app.listen(PORT, HOST, () => {
   console.log(`Fitness Agency server running at ${process.env.APP_URL || `http://localhost:${PORT}`}`);
 });
 

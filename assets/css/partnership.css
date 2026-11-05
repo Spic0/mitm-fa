@@ -361,8 +361,10 @@
 /* ---- The setup wizard frame ---- */
 .pt-offer { max-width: 1080px; margin: 0 auto; overflow: hidden; border-radius: 20px; background-color: var(--color-bg); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); }
 /* Close to the first step's height; the frame reports its real height. */
-.pt-offer__frame { display: block; width: 100%; height: 900px; border: 0; }
-@media (min-width: 768px) { .pt-offer__frame { height: 640px; } }
+/* Placeholder heights only (the first step, measured), so the section does not
+   jump when the frame loads; assets/js/offer-frame.js then sizes it to its body. */
+.pt-offer__frame { display: block; width: 100%; height: 880px; border: 0; overflow: hidden; }
+@media (min-width: 768px) { .pt-offer__frame { height: 588px; } }
 
 /* ---- FAQ accordion ---- */
 .pt-faq { display: grid; gap: 10px; max-width: 760px; margin: 0 auto; }

@@ -368,6 +368,19 @@
   // ---- Messages: Calendly booking events (no invitee data is forwarded)
   // and the setup wizard frame's height and sent notices.
   var frame = document.querySelector("[data-offer-frame]");
+  // After a step change (the wizard's height eases over ~380ms), bring the
+  // box top back under the fixed header if it has moved out of view above.
+  var offerTimer = 0;
+  function keepOfferInView() {
+    clearTimeout(offerTimer);
+    offerTimer = setTimeout(function () {
+      var box = frame && frame.parentNode;
+      var header = document.querySelector(".site-header");
+      var clear = (header ? header.getBoundingClientRect().bottom : 68) + 12;
+      var top = box ? box.getBoundingClientRect().top : clear;
+      if (top < clear) window.scrollBy({ top: top - clear, behavior: reduceMotion ? "auto" : "smooth" });
+    }, reduceMotion ? 0 : 420);
+  }
   window.addEventListener("message", function (e) {
     var d = e.data;
     if (!d) return;
@@ -387,6 +400,7 @@
     }
     if (e.origin !== window.location.origin || !frame || e.source !== frame.contentWindow) return;
     if (d.type === "fa-offer-height" && d.height > 0) frame.style.height = Math.ceil(d.height) + "px";
+    if (d.type === "fa-offer-step" || d.type === "fa-offer-sent") keepOfferInView();
     if (d.type === "fa-offer-sent") track("partnership_offer_submitted", { form: "setup_wizard", intent: d.intent || null });
   });
 })();

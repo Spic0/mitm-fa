@@ -1660,3 +1660,96 @@
   .dv__show { grid-column: 2; grid-row: 1; }
   .dv__facts { max-width: 420px; }
 }
+
+/* ---- Hero: pinned while the product showcase slides up over it ----
+   .hero-stack (index.html) holds only the hero and the showcase, so the hero
+   is sticky exactly as long as the showcase (always taller than the hero)
+   takes to cover it, then scrolls away underneath, already covered. The
+   showcase is opaque page colour with a rounded, shadowed top edge so the
+   covering reads as a sheet. The headline sinks, shrinks and fades as it
+   is covered, over a scroll of one hero height:
+   - scroll-driven animation where supported (range from --hero-top/--hero-h,
+     which assets/js/hero-cover.js measures once per resize, not per scroll);
+   - elsewhere the same script writes --hero-p (0..1) once per frame.
+   Only transform and opacity move. Reduced motion: the cover stays (it is
+   just scrolling), the H1 does not move. */
+.hero-stack { position: relative; }
+.hero-stack > .hero { position: sticky; top: 0; z-index: 0; }
+/* Phones: critical.css sets body { overflow-x: hidden }, which makes <body>
+   a scroll container of its own, so nothing inside it can ever stick.
+   `clip` stops horizontal scroll the same way without that. (Only this page
+   loads this file. Browsers without clip keep hidden and a plain hero.) */
+@supports (overflow: clip) {
+  html body { overflow-x: clip; }
+}
+/* Until GET /api/demo answers, the showcase is [hidden]. In the stack it keeps
+   an empty sheet at least one screen tall instead of collapsing, so the hero
+   is covered from the first paint and its arrival happens below the fold
+   (it used to push the goal index down on screen: CLS 0.138 at 1440x900).
+   home-dynamic.js removes the section if there is no demo. */
+/* !important: bootstrap's async [hidden] { display: none !important } lands
+   after first paint and would collapse the sheet again. */
+.hero-stack > .value-area[hidden] { display: block !important; min-height: 100vh; min-height: 100svh; }
+.hero-stack > .value-area[hidden] > * { visibility: hidden; }
+.hero-stack > .value-area {
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-bg);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -16px 36px rgba(26, 26, 26, 0.07), 0 -1px 0 rgba(26, 26, 26, 0.05);
+}
+/* What sinks is the headline GROUP, not the <h1> alone (alone, it slid into
+   the line under it): from 992px the whole copy column (.hero__copy: H1,
+   line, CTAs), below that the H1 and its line, because there .hero__copy is
+   display:contents and cannot be transformed; they pass behind the product. */
+.hero-stack .hero__title,
+.hero-stack .hero__sub {
+  will-change: transform;
+  transform: translateY(calc(var(--hero-p, 0) * 15vh)) scale(calc(1 - var(--hero-p, 0) * 0.06));
+  opacity: calc(1 - var(--hero-p, 0) * 0.7);
+}
+@supports (height: 1svh) {
+  .hero-stack .hero__title,
+  .hero-stack .hero__sub { transform: translateY(calc(var(--hero-p, 0) * 15svh)) scale(calc(1 - var(--hero-p, 0) * 0.06)); }
+}
+@media (min-width: 992px) {
+  .hero-stack .hero__title,
+  .hero-stack .hero__sub { will-change: auto; transform: none; opacity: 1; }
+  .hero-stack .hero__copy {
+    will-change: transform;
+    transform: translateY(calc(var(--hero-p, 0) * 15svh)) scale(calc(1 - var(--hero-p, 0) * 0.06));
+    transform-origin: 0 50%;
+    opacity: calc(1 - var(--hero-p, 0) * 0.7);
+  }
+}
+@supports (animation-timeline: scroll()) {
+  /* `animation` resets animation-timeline, so the timeline comes after it. */
+  .hero-stack .hero__title,
+  .hero-stack .hero__sub {
+    transform: none;
+    opacity: 1;
+    animation: hero-title-sink linear both;
+    animation-timeline: scroll(root);
+    animation-range: var(--hero-top, 0px) calc(var(--hero-top, 0px) + var(--hero-h, 100svh));
+  }
+  @media (min-width: 992px) {
+    .hero-stack .hero__title,
+    .hero-stack .hero__sub { animation: none; }
+    .hero-stack .hero__copy {
+      transform: none;
+      opacity: 1;
+      animation: hero-title-sink linear both;
+      animation-timeline: scroll(root);
+      animation-range: var(--hero-top, 0px) calc(var(--hero-top, 0px) + var(--hero-h, 100svh));
+    }
+  }
+}
+@keyframes hero-title-sink {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(15svh) scale(0.94); opacity: 0.3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-stack .hero__title,
+  .hero-stack .hero__sub,
+  .hero-stack .hero__copy { transform: none; opacity: 1; animation: none; will-change: auto; }
+}

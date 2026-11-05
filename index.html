@@ -151,6 +151,10 @@
              real product with a real link, and it doubles as the LCP preload
              target. The script recognises it by data-hero-id and reuses it
              rather than re-rendering a duplicate. -->
+        <!-- The hero is pinned while the product showcase slides up over it; the
+             stack ends with the showcase, so the hero then scrolls away under it.
+             See .hero-stack in home-dynamic.css and assets/js/hero-cover.js. -->
+        <div class="hero-stack">
         <section class="hero" data-hero-id="">
             <div class="container">
                 <div class="hero__grid">
@@ -324,6 +328,7 @@
                 </div>
             </div>
         </section>
+        </div>
         <!-- Program preview end -->
 
         <!-- Shop by goal.
@@ -582,6 +587,7 @@
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
     <script src="/assets/js/hero-slideshow.js" defer></script>
+    <script src="/assets/js/hero-cover.js" defer></script>
     <script src="/assets/js/product-card.js" defer></script>
     <script src="/assets/js/home-products.js" defer></script>
     <script src="/assets/js/home-dynamic.js" defer></script>

@@ -338,7 +338,13 @@ document.addEventListener("DOMContentLoaded", function () {
   fetch("/api/demo", { headers: { Accept: "application/json" } })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) { if (d) renderValueProduct(d); })
-    .catch(function () {});
+    .catch(function () {})
+    .then(function () {
+      // No usable demo: the section goes. Until now it keeps an empty box in
+      // the hero stack (home-dynamic.css), so it must not linger as one.
+      var section = document.getElementById("valueArea");
+      if (section && section.hidden) section.remove();
+    });
 
   window.ProFitAPI.listProducts().then(function (result) {
     renderHeroPrice(result.products || []);

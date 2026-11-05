@@ -153,12 +153,17 @@
         view.appendChild(f);
       }
       Object.keys(frames).forEach(function (n) { frames[n].hidden = n !== k; });
+      // Keep the active tab visible in the scrolling tab row (phones).
+      var row = t.parentNode;
+      if (row.scrollWidth > row.clientWidth) row.scrollLeft = t.offsetLeft - (row.clientWidth - t.offsetWidth) / 2;
       view.classList.toggle("is-loaded", !!f.faLoaded);
       full.href = t.getAttribute("data-src");
       if (!quiet) track("partnership_demo_tab_viewed", { tab: k, device: device });
     }
 
     function setDevice(d, quiet) {
+      // Phones always get the phone view (the switch is hidden there).
+      if (phoneScreen.matches) d = "phone";
       device = d;
       devs.forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-demo-device") === d)); });
       stage.setAttribute("data-device", d);
@@ -247,7 +252,12 @@
     }
     if ("ResizeObserver" in window) new ResizeObserver(refit).observe(stage);
     else window.addEventListener("resize", refit);
-    if (phoneScreen.addEventListener) phoneScreen.addEventListener("change", refit);
+    if (phoneScreen.addEventListener) {
+      phoneScreen.addEventListener("change", function () {
+        if (phoneScreen.matches && device !== "phone") setDevice("phone", true);
+        refit();
+      });
+    }
   }
 
   // ---- Calendly. Every booking button is a real link to the booking page,

@@ -1698,6 +1698,7 @@ function renderPartnershipMain() {
   const demoSrc = (t) => `${t.path}?demo=1${t.hash || ""}`;
   const demo =
     '<dialog class="pt-demo" id="ptDemo" aria-labelledby="ptDemoTitle">' +
+    '<div class="pt-demo__panel">' +
     '<div class="pt-demo__bar">' +
     '<h2 class="pt-demo__title" id="ptDemoTitle">Live demo</h2>' +
     '<div class="pt-demo__tabs" role="tablist" aria-label="Creator journey">' +
@@ -1720,7 +1721,7 @@ function renderPartnershipMain() {
     '<p class="pt-demo__note">Live pages with demo content. Checkout is disabled.</p>' +
     `<a class="pt-btn pt-btn--ghost" href="${escapeHtml(demoSrc(P.DEMO_TABS[0]))}" target="_blank" rel="noopener" data-demo-full><span>Open full demo</span>${ptIcon("external", "pt-btn__icon")}</a>` +
     `<a class="pt-btn pt-btn--primary" href="#book" data-demo-book data-cta-location="demo_book">${ptIcon("calendar", "pt-btn__icon")}<span>Book a 30-min call</span></a>` +
-    "</div></dialog>";
+    "</div></div></dialog>";
 
   return (
     '<main class="pt">' + hero + what + mockups + steps + brands + model + book + offer + faq + "</main>" + demo +

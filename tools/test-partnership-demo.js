@@ -94,8 +94,10 @@ async function run(browser, vp) {
   await page.waitForSelector(".pt-demo[open]");
   check(await page.$eval("html", (h) => h.classList.contains("pt-demo-lock") && getComputedStyle(h).overflow === "hidden"), "body scroll locked");
 
-  for (const device of ["desktop", "phone"]) {
-    await page.click(`[data-demo-device="${device}"]`);
+  // Phones always show the phone view; the Desktop/Phone switch is hidden there.
+  if (vp.isMobile) check(await page.$eval(".pt-demo__devs", (d) => getComputedStyle(d).display === "none"), "device switch hidden on phones");
+  for (const device of vp.isMobile ? ["phone"] : ["desktop", "phone"]) {
+    if (!vp.isMobile) await page.click(`[data-demo-device="${device}"]`);
     for (const tab of TABS) {
       await page.click(`[data-demo-tab="${tab}"]`);
       const frame = await activeFrame(page);

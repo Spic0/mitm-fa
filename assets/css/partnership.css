@@ -384,24 +384,41 @@
 /* ---- Demo viewer: live pages in a same-origin iframe (assets/js/partnership.js
    sizes the screen and scales a real 1440 or 390 CSS px viewport into it). ---- */
 html.pt-demo-lock { overflow: hidden; }
+/* The <dialog> is the full-screen overlay (the site's reset zeroes the UA
+   margin:auto that would center a sized dialog); the panel inside is the viewer. */
 .pt-demo {
-  width: min(1400px, calc(100vw - 32px));
-  height: calc(100dvh - 32px);
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
   max-width: none;
   max-height: none;
-  padding: 0;
+  margin: 0;
+  padding: 16px;
   border: 0;
+  background: transparent;
+  color: #ffffff;
+  overflow: hidden;
+}
+.pt-demo[open] { display: flex; align-items: center; justify-content: center; }
+.pt-demo__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(1280px, 100%);
+  height: min(860px, 100%);
   border-radius: 18px;
   background-color: #121211;
-  color: #ffffff;
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.pt-demo[open] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; animation: pt-demo-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.pt-demo[open] .pt-demo__panel { animation: pt-demo-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
 /* Warming (hover/focus on "See a demo"): laid out off screen so the first
    tab's iframe loads at its real viewport size, then shown in place. */
-.pt-demo.is-warming:not([open]) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; position: fixed; top: 0; left: -300vw; margin: 0; visibility: hidden; pointer-events: none; }
-.pt-demo::backdrop { background-color: rgba(10, 10, 9, 0.8); }
+.pt-demo.is-warming:not([open]) { display: flex; align-items: center; justify-content: center; left: -300vw; right: 300vw; visibility: hidden; pointer-events: none; }
+/* The hero's floating phone would sit beside the viewer, through the backdrop. */
+html.pt-demo-lock .ph__float { visibility: hidden; }
+.pt-demo::backdrop { background-color: rgba(10, 10, 9, 0.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .pt-demo__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 12px 12px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .pt-demo__title { margin: 0; font-family: var(--prosto-one); font-size: 17px; font-weight: 700; color: #ffffff; }
 .pt-demo__tabs, .pt-demo__devs { display: flex; gap: 2px; padding: 4px; border-radius: var(--radius-pill); background-color: rgba(255, 255, 255, 0.07); }
@@ -455,14 +472,17 @@ html.pt-demo-lock { overflow: hidden; }
 .pt-demo__note { margin: 0 auto 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.62); }
 .pt-demo__foot .pt-btn { min-height: 44px; padding: 10px 18px; }
 @media (max-width: 767px) {
-  .pt-demo { width: 100vw; height: 100dvh; margin: 0; border-radius: 0; }
-  .pt-demo[open] { animation-name: pt-demo-sheet; }
+  .pt-demo { padding: 0; }
+  .pt-demo__panel { width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+  .pt-demo[open] .pt-demo__panel { animation-name: pt-demo-sheet; }
+  /* Phones always get the phone view, 1:1: no device switch. */
+  .pt-demo__devs { display: none; }
+  .pt-demo__close { margin-left: auto; }
   .pt-demo__bar { gap: 8px; padding: 8px 8px 8px 16px; }
   .pt-demo__title { font-size: 16px; }
   .pt-demo__tabs { order: 3; width: 100%; }
   .pt-demo__tab { flex: 1 0 auto; padding: 0 12px; font-size: 13px; }
   .pt-demo__dev { padding: 0 10px; }
-  .pt-demo__dev span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .pt-demo__stage { padding: 12px; }
   .pt-demo__note { display: none; }
   .pt-demo__foot { flex-wrap: nowrap; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
@@ -487,7 +507,7 @@ html.reveal-on [data-reveal]:not(.is-revealed) { opacity: 0; transform: translat
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] { transition: none; }
   html.reveal-on [data-reveal]:not(.is-revealed) { opacity: 1; transform: none; }
-  .ph-w > span, .ph__kicker, .ph__sub, .ph__actions, .ph__offer, .ph__float, .ph__cue, .pt-demo[open] { animation: none; }
+  .ph-w > span, .ph__kicker, .ph__sub, .ph__actions, .ph__offer, .ph__float, .ph__cue, .pt-demo[open] .pt-demo__panel { animation: none; }
   .pt-btn, .pt-faq__chev, .pt-cal iframe, .pt-cal__skel, .pt-demo__tab, .pt-demo__dev, .pt-demo__skel { transition: none; }
   .pt-demo__skel span { animation: none; }
 }

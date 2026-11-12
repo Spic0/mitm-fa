@@ -1321,7 +1321,7 @@ export function MarketsGlobe({
         >
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-8 -bottom-4 -z-10 h-10 rounded-[100%] bg-black opacity-[0.12] blur-2xl"
+            className="pointer-events-none absolute inset-x-8 -bottom-4 -z-10 h-10 rounded-[100%] bg-[#141414] opacity-[0.12] blur-2xl"
           />
           <div
             ref={regionRef}

@@ -8,6 +8,6 @@ export function mount(el: HTMLElement) {
   el.addEventListener("webglcontextlost", () => (el.style.visibility = "hidden"), true);
   el.addEventListener("webglcontextrestored", () => (el.style.visibility = ""), true);
   createRoot(el).render(
-    <Threads color="#1a1a1a" accentColor="#c08a2e" amplitude={0.7} distance={0.2} enableMouseInteraction={false} opacity={0.5} className="lb-threads" />
+    <Threads color={el.dataset.color || "#1a1a1a"} accentColor="#c08a2e" amplitude={0.7} distance={0.2} enableMouseInteraction={false} opacity={0.5} className="lb-threads" />
   );
 }

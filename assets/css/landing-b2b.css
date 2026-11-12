@@ -5,8 +5,9 @@
    site did not already have. Headings reuse .value__title and the global
    h3/h4 scale from style.css (24/600/1.3 and 20/600); body copy is the global
    <p> (16/1.6) or .value__sub; small text is the 12/13/14px 600 already used
-   by the nav pills, counts and links. Colours are the style.css tokens. The
-   five accents are the illustrated characters' (server/docs/brand-characters.md). */
+   by the nav pills, counts and links. Colours are the style.css tokens; the
+   dark reverse sections (.lb-dark) only re-point those tokens. No pure
+   black or white is introduced here. */
 
 .lb {
   --lb-amber: #c08a2e;
@@ -15,6 +16,9 @@
   --lb-violet: #7a62a8;
   --lb-coral: #cf6a55;
   --lb-radius: 18px;
+  /* The light neighbours, resolved here so a dark section can still paint them. */
+  --lb-light: var(--color-bg);
+  --lb-light-2: var(--color-surface-2);
 }
 .lb ul, .lb ol { list-style: none; margin: 0; padding: 0; }
 .lb h3 { margin: 0; color: var(--color-text); }
@@ -164,7 +168,7 @@
 
 /* ---- Sections ---- */
 .lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; background-color: var(--color-bg); }
-.lb-how, .lb-share { background-color: var(--color-surface-2); }
+.lb-share { background-color: var(--color-surface-2); }
 .lb-head { margin-bottom: clamp(28px, 4vw, 48px); }
 .lb-head .value__sub { max-width: 46ch; }
 .lb .lb-h2 { max-width: 22ch; }
@@ -229,36 +233,48 @@
 .lb-steps { counter-reset: lb-step; position: relative; display: grid; gap: 0; }
 .lb-step {
   --lb-accent: var(--lb-amber);
+  --i: 0;
   counter-increment: lb-step;
   position: relative;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   gap: 18px;
   padding-bottom: 32px;
 }
-.lb-step--blue { --lb-accent: var(--lb-blue); }
-.lb-step--violet { --lb-accent: var(--lb-violet); }
-.lb-step--green { --lb-accent: var(--lb-green); }
-.lb-step--coral { --lb-accent: var(--lb-coral); }
+.lb-step:nth-child(2) { --i: 1; }
+.lb-step:nth-child(3) { --i: 2; }
+.lb-step:nth-child(4) { --i: 3; }
+.lb-step:nth-child(5) { --i: 4; }
+.lb-step:nth-child(6) { --i: 5; }
 /* The rail. */
 .lb-step::before {
   content: "";
   position: absolute;
-  left: 31px;
-  top: 64px;
-  bottom: 0;
+  left: 35px;
+  top: 80px;
+  bottom: 8px;
   width: 2px;
   background: var(--color-border);
+  transform-origin: 50% 0;
 }
 .lb-step:last-child { padding-bottom: 0; }
 .lb-step:last-child::before { display: none; }
-.lb-step__who {
-  width: 64px;
-  height: 64px;
+.lb-step__icon {
+  position: relative;
+  display: block;
+  width: 72px;
+  height: 72px;
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lb-step__icon img { position: relative; display: block; width: 72px; height: 72px; }
+/* On dark the icon sits on a faint glow so its charcoal parts still read. */
+.lb-dark .lb-step__icon::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
   border-radius: 50%;
-  object-fit: cover;
-  background: var(--color-bg);
-  box-shadow: 0 0 0 2px var(--color-surface-2), 0 0 0 4px var(--lb-accent);
+  background: radial-gradient(circle, rgba(242, 240, 235, 0.16), rgba(242, 240, 235, 0) 68%);
+  pointer-events: none;
 }
 .lb-step__body::before {
   content: "0" counter(lb-step);
@@ -270,17 +286,16 @@
   margin-bottom: 4px;
 }
 .lb .lb-step__title { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
-.lb-step__owner { display: block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
 @media (min-width: 992px) {
   .lb-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 32px; }
   .lb-step { grid-template-columns: 1fr; gap: 16px; padding-bottom: 0; align-content: start; }
-  .lb-step::before { left: 76px; right: -32px; top: 31px; bottom: auto; width: auto; height: 2px; }
+  .lb-step::before { left: 92px; right: -20px; top: 35px; bottom: auto; width: auto; height: 2px; transform-origin: 0 50%; }
   .lb-step:nth-child(3n)::before { right: 0; }
   .lb-step:last-child::before { display: block; right: auto; width: 0; }
 }
 @media (min-width: 1400px) {
   .lb-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px; }
-  .lb-step::before, .lb-step:nth-child(3n)::before { right: -24px; }
+  .lb-step::before, .lb-step:nth-child(3n)::before { right: -12px; }
   .lb-step:last-child::before { display: none; }
 }
 
@@ -296,7 +311,14 @@
 .lb .lb-plate__label { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 16px; }
 .lb-check li { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--color-border); }
 .lb-check li:first-child { border-top: 0; }
-.lb-check img { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.lb-check li { --i: 0; }
+.lb-check li:nth-child(2) { --i: 1; }
+.lb-check li:nth-child(3) { --i: 2; }
+.lb-check li:nth-child(4) { --i: 3; }
+.lb-check li:nth-child(5) { --i: 4; }
+.lb-check li:nth-child(6) { --i: 5; }
+.lb-check li:nth-child(7) { --i: 6; }
+.lb-check img { flex: 0 0 auto; width: 40px; height: 40px; }
 .lb-check span { display: block; font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--color-text); }
 .lb-check--you li::before {
   content: "";
@@ -304,10 +326,11 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--lb-coral) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M6 11.5l3.2 3.2L16 8' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  background: var(--lb-amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M6 11.5l3.2 3.2L16 8' fill='none' stroke='%23fafaf9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .lb-check--you { margin-bottom: 16px !important; }
-.lb-plate__img { width: 100%; max-width: 260px; height: auto; margin: 0 auto; display: block; border-radius: 14px; }
+.lb-plate__icon { display: grid; place-items: center; padding: 8px 0; }
+.lb-plate__icon img { display: block; width: 100%; max-width: 200px; height: auto; }
 @media (min-width: 576px) {
   .lb-plate__you { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr); }
 }
@@ -422,3 +445,85 @@
    viewport, and therefore the LCP element, is the <h1>. */
 .lb-hero { display: flex; align-items: center; min-height: calc(100vh - 40px); min-height: calc(100svh - 40px); }
 .lb-hero > .container { width: 100%; }
+
+/* ---- Dark reverse sections: How it works, Markets, Final CTA ----
+   The section itself keeps its light neighbours' colour and paints the dark
+   panel as a rounded ::before, the same 24px cut as the sheet over the hero.
+   Inside, the style.css colour tokens are re-pointed, so every rule above
+   (and the islands, which read the same tokens) follows without new type. */
+.lb-dark {
+  --color-bg: #141414;
+  --color-surface: #1e1d1b;
+  --color-surface-2: #1e1d1b;
+  --color-text: #f2f0eb;
+  --color-text-muted: #a8a39b;
+  --color-text-faint: #a8a39b;
+  --color-border: #2c2a27;
+  --color-primary: #f2f0eb;
+  --color-primary-hover: #dcd9d2;
+  isolation: isolate;
+  background-color: var(--lb-light);
+  color: var(--color-text);
+}
+.lb-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px;
+  background: #141414;
+}
+.lb-markets.lb-dark { background: linear-gradient(to bottom, var(--lb-light) 50%, var(--lb-light-2) 50%); }
+.lb-cta.lb-dark::before { border-radius: 24px 24px 0 0; }
+.lb-cta.lb-dark .lb-cta__bg { z-index: -1; border-radius: 24px 24px 0 0; overflow: hidden; }
+/* style.css colours every <span>; in a dark panel it must follow its parent. */
+:where(.lb-dark) span { color: inherit; }
+.lb-dark .value__title { color: var(--color-text); }
+.lb-dark .value__sub, .lb-dark p { color: var(--color-text-muted); }
+.lb-dark .btn-one, .lb-dark .btn-one:hover { background-color: #f2f0eb; color: #141414; border-color: transparent; }
+.lb-dark .btn-one:hover { background-color: #dcd9d2; }
+.lb-dark .btn-two, .lb-dark .btn-two:hover { background-color: #1e1d1b; color: #f2f0eb; border-color: #2c2a27; }
+.lb-dark .btn-two:hover { background-color: #2c2a27; border-color: #a8a39b; }
+
+/* ---- Icon motion (transform and opacity only) ----
+   main.ts adds .lb-armed (start state, only while still below the fold),
+   .is-in (seen) and .is-off (off-screen, loops pause). Without JS, or with
+   reduced motion, nothing is armed and the icons are simply there. */
+@keyframes lb-float { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .lb-steps.lb-armed .lb-step { opacity: 0; transform: translateY(18px); }
+  .lb-steps.lb-armed .lb-step::before { transform: scaleY(0); }
+  .lb-steps.lb-armed.is-in .lb-step {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(var(--i) * 110ms);
+  }
+  .lb-steps.lb-armed.is-in .lb-step::before {
+    transform: none;
+    transition: transform 0.5s ease;
+    transition-delay: calc(var(--i) * 110ms + 260ms);
+  }
+  .lb-steps.is-in .lb-step__icon img { animation: lb-float 5s ease-in-out infinite; animation-delay: calc(var(--i) * -0.9s); }
+  .lb-steps.is-in .lb-step:nth-child(even) .lb-step__icon img { animation-duration: 5.8s; }
+  .lb-steps.is-in .lb-step:nth-child(3n) .lb-step__icon img { animation-duration: 4.4s; }
+  .lb-steps.is-off .lb-step__icon img, .lb-plate__icon.is-off img { animation-play-state: paused; }
+  .lb-step:hover .lb-step__icon { transform: rotate(-5deg) scale(1.06); }
+
+  .lb-check.lb-armed li img { opacity: 0; transform: scale(0.6); }
+  .lb-check.lb-armed.is-in li img {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+    transition-delay: calc(var(--i) * 70ms);
+  }
+  .lb-plate__icon.lb-armed img { opacity: 0; transform: scale(0.8); }
+  .lb-plate__icon.lb-armed.is-in img { opacity: 1; transform: none; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1); }
+  .lb-plate__icon.is-in:not(.lb-armed) img { animation: lb-float 6s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 992px) {
+  .lb-steps.lb-armed .lb-step::before { transform: scaleX(0); }
+}
+/* Bootstrap's .border utility is !important and would paint its own light grey
+   on the globe's card; keep the island on the section's border token. */
+.lb-globe--live .border { border-color: var(--color-border) !important; }

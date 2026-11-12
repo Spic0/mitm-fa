@@ -34,6 +34,7 @@ function boot(el: HTMLElement) {
 }
 
 function start() {
+  reveals();
   const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-island]"));
   if (!("IntersectionObserver" in window)) return nodes.forEach(boot);
   const io = new IntersectionObserver(
@@ -45,6 +46,28 @@ function start() {
       }
     },
     { rootMargin: "300px 0px" }
+  );
+  nodes.forEach((n) => io.observe(n));
+}
+
+// Scroll reveals for [data-lb-reveal] (icons, timeline rail). CSS does the
+// motion; this only flags "armed" (hidden start state, set while the block is
+// still below the fold, so nothing visible ever jumps), "is-in" and "is-off"
+// (off-screen: idle loops pause). No JS or reduced motion: nothing is armed.
+function reveals() {
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-lb-reveal]"));
+  if (!nodes.length || !("IntersectionObserver" in window)) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const n of nodes) if (n.getBoundingClientRect().top > window.innerHeight) n.classList.add("lb-armed");
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        const n = e.target as HTMLElement;
+        n.classList.toggle("is-off", !e.isIntersecting);
+        if (e.isIntersecting) n.classList.add("is-in");
+      }
+    },
+    { rootMargin: "0px 0px -12% 0px" }
   );
   nodes.forEach((n) => io.observe(n));
 }

@@ -15,3 +15,5 @@ person; never caption them as a team member, a client or a testimonial.
 Prompts and the shared style suffix: `.landing-assets/prompts.json`.
 Sheets are generated first; every pose uses its character's sheet as reference.
 Output: `assets/images/landing-b2b/` (WebP, 2x rendered size).
+
+> 2026-11-12: the characters are no longer shown on the landing page (replaced by object icons, `ico-*.webp`). The image files stay in `assets/images/landing-b2b/` unused.

@@ -28,6 +28,7 @@ const {
 } = require("../lib/services");
 const { getPlanGuide, listPlanGuides } = require("../lib/plans");
 const PARTNERSHIP = require("../lib/partnership");
+const LANDING = require("../lib/landing");
 const { inlineOfferWizard } = require("../lib/offerWizard");
 const { socialMeta, pageImage } = require("../lib/headMeta");
 
@@ -2060,13 +2061,13 @@ function heroMeta(product) {
 }
 
 // The homepage's search snippet, share card and site-level structured data.
-// The description names what people actually search for (workout plans, meal
-// plans, mobility) rather than the hero's brand line, which carries no query.
-const HOME_DESCRIPTION =
-  "Workout plans, meal plans and mobility programs from pro athletes and fitness creators. Shop by goal. One-time purchase, lifetime access.";
+// Since the B2B landing (2026-11) the page addresses creators considering a
+// partnership, so the title and description say what the agency does; the
+// copy lives in lib/landing.js next to the FAQ this also emits as FAQPage.
+const HOME_DESCRIPTION = LANDING.DESCRIPTION;
 
 function applyHomeSeo(html) {
-  const title = "Workout & Meal Plans from Pro Athletes | Fitness Agency";
+  const title = LANDING.TITLE;
   const description = escapeHtml(HOME_DESCRIPTION);
   const jsonLd = {
     "@context": "https://schema.org",
@@ -2080,6 +2081,14 @@ function applyHomeSeo(html) {
         publisher: { "@id": appUrl("/#organization") },
         inLanguage: "en",
       },
+      {
+        "@type": "FAQPage",
+        mainEntity: LANDING.FAQ.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      },
     ],
   };
   const block =
@@ -2089,6 +2098,14 @@ function applyHomeSeo(html) {
     "\n" +
     `    <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
   return html.replace("<!--HOME_SEO-->", () => block);
+}
+
+// The FAQ as native <details>: readable and operable with no script.
+function homeFaqHtml() {
+  return LANDING.FAQ.map(
+    (f) =>
+      `<details class="lb-faq__item"><summary><h3>${escapeHtml(f.q)}</h3></summary><p>${escapeHtml(f.a)}</p></details>`
+  ).join("");
 }
 
 async function applyHeroContext(html, product) {
@@ -2290,36 +2307,16 @@ router.get("/", async (req, res, next) => {
   if (html == null) return next();
   html = await inlineHeader(html, "index.html");
 
-  // Both server-rendered sections resolve from the same catalog read, so the
-  // showcase can deliberately avoid repeating whatever the hero opened on. A
-  // database failure degrades to the un-filled shells (the client-side
-  // scripts still populate everything else) rather than 500ing the homepage.
-  let heroProduct = null;
-  let showcaseProduct = null;
-  try {
-    heroProduct = await resolveHeroProduct();
-    showcaseProduct = await resolveShowcaseProduct(heroProduct);
-  } catch (err) {
-    console.error("Failed to load homepage products; rendering shells only.", err);
-  }
-
+  // The B2B landing is static copy plus the FAQ: no catalog read. The product
+  // hero/showcase/goal fillers above (applyHeroContext, applyShowcaseContext,
+  // homeGoalsHtml) are no longer called from here; the shopper pages they
+  // served (/shop, /plans, product pages) are unchanged.
   html = applyHomeSeo(html);
-  html = await applyHeroContext(html, heroProduct);
-  html = applyShowcaseContext(html, showcaseProduct);
-  html = applyLandingAssets(html);
-  // Server-rendered rather than fetched: the list is small, it is already in
-  // memory for the header menu on this very request, and rendering it here
-  // means the section occupies its final height in the first paint instead of
-  // growing when a fetch lands. A taxonomy failure leaves the <ul> empty and
-  // CSS hides the section, the same way every other data-driven block here
-  // degrades.
-  try {
-    const trees = await safeGetAllTaxonomyTrees();
-    html = html.replace("<!--HOME_GOALS-->", homeGoalsHtml(trees.find((t) => t.key === "goals")));
-  } catch (err) {
-    console.error("Failed to render homepage goal nav.", err);
-    html = html.replace("<!--HOME_GOALS-->", "");
+  if (process.env.APP_URL) {
+    html = html.replace("<!--HOME_CANONICAL-->", `<link rel="canonical" href="${appUrl("/")}">`);
   }
+  html = html.replace("<!--HERO_PRELOAD-->", "");
+  html = html.replace("<!--HOME_FAQ-->", () => homeFaqHtml());
   res.type("html").send(html);
 });
 

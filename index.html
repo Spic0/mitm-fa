@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title data-brand-title="Workout &amp; Meal Plans from Pro Athletes | {brand}">Workout &amp; Meal Plans from Pro Athletes | Fitness Agency</title>
+    <title data-brand-title="We Build and Run Your Fitness Business | {brand}">We Build and Run Your Fitness Business | Fitness Agency</title>
     <!-- Description, OpenGraph/Twitter and Organization/WebSite JSON-LD.
          Server-injected (see server/src/routes/pages.js -> applyHomeSeo) so
          absolute URLs follow APP_URL. -->
@@ -71,6 +71,9 @@
     <link rel="stylesheet" href="/assets/css/brand-blocks.css">
     <link rel="stylesheet" href="/assets/css/home-dynamic.css">
     <link rel="stylesheet" href="/assets/css/media-container.css">
+    <!-- B2B landing sections, and the scoped (Tailwind, [data-island] only) styles of the islands. -->
+    <link rel="stylesheet" href="/assets/css/landing-b2b.css">
+    <link rel="stylesheet" href="/assets/islands/landing.css">
 </head>
 
 <body>
@@ -126,359 +129,243 @@
     <div class="mouse-cursor cursor-inner"></div>
     <!-- Mouse cursor area end here -->
 
-    <main>
+    <main class="lb">
 
-        <!-- Hero start here.
-             ================================================================
-             Rebuilt for conversion. The previous hero used each product cover
-             as a FULL-BLEED BACKGROUND at blur(22px) brightness(0.55) under a
-             dark scrim, with six stacked text elements over it: a badge, a
-             creator/category meta line, the product name as <h1>, a
-             description, a price and a CTA. Two problems compounded — the
-             product was unrecognisable (that much blur destroys it), and the
-             <h1> was a PRODUCT NAME that swapped every 6 seconds, so the page
-             never actually said what Fitness Agency is.
+        <!-- B2B landing (2026-11). The visitor is a fitness creator considering
+             a partnership, not a shopper. Every word of every section is in
+             this file or filled by the server (FAQ), so the page reads in full
+             without JavaScript. Elements marked data-island are ENHANCED by
+             /assets/islands/landing.js (source: tools/islands) once they are
+             near the viewport; their markup here is also their fallback.
 
-             Now: one fixed brand headline, one supporting line, one CTA, and
-             the products rendered as SHARP CARDS that are the dominant visual.
-             Depth comes from scale and opacity on the neighbouring cards, not
-             from blurring the thing the visitor is meant to look at.
-
-             Still fully dynamic — GET /api/products + GET /api/taxonomy via
-             assets/js/hero-slideshow.js, featured products first, falling back
-             to newest published. Card 0 is server-rendered (applyHeroContext
-             in server/src/routes/pages.js) so a crawler or no-JS visitor gets a
-             real product with a real link, and it doubles as the LCP preload
-             target. The script recognises it by data-hero-id and reuses it
-             rather than re-rendering a duplicate. -->
-        <!-- The hero is pinned while the product showcase slides up over it; the
-             stack ends with the showcase, so the hero then scrolls away under it.
-             See .hero-stack in home-dynamic.css and assets/js/hero-cover.js. -->
+             The hero keeps the cover-on-scroll from bc799f0: .hero-stack holds
+             the sticky hero and the first section, which slides over it as an
+             opaque sheet while the headline sinks and fades. See
+             home-dynamic.css (.hero-stack) and assets/js/hero-cover.js. -->
         <div class="hero-stack">
-        <section class="hero" data-hero-id="">
+        <section class="hero lb-hero">
             <div class="container">
                 <div class="hero__grid">
                     <div class="hero__copy">
-                        <!-- ONE headline, set at ONE display size, broken into
-                             two spans only so the line break is art-directed
-                             rather than left to the measure.
-
-                             What was here before: `.hero__title-lead` set
-                             "Train like" at 13px/0.36em tracking above
-                             "THE ONES YOU FOLLOW" at 68px. That is a small
-                             uppercase tag sitting on a big heading, which is
-                             the decorative-eyebrow pattern this pass exists to
-                             remove — and it also demoted the verb of the
-                             sentence to a caption. Both spans are now the
-                             headline, at the same size and weight.
-
-                             Uppercasing stays in CSS so the DOM text and the
-                             accessible name remain sentence case
-                             ("Train like the ones you follow"). -->
                         <h1 class="hero__title">
-                            <span class="hero__title-line">Train like</span>
-                            <span class="hero__title-line">the ones you follow</span>
+                            <span class="hero__title-line">You create.</span>
+                            <span class="hero__title-line">We build</span>
+                            <span class="hero__title-line">the business.</span>
                         </h1>
-                        <!-- Six words. It names the goods ("training and
-                             nutrition programs") and who they are cut for
-                             ("everyday lifters"), which is the half the
-                             headline cannot carry: without it, "train like the
-                             ones you follow" reads as "for professional
-                             athletes", the opposite of who buys here. It is now
-                             short enough to show on a phone too, where it costs
-                             one line instead of the paragraph that used to be
-                             hidden there. -->
-                        <p class="hero__sub">Training and nutrition programs for everyday lifters.</p>
-                        <!-- TWO actions, and they are not equals.
-                             Primary: buy-path. Secondary: the low-friction
-                             discovery path — /demo opens a real, server-limited
-                             sneak peek of a real paid program.
-
-                             A secondary was previously rejected here because
-                             the only candidate ("Browse by goal") pointed at
-                             /shop, the same destination as the primary, and so
-                             competed for nothing. That objection does not apply
-                             to this one: it goes somewhere else, and it answers
-                             the question the primary cannot ("what is actually
-                             in one of these?") without asking for a commitment.
-
-                             The rank is carried by the components themselves —
-                             .btn-one is the filled sitewide primary, .btn-two
-                             the outlined secondary — not by a bespoke pair. -->
+                        <p class="hero__sub">Plans, apps, coaching and a store, built and run for a share of net profit.</p>
                         <div class="hero__actions">
-                            <a class="btn-one hero__cta" href="/shop">
-                                <span>Explore Programs <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
+                            <a class="btn-one hero__cta" href="https://calendly.com/mitmfitnessagency/30min" target="_blank" rel="noopener">
+                                <span>Book a call <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
                             </a>
-                            <a class="btn-two hero__cta-alt" href="/demo">
-                                <span>See Demo</span>
+                            <a class="btn-two hero__cta-alt" href="/presentation/gfqntswmgzzs89yhy8gs8gn8">
+                                <span>Get the offer</span>
                             </a>
                         </div>
                     </div>
 
-                    <!-- The deck. Card 0 is server-rendered inside; every other
-                         card is appended by hero-slideshow.js, which attaches
-                         image sources only for the cards in view and strips
-                         them again on the way out, so a catalog of 300 featured
-                         products never means 300 hero images. -->
-                    <div class="hero__stage">
-                        <ul class="hero__deck" id="heroDeck">
-                            <li class="hero-card is-active" data-hero-card>
-                                <a class="hero-card__link" href="/shop" data-hero-cta>
-                                    <span class="hero-card__media pmedia" data-hero-media></span>
-                                    <!-- The caption lives INSIDE the card, so the
-                                         name can never be showing one product
-                                         while the plate shows another — they are
-                                         the same element and move together. -->
-                                    <span class="hero-card__info">
-                                        <span class="hero-card__eyebrow" data-hero-eyebrow></span>
-                                        <span class="hero-card__name" data-hero-title></span>
-                                        <span class="hero-card__meta" data-hero-meta></span>
-                                    </span>
-                                </a>
-                            </li>
-                        </ul>
-                        <!-- One hairline per product, filled by hero-slideshow.js.
-                             Decorative: the same products are reachable in the
-                             grids below and through the CTA. -->
-                        <div class="hero__progress" data-hero-progress aria-hidden="true"></div>
+                    <!-- The diagram. Static here (SVG spokes, CSS-placed nodes);
+                         hero-diagram.ts replaces the spokes with a WebGL scene
+                         and animates the same labels. No WebGL, no JS or
+                         reduced motion: this markup, or one still frame. -->
+                    <div class="hero__stage lb-stage">
+                        <div class="lb-diagram">
+                            <div class="lb-diagram__field" data-island="hero-diagram" role="img" aria-label="Diagram: your brand at the centre, connected to eight products we build and run, with profit flowing back to you.">
+                            <svg class="lb-diagram__poster" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                <ellipse cx="50" cy="50" rx="39" ry="31" fill="none" stroke="currentColor" stroke-opacity=".16" stroke-width=".3"/>
+                                <g stroke="currentColor" stroke-opacity=".28" stroke-width=".35">
+                                    <line x1="50" y1="50" x2="50" y2="19"/><line x1="50" y1="50" x2="77.6" y2="28.1"/>
+                                    <line x1="50" y1="50" x2="89" y2="50"/><line x1="50" y1="50" x2="77.6" y2="71.9"/>
+                                    <line x1="50" y1="50" x2="50" y2="81"/><line x1="50" y1="50" x2="22.4" y2="71.9"/>
+                                    <line x1="50" y1="50" x2="11" y2="50"/><line x1="50" y1="50" x2="22.4" y2="28.1"/>
+                                </g>
+                            </svg>
+                            <span class="lb-diagram__core" data-core>Your brand</span>
+                            <ul class="lb-diagram__nodes">
+                                <li data-node><img src="/assets/images/landing-b2b/svc-training-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Training plans</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-nutrition-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Nutrition</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-ebook-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>E-books</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-app-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Membership app</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-coaching-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Coaching</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-store-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Store and merch</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-ads-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Ads and funnels</span></li>
+                                <li data-node><img src="/assets/images/landing-b2b/svc-analytics-sm.webp" width="128" height="128" alt="" decoding="async" fetchpriority="low"><span>Analytics</span></li>
+                            </ul>
+                            </div>
+                            <ol class="lb-diagram__flow" aria-hidden="true">
+                                <li data-flow class="is-on">Your brand</li>
+                                <li data-flow class="is-on">Our system</li>
+                                <li data-flow class="is-on">Products</li>
+                                <li data-flow class="is-on">Profit</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
-        <!-- Hero end here -->
 
-
-
-
-
-        <!-- Product showcase. THE FIRST SECTION AFTER THE HERO.
-             ================================================================
-             Third rebuild (2026-08-26): the spec-table composition is gone,
-             replaced by the product ITSELF — a device mockup whose screen is
-             the real program interface painted with real data, switchable
-             between the phone and laptop experience, plus a way into the
-             real handbook viewer. The customer looks at the product instead
-             of reading about it. There is no feature copy in this section.
-
-             Data: one GET /api/demo — the same server-cut slice the /demo
-             page renders (1 week, 1 day, 2 exercises; the rest of the paid
-             program never leaves the server, see server/src/lib/demo.js).
-             The handbook button lazy-loads assets/js/program-viewer.js — the
-             SAME component a customer reads a purchased program in — and
-             feeds it GET /api/demo/handbook, a viewer-shaped payload cut to
-             the same slice, ending on a locked boundary page.
-
-             If GET /api/demo fails the whole section removes itself rather
-             than showing an empty frame.
-
-             See changelogs/2026-08-19-demo-preview.md for the slice, and
-             changelogs/2026-08-26-product-showcase.md for this section. -->
-        <section class="value-area" id="valueArea" hidden>
+        <!-- 3. What we build. The sheet that slides over the hero. -->
+        <section class="lb-sheet lb-section" id="what-we-build">
             <div class="container">
-                <header class="value__masthead">
-                    <h2 class="value__title">See the program before you buy.</h2>
-                    <p class="value__sub">Workouts, coaching and the handbook, in one place.</p>
+                <header class="lb-head">
+                    <h2 class="value__title lb-h2" data-island="blur-text">What we build for you</h2>
+                    <p class="value__sub">Your method and your audience, turned into products people can buy.</p>
                 </header>
-
-                <div class="dv">
-                    <!-- The product, in the device a customer will actually use it on.
-                         Everything painted inside either screen is real data from
-                         GET /api/demo — the same server-cut slice the /demo page
-                         renders (1 week, 1 day, 2 exercises; the rest of the paid
-                         program never leaves the server). home-dynamic.js builds the
-                         screens; an empty screen means the fetch failed and the whole
-                         section stays hidden. -->
-                    <div class="dv__show">
-                        <div class="dv__toggle" data-dv-toggle>
-                            <button type="button" class="dv__mode is-active" data-dv-mode="phone" aria-pressed="true">Phone</button>
-                            <button type="button" class="dv__mode" data-dv-mode="laptop" aria-pressed="false">Laptop</button>
-                        </div>
-
-                        <div class="dv__stage" data-dv-stage data-mode="phone">
-                            <div class="dv-phone" data-dv-device="phone">
-                                <span class="dv-phone__speaker" aria-hidden="true"></span>
-                                <div class="dv-phone__screen" data-dv-screen="phone"></div>
-                            </div>
-                            <div class="dv-laptop" data-dv-device="laptop" aria-hidden="true">
-                                <div class="dv-laptop__lid">
-                                    <div class="dv-laptop__screen" data-dv-screen="laptop"></div>
-                                </div>
-                                <span class="dv-laptop__base" aria-hidden="true"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Concrete facts only, every one read from the product row —
-                         nothing here is written by hand, so nothing here can drift
-                         from what is actually sold. -->
-                    <div class="dv__info">
-                        <p class="dv__creator" data-dv-creator></p>
-                        <h3 class="dv__name" data-dv-name></h3>
-                        <dl class="dv__facts" data-dv-facts></dl>
-                        <div class="dv__act">
-                            <button type="button" class="btn-one dv__handbook-btn" data-dv-handbook>
-                                <span>Open the handbook <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span>
-                            </button>
-                            <a class="btn-two dv__product-btn" data-dv-product href="/shop">
-                                <span>Get the full program</span>
-                            </a>
-                        </div>
-                        <p class="dv__note">The preview is free. The full program unlocks with purchase.</p>
-                    </div>
+                <div class="lb-loop" data-island="logo-loop">
+                    <ul class="lb-loop__list">
+                        <li>Training plans</li><li>Nutrition guides</li><li>Apps</li><li>Memberships</li><li>E-books</li><li>Online coaching</li><li>Merch</li><li>Stores</li><li>Funnels</li><li>Ads</li><li>Launches</li><li>Support</li><li>Analytics</li>
+                    </ul>
                 </div>
+                <ul class="lb-grid">
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-training.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Training plans</h3><p>Your programs, structured week by week and sold under your name.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-nutrition.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Nutrition guides</h3><p>Meal plans and guides that match the way you coach.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-app.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">App and membership</h3><p>A members area with accounts, access and recurring content.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-ebook.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">E-books</h3><p>Your knowledge, written up, designed and delivered instantly.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-coaching.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Online coaching</h3><p>The system behind coaching: sign-up, onboarding and client access.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-store.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Store and merch</h3><p>A storefront in your brand, with checkout and payments handled.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-ads.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Ads and funnels</h3><p>Launch plans, emails, funnels and campaigns, planned and scheduled.</p></div></li>
+                    <li class="lb-card" data-island="spotlight-card"><div class="lb-card__inner"><img class="lb-card__img" src="/assets/images/landing-b2b/svc-analytics.webp" width="360" height="360" alt="" loading="lazy" decoding="async"><h3 class="lb-card__title">Analytics</h3><p>Sales and audience numbers, reported and used to decide what comes next.</p></div></li>
+                </ul>
             </div>
         </section>
         </div>
-        <!-- Program preview end -->
 
-        <!-- Shop by goal.
-             ================================================================
-             REPLACES the three "promo tile" image cards that used to sit
-             here ("Browse Every Plan" / "New to Training" / "Nutrition &
-             Diet"). Why they went, rather than being restyled:
-
-               * All three linked to the SAME destination, plain /shop. Three
-                 tiles offering one choice is not navigation.
-               * Their goal names were written into the template and matched
-                 nothing in the taxonomy, so they could not filter anything
-                 even in principle.
-               * Each was mostly a `data-landing-slot` image, and those slots
-                 are EMPTY in production (assets/images/landing/ contains only
-                 a README) — so the section rendered as ~1,390px of grey
-                 placeholder with the FA mark in the middle of it. That is a
-                 large part of what read as "unfinished".
-
-             What is here now is the real `goals` taxonomy: the same rows the
-             header's "Shop by Goal" menu is built from, with each goal's real
-             product count, each linking to its real /goal/<slug> listing.
-             Server-rendered from the same helper the nav uses, so it needs no
-             fetch, cannot shift layout, and a goal renamed in Admin ->
-             Navigation is correct here on the next request. A goal with no
-             published products is not listed. -->
-        <section class="goal-nav-area">
+        <!-- 4. How it works. A real ordered list; each step is "owned" by one
+             of the illustrated brand characters (server/docs/brand-characters.md).
+             They are fictional and the note under the list says so. -->
+        <section class="lb-section lb-how" id="how-it-works">
             <div class="container">
-                <div class="goal-nav__head">
-                    <h2>Shop by goal</h2>
-                    <a class="goal-nav__all" href="/shop">All plans <i class="fa-regular fa-arrow-right"
-                            aria-hidden="true"></i></a>
-                </div>
-                <ul class="goal-nav"><!--HOME_GOALS--></ul>
+                <header class="lb-head">
+                    <h2 class="value__title lb-h2" data-island="blur-text">How it works</h2>
+                    <p class="value__sub">Six steps, from the first call to shared profit.</p>
+                </header>
+                <ol class="lb-steps">
+                    <li class="lb-step lb-step--amber"><img class="lb-step__who" src="/assets/images/landing-b2b/char-strategist.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">Book a call</h3><p>Thirty minutes. Tell us about your audience and what you want to sell.</p><span class="lb-step__owner">Maps, The Strategist</span></div></li>
+                    <li class="lb-step lb-step--amber"><img class="lb-step__who" src="/assets/images/landing-b2b/char-strategist.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">Audit and strategy</h3><p>We review the fit, then map the offer, pricing and launch. Terms go in writing before any work starts.</p><span class="lb-step__owner">Maps, The Strategist</span></div></li>
+                    <li class="lb-step lb-step--blue"><img class="lb-step__who" src="/assets/images/landing-b2b/char-builder.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">We build the products</h3><p>Plans, guides, membership, store and checkout, under your name and brand.</p><span class="lb-step__owner">Forge, The Builder</span></div></li>
+                    <li class="lb-step lb-step--violet"><img class="lb-step__who" src="/assets/images/landing-b2b/char-analyst.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">Launch</h3><p>Launches, emails and campaigns, planned and scheduled.</p><span class="lb-step__owner">Scope, The Growth Analyst</span></div></li>
+                    <li class="lb-step lb-step--green"><img class="lb-step__who" src="/assets/images/landing-b2b/char-coachtech.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">We run and optimize</h3><p>Payments, delivery, support and refunds, run by us. The numbers decide what we improve.</p><span class="lb-step__owner">Pulse, The Coach-Tech</span></div></li>
+                    <li class="lb-step lb-step--coral"><img class="lb-step__who" src="/assets/images/landing-b2b/char-creator.webp" width="160" height="160" alt="" loading="lazy" decoding="async"><div class="lb-step__body"><h3 class="lb-step__title">Profit share</h3><p>Net profit is shared as agreed in writing. Then we grow: new products and campaigns.</p><span class="lb-step__owner">Nova, The Creator</span></div></li>
+                </ol>
+                <span class="lb-note">Maps, Forge, Scope, Pulse and Nova are illustrated characters for the roles in our process. They are not real people.</span>
             </div>
         </section>
-        <!-- Shop by goal end -->
 
-        <!-- Product area start here -->
-        <section class="product-area">
+        <!-- 5. What we take off your plate. -->
+        <section class="lb-section lb-plate" id="off-your-plate">
             <div class="container">
-                <div
-                    class="product__wrp pb-30 mb-65 bor-bottom d-flex flex-wrap align-items-center justify-content-xl-between justify-content-center">
-                    <div class="section-header d-flex align-items-center wow fadeInUp" data-wow-delay=".1s">
-                        <!-- The `.title-icon` dot that sat here was a filled
-                             circle in front of the heading. It labels nothing
-                             and marks nothing; it is the template's ornament,
-                             so it is gone. The bootstrap `pt-130 pb-130
-                             mt-130` on the section went with it: 130px top
-                             padding plus a 130px top MARGIN is 260px of gap
-                             above one grid, three times the rhythm every
-                             other section on this page uses. The section now
-                             takes its spacing from .product-area in
-                             home-dynamic.css like its neighbours. -->
-                        <h2>Every plan</h2>
-                    </div>
-                    <!-- Filter labels in Title Case so the accessible name and
-                         DOM text stay readable; the uppercase treatment is CSS
-                         presentation. Was "latest item" / "top ratting" /
-                         "featured products" — lowercase against a Title Case
-                         heading, with "ratting" misspelled.
-
-                         The middle tab is now real: ranked by paid-order volume
-                         via bestsellerRank from GET /api/products. It previously
-                         rendered THE SAME list as Latest, because no rating model
-                         exists. home-products.js hides it when nothing has sold. -->
-                    <ul class="nav nav-pills mt-4 mt-xl-0" id="homeProductTabs">
-                        <li class="nav-item wow fadeInUp" data-wow-delay=".1s">
-                            <a href="#latest-item" data-bs-toggle="tab" class="nav-link px-4 active">
-                                Latest
-                            </a>
-                        </li>
-                        <li class="nav-item wow fadeInUp" data-wow-delay=".2s" data-tab="best-sellers" hidden>
-                            <a href="#best-sellers" data-bs-toggle="tab" class="nav-link px-4 bor-left bor-right">
-                                Best Sellers
-                            </a>
-                        </li>
-                        <li class="nav-item wow fadeInUp" data-wow-delay=".3s">
-                            <a href="#featured-products" data-bs-toggle="tab" class="nav-link ps-4">
-                                Featured
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <div class="tab-content">
-                    <div id="latest-item" class="tab-pane fade show active">
-                        <div class="row g-4" id="homeGridLatest" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
-                    </div>
-                    <div id="best-sellers" class="tab-pane fade">
-                        <div class="row g-4" id="homeGridBestSellers" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
-                    </div>
-                    <div id="featured-products" class="tab-pane fade">
-                        <div class="row g-4" id="homeGridFeatured" data-col-class="col-xxl-3 col-xl-4 col-md-6"><!--skeleton--><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><div class="col-xxl-3 col-xl-4 col-md-6" aria-hidden="true"><div class="product__item product__item--skeleton bor"><div class="product__image product__image--pmedia pt-20 d-block"><div class="pmedia pmedia--skeleton"></div></div><div class="product__content"><div class="skel-line skel-line--title"></div><div class="skel-line skel-line--price"></div></div><div class="product__tap-cta bor-top skel-cta"></div></div></div><!--/skeleton--></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- Product area end here -->
-
-        <!-- Featured plan showcase start here.
-             THIS IS WHERE THE "410x432" GREY BOX CAME FROM: the theme's
-             "get-now-area" carried a Swiper of two 2KB grey PNGs with "410X432"
-             painted into them. Also removed here: a fabricated "20% OFF" claim,
-             a "$79.00 -> $49.00" price matching no product, a rolling 48h
-             countdown that re-armed itself forever, and a duplicate
-             "Latest Plans & Programs" heading. See
-             changelogs/2026-08-11-landing-brand-typography-assets.md.
-
-             What renders now is ONE REAL PRODUCT resolved server-side
-             (applyShowcaseContext in server/src/routes/pages.js). The image can
-             be overridden by dropping assets/images/landing/showcase.* ; the
-             product's own cover is used when that slot is empty. -->
-        <section class="showcase-area" data-showcase-id="">
-            <div class="container">
-                <div class="showcase">
-                    <div class="showcase__media wow fadeInUp" data-wow-delay=".1s">
-                        <div class="landing-slot showcase__slot" data-landing-slot="showcase"
-                            data-landing-alt="Featured Fitness Agency plan"></div>
-                    </div>
-                    <div class="showcase__body wow fadeInUp" data-wow-delay=".2s">
-                        <!-- No "FEATURED PLAN" tag above the title: the
-                             heading here IS a product name, and a label
-                             announcing that a product is being shown is the
-                             decoration this pass removes. -->
-                        <h2 class="showcase__title" data-showcase-title></h2>
-                        <p class="showcase__meta" data-showcase-meta></p>
-                        <p class="showcase__desc" data-showcase-desc></p>
-                        <span class="showcase__price" data-showcase-price></span>
-                        <div class="showcase__cta-row">
-                            <a class="btn-one showcase__cta" href="/shop" data-showcase-cta><span>View Plan</span></a>
-                        </div>
-                        <!-- Structural facts, not marketing claims: a paid
-                             OrderItem grants access immediately and carries no
-                             expiry field (server/prisma/schema.prisma), and
-                             checkout runs through Stripe/PayPal. The theme's
-                             third bullet was "30 Day Refund" — a policy nothing
-                             in the codebase backs, whose own footer link points
-                             at /coming-soon — so it is not repeated. -->
-                        <ul class="showcase__assurances">
-                            <li>Instant download after purchase</li>
-                            <li>Lifetime access, no subscription</li>
-                            <li>Secure Stripe &amp; PayPal checkout</li>
+                <header class="lb-head">
+                    <h2 class="value__title lb-h2" data-island="blur-text">What we take off your plate</h2>
+                    <p class="value__sub">The business runs without you in the back office.</p>
+                </header>
+                <div class="lb-plate__grid">
+                    <div class="lb-plate__us">
+                        <h3 class="lb-plate__label">We handle</h3>
+                        <ul class="lb-check">
+                            <li><img src="/assets/images/landing-b2b/char-strategist.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Offer, pricing and launch strategy</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-builder.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Product production and design</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-builder.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Website, store, checkout and payments</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-analyst.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Funnels, emails and ad campaigns</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-analyst.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Analytics and reporting</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-coachtech.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Accounts, delivery and instant access</span></li>
+                            <li><img src="/assets/images/landing-b2b/char-coachtech.webp" width="44" height="44" alt="" loading="lazy" decoding="async"><span>Customer support, refunds and reconciliation</span></li>
                         </ul>
                     </div>
+                    <div class="lb-plate__you">
+                        <img class="lb-plate__img" src="/assets/images/landing-b2b/creator-filming.webp" width="400" height="500" alt="" loading="lazy" decoding="async">
+                        <div>
+                            <h3 class="lb-plate__label">You</h3>
+                            <ul class="lb-check lb-check--you">
+                                <li><span>Create content</span></li>
+                                <li><span>Be yourself</span></li>
+                            </ul>
+                            <p>You keep the audience, the method and the name on the door.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
-        <!-- Featured plan showcase end here -->
 
+        <!-- 6. Markets. The list is the content; markets-globe.tsx draws the
+             globe over it. -->
+        <section class="lb-section lb-markets" id="markets">
+            <div class="container">
+                <header class="lb-head">
+                    <span class="lb-eyebrow">Where we operate</span>
+                    <h2 class="value__title lb-h2">Building creator businesses across <span data-island="count-up" data-to="4">4</span> markets.</h2>
+                </header>
+                <div class="lb-globe" data-island="markets-globe" data-cta-href="https://calendly.com/mitmfitnessagency/30min" data-cta-label="Book a call">
+                    <ul class="lb-globe__list">
+                        <li data-code="AE" data-lat="25.20" data-lng="55.27" data-flag="/assets/images/landing-b2b/flags/ae.svg"><img src="/assets/images/landing-b2b/flags/ae.svg" width="40" height="40" alt="" loading="lazy" decoding="async"><h3>United Arab Emirates</h3><span class="lb-globe__city">Dubai</span><p>Digital products and stores for creators with an audience in the Emirates.</p></li>
+                        <li data-code="EU" data-lat="50.85" data-lng="4.35" data-flag="/assets/images/landing-b2b/flags/eu.svg"><img src="/assets/images/landing-b2b/flags/eu.svg" width="40" height="40" alt="" loading="lazy" decoding="async"><h3>European Union</h3><span class="lb-globe__city">Brussels</span><p>Digital products and stores for creators with an audience across the EU.</p></li>
+                        <li data-code="US" data-lat="40.71" data-lng="-74.01" data-flag="/assets/images/landing-b2b/flags/us.svg"><img src="/assets/images/landing-b2b/flags/us.svg" width="40" height="40" alt="" loading="lazy" decoding="async"><h3>United States</h3><span class="lb-globe__city">New York</span><p>Digital products and stores for creators with an audience in the United States.</p></li>
+                        <li data-code="CA" data-lat="43.65" data-lng="-79.38" data-flag="/assets/images/landing-b2b/flags/ca.svg"><img src="/assets/images/landing-b2b/flags/ca.svg" width="40" height="40" alt="" loading="lazy" decoding="async"><h3>Canada</h3><span class="lb-globe__city">Toronto</span><p>Our home market. The team is based in Winnipeg.</p></li>
+                    </ul>
+                    <a class="btn-two lb-globe__cta" href="https://calendly.com/mitmfitnessagency/30min" target="_blank" rel="noopener"><span>Book a call</span></a>
+                </div>
+            </div>
+        </section>
 
+        <!-- 7. Revenue share. Only terms the /partnership copy already states
+             (server/src/lib/partnership.js): the band, what it depends on, and
+             the written agreement. No fee, term or payout schedule is claimed. -->
+        <section class="lb-section lb-share" id="revenue-share">
+            <div class="container">
+                <div class="lb-share__grid">
+                    <div>
+                        <h2 class="value__title lb-h2" data-island="blur-text">We earn when you earn</h2>
+                        <div class="lb-share__figure" aria-label="15 to 30 percent of net profit"><span data-island="count-up" data-to="15">15</span>-<span data-island="count-up" data-to="30">30</span>%<span class="lb-share__unit">of net profit</span></div>
+                    </div>
+                    <ul class="lb-terms">
+                        <li><h3>A share, not a retainer</h3><p>We take a revenue share of 15-30% of net profit.</p></li>
+                        <li><h3>Sized to the work</h3><p>Where you land in that range depends on the services you use.</p></li>
+                        <li><h3>In writing first</h3><p>Final terms are confirmed in a written agreement before any work starts.</p></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Who it is for. Criteria, never names. -->
+        <section class="lb-section lb-who" id="who-its-for">
+            <div class="container">
+                <header class="lb-head">
+                    <h2 class="value__title lb-h2" data-island="blur-text">Who it is for</h2>
+                    <p class="value__sub">Fit matters more than audience size.</p>
+                </header>
+                <ul class="lb-who__grid">
+                    <li><h3>Fitness influencers</h3><p>You have an audience that trusts you and asks what you do. You want products worth sending them to.</p></li>
+                    <li><h3>Athletes</h3><p>You have a method that works and little time outside training. You want it packaged and sold properly.</p></li>
+                    <li><h3>Coaches</h3><p>You already coach people one to one. You want a system that reaches more of them without more admin.</p></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 9. FAQ. Server-filled from server/src/lib/landing.js, which also
+             feeds the FAQPage JSON-LD, so the two cannot drift. -->
+        <section class="lb-section lb-faq" id="faq">
+            <div class="container">
+                <header class="lb-head">
+                    <h2 class="value__title lb-h2" data-island="blur-text">Questions, answered</h2>
+                </header>
+                <div class="lb-faq__list"><!--HOME_FAQ--></div>
+            </div>
+        </section>
+
+        <!-- 10. Final call to action. -->
+        <section class="lb-section lb-cta" id="start">
+            <div class="lb-cta__bg" data-island="threads" aria-hidden="true"></div>
+            <div class="container">
+                <div class="lb-cta__box">
+                    <h2 class="value__title lb-h2">Let us build it with you</h2>
+                    <p class="value__sub">Pick a time, or send your offer in five questions.</p>
+                    <div class="lb-cta__actions">
+                        <a class="btn-one" href="https://calendly.com/mitmfitnessagency/30min" target="_blank" rel="noopener"><span>Book a call <i class="fa-regular fa-arrow-right" aria-hidden="true"></i></span></a>
+                        <a class="btn-two" href="/presentation/gfqntswmgzzs89yhy8gs8gn8"><span>Get the business offer</span></a>
+                    </div>
+                    <a class="lb-link" href="/partnership">How partnerships work</a>
+                </div>
+                <div class="lb-plans"><span>Here to train, not to partner?</span> <a class="lb-link" href="/plans">Browse our plans</a></div>
+            </div>
+        </section>
     </main>
 
     <!-- Footer area start here -->
@@ -586,11 +473,9 @@
     <script src="/assets/js/media-container.js" defer></script>
     <script src="/assets/js/script.js" defer></script>
     <script src="/assets/js/branding.js" defer></script>
-    <script src="/assets/js/hero-slideshow.js" defer></script>
     <script src="/assets/js/hero-cover.js" defer></script>
-    <script src="/assets/js/product-card.js" defer></script>
-    <script src="/assets/js/home-products.js" defer></script>
-    <script src="/assets/js/home-dynamic.js" defer></script>
+    <!-- Islands: hero diagram, markets globe, react-bits effects. Built from tools/islands. -->
+    <script type="module" src="/assets/islands/landing.js"></script>
 </body>
 
 </html>

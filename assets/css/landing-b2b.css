@@ -332,6 +332,9 @@
 .lb-globe__city { font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
 .lb-globe__list p { grid-column: 1 / -1; margin-top: 10px; }
 .lb-globe__cta { margin-top: 24px; }
+/* Once the globe island is mounted it lays itself out; the page keeps its own background. */
+.lb-globe--live .lb-globe__cta { margin-top: 0; }
+.lb-globe--live > section { background: transparent; }
 @media (min-width: 768px) {
   .lb-globe__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 }

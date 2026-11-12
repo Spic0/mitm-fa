@@ -1,4 +1,4 @@
-import{r as y,j as O,c as De}from"./client-Bt4lNSbZ.js";const Ce=`#version 300 es
+import{r as y,j as O,c as De}from"./client-DICqjq4F.js";const Ce=`#version 300 es
 precision highp float;
 in vec2 aPoint;
 uniform float uTime;

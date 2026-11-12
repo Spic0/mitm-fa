@@ -16,7 +16,7 @@ const loaders: Record<string, () => Promise<{ mount: Mount }>> = {
   threads: () => import("./islands/threads"),
 };
 
-const WEBGL = new Set(["hero-diagram", "threads"]);
+const WEBGL = new Set(["hero-diagram", "markets-globe", "threads"]);
 
 function boot(el: HTMLElement) {
   const load = loaders[el.dataset.island || ""];

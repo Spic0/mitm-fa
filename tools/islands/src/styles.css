@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn-style theme tokens, mapped onto the site's existing palette
+   (assets/css/style.css :root). Scoped to the islands. */
+[data-island] {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-text-muted);
+  --border: var(--color-border);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-bg);
+  --chart-1: #c08a2e;
+  --chart-2: #3f6c8f;
+  --chart-3: #4f8a63;
+  --chart-4: #7a62a8;
+  --chart-5: #cf6a55;
+}

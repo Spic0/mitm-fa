@@ -259,22 +259,16 @@
 }
 .lb-step:last-child { padding-bottom: 0; }
 .lb-step:last-child::before { display: none; }
+/* The icon: a thin circular frame with an inline line icon inside. */
 .lb-step__icon {
-  position: relative;
-  display: block;
-  width: 72px;
-  height: 72px;
-  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.lb-step__icon img { position: relative; display: block; width: 72px; height: 72px; }
-/* On dark the icon sits on a faint glow so its charcoal parts still read. */
-.lb-dark .lb-step__icon::before {
-  content: "";
-  position: absolute;
-  inset: -14px;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 4px;
+  border: 1px solid var(--color-border);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(242, 240, 235, 0.16), rgba(242, 240, 235, 0) 68%);
-  pointer-events: none;
+  background: var(--color-bg);
 }
 .lb-step__body::before {
   content: "0" counter(lb-step);
@@ -318,7 +312,7 @@
 .lb-check li:nth-child(5) { --i: 4; }
 .lb-check li:nth-child(6) { --i: 5; }
 .lb-check li:nth-child(7) { --i: 6; }
-.lb-check img { flex: 0 0 auto; width: 40px; height: 40px; }
+.lb-check .lb-ico { flex: 0 0 auto; width: 30px; height: 30px; stroke-width: 1.4; }
 .lb-check span { display: block; font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--color-text); }
 .lb-check--you li::before {
   content: "";
@@ -329,8 +323,8 @@
   background: var(--lb-amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M6 11.5l3.2 3.2L16 8' fill='none' stroke='%23fafaf9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .lb-check--you { margin-bottom: 16px !important; }
-.lb-plate__icon { display: grid; place-items: center; padding: 8px 0; }
-.lb-plate__icon img { display: block; width: 100%; max-width: 200px; height: auto; }
+.lb-plate__icon { display: grid; place-items: center; width: 120px; height: 120px; margin: 8px auto; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); }
+.lb-plate__icon .lb-ico { width: 64px; height: 64px; stroke-width: 0.7; }
 @media (min-width: 576px) {
   .lb-plate__you { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr); }
 }
@@ -485,45 +479,128 @@
 .lb-dark .btn-two, .lb-dark .btn-two:hover { background-color: #1e1d1b; color: #f2f0eb; border-color: #2c2a27; }
 .lb-dark .btn-two:hover { background-color: #2c2a27; border-color: #a8a39b; }
 
-/* ---- Icon motion (transform and opacity only) ----
-   main.ts adds .lb-armed (start state, only while still below the fold),
-   .is-in (seen) and .is-off (off-screen, loops pause). Without JS, or with
-   reduced motion, nothing is armed and the icons are simply there. */
-@keyframes lb-float { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
-@media (prefers-reduced-motion: no-preference) {
-  .lb-steps.lb-armed .lb-step { opacity: 0; transform: translateY(18px); }
-  .lb-steps.lb-armed .lb-step::before { transform: scaleY(0); }
-  .lb-steps.lb-armed.is-in .lb-step {
-    opacity: 1;
-    transform: none;
-    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
-    transition-delay: calc(var(--i) * 110ms);
-  }
-  .lb-steps.lb-armed.is-in .lb-step::before {
-    transform: none;
-    transition: transform 0.5s ease;
-    transition-delay: calc(var(--i) * 110ms + 260ms);
-  }
-  .lb-steps.is-in .lb-step__icon img { animation: lb-float 5s ease-in-out infinite; animation-delay: calc(var(--i) * -0.9s); }
-  .lb-steps.is-in .lb-step:nth-child(even) .lb-step__icon img { animation-duration: 5.8s; }
-  .lb-steps.is-in .lb-step:nth-child(3n) .lb-step__icon img { animation-duration: 4.4s; }
-  .lb-steps.is-off .lb-step__icon img, .lb-plate__icon.is-off img { animation-play-state: paused; }
-  .lb-step:hover .lb-step__icon { transform: rotate(-5deg) scale(1.06); }
+/* ---- Line icons (inline SVG in index.html) ----
+   24x24 grid, one stroke weight (about 1.75px at every rendered size, hence
+   the per-size stroke-width), round caps and joins, currentColor, and one
+   amber detail per icon. Some base geometry is adapted from Lucide (ISC, see
+   server/docs/landing-b2b/LUCIDE-LICENSE.txt); the motion is drawn here.
+   .d = a stroke (pathLength 1), .dr = a stroke its loop redraws, .a = accent
+   stroke, .af = the small accent fill, .k-* = the part a loop moves. */
+.lb-ico {
+  display: block;
+  width: 36px;
+  height: 36px;
+  overflow: visible;
+  color: var(--color-text);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lb-ico .a { stroke: var(--lb-amber); }
+.lb-ico .af { fill: var(--lb-amber); stroke: none; }
+.lb-ico .dr { stroke-dasharray: 1; }
+.lb-ico .k-gear { transform-origin: 12px 12px; }
+.lb-ico .k-bar { transform-origin: 9.5px 18px; }
+.lb-ico .k-key { transform-origin: 7.5px 15.5px; }
 
-  .lb-check.lb-armed li img { opacity: 0; transform: scale(0.6); }
-  .lb-check.lb-armed.is-in li img {
+/* Motion: transform, opacity and stroke-dashoffset only. main.ts adds
+   .lb-armed (start state, only while still below the fold), .is-in (seen) and
+   .is-off (off-screen: loops stop), and .lb-tab-hidden on <html>. Without JS,
+   or with reduced motion, nothing is armed: the icons are drawn and still. */
+@keyframes lb-k-wave1{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translateX(-1.5px)}15.4%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-wave1{0%{opacity:1;transform:none}12%{opacity:0;transform:none}13%{opacity:0;transform:translateX(-1.5px)}55%,100%{opacity:1;transform:none}}
+@keyframes lb-k-wave2{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}9.8%{opacity:0;transform:translateX(-1.5px)}22.4%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-wave2{0%{opacity:1;transform:none}12%{opacity:0;transform:none}35%{opacity:0;transform:translateX(-1.5px)}80%,100%{opacity:1;transform:none}}
+@keyframes lb-k-lens{0%{transform:none}11.2%{transform:translate(-7px,2px)}16.8%{transform:translate(-7px,2px)}28%,100%{transform:none}}
+@keyframes lb-h-lens{0%{transform:none}40%{transform:translate(-7px,2px)}60%{transform:translate(-7px,2px)}100%{transform:none}}
+@keyframes lb-k-bar{0%{transform:none}8.4%{transform:scaleY(.45)}21%,28%,100%{transform:none}}
+@keyframes lb-h-bar{0%{transform:none}30%{transform:scaleY(.45)}75%,100%{transform:none}}
+@keyframes lb-k-b1{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}3.08%{opacity:0;transform:translateY(-3px)}9.8%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b1{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateY(-3px)}35%,100%{opacity:1;transform:none}}
+@keyframes lb-k-b2{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}9.8%{opacity:0;transform:translateY(-3px)}16.8%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b2{0%{opacity:1;transform:none}10%{opacity:0;transform:none}35%{opacity:0;transform:translateY(-3px)}60%,100%{opacity:1;transform:none}}
+@keyframes lb-k-b3{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}16.8%{opacity:0;transform:translateY(-5px)}23.8%{opacity:1;transform:translateY(.7px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b3{0%{opacity:1;transform:none}10%{opacity:0;transform:none}60%{opacity:0;transform:translateY(-5px)}85%{opacity:1;transform:translateY(.7px)}100%{opacity:1;transform:none}}
+@keyframes lb-k-rocket{0%{transform:none}12.6%{transform:translateY(-1.8px)}28%,100%{transform:none}}
+@keyframes lb-h-rocket{0%{transform:none}45%{transform:translateY(-1.8px)}100%{transform:none}}
+@keyframes lb-k-trail{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-h-trail{0%{stroke-dashoffset:0}22%{stroke-dashoffset:-1}22.01%{stroke-dashoffset:1}85%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-ecg{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-h-ecg{0%{stroke-dashoffset:0}22%{stroke-dashoffset:-1}22.01%{stroke-dashoffset:1}85%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-curve{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-line{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-play{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-gear{0%{transform:rotate(0deg)}28%,100%{transform:rotate(45deg)}}
+@keyframes lb-h-gear{0%{transform:rotate(0deg)}100%{transform:rotate(45deg)}}
+@keyframes lb-k-slice{0%{transform:none}9.8%{transform:translate(-2.5px,2px)}16.8%{transform:translate(-2.5px,2px)}28%,100%{transform:none}}
+@keyframes lb-h-slice{0%{transform:none}35%{transform:translate(-2.5px,2px)}60%{transform:translate(-2.5px,2px)}100%{transform:none}}
+@keyframes lb-k-arrow{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translate(5px,-5px)}19.6%{opacity:1;transform:none}22.96%{transform:translate(-.6px,.6px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-card{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translateX(5px)}21%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-dot1{0%{opacity:1;transform:none}15.4%{opacity:0;transform:translateY(11px)}15.68%{opacity:0;transform:translateY(-3px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-dot2{0%,7%{opacity:1;transform:none}22.4%{opacity:0;transform:translateY(11px)}22.68%{opacity:0;transform:translateY(-3px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-key{0%{transform:rotate(0deg)}9.8%{transform:rotate(-14deg)}19.6%{transform:rotate(4deg)}28%,100%{transform:rotate(0deg)}}
+@keyframes lb-k-t1{0%{transform:none}5.04%{transform:translateY(-2px)}10.08%,28%,100%{transform:none}}
+@keyframes lb-k-t2{0%,5.04%{transform:none}10.08%{transform:translateY(-2px)}15.12%,28%,100%{transform:none}}
+@keyframes lb-k-t3{0%,10.08%{transform:none}15.12%{transform:translateY(-2px)}20.16%,28%,100%{transform:none}}
+@keyframes lb-k-rec{0%{opacity:1}7%{opacity:.15}14%{opacity:1}21%{opacity:.15}28%,100%{opacity:1}}
+@media (prefers-reduced-motion: no-preference) {
+  .lb-armed .lb-ico .d { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; }
+  .lb-armed .lb-ico .af { opacity: 0; }
+  .lb-armed.is-in .lb-ico .d {
+    stroke-dashoffset: 0;
     opacity: 1;
-    transform: none;
-    transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
-    transition-delay: calc(var(--i) * 70ms);
+    transition: stroke-dashoffset 0.9s ease calc(var(--i, 0) * 120ms), opacity 0.01s linear calc(var(--i, 0) * 120ms);
   }
-  .lb-plate__icon.lb-armed img { opacity: 0; transform: scale(0.8); }
-  .lb-plate__icon.lb-armed.is-in img { opacity: 1; transform: none; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1); }
-  .lb-plate__icon.is-in:not(.lb-armed) img { animation: lb-float 6s ease-in-out infinite; }
+  .lb-armed.is-in .lb-ico .af { opacity: 1; transition: opacity 0.3s ease calc(var(--i, 0) * 120ms + 700ms); }
+  /* The timeline connector draws in step with the icons. */
+  .lb-steps.lb-armed .lb-step::before { transform: scaleY(0); }
+  .lb-steps.lb-armed.is-in .lb-step::before { transform: none; transition: transform 0.6s ease calc(var(--i) * 120ms + 300ms); }
+  /* Each icon's own loop, once per cycle, offset so they never move together. */
+  .lb-steps.is-in:not(.is-off) .k-wave1 { animation: lb-k-wave1 4.6s ease-in-out 1.8s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-wave2 { animation: lb-k-wave2 4.6s ease-in-out 1.8s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-lens { animation: lb-k-lens 5.4s ease-in-out 2.7s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-bar { animation: lb-k-bar 5.4s ease-in-out 2.7s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b1 { animation: lb-k-b1 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b2 { animation: lb-k-b2 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b3 { animation: lb-k-b3 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-rocket { animation: lb-k-rocket 5.8s ease-in-out 4.5s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-trail { animation: lb-k-trail 5.8s ease-in-out 4.5s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-ecg { animation: lb-k-ecg 4.8s ease-in-out 5.4s infinite; }
+  .lb-check.is-in:not(.is-off) .k-curve { animation: lb-k-curve 4.6s ease-in-out 2.35s infinite; }
+  .lb-check.is-in:not(.is-off) .k-line { animation: lb-k-line 5.4s ease-in-out 4.6s infinite; }
+  .lb-plate__icon.is-in:not(.is-off) .k-play { animation: lb-k-play 4.2s ease-in-out 2.2s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-gear { animation: lb-k-gear 4.8s ease-in-out 5.4s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-slice { animation: lb-k-slice 5.6s ease-in-out 6.3s infinite; }
+  .lb-check.is-in:not(.is-off) .k-arrow { animation: lb-k-arrow 5.2s ease-in-out 1.6s infinite; }
+  .lb-check.is-in:not(.is-off) .k-card { animation: lb-k-card 5.8s ease-in-out 3.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-dot1 { animation: lb-k-dot1 4.4s ease-in-out 3.85s infinite; }
+  .lb-check.is-in:not(.is-off) .k-dot2 { animation: lb-k-dot2 4.4s ease-in-out 3.85s infinite; }
+  .lb-check.is-in:not(.is-off) .k-key { animation: lb-k-key 4.8s ease-in-out 5.35s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t1 { animation: lb-k-t1 5s ease-in-out 6.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t2 { animation: lb-k-t2 5s ease-in-out 6.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t3 { animation: lb-k-t3 5s ease-in-out 6.1s infinite; }
+  .lb-plate__icon.is-in:not(.is-off) .k-rec { animation: lb-k-rec 4.2s ease-in-out 2.2s infinite; }
+  /* A step replays its loop on hover or focus. */
+  .lb-step:hover .k-wave1, .lb-step:focus-within .k-wave1 { animation: lb-h-wave1 1.4s ease-in-out 1; }
+  .lb-step:hover .k-wave2, .lb-step:focus-within .k-wave2 { animation: lb-h-wave2 1.4s ease-in-out 1; }
+  .lb-step:hover .k-lens, .lb-step:focus-within .k-lens { animation: lb-h-lens 1.4s ease-in-out 1; }
+  .lb-step:hover .k-bar, .lb-step:focus-within .k-bar { animation: lb-h-bar 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b1, .lb-step:focus-within .k-b1 { animation: lb-h-b1 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b2, .lb-step:focus-within .k-b2 { animation: lb-h-b2 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b3, .lb-step:focus-within .k-b3 { animation: lb-h-b3 1.4s ease-in-out 1; }
+  .lb-step:hover .k-rocket, .lb-step:focus-within .k-rocket { animation: lb-h-rocket 1.4s ease-in-out 1; }
+  .lb-step:hover .k-trail, .lb-step:focus-within .k-trail { animation: lb-h-trail 1.4s ease-in-out 1; }
+  .lb-step:hover .k-ecg, .lb-step:focus-within .k-ecg { animation: lb-h-ecg 1.4s ease-in-out 1; }
+  .lb-step:hover .k-gear, .lb-step:focus-within .k-gear { animation: lb-h-gear 1.4s ease-in-out 1; }
+  .lb-step:hover .k-slice, .lb-step:focus-within .k-slice { animation: lb-h-slice 1.4s ease-in-out 1; }
+  .lb-tab-hidden .lb-ico * { animation-play-state: paused !important; }
 }
 @media (prefers-reduced-motion: no-preference) and (min-width: 992px) {
   .lb-steps.lb-armed .lb-step::before { transform: scaleX(0); }
 }
+
 /* Bootstrap's .border utility is !important and would paint its own light grey
    on the globe's card; keep the island on the section's border token. */
 .lb-globe--live .border { border-color: var(--color-border) !important; }

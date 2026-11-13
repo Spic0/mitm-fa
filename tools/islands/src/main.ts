@@ -50,7 +50,7 @@ function start() {
   nodes.forEach((n) => io.observe(n));
 }
 
-// Scroll reveals for [data-lb-reveal] (icons, timeline rail). CSS does the
+// Scroll reveals for [data-lb-reveal] (line icons, timeline rail). CSS does the
 // motion; this only flags "armed" (hidden start state, set while the block is
 // still below the fold, so nothing visible ever jumps), "is-in" and "is-off"
 // (off-screen: idle loops pause). No JS or reduced motion: nothing is armed.
@@ -70,6 +70,10 @@ function reveals() {
     { rootMargin: "0px 0px -12% 0px" }
   );
   nodes.forEach((n) => io.observe(n));
+  // Icon loops also stop while the tab is in the background.
+  const tab = () => document.documentElement.classList.toggle("lb-tab-hidden", document.hidden);
+  document.addEventListener("visibilitychange", tab);
+  tab();
 }
 
 const idle: (cb: () => void) => void =

@@ -1,0 +1,764 @@
+/* B2B landing (index.html). Loaded after home-dynamic.css, which still owns
+   the hero's headline, sub line, CTAs and the cover-on-scroll.
+
+   TYPOGRAPHY: nothing here introduces a font, a weight or a size that the
+   site did not already have. Headings reuse .value__title and the global
+   h3/h4 scale from style.css (24/600/1.3 and 20/600); body copy is the global
+   <p> (16/1.6) or .value__sub; small text is the 12/13/14px 600 already used
+   by the nav pills, counts and links. Colours are the style.css tokens; the
+   dark reverse sections (.lb-dark) only re-point those tokens. No pure
+   black or white is introduced here. */
+
+.lb {
+  --lb-amber: #c08a2e;
+  --lb-blue: #3f6c8f;
+  --lb-green: #4f8a63;
+  --lb-violet: #7a62a8;
+  --lb-coral: #cf6a55;
+  --lb-radius: 18px;
+  /* The light neighbours, resolved here so a dark section can still paint them. */
+  --lb-light: var(--color-bg);
+  --lb-light-2: var(--color-surface-2);
+}
+.lb ul, .lb ol { list-style: none; margin: 0; padding: 0; }
+.lb h3 { margin: 0; color: var(--color-text); }
+.lb p { color: var(--color-text-muted); }
+
+/* ---- Hero stage: the diagram replaces the product deck ---- */
+.lb-hero .hero__stage.lb-stage {
+  max-width: min(100%, 440px);
+  margin: 0 auto;
+  width: 100%;
+  touch-action: auto;
+}
+.lb-diagram { position: relative; color: var(--color-text); }
+.lb-diagram__field {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  max-height: 38vh;
+  max-height: 38svh;
+  container-type: size;
+}
+.lb-diagram__poster,
+.lb-diagram__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.lb-diagram__poster line,
+.lb-diagram__poster ellipse { vector-effect: non-scaling-stroke; stroke-width: 1px; }
+.lb-diagram__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill, 100px);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 0 0 5px var(--color-bg), 0 0 0 6px var(--lb-amber);
+  transition: opacity 0.4s ease;
+}
+/* Static AND live placement are both transforms from the field's top-left
+   corner (container units for the static one), so handing the labels to
+   hero-diagram.ts moves nothing in layout: no layout shift. */
+.lb-diagram__nodes li {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(calc(var(--x) * 1cqw - 50%), calc(var(--y) * 1cqh - 34%));
+  pointer-events: none;
+}
+.lb-diagram__nodes li:nth-child(1) { --x: 50; --y: 19; }
+.lb-diagram__nodes li:nth-child(2) { --x: 77.6; --y: 28.1; }
+.lb-diagram__nodes li:nth-child(3) { --x: 89; --y: 50; }
+.lb-diagram__nodes li:nth-child(4) { --x: 77.6; --y: 71.9; }
+.lb-diagram__nodes li:nth-child(5) { --x: 50; --y: 81; }
+.lb-diagram__nodes li:nth-child(6) { --x: 22.4; --y: 71.9; }
+.lb-diagram__nodes li:nth-child(7) { --x: 11; --y: 50; }
+.lb-diagram__nodes li:nth-child(8) { --x: 22.4; --y: 28.1; }
+@supports not (width: 1cqw) {
+  .lb-diagram__field:not(.is-live) .lb-diagram__nodes li {
+    left: calc(var(--x) * 1%);
+    top: calc(var(--y) * 1%);
+    transform: translate(-50%, -34%);
+  }
+}
+.lb-diagram__nodes { --lb-node-img: 38px; }
+.lb-diagram__nodes img {
+  width: var(--lb-node-img);
+  height: var(--lb-node-img);
+  border-radius: 11px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.lb-diagram__nodes span {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  max-width: 9ch;
+}
+/* WebGL is running: the canvas draws the spokes, the cards and the core, and
+   hero-diagram.ts positions each label itself. */
+/* The canvas only shows while the scene is live (a lost context falls back
+   to the static diagram under it). */
+.lb-diagram__field:not(.is-live) .lb-diagram__canvas { display: none; }
+/* visibility, not display: the label under each icon must not move in layout. */
+.lb-diagram__field.is-live .lb-diagram__poster { display: none; }
+.lb-diagram__field.is-live .lb-diagram__nodes img { visibility: hidden; }
+.lb-diagram__field.is-live .lb-diagram__nodes li { will-change: transform, opacity; }
+.lb-diagram__field.is-live .lb-diagram__core { transform: translate(-50%, calc(-50% + 16cqh)); box-shadow: none; }
+.lb-diagram__flow {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin-top: 10px !important;
+}
+.lb-diagram__flow li {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text);
+  opacity: 0.38;
+  transition: opacity 0.35s ease;
+}
+.lb-diagram__flow li.is-on { opacity: 1; }
+.lb-diagram__flow li + li::before { content: "\2192"; margin: 0 8px; opacity: 0.5; }
+@media (max-height: 700px) {
+  .lb-diagram__field { max-height: 34svh; }
+}
+@media (min-width: 992px) {
+  .lb-hero .hero__stage.lb-stage { max-width: min(100%, 560px); }
+  .lb-diagram__field { aspect-ratio: 1 / 0.92; max-height: 62svh; }
+  .lb-diagram__nodes { --lb-node-img: 52px; }
+  .lb-diagram__nodes img { border-radius: 14px; }
+  .lb-diagram__nodes span,
+  .lb-diagram__flow li,
+  .lb-diagram__core { font-size: 13px; }
+  .lb-diagram__flow { margin-top: 18px !important; }
+}
+
+/* ---- The first section is the sheet that covers the pinned hero (was
+   .value-area; same rule, see .hero-stack in home-dynamic.css) ---- */
+.hero-stack > .lb-sheet {
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-bg);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -16px 36px rgba(26, 26, 26, 0.07), 0 -1px 0 rgba(26, 26, 26, 0.05);
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+/* ---- Sections ---- */
+.lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; background-color: var(--color-bg); }
+.lb-share { background-color: var(--color-surface-2); }
+.lb-head { margin-bottom: clamp(28px, 4vw, 48px); }
+.lb-head .value__sub { max-width: 46ch; }
+.lb .lb-h2 { max-width: 22ch; }
+.lb-eyebrow { display: block; margin-bottom: 10px; font-size: 14px; font-weight: 600; color: var(--color-text-muted); }
+.lb-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.lb-link:hover { color: var(--color-primary-hover); }
+.lb-note { display: block; margin-top: 28px; font-size: 13px; line-height: 1.5; color: var(--color-text-faint); }
+/* BlurText splits a heading into words; keep them on the heading's own
+   baseline grid and colour (style.css's global span rule would recolour). */
+.lb .lb-blur { color: inherit; }
+.lb .lb-blur span { color: inherit; }
+.lb [data-island="count-up"], .lb [data-island="count-up"] span { color: inherit; }
+
+/* ---- 3. What we build ---- */
+.lb-loop { margin: 0 0 clamp(28px, 4vw, 44px); overflow: hidden; min-height: 24px; }
+.lb-loop__list { display: flex; flex-wrap: nowrap; gap: 44px; white-space: nowrap; overflow: hidden; }
+.lb-loop__list li, .lb .lb-loop .lb-loop__item { font-size: 14px; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
+.lb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.lb-card {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--lb-radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.lb-card .lb-card__spot {
+  height: 100%;
+  padding: 0 !important;
+  border-radius: inherit !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.lb-card__inner { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 14px 14px 18px; }
+/* The illustration box: same 4:3 box the image had, with a faint dot grid. */
+.lb-card__art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  background: radial-gradient(circle, var(--color-border) 1px, rgba(250, 250, 249, 0) 1.5px) 50% 50% / 14px 14px var(--color-bg);
+}
+.lb-card__art .lb-ico { width: 76px; height: 76px; stroke-width: 1.1; }
+.lb-grid { --lb-stagger: 80ms; }
+.lb-card { --i: 0; }
+.lb-card:nth-child(2) { --i: 1; }
+.lb-card:nth-child(3) { --i: 2; }
+.lb-card:nth-child(4) { --i: 3; }
+.lb-card:nth-child(5) { --i: 4; }
+.lb-card:nth-child(6) { --i: 5; }
+.lb-card:nth-child(7) { --i: 6; }
+.lb-card:nth-child(8) { --i: 7; }
+.lb .lb-card__title { font-size: 20px; font-weight: 600; line-height: 1.3; }
+@media (max-width: 479px) {
+  .lb-card__inner p { font-size: 14px; line-height: 1.5; }
+}
+@media (min-width: 768px) {
+  .lb-card__art .lb-ico { width: 132px; height: 132px; stroke-width: 0.64; }
+  .lb-grid { gap: 20px; }
+  .lb-card__inner { padding: 18px 18px 24px; }
+}
+@media (min-width: 992px) {
+  .lb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---- 4. How it works: a timeline ---- */
+.lb-steps { counter-reset: lb-step; position: relative; display: grid; gap: 0; }
+.lb-step {
+  --lb-accent: var(--lb-amber);
+  --i: 0;
+  counter-increment: lb-step;
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 18px;
+  padding-bottom: 32px;
+}
+.lb-step:nth-child(2) { --i: 1; }
+.lb-step:nth-child(3) { --i: 2; }
+.lb-step:nth-child(4) { --i: 3; }
+.lb-step:nth-child(5) { --i: 4; }
+.lb-step:nth-child(6) { --i: 5; }
+/* The rail. */
+.lb-step::before {
+  content: "";
+  position: absolute;
+  left: 35px;
+  top: 80px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--color-border);
+  transform-origin: 50% 0;
+}
+.lb-step:last-child { padding-bottom: 0; }
+.lb-step:last-child::before { display: none; }
+/* The icon: a thin circular frame with an inline line icon inside. */
+.lb-step__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+}
+.lb-step__body::before {
+  content: "0" counter(lb-step);
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--lb-accent);
+  margin-bottom: 4px;
+}
+.lb .lb-step__title { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
+@media (min-width: 992px) {
+  .lb-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 32px; }
+  .lb-step { grid-template-columns: 1fr; gap: 16px; padding-bottom: 0; align-content: start; }
+  .lb-step::before { left: 92px; right: -20px; top: 35px; bottom: auto; width: auto; height: 2px; transform-origin: 0 50%; }
+  .lb-step:nth-child(3n)::before { right: 0; }
+  .lb-step:last-child::before { display: block; right: auto; width: 0; }
+}
+@media (min-width: 1400px) {
+  .lb-steps { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px; }
+  .lb-step::before, .lb-step:nth-child(3n)::before { right: -12px; }
+  .lb-step:last-child::before { display: none; }
+}
+
+/* ---- 5. Off your plate ---- */
+.lb-plate__grid { display: grid; gap: 16px; }
+.lb-plate__us, .lb-plate__you {
+  border: 1px solid var(--color-border);
+  border-radius: var(--lb-radius);
+  background: var(--color-surface);
+  padding: clamp(20px, 3vw, 36px);
+}
+.lb-plate__you { background: var(--color-surface-2); display: grid; gap: 20px; align-items: center; }
+.lb .lb-plate__label { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 16px; }
+.lb-check li { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--color-border); }
+.lb-check li:first-child { border-top: 0; }
+.lb-check li { --i: 0; }
+.lb-check li:nth-child(2) { --i: 1; }
+.lb-check li:nth-child(3) { --i: 2; }
+.lb-check li:nth-child(4) { --i: 3; }
+.lb-check li:nth-child(5) { --i: 4; }
+.lb-check li:nth-child(6) { --i: 5; }
+.lb-check li:nth-child(7) { --i: 6; }
+.lb-check .lb-ico { flex: 0 0 auto; width: 30px; height: 30px; stroke-width: 1.4; }
+.lb-check span { display: block; font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--color-text); }
+.lb-check--you li::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--lb-amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M6 11.5l3.2 3.2L16 8' fill='none' stroke='%23fafaf9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.lb-check--you { margin-bottom: 16px !important; }
+.lb-plate__icon { display: grid; place-items: center; width: 120px; height: 120px; margin: 8px auto; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); }
+.lb-plate__icon .lb-ico { width: 64px; height: 64px; stroke-width: 0.7; }
+@media (min-width: 576px) {
+  .lb-plate__you { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr); }
+}
+@media (min-width: 992px) {
+  .lb-plate__grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 24px; }
+}
+
+/* ---- 6. Markets (the list is the fallback and the no-JS content) ---- */
+.lb-globe__list { display: grid; gap: 12px; }
+.lb-globe__list li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--lb-radius);
+  background: var(--color-surface);
+  padding: 18px;
+}
+.lb-globe__list img { grid-row: 1 / span 2; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--color-border); }
+.lb .lb-globe__list h3 { font-size: 20px; font-weight: 600; line-height: 1.3; }
+.lb-globe__city { font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
+.lb-globe__list p { grid-column: 1 / -1; margin-top: 10px; }
+.lb-globe__cta { margin-top: 24px; }
+/* Once the globe island is mounted it lays itself out; the page keeps its own background. */
+.lb-globe--live .lb-globe__cta { margin-top: 0; }
+.lb-globe--live > section { background: transparent; }
+@media (min-width: 768px) {
+  .lb-globe__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+}
+@media (min-width: 1200px) {
+  .lb-globe__list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---- 7. Revenue share ---- */
+.lb-share__grid { display: grid; gap: 32px; align-items: center; }
+/* The figure is set in the hero headline's own scale (home-dynamic.css). */
+.lb-share__figure {
+  margin-top: 24px;
+  font-size: clamp(35px, 11.2vw, 68px);
+  font-weight: 800;
+  letter-spacing: -0.042em;
+  line-height: 0.92;
+  color: var(--color-text);
+}
+.lb-share__unit { display: block; margin-top: 12px; font-size: 14px; font-weight: 600; letter-spacing: 0; line-height: 1.3; color: var(--color-text-muted); }
+.lb-terms li { padding: 20px 0; border-top: 1px solid var(--color-border); }
+.lb-terms li:last-child { border-bottom: 1px solid var(--color-border); }
+.lb .lb-terms h3, .lb .lb-who__grid h3 { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
+@media (min-width: 992px) {
+  .lb-share__grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 64px; }
+}
+
+/* ---- 8. Who it is for ---- */
+.lb-who__grid { display: grid; gap: 12px; }
+.lb-who__grid li {
+  border: 1px solid var(--color-border);
+  border-radius: var(--lb-radius);
+  background: var(--color-surface);
+  padding: clamp(20px, 2.6vw, 30px);
+}
+@media (min-width: 768px) {
+  .lb-who__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+}
+
+/* ---- 9. FAQ ---- */
+.lb-faq__list { max-width: 820px; border-top: 1px solid var(--color-border); }
+.lb-faq__item { border-bottom: 1px solid var(--color-border); }
+.lb-faq__item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.lb-faq__item summary::-webkit-details-marker { display: none; }
+.lb .lb-faq__item h3 { font-size: 20px; font-weight: 600; line-height: 1.3; }
+.lb-faq__item summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid var(--color-text);
+  border-bottom: 2px solid var(--color-text);
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform 0.2s ease;
+}
+.lb-faq__item[open] summary::after { transform: translateY(3px) rotate(-135deg); }
+.lb-faq__item p { padding: 0 28px 20px 0; max-width: 64ch; }
+.lb-faq__item summary:focus-visible { outline: 2px solid var(--color-text); outline-offset: 4px; }
+
+/* ---- 10. Final call to action ---- */
+.lb-cta { overflow: hidden; }
+.lb-cta__bg { position: absolute; inset: 0; pointer-events: none; opacity: 0.55; }
+.lb-cta__bg .lb-threads { width: 100%; height: 100%; }
+.lb-cta .container { position: relative; }
+.lb-cta__box { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+.lb .lb-cta__box .lb-h2 { max-width: 18ch; }
+.lb-cta__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 14px 0 6px; }
+.lb-plans { margin-top: clamp(40px, 6vw, 72px); padding-top: 20px; border-top: 1px solid var(--color-border); text-align: center; }
+.lb-plans span { font-size: 14px; font-weight: 500; color: var(--color-text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-diagram__core, .lb-diagram__flow li, .lb-faq__item summary::after { transition: none; }
+}
+
+/* ---- Hero fills the first screen ----
+   The sheet's top edge still peeks in (40px) as the scroll cue, but its
+   heading starts below the fold, so the largest text painted in the first
+   viewport, and therefore the LCP element, is the <h1>. */
+.lb-hero { display: flex; align-items: center; min-height: calc(100vh - 40px); min-height: calc(100svh - 40px); }
+.lb-hero > .container { width: 100%; }
+
+/* ---- Dark reverse sections: How it works, Markets, Final CTA ----
+   The section itself keeps its light neighbours' colour and paints the dark
+   panel as a rounded ::before, the same 24px cut as the sheet over the hero.
+   Inside, the style.css colour tokens are re-pointed, so every rule above
+   (and the islands, which read the same tokens) follows without new type. */
+.lb-dark {
+  --color-bg: #141414;
+  --color-surface: #1e1d1b;
+  --color-surface-2: #1e1d1b;
+  --color-text: #f2f0eb;
+  --color-text-muted: #a8a39b;
+  --color-text-faint: #a8a39b;
+  --color-border: #2c2a27;
+  --color-primary: #f2f0eb;
+  --color-primary-hover: #dcd9d2;
+  isolation: isolate;
+  background-color: var(--lb-light);
+  color: var(--color-text);
+}
+.lb-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px;
+  background: #141414;
+}
+.lb-markets.lb-dark { background: linear-gradient(to bottom, var(--lb-light) 50%, var(--lb-light-2) 50%); }
+.lb-cta.lb-dark::before { border-radius: 24px 24px 0 0; }
+.lb-cta.lb-dark .lb-cta__bg { z-index: -1; border-radius: 24px 24px 0 0; overflow: hidden; }
+/* style.css colours every <span>; in a dark panel it must follow its parent. */
+:where(.lb-dark) span { color: inherit; }
+.lb-dark .value__title { color: var(--color-text); }
+.lb-dark .value__sub, .lb-dark p { color: var(--color-text-muted); }
+.lb-dark .btn-one, .lb-dark .btn-one:hover { background-color: #f2f0eb; color: #141414; border-color: transparent; }
+.lb-dark .btn-one:hover { background-color: #dcd9d2; }
+.lb-dark .btn-two, .lb-dark .btn-two:hover { background-color: #1e1d1b; color: #f2f0eb; border-color: #2c2a27; }
+.lb-dark .btn-two:hover { background-color: #2c2a27; border-color: #a8a39b; }
+
+/* ---- Line icons (inline SVG in index.html) ----
+   24x24 grid, one stroke weight (about 1.75px at every rendered size, hence
+   the per-size stroke-width), round caps and joins, currentColor, and one
+   amber detail per icon. Some base geometry is adapted from Lucide (ISC, see
+   server/docs/landing-b2b/LUCIDE-LICENSE.txt); the motion is drawn here.
+   .d = a stroke (pathLength 1), .dr = a stroke its loop redraws, .a = accent
+   stroke, .af = the small accent fill, .k-* = the part a loop moves. */
+.lb-ico {
+  display: block;
+  width: 36px;
+  height: 36px;
+  overflow: visible;
+  color: var(--color-text);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lb-ico .a { stroke: var(--lb-amber); }
+.lb-ico .af { fill: var(--lb-amber); stroke: none; }
+.lb-ico .dr { stroke-dasharray: 1; }
+.lb-ico .k-gear { transform-origin: 12px 12px; }
+.lb-ico .k-bar { transform-origin: 9.5px 18px; }
+.lb-ico .k-key { transform-origin: 7.5px 15.5px; }
+
+/* Motion: transform, opacity and stroke-dashoffset only. main.ts adds
+   .lb-armed (start state, only while still below the fold), .is-in (seen) and
+   .is-off (off-screen: loops stop), and .lb-tab-hidden on <html>. Without JS,
+   or with reduced motion, nothing is armed: the icons are drawn and still. */
+@keyframes lb-k-wave1{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translateX(-1.5px)}15.4%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-wave1{0%{opacity:1;transform:none}12%{opacity:0;transform:none}13%{opacity:0;transform:translateX(-1.5px)}55%,100%{opacity:1;transform:none}}
+@keyframes lb-k-wave2{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}9.8%{opacity:0;transform:translateX(-1.5px)}22.4%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-wave2{0%{opacity:1;transform:none}12%{opacity:0;transform:none}35%{opacity:0;transform:translateX(-1.5px)}80%,100%{opacity:1;transform:none}}
+@keyframes lb-k-lens{0%{transform:none}11.2%{transform:translate(-7px,2px)}16.8%{transform:translate(-7px,2px)}28%,100%{transform:none}}
+@keyframes lb-h-lens{0%{transform:none}40%{transform:translate(-7px,2px)}60%{transform:translate(-7px,2px)}100%{transform:none}}
+@keyframes lb-k-bar{0%{transform:none}8.4%{transform:scaleY(.45)}21%,28%,100%{transform:none}}
+@keyframes lb-h-bar{0%{transform:none}30%{transform:scaleY(.45)}75%,100%{transform:none}}
+@keyframes lb-k-b1{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}3.08%{opacity:0;transform:translateY(-3px)}9.8%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b1{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateY(-3px)}35%,100%{opacity:1;transform:none}}
+@keyframes lb-k-b2{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}9.8%{opacity:0;transform:translateY(-3px)}16.8%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b2{0%{opacity:1;transform:none}10%{opacity:0;transform:none}35%{opacity:0;transform:translateY(-3px)}60%,100%{opacity:1;transform:none}}
+@keyframes lb-k-b3{0%{opacity:1;transform:none}2.8%{opacity:0;transform:none}16.8%{opacity:0;transform:translateY(-5px)}23.8%{opacity:1;transform:translateY(.7px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-h-b3{0%{opacity:1;transform:none}10%{opacity:0;transform:none}60%{opacity:0;transform:translateY(-5px)}85%{opacity:1;transform:translateY(.7px)}100%{opacity:1;transform:none}}
+@keyframes lb-k-rocket{0%{transform:none}12.6%{transform:translateY(-1.8px)}28%,100%{transform:none}}
+@keyframes lb-h-rocket{0%{transform:none}45%{transform:translateY(-1.8px)}100%{transform:none}}
+@keyframes lb-k-trail{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-h-trail{0%{stroke-dashoffset:0}22%{stroke-dashoffset:-1}22.01%{stroke-dashoffset:1}85%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-ecg{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-h-ecg{0%{stroke-dashoffset:0}22%{stroke-dashoffset:-1}22.01%{stroke-dashoffset:1}85%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-curve{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-line{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-play{0%{stroke-dashoffset:0}6.16%{stroke-dashoffset:-1}6.163%{stroke-dashoffset:1}23.8%,28%,100%{stroke-dashoffset:0}}
+@keyframes lb-k-gear{0%{transform:rotate(0deg)}28%,100%{transform:rotate(45deg)}}
+@keyframes lb-h-gear{0%{transform:rotate(0deg)}100%{transform:rotate(45deg)}}
+@keyframes lb-k-slice{0%{transform:none}9.8%{transform:translate(-2.5px,2px)}16.8%{transform:translate(-2.5px,2px)}28%,100%{transform:none}}
+@keyframes lb-h-slice{0%{transform:none}35%{transform:translate(-2.5px,2px)}60%{transform:translate(-2.5px,2px)}100%{transform:none}}
+@keyframes lb-k-arrow{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translate(5px,-5px)}19.6%{opacity:1;transform:none}22.96%{transform:translate(-.6px,.6px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-card{0%{opacity:1;transform:none}3.36%{opacity:0;transform:none}3.64%{opacity:0;transform:translateX(5px)}21%,28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-dot1{0%{opacity:1;transform:none}15.4%{opacity:0;transform:translateY(11px)}15.68%{opacity:0;transform:translateY(-3px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-dot2{0%,7%{opacity:1;transform:none}22.4%{opacity:0;transform:translateY(11px)}22.68%{opacity:0;transform:translateY(-3px)}28%,100%{opacity:1;transform:none}}
+@keyframes lb-k-key{0%{transform:rotate(0deg)}9.8%{transform:rotate(-14deg)}19.6%{transform:rotate(4deg)}28%,100%{transform:rotate(0deg)}}
+@keyframes lb-k-t1{0%{transform:none}5.04%{transform:translateY(-2px)}10.08%,28%,100%{transform:none}}
+@keyframes lb-k-t2{0%,5.04%{transform:none}10.08%{transform:translateY(-2px)}15.12%,28%,100%{transform:none}}
+@keyframes lb-k-t3{0%,10.08%{transform:none}15.12%{transform:translateY(-2px)}20.16%,28%,100%{transform:none}}
+@keyframes lb-k-rec{0%{opacity:1}7%{opacity:.15}14%{opacity:1}21%{opacity:.15}28%,100%{opacity:1}}
+@media (prefers-reduced-motion: no-preference) {
+  .lb-armed .lb-ico .d { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; }
+  .lb-armed .lb-ico .af { opacity: 0; }
+  .lb-armed.is-in .lb-ico .d {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transition: stroke-dashoffset 0.9s ease calc(var(--i, 0) * var(--lb-stagger, 120ms)), opacity 0.01s linear calc(var(--i, 0) * var(--lb-stagger, 120ms));
+  }
+  .lb-armed.is-in .lb-ico .af { opacity: 1; transition: opacity 0.3s ease calc(var(--i, 0) * var(--lb-stagger, 120ms) + 700ms); }
+  /* The timeline connector draws in step with the icons. */
+  .lb-steps.lb-armed .lb-step::before { transform: scaleY(0); }
+  .lb-steps.lb-armed.is-in .lb-step::before { transform: none; transition: transform 0.6s ease calc(var(--i) * 120ms + 300ms); }
+  /* Each icon's own loop, once per cycle, offset so they never move together. */
+  .lb-steps.is-in:not(.is-off) .k-wave1 { animation: lb-k-wave1 4.6s ease-in-out 1.8s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-wave2 { animation: lb-k-wave2 4.6s ease-in-out 1.8s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-lens { animation: lb-k-lens 5.4s ease-in-out 2.7s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-bar { animation: lb-k-bar 5.4s ease-in-out 2.7s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b1 { animation: lb-k-b1 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b2 { animation: lb-k-b2 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-b3 { animation: lb-k-b3 5s ease-in-out 3.6s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-rocket { animation: lb-k-rocket 5.8s ease-in-out 4.5s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-trail { animation: lb-k-trail 5.8s ease-in-out 4.5s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-ecg { animation: lb-k-ecg 4.8s ease-in-out 5.4s infinite; }
+  .lb-check.is-in:not(.is-off) .k-curve { animation: lb-k-curve 4.6s ease-in-out 2.35s infinite; }
+  .lb-check.is-in:not(.is-off) .k-line { animation: lb-k-line 5.4s ease-in-out 4.6s infinite; }
+  .lb-plate__icon.is-in:not(.is-off) .k-play { animation: lb-k-play 4.2s ease-in-out 2.2s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-gear { animation: lb-k-gear 4.8s ease-in-out 5.4s infinite; }
+  .lb-steps.is-in:not(.is-off) .k-slice { animation: lb-k-slice 5.6s ease-in-out 6.3s infinite; }
+  .lb-check.is-in:not(.is-off) .k-arrow { animation: lb-k-arrow 5.2s ease-in-out 1.6s infinite; }
+  .lb-check.is-in:not(.is-off) .k-card { animation: lb-k-card 5.8s ease-in-out 3.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-dot1 { animation: lb-k-dot1 4.4s ease-in-out 3.85s infinite; }
+  .lb-check.is-in:not(.is-off) .k-dot2 { animation: lb-k-dot2 4.4s ease-in-out 3.85s infinite; }
+  .lb-check.is-in:not(.is-off) .k-key { animation: lb-k-key 4.8s ease-in-out 5.35s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t1 { animation: lb-k-t1 5s ease-in-out 6.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t2 { animation: lb-k-t2 5s ease-in-out 6.1s infinite; }
+  .lb-check.is-in:not(.is-off) .k-t3 { animation: lb-k-t3 5s ease-in-out 6.1s infinite; }
+  .lb-plate__icon.is-in:not(.is-off) .k-rec { animation: lb-k-rec 4.2s ease-in-out 2.2s infinite; }
+  /* A step replays its loop on hover or focus. */
+  .lb-step:hover .k-wave1, .lb-step:focus-within .k-wave1 { animation: lb-h-wave1 1.4s ease-in-out 1; }
+  .lb-step:hover .k-wave2, .lb-step:focus-within .k-wave2 { animation: lb-h-wave2 1.4s ease-in-out 1; }
+  .lb-step:hover .k-lens, .lb-step:focus-within .k-lens { animation: lb-h-lens 1.4s ease-in-out 1; }
+  .lb-step:hover .k-bar, .lb-step:focus-within .k-bar { animation: lb-h-bar 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b1, .lb-step:focus-within .k-b1 { animation: lb-h-b1 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b2, .lb-step:focus-within .k-b2 { animation: lb-h-b2 1.4s ease-in-out 1; }
+  .lb-step:hover .k-b3, .lb-step:focus-within .k-b3 { animation: lb-h-b3 1.4s ease-in-out 1; }
+  .lb-step:hover .k-rocket, .lb-step:focus-within .k-rocket { animation: lb-h-rocket 1.4s ease-in-out 1; }
+  .lb-step:hover .k-trail, .lb-step:focus-within .k-trail { animation: lb-h-trail 1.4s ease-in-out 1; }
+  .lb-step:hover .k-ecg, .lb-step:focus-within .k-ecg { animation: lb-h-ecg 1.4s ease-in-out 1; }
+  .lb-step:hover .k-gear, .lb-step:focus-within .k-gear { animation: lb-h-gear 1.4s ease-in-out 1; }
+  .lb-step:hover .k-slice, .lb-step:focus-within .k-slice { animation: lb-h-slice 1.4s ease-in-out 1; }
+  .lb-tab-hidden .lb-ico * { animation-play-state: paused !important; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 992px) {
+  .lb-steps.lb-armed .lb-step::before { transform: scaleX(0); }
+}
+
+/* Bootstrap's .border utility is !important and would paint its own light grey
+   on the globe's card; keep the island on the section's border token. */
+.lb-globe--live .border { border-color: var(--color-border) !important; }
+
+/* ---- Product card illustrations: the same line-icon system on a 48 grid ----
+   Loops squeeze each motion into the first 30% of a 5-7s cycle; the lb-ch-*
+   copies are the same motion played once on hover (fine pointers only). */
+.lb-ico .k-db { transform-origin: 39.5px 35px; }
+.lb-ico .k-fork { transform-origin: 43.5px 22px; }
+.lb-ico .k-shackle { transform-origin: 26.5px 17px; }
+.lb-ico .k-page { transform-origin: 24px 25px; }
+.lb-ico .k-chat { transform-origin: 28px 21px; }
+.lb-ico .k-tag { transform-origin: 38px 31.5px; }
+.lb-ico .k-pt { transform-origin: 40px 12px; }
+@keyframes lb-c-c1{0%{stroke-dashoffset:0}2.1%{stroke-dashoffset:-1}2.103%{stroke-dashoffset:1}3%{stroke-dashoffset:1}9%,30%,100%{stroke-dashoffset:0}}
+@keyframes lb-ch-c1{0%{stroke-dashoffset:0}7%{stroke-dashoffset:-1}7.01%{stroke-dashoffset:1}10%{stroke-dashoffset:1}30%,100%{stroke-dashoffset:0}}
+@keyframes lb-c-c2{0%{stroke-dashoffset:0}2.1%{stroke-dashoffset:-1}2.103%{stroke-dashoffset:1}9%{stroke-dashoffset:1}15%,30%,100%{stroke-dashoffset:0}}
+@keyframes lb-ch-c2{0%{stroke-dashoffset:0}7%{stroke-dashoffset:-1}7.01%{stroke-dashoffset:1}30%{stroke-dashoffset:1}50%,100%{stroke-dashoffset:0}}
+@keyframes lb-c-c3{0%{stroke-dashoffset:0}2.1%{stroke-dashoffset:-1}2.103%{stroke-dashoffset:1}15%{stroke-dashoffset:1}21%,30%,100%{stroke-dashoffset:0}}
+@keyframes lb-ch-c3{0%{stroke-dashoffset:0}7%{stroke-dashoffset:-1}7.01%{stroke-dashoffset:1}50%{stroke-dashoffset:1}70%,100%{stroke-dashoffset:0}}
+@keyframes lb-c-db{0%,21%{transform:none}24.6%{transform:rotate(-10deg)}30%,100%{transform:none}}
+@keyframes lb-ch-db{0%,70%{transform:none}82%{transform:rotate(-10deg)}100%{transform:none}}
+@keyframes lb-c-s1{0%{opacity:1;transform:none}3%{opacity:0;transform:none}3.3%{opacity:0;transform:translateY(2.5px)}13.5%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-s1{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateY(2.5px)}45%,100%{opacity:1;transform:none}}
+@keyframes lb-c-s2{0%{opacity:1;transform:none}3%{opacity:0;transform:none}3.3%{opacity:0;transform:translateY(2.5px)}18%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-s2{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateY(2.5px)}60%,100%{opacity:1;transform:none}}
+@keyframes lb-c-s3{0%{opacity:1;transform:none}3%{opacity:0;transform:none}3.3%{opacity:0;transform:translateY(2.5px)}22.5%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-s3{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateY(2.5px)}75%,100%{opacity:1;transform:none}}
+@keyframes lb-c-fork{0%{transform:none}5.4%{transform:rotate(20deg)}16.5%{transform:rotate(20deg)}25.5%,30%,100%{transform:none}}
+@keyframes lb-ch-fork{0%{transform:none}18%{transform:rotate(20deg)}55%{transform:rotate(20deg)}85%,100%{transform:none}}
+@keyframes lb-c-shackle{0%{transform:none}6%{transform:rotate(22deg)}21.6%{transform:rotate(22deg)}27%,30%,100%{transform:none}}
+@keyframes lb-ch-shackle{0%{transform:none}20%{transform:rotate(22deg)}72%{transform:rotate(22deg)}90%,100%{transform:none}}
+@keyframes lb-c-r1{0%{opacity:1;transform:none}3%{opacity:0;transform:none}6.6%{opacity:0;transform:translateX(-4px)}13.5%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-r1{0%{opacity:1;transform:none}10%{opacity:0;transform:none}22%{opacity:0;transform:translateX(-4px)}45%,100%{opacity:1;transform:none}}
+@keyframes lb-c-r2{0%{opacity:1;transform:none}3%{opacity:0;transform:none}10.2%{opacity:0;transform:translateX(-4px)}17.1%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-r2{0%{opacity:1;transform:none}10%{opacity:0;transform:none}34%{opacity:0;transform:translateX(-4px)}57%,100%{opacity:1;transform:none}}
+@keyframes lb-c-r3{0%{opacity:1;transform:none}3%{opacity:0;transform:none}13.8%{opacity:0;transform:translateX(-4px)}20.7%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-r3{0%{opacity:1;transform:none}10%{opacity:0;transform:none}46%{opacity:0;transform:translateX(-4px)}69%,100%{opacity:1;transform:none}}
+@keyframes lb-c-page{0%{opacity:0;transform:scaleX(1)}1.8%{opacity:1;transform:scaleX(1)}16.5%{opacity:1;transform:scaleX(-1)}19.8%{opacity:0;transform:scaleX(-1)}19.803%{opacity:0;transform:scaleX(1)}30%,100%{opacity:1;transform:scaleX(1)}}
+@keyframes lb-ch-page{0%{opacity:0;transform:scaleX(1)}6%{opacity:1;transform:scaleX(1)}55%{opacity:1;transform:scaleX(-1)}66%{opacity:0;transform:scaleX(-1)}66.01%{opacity:0;transform:scaleX(1)}100%{opacity:1;transform:scaleX(1)}}
+@keyframes lb-c-dl{0%{opacity:1;transform:none}3%{opacity:0;transform:none}13.5%{opacity:0;transform:translateY(-5px)}24%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-dl{0%{opacity:1;transform:none}10%{opacity:0;transform:none}45%{opacity:0;transform:translateY(-5px)}80%,100%{opacity:1;transform:none}}
+@keyframes lb-c-chat{0%{opacity:1;transform:none}3%{opacity:0;transform:scale(.5)}9%{opacity:0;transform:scale(.5)}16.5%{opacity:1;transform:scale(1.08)}19.8%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-chat{0%{opacity:1;transform:none}10%{opacity:0;transform:scale(.5)}30%{opacity:0;transform:scale(.5)}55%{opacity:1;transform:scale(1.08)}66%,100%{opacity:1;transform:none}}
+@keyframes lb-c-ring{0%{stroke-dashoffset:0}2.1%{stroke-dashoffset:-1}2.103%{stroke-dashoffset:1}4.5%{stroke-dashoffset:1}27%,30%,100%{stroke-dashoffset:0}}
+@keyframes lb-ch-ring{0%{stroke-dashoffset:0}7%{stroke-dashoffset:-1}7.01%{stroke-dashoffset:1}15%{stroke-dashoffset:1}90%,100%{stroke-dashoffset:0}}
+@keyframes lb-c-tee{0%{opacity:1;transform:none}11.4%{opacity:0;transform:translateY(11px)}11.7%{opacity:0;transform:translateY(-4px)}21.6%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-tee{0%{opacity:1;transform:none}38%{opacity:0;transform:translateY(11px)}39%{opacity:0;transform:translateY(-4px)}72%,100%{opacity:1;transform:none}}
+@keyframes lb-c-tag{0%{transform:none}7.5%{transform:rotate(14deg)}15%{transform:rotate(-10deg)}22.5%{transform:rotate(5deg)}30%,100%{transform:none}}
+@keyframes lb-ch-tag{0%{transform:none}25%{transform:rotate(14deg)}50%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:none}}
+@keyframes lb-c-m1{0%{opacity:1;transform:none}3%{opacity:0;transform:none}3.3%{opacity:0;transform:translateX(-2px)}12%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-m1{0%{opacity:1;transform:none}10%{opacity:0;transform:none}11%{opacity:0;transform:translateX(-2px)}40%,100%{opacity:1;transform:none}}
+@keyframes lb-c-m2{0%{opacity:1;transform:none}3%{opacity:0;transform:none}7.5%{opacity:0;transform:translateX(-2px)}16.5%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-m2{0%{opacity:1;transform:none}10%{opacity:0;transform:none}25%{opacity:0;transform:translateX(-2px)}55%,100%{opacity:1;transform:none}}
+@keyframes lb-c-fa{0%,6%{opacity:1;transform:none}16.5%{opacity:0;transform:translateY(8px)}16.8%{opacity:0;transform:translateY(-3px)}25.5%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-fa{0%,20%{opacity:1;transform:none}55%{opacity:0;transform:translateY(8px)}56%{opacity:0;transform:translateY(-3px)}85%,100%{opacity:1;transform:none}}
+@keyframes lb-c-fb{0%,9.6%{opacity:1;transform:none}19.8%{opacity:0;transform:translateY(7px)}20.1%{opacity:0;transform:translateY(-3px)}27.6%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-fb{0%,32%{opacity:1;transform:none}66%{opacity:0;transform:translateY(7px)}67%{opacity:0;transform:translateY(-3px)}92%,100%{opacity:1;transform:none}}
+@keyframes lb-c-coin{0%{opacity:1;transform:none}3%{opacity:0;transform:none}18%{opacity:0;transform:translateY(-4px)}26.4%,30%,100%{opacity:1;transform:none}}
+@keyframes lb-ch-coin{0%{opacity:1;transform:none}10%{opacity:0;transform:none}60%{opacity:0;transform:translateY(-4px)}88%,100%{opacity:1;transform:none}}
+@keyframes lb-c-ln{0%{stroke-dashoffset:0}2.1%{stroke-dashoffset:-1}2.103%{stroke-dashoffset:1}3%{stroke-dashoffset:1}21.6%,30%,100%{stroke-dashoffset:0}}
+@keyframes lb-ch-ln{0%{stroke-dashoffset:0}7%{stroke-dashoffset:-1}7.01%{stroke-dashoffset:1}10%{stroke-dashoffset:1}72%,100%{stroke-dashoffset:0}}
+@keyframes lb-c-pt{0%,21%{transform:none}25.2%{transform:scale(1.7)}30%,100%{transform:none}}
+@keyframes lb-ch-pt{0%,70%{transform:none}84%{transform:scale(1.7)}100%{transform:none}}
+@media (prefers-reduced-motion: no-preference) {
+  .lb-grid.is-in:not(.is-off) .k-c1 { animation: lb-c-c1 6.2s ease-in-out 2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-c2 { animation: lb-c-c2 6.2s ease-in-out 2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-c3 { animation: lb-c-c3 6.2s ease-in-out 2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-db { animation: lb-c-db 6.2s ease-in-out 2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-s1 { animation: lb-c-s1 5.4s ease-in-out 4.1s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-s2 { animation: lb-c-s2 5.4s ease-in-out 4.1s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-s3 { animation: lb-c-s3 5.4s ease-in-out 4.1s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-fork { animation: lb-c-fork 5.4s ease-in-out 4.1s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-shackle { animation: lb-c-shackle 6.8s ease-in-out 3s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-r1 { animation: lb-c-r1 6.8s ease-in-out 3s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-r2 { animation: lb-c-r2 6.8s ease-in-out 3s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-r3 { animation: lb-c-r3 6.8s ease-in-out 3s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-page { animation: lb-c-page 5.8s ease-in-out 5.2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-dl { animation: lb-c-dl 5.8s ease-in-out 5.2s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-chat { animation: lb-c-chat 6.4s ease-in-out 2.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-ring { animation: lb-c-ring 6.4s ease-in-out 2.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-tee { animation: lb-c-tee 5.2s ease-in-out 4.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-tag { animation: lb-c-tag 5.2s ease-in-out 4.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-m1 { animation: lb-c-m1 7s ease-in-out 3.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-m2 { animation: lb-c-m2 7s ease-in-out 3.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-fa { animation: lb-c-fa 7s ease-in-out 3.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-fb { animation: lb-c-fb 7s ease-in-out 3.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-coin { animation: lb-c-coin 7s ease-in-out 3.6s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-ln { animation: lb-c-ln 5.6s ease-in-out 5.8s infinite; }
+  .lb-grid.is-in:not(.is-off) .k-pt { animation: lb-c-pt 5.6s ease-in-out 5.8s infinite; }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .lb-card:hover .k-c1, .lb-card:focus-within .k-c1 { animation: lb-ch-c1 1.8s ease-in-out 1; }
+  .lb-card:hover .k-c2, .lb-card:focus-within .k-c2 { animation: lb-ch-c2 1.8s ease-in-out 1; }
+  .lb-card:hover .k-c3, .lb-card:focus-within .k-c3 { animation: lb-ch-c3 1.8s ease-in-out 1; }
+  .lb-card:hover .k-db, .lb-card:focus-within .k-db { animation: lb-ch-db 1.8s ease-in-out 1; }
+  .lb-card:hover .k-s1, .lb-card:focus-within .k-s1 { animation: lb-ch-s1 1.8s ease-in-out 1; }
+  .lb-card:hover .k-s2, .lb-card:focus-within .k-s2 { animation: lb-ch-s2 1.8s ease-in-out 1; }
+  .lb-card:hover .k-s3, .lb-card:focus-within .k-s3 { animation: lb-ch-s3 1.8s ease-in-out 1; }
+  .lb-card:hover .k-fork, .lb-card:focus-within .k-fork { animation: lb-ch-fork 1.8s ease-in-out 1; }
+  .lb-card:hover .k-shackle, .lb-card:focus-within .k-shackle { animation: lb-ch-shackle 1.8s ease-in-out 1; }
+  .lb-card:hover .k-r1, .lb-card:focus-within .k-r1 { animation: lb-ch-r1 1.8s ease-in-out 1; }
+  .lb-card:hover .k-r2, .lb-card:focus-within .k-r2 { animation: lb-ch-r2 1.8s ease-in-out 1; }
+  .lb-card:hover .k-r3, .lb-card:focus-within .k-r3 { animation: lb-ch-r3 1.8s ease-in-out 1; }
+  .lb-card:hover .k-page, .lb-card:focus-within .k-page { animation: lb-ch-page 1.8s ease-in-out 1; }
+  .lb-card:hover .k-dl, .lb-card:focus-within .k-dl { animation: lb-ch-dl 1.8s ease-in-out 1; }
+  .lb-card:hover .k-chat, .lb-card:focus-within .k-chat { animation: lb-ch-chat 1.8s ease-in-out 1; }
+  .lb-card:hover .k-ring, .lb-card:focus-within .k-ring { animation: lb-ch-ring 1.8s ease-in-out 1; }
+  .lb-card:hover .k-tee, .lb-card:focus-within .k-tee { animation: lb-ch-tee 1.8s ease-in-out 1; }
+  .lb-card:hover .k-tag, .lb-card:focus-within .k-tag { animation: lb-ch-tag 1.8s ease-in-out 1; }
+  .lb-card:hover .k-m1, .lb-card:focus-within .k-m1 { animation: lb-ch-m1 1.8s ease-in-out 1; }
+  .lb-card:hover .k-m2, .lb-card:focus-within .k-m2 { animation: lb-ch-m2 1.8s ease-in-out 1; }
+  .lb-card:hover .k-fa, .lb-card:focus-within .k-fa { animation: lb-ch-fa 1.8s ease-in-out 1; }
+  .lb-card:hover .k-fb, .lb-card:focus-within .k-fb { animation: lb-ch-fb 1.8s ease-in-out 1; }
+  .lb-card:hover .k-coin, .lb-card:focus-within .k-coin { animation: lb-ch-coin 1.8s ease-in-out 1; }
+  .lb-card:hover .k-ln, .lb-card:focus-within .k-ln { animation: lb-ch-ln 1.8s ease-in-out 1; }
+  .lb-card:hover .k-pt, .lb-card:focus-within .k-pt { animation: lb-ch-pt 1.8s ease-in-out 1; }
+}
+
+/* ---- Hero backdrop ----
+   One static layer behind the hero's content: a soft amber glow under the
+   diagram and the cards' dot grid fading out
+   towards the headline and the edges. No motion, no image, no extra request;
+   the hero's own box, type and cover-on-scroll are untouched. */
+.lb-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(42% 46% at 76% 46%, rgba(192, 138, 46, 0.13), rgba(192, 138, 46, 0) 72%);
+}
+.lb-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(26, 26, 26, 0.16) 1px, rgba(26, 26, 26, 0) 1.5px) 50% 0 / 22px 22px;
+  -webkit-mask-image: radial-gradient(60% 70% at 78% 44%, #141414 0%, rgba(20, 20, 20, 0.35) 55%, rgba(20, 20, 20, 0) 100%);
+  mask-image: radial-gradient(60% 70% at 78% 44%, #141414 0%, rgba(20, 20, 20, 0.35) 55%, rgba(20, 20, 20, 0) 100%);
+}
+@media (max-width: 991px) {
+  .lb-hero::before {
+    background: radial-gradient(70% 34% at 50% 72%, rgba(192, 138, 46, 0.12), rgba(192, 138, 46, 0) 72%);
+  }
+  .lb-hero::after {
+    -webkit-mask-image: radial-gradient(85% 42% at 50% 72%, #141414 0%, rgba(20, 20, 20, 0.3) 60%, rgba(20, 20, 20, 0) 100%);
+    mask-image: radial-gradient(85% 42% at 50% 72%, #141414 0%, rgba(20, 20, 20, 0.3) 60%, rgba(20, 20, 20, 0) 100%);
+  }
+}

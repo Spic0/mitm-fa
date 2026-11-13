@@ -1,0 +1,226 @@
+{
+  "model": "gpt_image_2_5",
+  "quality": "medium",
+  "resolution": "1k",
+  "style_suffix": "matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+  "items": [
+    {
+      "id": "sheet-strategist",
+      "use": "character sheet: Maps, The Strategist",
+      "aspect": "3:2",
+      "prompt": "Character sheet of a calm stylized toy figure with a simplified face (dot eyes, no realistic features), charcoal roll-neck, holding a folded map and a compass. Three full-body views side by side: front, three-quarter and side, neutral standing pose, consistent proportions. Accent colour muted amber (#c08a2e) on one clothing detail only. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "sheet-builder",
+      "use": "character sheet: Forge, The Builder",
+      "aspect": "3:2",
+      "prompt": "Character sheet of a sturdy stylized toy figure with a simplified face (dot eyes), charcoal work apron with rolled sleeves, holding a small set square and a block module. Three full-body views side by side: front, three-quarter and side, neutral standing pose, consistent proportions. Accent colour muted steel blue (#3f6c8f) on one clothing detail only. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "sheet-coachtech",
+      "use": "character sheet: Pulse, The Coach-Tech",
+      "aspect": "3:2",
+      "prompt": "Character sheet of an upbeat stylized toy figure with a simplified face (dot eyes), charcoal training jacket, wearing a headset and holding a tablet. Three full-body views side by side: front, three-quarter and side, neutral standing pose, consistent proportions. Accent colour muted green (#4f8a63) on one clothing detail only. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "sheet-analyst",
+      "use": "character sheet: Scope, The Growth Analyst",
+      "aspect": "3:2",
+      "prompt": "Character sheet of a curious stylized toy figure with a simplified face (dot eyes), charcoal blazer over a tee, round glasses, holding a magnifying glass. Three full-body views side by side: front, three-quarter and side, neutral standing pose, consistent proportions. Accent colour muted violet (#7a62a8) on one clothing detail only. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "sheet-creator",
+      "use": "character sheet: Nova, The Creator",
+      "aspect": "3:2",
+      "prompt": "Character sheet of an energetic stylized toy figure with a simplified face (dot eyes), charcoal athletic wear and trainers, a small action camera on a grip. Three full-body views side by side: front, three-quarter and side, neutral standing pose, consistent proportions. Accent colour muted coral (#cf6a55) on one clothing detail only. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "avatar-strategist",
+      "use": "timeline + plate avatar: Maps, The Strategist",
+      "aspect": "1:1",
+      "ref": "sheet-strategist",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted amber (#c08a2e). Head and shoulders bust, three-quarter view, friendly expression, centred. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "avatar-builder",
+      "use": "timeline + plate avatar: Forge, The Builder",
+      "aspect": "1:1",
+      "ref": "sheet-builder",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted steel blue (#3f6c8f). Head and shoulders bust, three-quarter view, friendly expression, centred. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "avatar-coachtech",
+      "use": "timeline + plate avatar: Pulse, The Coach-Tech",
+      "aspect": "1:1",
+      "ref": "sheet-coachtech",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted green (#4f8a63). Head and shoulders bust, three-quarter view, friendly expression, centred. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "avatar-analyst",
+      "use": "timeline + plate avatar: Scope, The Growth Analyst",
+      "aspect": "1:1",
+      "ref": "sheet-analyst",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted violet (#7a62a8). Head and shoulders bust, three-quarter view, friendly expression, centred. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "avatar-creator",
+      "use": "timeline + plate avatar: Nova, The Creator",
+      "aspect": "1:1",
+      "ref": "sheet-creator",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted coral (#cf6a55). Head and shoulders bust, three-quarter view, friendly expression, centred. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "pose-creator-filming",
+      "use": "'What we take off your plate': the creator doing the only job left",
+      "aspect": "4:5",
+      "ref": "sheet-creator",
+      "prompt": "The same character as in the reference sheet, same proportions, outfit and accent colour muted coral (#cf6a55). Full body, mid-stride lunge while filming themselves with a small action camera on a grip, relaxed and confident. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-training",
+      "use": "services card + hero node: Training plans",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a kettlebell and a dumbbell resting on a clipboard with blank lines, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-nutrition",
+      "use": "services card + hero node: Nutrition guides",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a meal-prep bowl with simple shapes of food beside a fork, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-app",
+      "use": "services card + hero node: App and membership",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a smartphone with a blank screen and a small membership card with a blank face, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-ebook",
+      "use": "services card + hero node: E-books",
+      "aspect": "1:1",
+      "prompt": "Single object icon: an e-reader with a blank screen leaning on two closed books with blank covers, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-coaching",
+      "use": "services card + hero node: Online coaching",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a laptop with a blank video-call tile and a small stopwatch, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-store",
+      "use": "services card + hero node: Store and merch",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a folded plain tee and a plain shipping box with a blank tag, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-ads",
+      "use": "services card + hero node: Ads and funnels",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a megaphone pointing into a funnel, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "svc-analytics",
+      "use": "services card + hero node: Analytics",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a bar chart of four blank rising blocks with a magnifying glass, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark"
+    },
+    {
+      "id": "step-call",
+      "use": "timeline step 1: Book a call",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a headset with a microphone boom, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "step-audit",
+      "use": "timeline step 2: Audit and strategy",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a magnifying glass over a clipboard with blank checklist rows and a small blank bar chart, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "step-build",
+      "use": "timeline step 3: We build the products",
+      "aspect": "1:1",
+      "prompt": "Single object icon: three stacked building blocks, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "step-launch",
+      "use": "timeline step 4: Launch",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a small rocket lifting off from a tiny round base, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "step-run",
+      "use": "timeline step 5: We run and optimize",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a gear with a heartbeat pulse line across it, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "step-profit",
+      "use": "timeline step 6: Profit share",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a thick blank coin split into two unequal parts, slightly apart, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. Main body in warm light grey (#d9d5cd) with charcoal details, so it reads on a dark page. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-strategy",
+      "use": "plate row: strategy",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a chess knight piece beside a small target, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-design",
+      "use": "plate row: production and design",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a vector pen-tool nib with a paint palette with blank wells, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-store",
+      "use": "plate row: website, store, payments",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a small storefront with an awning and a blank payment card, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-funnel",
+      "use": "plate row: funnels, emails, ads",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a funnel with a closed envelope, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-analytics",
+      "use": "plate row: analytics",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a bar chart of three blank rising bars on a base, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-access",
+      "use": "plate row: accounts, delivery, access",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a key resting on a small sealed parcel, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "row-support",
+      "use": "plate row: support, refunds",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a speech bubble with a lifebuoy ring, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    },
+    {
+      "id": "you-camera",
+      "use": "plate 'You' card: content creation",
+      "aspect": "1:1",
+      "prompt": "Single object icon: a smartphone on a mini tripod, blank dark screen with one small amber record dot, centred with generous margin, slightly raised three-quarter angle, one muted amber (#c08a2e) detail, object only, no people, no hands, no faces. matte clay 3D illustration, soft diffuse studio lighting, seamless warm off-white background (#fafaf9), charcoal (#1a1a1a) and warm grey palette with one muted accent colour, simple rounded shapes, clearly a stylized toy figure and not a real person, no text, no letters, no numbers, no logos, no watermark",
+      "post": "remove_background"
+    }
+  ]
+}

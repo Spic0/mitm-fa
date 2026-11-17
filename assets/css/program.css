@@ -147,7 +147,7 @@ a { color: inherit; text-decoration: none; }
   font-size: var(--pg-body);
   line-height: 1.65;
   color: var(--pg-muted);
-  background: var(--pg-bg) linear-gradient(180deg, var(--pg-fog-1) 0%, color-mix(in srgb, var(--pg-fog-1) 60%, var(--pg-fog-2)) 100%);
+  background: var(--pg-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* The bottom bar and dock are fixed; without this the last card on a
@@ -491,7 +491,8 @@ h1, h2, h3, h4, h5 {
 .pg-navitem__icon { font-size: 18px; }
 .pg-navitem__label { flex: 1 1 auto; min-width: 0; }
 .pg-navitem__count { font-size: var(--pg-micro); font-weight: 600; color: var(--pg-faint); }
-.pg-navitem--soon { opacity: 0.55; }
+/* Dim the icon, not the words: at 0.55 the label measured 2.48:1. */
+.pg-navitem--soon .pg-navitem__icon { opacity: 0.55; }
 
 /* -----------------------------------------------------------------------
    9. HERO

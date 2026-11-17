@@ -156,7 +156,7 @@
 .hero-stack > .lb-sheet {
   position: relative;
   z-index: 1;
-  background: var(--noise), var(--fog-1);
+  background: var(--surface-sheet);
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -16px 36px rgba(26, 26, 26, 0.07), 0 -1px 0 rgba(26, 26, 26, 0.05);
   min-height: 100vh;
@@ -164,13 +164,8 @@
 }
 
 /* ---- Sections ---- */
-.lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; }
-/* Light sections are see-through onto the page's Fog; next to a Dusk band
-   they run out to --fog-2 inside their own padding, where Dusk picks up. */
-.hero-stack:has(+ .lb-dark) > .lb-sheet { background: var(--fog-end-bottom), var(--noise), var(--fog-1); }
-.lb-section:has(+ .lb-dark) { background: var(--fog-end-bottom); }
-.lb-dark + .lb-section { background: var(--fog-end-top); }
-.lb-dark + .lb-section:has(+ .lb-dark) { background: var(--fog-end-top), var(--fog-end-bottom); }
+.lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; background-color: var(--color-bg); }
+.lb-share { background-color: var(--fog-tint); }
 .lb-head { margin-bottom: clamp(28px, 4vw, 48px); }
 .lb-head .value__sub { max-width: 46ch; }
 .lb .lb-h2 { max-width: 22ch; }
@@ -453,8 +448,8 @@
 .lb-hero > .container { width: 100%; }
 
 /* ---- Dusk sections: How it works, Markets, Final CTA ----
-   The section keeps the Fog seam colour (--fog-2) behind its corners and
-   paints the Dusk panel as a rounded ::before, the same 24px cut as the sheet
+   The section paints its neighbours' Fog behind its corners and the Dusk
+   panel as a rounded ::before, the same 24px cut as the sheet
    over the hero. Inside, the style.css colour tokens are re-pointed, so every
    rule above (and the islands, which read the same tokens) follows without
    new type. */
@@ -469,10 +464,10 @@
   --color-primary: var(--on-dusk);
   --color-primary-hover: var(--on-dusk-muted);
   /* cobe globe: base and glow straight from Dusk. */
-  --globe-base: var(--dusk-deep-0);
+  --globe-base: color-mix(in srgb, var(--dusk-1) 35%, var(--dusk-2));
   --globe-glow: var(--dusk-1);
   isolation: isolate;
-  background-color: var(--fog-2);
+  background-color: var(--fog-1);
   color: var(--color-text);
 }
 .lb-dark::before {
@@ -481,8 +476,10 @@
   inset: 0;
   z-index: -1;
   border-radius: 24px;
-  background: var(--noise), var(--grad-dusk-band);
+  background: var(--surface-dusk);
 }
+/* Markets sits between plain Fog and the tinted revenue-share band. */
+.lb-markets.lb-dark { background: linear-gradient(to bottom, var(--fog-1) 50%, var(--fog-tint) 50%); }
 .lb-cta.lb-dark::before { border-radius: 24px 24px 0 0; }
 .lb-cta.lb-dark .lb-cta__bg { z-index: -1; border-radius: 24px 24px 0 0; overflow: hidden; }
 /* style.css colours every <span>; in a dark panel it must follow its parent. */
@@ -740,16 +737,9 @@
    diagram and the cards' dot grid fading out
    towards the headline and the edges. No motion, no image, no extra request;
    the hero's own box, type and cover-on-scroll are untouched. The ground is
-   the soft Fog with one Fog highlight lifting the lower half back up. */
-.lb-hero {
-  background:
-    var(--noise),
-    radial-gradient(55% 50% at 28% 78%, color-mix(in srgb, var(--fog-1) 75%, transparent), transparent 70%),
-    var(--grad-fog-soft);
-}
-@media (max-width: 991px) {
-  .lb-hero { background: var(--noise), radial-gradient(90% 40% at 50% 30%, color-mix(in srgb, var(--fog-1) 75%, transparent), transparent 70%), var(--grad-fog-soft); }
-}
+   the hero mesh (tokens in style.css). */
+.lb-hero { background: var(--mesh-hero); }
+@media (max-width: 991px) { .lb-hero { background: var(--mesh-hero-sm); } }
 .lb-hero::before {
   content: "";
   position: absolute;

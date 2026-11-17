@@ -44,7 +44,6 @@
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(50% 45% at 50% 42%, color-mix(in srgb, var(--fog-1) 8%, transparent), transparent 70%),
     radial-gradient(110% 75% at 50% 45%, rgba(10, 10, 9, 0.5), rgba(10, 10, 9, 0.82)),
     linear-gradient(to bottom, rgba(10, 10, 9, 0.35), rgba(10, 10, 9, 0.7));
 }
@@ -539,24 +538,14 @@ html.reveal-on [data-reveal]:not(.is-revealed) { opacity: 0; transform: translat
 }
 
 /* ---- Fog + Dusk (tokens in style.css) ----
-   Dusk bands: the process cycle, the model and the written offer. Each one
-   carries the whole seam inside its own padding: --grad-bridge in at the top,
-   the same bridge mirrored out at the bottom, deep Dusk behind the text. So a
-   light neighbour (some, like #book, have almost no padding) needs nothing.
-   The second of two dark bands in a row ("How it works") turns Fog, so two
-   Dusk bands never touch. */
-.pt {
-  --pt-edge: clamp(48px, 6vw, 80px);
-  --pt-dusk:
-    var(--grad-bridge) 0 0 / 100% var(--pt-edge) no-repeat,
-    linear-gradient(0deg, var(--fog-1) 0%, var(--fog-2) 38%, var(--dusk-1) 55%, var(--dusk-2) 100%) 0 100% / 100% var(--pt-edge) no-repeat;
-}
-.pt .pt-sec--dark, .pt .pt-sec--inv { background: var(--noise), var(--pt-dusk), linear-gradient(180deg, var(--dusk-2), var(--dusk-deep-0) 50%, var(--dusk-2)); }
+   Dusk bands: the process cycle, the model and the written offer, each on
+   the Dusk surface with clean edges. The second of two dark bands in a row
+   ("How it works") turns Fog, so two Dusk bands never touch. */
+.pt .pt-sec--dark, .pt .pt-sec--inv { background: var(--surface-dusk); }
 .pt .pt-sec--texture {
-  background-image: var(--noise), var(--grad-bridge), linear-gradient(0deg, var(--fog-1) 0%, var(--fog-2) 38%, var(--dusk-1) 55%, var(--dusk-2) 100%), linear-gradient(color-mix(in srgb, var(--dusk-2) 55%, transparent), color-mix(in srgb, var(--dusk-2) 55%, transparent)), image-set(url("/assets/images/partnership/texture-1344.avif") type("image/avif"), url("/assets/images/partnership/texture-1344.webp") type("image/webp"));
-  background-size: auto, 100% var(--pt-edge), 100% var(--pt-edge), cover, cover;
-  background-position: 0 0, 0 0, 0 100%, 0 0, center;
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-image: linear-gradient(color-mix(in srgb, var(--dusk-2) 55%, transparent), color-mix(in srgb, var(--dusk-2) 55%, transparent)), image-set(url("/assets/images/partnership/texture-1344.avif") type("image/avif"), url("/assets/images/partnership/texture-1344.webp") type("image/webp"));
+  background-size: cover;
+  background-position: center;
 }
 .pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) {
   --pt-on-dark: var(--on-fog);

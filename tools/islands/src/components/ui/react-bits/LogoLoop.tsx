@@ -220,10 +220,10 @@ const fadeMask = (size: number, vertical: boolean) => {
   if (span <= 0) return undefined;
   const stops: string[] = [];
   for (let i = 0; i <= 12; i++) {
-    stops.push(`rgba(0,0,0,${smootherstep(i / 12).toFixed(4)}) ${((span * i) / 12).toFixed(3)}%`);
+    stops.push(`rgba(35, 37, 58,${smootherstep(i / 12).toFixed(4)}) ${((span * i) / 12).toFixed(3)}%`);
   }
   for (let i = 12; i >= 0; i--) {
-    stops.push(`rgba(0,0,0,${smootherstep(i / 12).toFixed(4)}) ${(100 - (span * i) / 12).toFixed(3)}%`);
+    stops.push(`rgba(35, 37, 58,${smootherstep(i / 12).toFixed(4)}) ${(100 - (span * i) / 12).toFixed(3)}%`);
   }
   return `linear-gradient(${vertical ? 'to bottom' : 'to right'}, ${stops.join(', ')})`;
 };

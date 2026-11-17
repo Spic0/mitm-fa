@@ -231,7 +231,7 @@
   .pprofile__row:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    border-color: rgba(26, 26, 26, 0.18);
+    border-color: rgba(35, 37, 58, 0.18);
     color: var(--color-text);
   }
 }

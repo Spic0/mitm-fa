@@ -19,7 +19,7 @@
   --pm-ink-soft: rgba(245, 245, 244, 0.62);
   --pm-surface: rgba(255, 255, 255, 0.1);
   --pm-surface-hover: rgba(255, 255, 255, 0.19);
-  --pm-bg: #0c0c0b;
+  --pm-bg: #23253A;
   --pm-dur: 320ms;
   --pm-ease: cubic-bezier(0.25, 1, 0.5, 1);
 
@@ -245,10 +245,10 @@ body.pm-open { overflow: hidden; }
   border: 0;
   border-radius: 50%;
   background: rgba(245, 245, 244, 0.94);
-  color: #0c0c0b;
+  color: #23253A;
   font-size: 30px;
   cursor: pointer;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 30px rgba(35, 37, 58, 0.45);
   transition: opacity 200ms var(--pm-ease), transform 200ms var(--pm-ease);
 }
 .pm-video__big:hover { transform: translate(-50%, -50%) scale(1.06); }
@@ -346,7 +346,7 @@ body.pm-open { overflow: hidden; }
   border-radius: 50%;
   background: var(--pm-ink);
   transform: translateY(-50%) scale(0.9);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(35, 37, 58, 0.5);
   transition: transform 160ms var(--pm-ease);
 }
 .pm-player__scrub:hover .pm-player__knob,
@@ -377,7 +377,7 @@ body.pm-open { overflow: hidden; }
   font-weight: 600;
   cursor: pointer;
 }
-.pm-player__quality option { color: #1a1a1a; }
+.pm-player__quality option { color: #23253A; }
 
 @media (prefers-reduced-motion: reduce) {
   .pm,

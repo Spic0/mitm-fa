@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // drops style="" attributes silently).
   function paintGround(node, p) {
     if (p.cover && p.cover.colour) {
-      node.style.setProperty("background", "linear-gradient(180deg, " + p.cover.colour + " 0%, #141414 100%)");
+      node.style.setProperty("background", "linear-gradient(180deg, " + p.cover.colour + " 0%, #23253A 100%)");
     }
   }
 

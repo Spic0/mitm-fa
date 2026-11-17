@@ -20,9 +20,9 @@
   --pv-dur: 420ms;
   --pv-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --pv-paper: #ffffff;
-  --pv-ink: #14161a;
+  --pv-ink: #23253A;
   --pv-ink-soft: #5b6270;
-  --pv-rule: rgba(20, 22, 26, 0.1);
+  --pv-rule: rgba(35, 37, 58, 0.1);
 }
 
 /* Icons are inline SVG (see the ICON table in program-viewer.js) rather
@@ -68,7 +68,7 @@ body.pv-open .pg-dock {
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 11, 14, 0.62);
+  background: rgba(35, 37, 58, 0.62);
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--pv-dur) var(--pv-ease), visibility var(--pv-dur);
@@ -99,7 +99,7 @@ body.pv-open .pg-dock {
 
 @media (min-width: 768px) {
   .pv { padding: 24px; }
-  .pv__book { height: min(100%, 940px); border-radius: 18px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45); }
+  .pv__book { height: min(100%, 940px); border-radius: 18px; box-shadow: 0 30px 90px rgba(35, 37, 58, 0.45); }
 }
 
 /* ---------------------------------------------------------------- topbar --- */
@@ -143,17 +143,17 @@ body.pv-open .pg-dock {
   justify-content: center;
   border: 0;
   border-radius: 50%;
-  background: rgba(20, 22, 26, 0.06);
+  background: rgba(35, 37, 58, 0.06);
   color: var(--pv-ink);
   font-size: 17px;
   cursor: pointer;
   transition: background-color 0.18s var(--pv-ease);
 }
-.pv__close:hover { background: rgba(20, 22, 26, 0.12); }
+.pv__close:hover { background: rgba(35, 37, 58, 0.12); }
 .pv__close:focus-visible { outline: 2px solid var(--pv-ink); outline-offset: 2px; }
 
 /* Reading progress — the spine of the book. */
-.pv__progress { height: 2px; background: rgba(20, 22, 26, 0.08); flex: 0 0 auto; }
+.pv__progress { height: 2px; background: rgba(35, 37, 58, 0.08); flex: 0 0 auto; }
 .pv__progress-fill {
   height: 100%;
   width: 0;
@@ -224,9 +224,9 @@ body.pv-open .pg-dock {
   margin: 0 auto 26px;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 18px 42px rgba(35, 37, 58, 0.22);
   aspect-ratio: 3 / 4;
-  background: rgba(20, 22, 26, 0.05);
+  background: rgba(35, 37, 58, 0.05);
 }
 .pv-cover__art img { width: 100%; height: 100%; object-fit: cover; }
 .pv-cover h2 { font-size: clamp(26px, 7.5vw, 38px); }
@@ -260,7 +260,7 @@ body.pv-open .pg-dock {
   aspect-ratio: 1;
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(20, 22, 26, 0.05);
+  background: rgba(35, 37, 58, 0.05);
 }
 .pv-ex__media img, .pv-ex__media video { width: 100%; height: 100%; object-fit: cover; }
 
@@ -297,7 +297,7 @@ body.pv-open .pg-dock {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: rgba(16, 18, 22, 0.62);
+  background: rgba(35, 37, 58, 0.62);
   pointer-events: none;
   opacity: 0;
   transition: opacity 140ms ease;
@@ -330,7 +330,7 @@ body.pv-open .pg-dock {
   font-weight: 700;
   padding: 3px 9px;
   border-radius: 100px;
-  background: rgba(20, 22, 26, 0.06);
+  background: rgba(35, 37, 58, 0.06);
   margin-bottom: 6px;
 }
 .pv-ex__note { font-size: 13px; line-height: 1.55; margin: 4px 0 0; }
@@ -346,7 +346,7 @@ body.pv-open .pg-dock {
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  background: #000;
+  background: #23253A;
   margin-bottom: 14px;
 }
 .pv-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
@@ -373,7 +373,7 @@ body.pv-open .pg-dock {
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: rgba(20, 22, 26, 0.06);
+  background: rgba(35, 37, 58, 0.06);
   font-size: 16px;
 }
 .pv-res__body { flex: 1 1 auto; min-width: 0; }
@@ -407,7 +407,7 @@ body.pv-open .pg-dock {
   transition: background-color 0.18s var(--pv-ease), opacity 0.18s var(--pv-ease);
 }
 .pv__nav-btn:disabled { opacity: 0.3; cursor: default; }
-.pv__nav-btn:not(:disabled):active { background: rgba(20, 22, 26, 0.08); }
+.pv__nav-btn:not(:disabled):active { background: rgba(35, 37, 58, 0.08); }
 .pv__nav-btn:focus-visible { outline: 2px solid var(--pv-ink); outline-offset: 2px; }
 .pv__count { flex: 1 1 auto; text-align: center; font-size: 12px; font-weight: 600; color: var(--pv-ink-soft); }
 

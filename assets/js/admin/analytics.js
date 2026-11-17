@@ -71,8 +71,8 @@ window.AdminPanels.analytics = {
           datasets: [{
             label: "Revenue",
             data: data,
-            borderColor: "#1a1a1a",
-            backgroundColor: "rgba(26,26,26,.1)",
+            borderColor: "#23253A",
+            backgroundColor: "rgba(35,37,58,.1)",
             fill: true,
             tension: 0.3,
           }],

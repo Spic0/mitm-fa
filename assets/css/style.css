@@ -78,6 +78,7 @@ CSS TABLE OF CONTENTS
      light falling on a Dusk surface, and the raised sheet over the hero. ---- */
   --fog-1: #EEF1F6;  --fog-2: #A9B4C6;
   --dusk-1: #8D99AE; --dusk-2: #23253A;
+  --dusk-2-hover: color-mix(in srgb, var(--dusk-2) 92%, #fff); /* Dusk replaces every black, so it is also the ink and the button fill */
   --fog-tint: color-mix(in srgb, var(--fog-1) 80%, var(--fog-2)); /* the alternate light band */
   /* One soft light from above, solid Dusk everywhere else: no haze at the edges. */
   --surface-dusk: radial-gradient(90% 65% at 50% 0%, color-mix(in srgb, var(--dusk-1) 16%, transparent), transparent 72%), var(--dusk-2);
@@ -93,7 +94,7 @@ CSS TABLE OF CONTENTS
     var(--fog-1);
   /* The sheet that slides over the hero catches the light along its top. */
   --surface-sheet: linear-gradient(180deg, var(--color-surface) 0, var(--fog-1) 420px);
-  --on-fog: #1a1a1a;
+  --on-fog: var(--dusk-2);
   --on-fog-muted: #55534f;
   --on-fog-faint: #585b63; /* was #9c9993, which failed AA even on the old paper */
   --on-dusk: #f2f0eb;
@@ -117,10 +118,10 @@ CSS TABLE OF CONTENTS
   --color-text-muted: var(--on-fog-muted);
   --color-text-faint: var(--on-fog-faint);
 
-  --color-primary: #1a1a1a;
-  --color-primary-hover: #2e2e2c;
+  --color-primary: var(--dusk-2);
+  --color-primary-hover: var(--dusk-2-hover);
 
-  --color-border: rgba(26, 26, 26, 0.1);
+  --color-border: rgba(35, 37, 58, 0.1);
 
   /* ---- Legacy aliases — kept so every existing var() reference in this
      file (and in page-level inline styles) resolves to the new palette
@@ -134,7 +135,7 @@ CSS TABLE OF CONTENTS
   --paragraph-light: var(--on-fog-muted); /* was #6e6b66: under 4.5:1 on Fog */
   --span: var(--color-text);
   --border: var(--color-border);
-  --border-light: rgba(26, 26, 26, 0.06);
+  --border-light: rgba(35, 37, 58, 0.06);
   /* NOTE: --white/--black keep the ROLE this codebase already gave them
      (--black = page/surface background, --white = ink/icon color on top of
      it) rather than their literal names — this file has ~100+ existing
@@ -2348,7 +2349,7 @@ input {
   left: 0;
   width: 100%;
   z-index: 999;
-  background-color: #191919;
+  background-color: var(--dusk-2);
   border-bottom: unset;
 }
 /* Generic logo lockup (footer, and the auth/utility pages that reuse it).
@@ -3195,7 +3196,7 @@ input {
   border-radius: 50%;
   transition: var(--transition);
   margin: 0 auto;
-  border: 1px solid #232323;
+  border: 1px solid var(--dusk-2);
 }
 .category__image .category-icon {
   position: absolute;
@@ -3223,7 +3224,7 @@ input {
 }
 
 .category-two__item:hover .category__image .category-icon {
-  background-color: rgba(26, 26, 26, 0.7);
+  background-color: rgba(35, 37, 58, 0.7);
 }
 .category-two__item:hover .category__image .category-icon img {
   filter: none;
@@ -3621,7 +3622,7 @@ input {
   border-radius: 10px;
 }
 .gallery__image::before {
-  background: linear-gradient(180deg, rgba(26, 26, 26, 0) 0%, #1a1a1a 100%);
+  background: linear-gradient(180deg, rgba(35, 37, 58, 0) 0%, var(--dusk-2) 100%);
   border-radius: 10px;
 }
 .gallery__content {
@@ -3876,7 +3877,7 @@ input {
 }
 .contact .content {
   color: var(--white);
-  background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(../../assets/images/contact/01.jpg);
+  background-image: linear-gradient(rgba(35, 37, 58, 0.6), rgba(35, 37, 58, 0.6)), url(../../assets/images/contact/01.jpg);
   padding: 40px 30px;
 }
 .contact .content h2 {
@@ -4761,7 +4762,7 @@ input {
   top: -5px;
   right: -5px;
   background: #fff;
-  color: #191919;
+  color: var(--dusk-2);
   font-size: 10px;
   font-weight: 700;
   width: 18px;
@@ -4891,7 +4892,7 @@ input {
 .cart-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(35, 37, 58, 0.5);
   z-index: 9998;
   opacity: 0;
   visibility: hidden;
@@ -5198,14 +5199,14 @@ input {
   text-decoration: none;
   background: var(--primary-color);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(26, 26, 26, 0.28);
+  box-shadow: 0 4px 14px rgba(35, 37, 58, 0.28);
   transition: var(--transition);
 }
 .cart-btn-checkout:hover {
   background: var(--primary-hover);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(26, 26, 26, 0.34);
+  box-shadow: 0 6px 18px rgba(35, 37, 58, 0.34);
 }
 .cart-btn-checkout:active { transform: translateY(0); }
 
@@ -5323,7 +5324,7 @@ body.cart-open { overflow: hidden; }
   .nav-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(26, 26, 26, 0.4);
+    background: rgba(35, 37, 58, 0.4);
     z-index: 9980;
     opacity: 0;
     visibility: hidden;
@@ -6483,7 +6484,7 @@ body.cart-open { overflow: hidden; }
 }
 .pay-tab.active {
   border-color: var(--primary-color);
-  background: rgba(26, 26, 26, 0.08);
+  background: rgba(35, 37, 58, 0.08);
   color: var(--heading-color);
 }
 .pay-tab.active i,
@@ -6889,7 +6890,7 @@ body.cart-open { overflow: hidden; }
 .co-input:focus {
   border-color: var(--primary-color) !important;
   background: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.12) !important;
+  box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.12) !important;
 }
 .co-label {
   position: absolute;
@@ -8232,7 +8233,7 @@ button span,
 .co-dial:hover { border-color: var(--paragraph-light); }
 .co-dial[aria-expanded="true"] {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.12);
+  box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.12);
 }
 .co-dial__flag { font-size: 19px; line-height: 1; }
 .co-dial__code { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -8571,11 +8572,11 @@ button span,
   -webkit-appearance: none;
   appearance: none;
 }
-.co-input:hover:not(:focus) { border-color: rgba(26, 26, 26, 0.2) !important; }
+.co-input:hover:not(:focus) { border-color: rgba(35, 37, 58, 0.2) !important; }
 .co-input:focus {
   border-color: var(--primary-color) !important;
   background: #ffffff !important;
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.08), var(--shadow-sm) !important;
+  box-shadow: 0 0 0 4px rgba(35, 37, 58, 0.08), var(--shadow-sm) !important;
 }
 
 /* Floating label: bigger, calmer, and it moves on the same curve as the
@@ -8654,11 +8655,11 @@ button span,
 }
 .co-dial[aria-expanded="true"] {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.08), var(--shadow-sm) !important;
+  box-shadow: 0 0 0 4px rgba(35, 37, 58, 0.08), var(--shadow-sm) !important;
 }
 .co-cpanel {
   border-radius: 16px !important;
-  box-shadow: 0 20px 50px rgba(26, 26, 26, 0.16) !important;
+  box-shadow: 0 20px 50px rgba(35, 37, 58, 0.16) !important;
   background: var(--color-surface) !important;
 }
 .co-cpanel__search { border-radius: 11px !important; min-height: 46px !important; }
@@ -8883,7 +8884,7 @@ button span,
     padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
     background: rgba(250, 250, 249, 0.82);
     border-top: 1px solid var(--border);
-    box-shadow: 0 -8px 28px rgba(26, 26, 26, 0.07);
+    box-shadow: 0 -8px 28px rgba(35, 37, 58, 0.07);
     animation: coStickyIn 420ms cubic-bezier(0.25, 1, 0.5, 1) both;
   }
   /* Progressive enhancement: only go translucent where the blur is
@@ -8937,11 +8938,11 @@ button span,
     border: none;
     border-radius: 14px;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(26, 26, 26, 0.22);
+    box-shadow: 0 4px 14px rgba(35, 37, 58, 0.22);
     transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 160ms ease;
     -webkit-tap-highlight-color: transparent;
   }
-  .co-stickybar__cta:active { transform: scale(0.985); background: #000000; }
+  .co-stickybar__cta:active { transform: scale(0.985); background: var(--dusk-2); }
   .co-stickybar__cta > i { font-size: 14px; }
 }
 
@@ -9102,7 +9103,7 @@ button span,
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   background: rgba(250, 250, 249, 0.82);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -8px 28px rgba(26, 26, 26, 0.07);
+  box-shadow: 0 -8px 28px rgba(35, 37, 58, 0.07);
   animation: coStickyIn 420ms cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 @supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
@@ -9143,12 +9144,12 @@ button span,
   border: none;
   border-radius: 14px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(26, 26, 26, 0.22);
+  box-shadow: 0 4px 14px rgba(35, 37, 58, 0.22);
   transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), background 160ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 .co-stickybar__cta:hover:not(:disabled) { background: var(--primary-hover); }
-.co-stickybar__cta:active:not(:disabled) { transform: scale(0.985); background: #000000; }
+.co-stickybar__cta:active:not(:disabled) { transform: scale(0.985); background: var(--dusk-2); }
 
 /* Busy state: pointer-events:none is the real double-submit guard — a second
    tap while a PaymentIntent is in flight would otherwise create a second one. */
@@ -9361,11 +9362,11 @@ main.co-page ~ .footer-area {
   transition: opacity 160ms ease;
   z-index: 1;
 }
-.co-fieldgroup .co-field.co-focused { background: rgba(26, 26, 26, 0.02); }
+.co-fieldgroup .co-field.co-focused { background: rgba(35, 37, 58, 0.02); }
 .co-fieldgroup .co-field.co-focused::before { opacity: 1; }
 .co-fieldgroup .co-input:focus,
 .co-fieldgroup .co-sel:focus {
-  background: rgba(26, 26, 26, 0.02) !important;
+  background: rgba(35, 37, 58, 0.02) !important;
   box-shadow: none !important;
 }
 
@@ -9405,7 +9406,7 @@ main.co-page ~ .footer-area {
      `flex: 0 0 auto` here overrides that media query for the grouped layout. */
   flex: 0 0 auto !important;
 }
-.co-fieldgroup .co-dial[aria-expanded="true"] { background: rgba(26, 26, 26, 0.03) !important; }
+.co-fieldgroup .co-dial[aria-expanded="true"] { background: rgba(35, 37, 58, 0.03) !important; }
 /* Takes whatever the dial button leaves, and can never be squeezed out of
    existence again.
    `flex-basis: 0` rather than `auto` is load-bearing on a wrapping row:
@@ -9455,7 +9456,7 @@ main.co-page ~ .footer-area {
 /* ---- The group surface ---------------------------------------------- */
 .co-section .co-fieldgroup {
   border-radius: 18px;
-  border-color: rgba(26, 26, 26, 0.09);
+  border-color: rgba(35, 37, 58, 0.09);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
               0 12px 28px -18px rgba(15, 23, 42, 0.35);
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -9463,8 +9464,8 @@ main.co-page ~ .footer-area {
 /* Premium focus: the card itself responds, so the shopper sees one control
    they are inside of rather than four boxes one of which is ringed. */
 .co-section .co-fieldgroup:focus-within {
-  border-color: rgba(26, 26, 26, 0.2);
-  box-shadow: 0 0 0 4px rgba(26, 26, 26, 0.05),
+  border-color: rgba(35, 37, 58, 0.2);
+  box-shadow: 0 0 0 4px rgba(35, 37, 58, 0.05),
               0 1px 2px rgba(15, 23, 42, 0.04),
               0 16px 34px -20px rgba(15, 23, 42, 0.4);
 }
@@ -9478,7 +9479,7 @@ main.co-page ~ .footer-area {
 .co-fieldgroup .co-row + .co-field,
 .co-fieldgroup .co-field + .co-row,
 .co-fieldgroup .co-row .co-field + .co-field {
-  border-color: rgba(26, 26, 26, 0.07);
+  border-color: rgba(35, 37, 58, 0.07);
 }
 
 /* ---- Rows ------------------------------------------------------------ */
@@ -9553,7 +9554,7 @@ main.co-page ~ .footer-area {
   padding: 0 16px !important;
   font-size: 16px !important;
   font-weight: 600 !important;
-  border-right-color: rgba(26, 26, 26, 0.07) !important;
+  border-right-color: rgba(35, 37, 58, 0.07) !important;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -9839,6 +9840,9 @@ body { background-color: var(--fog-1); }
 .footer-area:not(.lb ~ *) .logo img { filter: invert(0.94); }
 /* The landing footer sits on Fog, not the tint: its 85%-opacity legal links measured 4.33:1 on the tint, 4.8:1 on Fog. */
 .lb ~ .footer-area { background-color: var(--fog-1); }
+
+/* Native <select> options otherwise take the browser's black. */
+option { color: var(--color-text); }
 
 /* Filled near-black controls whose label read --white, which is the INK in
    this palette, so the label was black on black (invisible). Contrast fix

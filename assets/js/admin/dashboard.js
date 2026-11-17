@@ -76,10 +76,10 @@ window.AdminPanels.dashboard = {
 
     var chartLabelColor = getComputedStyle(document.documentElement).getPropertyValue("--a-text-muted") || "#6b7280";
     var chartGridColor = "rgba(128,128,128,.15)";
-    // The brand's own monochrome scale — matching --a-primary (#1a1a1a),
+    // The brand's own monochrome scale — matching --a-primary (Dusk #23253A),
     // stepped light-to-dark so adjacent series stay distinguishable in a
     // grayscale chart rather than an unrelated color-per-series palette.
-    var palette = ["#1a1a1a", "#3f3b38", "#65605a", "#8b857d", "#b3ada5", "#d9d5cf"];
+    var palette = ["#23253A", "#3f3b38", "#65605a", "#8b857d", "#b3ada5", "#d9d5cf"];
 
     function baseOptions(extra) {
       return Object.assign({
@@ -103,7 +103,7 @@ window.AdminPanels.dashboard = {
             label: "Revenue",
             data: charts.revenueOverTime.map(function (d) { return d.cents / 100; }),
             borderColor: palette[0],
-            backgroundColor: "rgba(26,26,26,.12)",
+            backgroundColor: "rgba(35,37,58,.12)",
             fill: true,
             tension: 0.35,
           }],

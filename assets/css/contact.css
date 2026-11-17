@@ -63,7 +63,7 @@
 .ct-btn--primary {
     background: var(--primary-color);
     color: #fff !important;
-    box-shadow: 0 4px 16px rgba(26, 26, 26, 0.22);
+    box-shadow: 0 4px 16px rgba(35, 37, 58, 0.22);
 }
 .ct-btn--primary:hover { background: var(--primary-hover); color: #fff; }
 .ct-btn--primary:active { transform: translateY(1px); }

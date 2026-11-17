@@ -16,9 +16,9 @@
         fill (black) and declares only a stroke colour, which is fine in
         Illustrator but leaves the paint unspecified to anything that
         overrides the initial colour, notably a browser in forced dark mode,
-        and to `currentColor` if this is ever inlined. #010101 is the
-        master's own declared stroke colour, so this pins the authored
-        appearance rather than picking a new one.
+        and to `currentColor` if this is ever inlined. The master declares
+        #010101; since 2026-11-17 every black on the site is the Dusk grey
+        #23253A (the dusk-2 token in assets/css/style.css), the mark included.
 
      Do not add a doc comment containing a double hyphen here: that is
      illegal inside an XML comment and silently breaks the whole file, which
@@ -31,7 +31,7 @@
      percent. See .header-logo in assets/css/style.css. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="112"
      viewBox="168.77 273.95 662.46 370.89" role="img" aria-label="Fitness Agency">
-	<g fill="#010101" stroke="#010101" stroke-miterlimit="10">
+	<g fill="#23253A" stroke="#23253A" stroke-miterlimit="10">
 		<polygon points="169.27,644.34 266.12,644.34 266.12,355.85 497.94,355.85 550.49,274.45 169.27,274.45 	"/>
 		<polygon points="271.27,495.97 271.27,420.76 441.27,420.76 394.91,495.97 	"/>
 		<polygon points="370.18,644.34 623.64,274.45 830.73,644.34 731.82,644.34 608.18,420.76 476.3,644.34 	"/>

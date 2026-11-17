@@ -254,7 +254,7 @@ async function purchaseReceiptEmail(
       ${panel(
         `Keep this as your receipt. Your access never expires.` +
         (magicLink
-          ? ` On another device, <a href="${esc(magicLink)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">sign in with a one time link</a>.`
+          ? ` On another device, <a href="${esc(magicLink)}" style="color:#23253A;font-weight:600;text-decoration:underline;">sign in with a one time link</a>.`
           : "")
       )}`,
   });
@@ -286,7 +286,7 @@ async function contactNotificationEmail({ name, email, lines }) {
     bodyHtml: `
       ${panel(lines.map((l) => esc(l)).join("<br>"))}
       <p style="margin:16px 0 0;font-size:14px;">Reply to answer
-      <a href="mailto:${esc(email)}" style="color:#1a1a1a;font-weight:600;text-decoration:underline;">${esc(email)}</a>.</p>`,
+      <a href="mailto:${esc(email)}" style="color:#23253A;font-weight:600;text-decoration:underline;">${esc(email)}</a>.</p>`,
   });
 
   return { subject: `New enquiry from ${name}`, html };

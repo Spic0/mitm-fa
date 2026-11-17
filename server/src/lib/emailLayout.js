@@ -33,18 +33,18 @@ function money(cents, currency) {
   return `${currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$"}${amount}`;
 }
 
-// The site's tokens. --color-border is rgba(26,26,26,0.1) over #fdfdfc, which
+// The site's tokens (ink = Dusk #23253A). --color-border was rgba(26,26,26,0.1) over #fdfdfc, which
 // is #e8e7e4 solid; the muted/faint pair are --color-text-muted and
 // --color-text-faint verbatim.
 const BRAND = {
-  ink: "#1a1a1a",
+  ink: "#23253A",
   body: "#55534f",
   faint: "#9c9993",
   line: "#e8e7e4",
   bg: "#f2f1ee",
   card: "#ffffff",
   panel: "#faf9f7",
-  accent: "#1a1a1a",
+  accent: "#23253A",
   success: "#0d6b46",
   successBg: "#e3efe9",
 };

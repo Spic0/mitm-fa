@@ -47,12 +47,12 @@
   --p-bg: #fafaf9;
   --p-surface: #fdfdfc;
   --p-surface-2: #f2f1ee;
-  --p-ink: #1a1a1a;
-  --p-ink-hover: #2e2e2c;
+  --p-ink: #23253A;
+  --p-ink-hover: #35364A;
   --p-muted: #55534f;
   --p-faint: #9c9993;
-  --p-border: rgba(26, 26, 26, 0.1);
-  --p-border-soft: rgba(26, 26, 26, 0.06);
+  --p-border: rgba(35, 37, 58, 0.1);
+  --p-border-soft: rgba(35, 37, 58, 0.06);
   --p-danger: #dc2626;
   --p-success: #059669;
 
@@ -341,7 +341,7 @@ textarea:focus-visible,
 }
 .pres-btn--secondary:hover {
   background: var(--p-surface);
-  border-color: rgba(26, 26, 26, 0.28);
+  border-color: rgba(35, 37, 58, 0.28);
   transform: translateY(-2px);
   box-shadow: var(--p-shadow-sm);
 }
@@ -869,7 +869,7 @@ textarea:focus-visible,
 }
 .pres-hs__arrow:hover {
   background: var(--p-surface);
-  border-color: rgba(26, 26, 26, 0.28);
+  border-color: rgba(35, 37, 58, 0.28);
 }
 .pres-hs__arrow:active { transform: scale(0.94); }
 
@@ -910,7 +910,7 @@ textarea:focus-visible,
   height: 6px;
   margin: -3px 0 0 -3px;
   border-radius: var(--p-radius-pill);
-  background: rgba(26, 26, 26, 0.18);
+  background: rgba(35, 37, 58, 0.18);
   transition:
     background-color var(--p-dur) var(--p-ease),
     transform var(--p-dur) var(--p-ease);
@@ -927,7 +927,7 @@ textarea:focus-visible,
   .pres-hs__dot { width: 28px; height: 44px; }
   .pres-hs__dots { gap: 0; }
 }
-.pres-hs__dot:hover::before { background: rgba(26, 26, 26, 0.34); }
+.pres-hs__dot:hover::before { background: rgba(35, 37, 58, 0.34); }
 .pres-hs__dot.is-active::before {
   background: var(--p-ink);
   /* Grows from the centre instead of changing width, so the row of dots
@@ -979,7 +979,7 @@ textarea:focus-visible,
   width: 0.62em;
   height: 0.62em;
   border-radius: 50%;
-  background: rgba(26, 26, 26, 0.14);
+  background: rgba(35, 37, 58, 0.14);
 }
 .hsm__url {
   flex: 1;
@@ -1017,15 +1017,15 @@ textarea:focus-visible,
   width: 55%;
   height: 0.85em;
   border-radius: 0.3em;
-  background: rgba(26, 26, 26, 0.3);
+  background: rgba(35, 37, 58, 0.3);
   margin-bottom: 0.5em;
 }
 .hsm__side-item {
   height: 0.72em;
   border-radius: 0.3em;
-  background: rgba(26, 26, 26, 0.09);
+  background: rgba(35, 37, 58, 0.09);
 }
-.hsm__side-item.is-on { background: rgba(26, 26, 26, 0.26); }
+.hsm__side-item.is-on { background: rgba(35, 37, 58, 0.26); }
 
 .hsm__main {
   flex: 1;
@@ -1069,13 +1069,13 @@ textarea:focus-visible,
 .hsm__line {
   height: 0.62em;
   border-radius: 0.31em;
-  background: rgba(26, 26, 26, 0.1);
+  background: rgba(35, 37, 58, 0.1);
 }
 .hsm__line--xs { width: 32%; }
 .hsm__line--sm { width: 48%; }
 .hsm__line--md { width: 66%; }
 .hsm__line--lg { width: 84%; }
-.hsm__line--strong { background: rgba(26, 26, 26, 0.24); height: 0.8em; }
+.hsm__line--strong { background: rgba(35, 37, 58, 0.24); height: 0.8em; }
 
 .hsm__col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.55em; }
 .hsm__col--pad { padding: 0.2em 0; }
@@ -1095,7 +1095,7 @@ textarea:focus-visible,
   width: 2.2em;
   height: 2.2em;
   border-radius: 50%;
-  background: rgba(26, 26, 26, 0.13);
+  background: rgba(35, 37, 58, 0.13);
 }
 .hsm__avatar--xl { width: 3.8em; height: 3.8em; }
 
@@ -1104,7 +1104,7 @@ textarea:focus-visible,
   width: 2.6em;
   height: 0.95em;
   border-radius: 100px;
-  background: rgba(26, 26, 26, 0.09);
+  background: rgba(35, 37, 58, 0.09);
 }
 
 /* Thumbnails. A soft diagonal rather than a flat fill so a grid of them
@@ -1115,12 +1115,12 @@ textarea:focus-visible,
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 0.5em;
-  background: linear-gradient(135deg, rgba(26, 26, 26, 0.1), rgba(26, 26, 26, 0.045));
+  background: linear-gradient(135deg, rgba(35, 37, 58, 0.1), rgba(35, 37, 58, 0.045));
   overflow: hidden;
 }
 .hsm__thumb--wide { aspect-ratio: 16 / 9; }
 .hsm__thumb--sq { width: 2.8em; aspect-ratio: 1; flex: none; }
-.hsm__thumb--feature { background: linear-gradient(135deg, rgba(26, 26, 26, 0.14), rgba(26, 26, 26, 0.06)); }
+.hsm__thumb--feature { background: linear-gradient(135deg, rgba(35, 37, 58, 0.14), rgba(35, 37, 58, 0.06)); }
 
 /* The one piece of real photography in the hero: the selected product's
    own artwork, dropped into the feature card of the products and library
@@ -1147,7 +1147,7 @@ textarea:focus-visible,
   width: 55%;
   height: 1.25em;
   border-radius: 0.3em;
-  background: rgba(26, 26, 26, 0.28);
+  background: rgba(35, 37, 58, 0.28);
 }
 .hsm__stat-num--wide { width: 78%; height: 1.8em; }
 .hsm__stat--big { flex: 1; }
@@ -1158,7 +1158,7 @@ textarea:focus-visible,
   width: 100%;
   height: 0.45em;
   border-radius: 100px;
-  background: rgba(26, 26, 26, 0.08);
+  background: rgba(35, 37, 58, 0.08);
   overflow: hidden;
 }
 .hsm__meter-fill {
@@ -1184,7 +1184,7 @@ textarea:focus-visible,
 .hsm__chart-col {
   flex: 1;
   border-radius: 0.3em 0.3em 0 0;
-  background: rgba(26, 26, 26, 0.12);
+  background: rgba(35, 37, 58, 0.12);
 }
 .hsm__chart-col--1 { height: 42%; }
 .hsm__chart-col--2 { height: 58%; }
@@ -1201,12 +1201,12 @@ textarea:focus-visible,
 .hsm__list-row {
   height: 1.5em;
   border-radius: 0.4em;
-  background: rgba(26, 26, 26, 0.06);
+  background: rgba(35, 37, 58, 0.06);
   border: 1px solid var(--p-border-soft);
 }
 .hsm__list-row.is-on {
-  background: rgba(26, 26, 26, 0.13);
-  border-color: rgba(26, 26, 26, 0.16);
+  background: rgba(35, 37, 58, 0.13);
+  border-color: rgba(35, 37, 58, 0.16);
 }
 
 /* Video player */
@@ -1218,7 +1218,7 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   border-radius: 0.6em;
-  background: linear-gradient(135deg, rgba(26, 26, 26, 0.16), rgba(26, 26, 26, 0.07));
+  background: linear-gradient(135deg, rgba(35, 37, 58, 0.16), rgba(35, 37, 58, 0.07));
 }
 .hsm__play {
   width: 3em;
@@ -1257,7 +1257,7 @@ textarea:focus-visible,
   border-radius: 50%;
   /* conic-gradient is the cheapest correct donut: one paint, no SVG, no
      extra element per ring. */
-  background: conic-gradient(var(--p-ink) var(--hsm-ring, 60%), rgba(26, 26, 26, 0.1) 0);
+  background: conic-gradient(var(--p-ink) var(--hsm-ring, 60%), rgba(35, 37, 58, 0.1) 0);
   position: relative;
 }
 .hsm__ring::after {
@@ -1321,7 +1321,7 @@ textarea:focus-visible,
   width: 0.85em;
   height: 0.85em;
   border-radius: 0.25em;
-  background: rgba(26, 26, 26, 0.14);
+  background: rgba(35, 37, 58, 0.14);
 }
 .hsm__tabbar i:first-child { background: var(--p-ink); }
 
@@ -1732,7 +1732,7 @@ textarea:focus-visible,
   position: absolute;
   display: block;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(26, 26, 26, 0.085), rgba(26, 26, 26, 0) 78%);
+  background: radial-gradient(closest-side, rgba(35, 37, 58, 0.085), rgba(35, 37, 58, 0) 78%);
   will-change: transform;
 }
 .pres-aura__orb--a {
@@ -1781,8 +1781,8 @@ textarea:focus-visible,
   right: -6%;
   height: 62%;
   background-image:
-    linear-gradient(to right, rgba(26, 26, 26, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(26, 26, 26, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(35, 37, 58, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(35, 37, 58, 0.05) 1px, transparent 1px);
   background-size: 58px 58px;
   -webkit-mask-image: radial-gradient(ellipse 66% 58% at 50% 4%, #000 0%, transparent 74%);
   mask-image: radial-gradient(ellipse 66% 58% at 50% 4%, #000 0%, transparent 74%);
@@ -1875,7 +1875,7 @@ textarea:focus-visible,
   position: absolute;
   inset: -50% -30% auto -30%;
   height: 130%;
-  background: radial-gradient(58% 58% at 32% 0%, rgba(26, 26, 26, 0.09), rgba(26, 26, 26, 0) 72%);
+  background: radial-gradient(58% 58% at 32% 0%, rgba(35, 37, 58, 0.09), rgba(35, 37, 58, 0) 72%);
   opacity: 0;
   transition: opacity var(--p-dur) var(--p-ease);
   pointer-events: none;
@@ -2009,7 +2009,7 @@ textarea:focus-visible,
 .pres-pillar:hover {
   --lift: -5px;
   box-shadow: var(--p-shadow-md);
-  border-color: rgba(26, 26, 26, 0.2);
+  border-color: rgba(35, 37, 58, 0.2);
 }
 
 .pres-pillar__index {
@@ -2036,18 +2036,18 @@ textarea:focus-visible,
 .pres-pillar__glyph,
 .pres-pillar__core,
 .pres-pillar__bar {
-  fill: rgba(26, 26, 26, 0.14);
+  fill: rgba(35, 37, 58, 0.14);
 }
 .pres-pillar__core,
 .pres-pillar__bar.is-filled { fill: var(--p-ink); }
 
 .pres-pillar__track {
   fill: none;
-  stroke: rgba(26, 26, 26, 0.16);
+  stroke: rgba(35, 37, 58, 0.16);
   stroke-width: 2;
   stroke-linecap: round;
 }
-.pres-pillar__pip { fill: rgba(26, 26, 26, 0.16); }
+.pres-pillar__pip { fill: rgba(35, 37, 58, 0.16); }
 .pres-pillar__bolt { fill: var(--p-ink); }
 
 /* 1 — the four outer squares converge on the centre. transform-box +
@@ -2087,7 +2087,7 @@ textarea:focus-visible,
 .pres-pillar__pip--3 { animation-delay: 0.36s !important; }
 
 @keyframes pres-pip {
-  0%, 60%, 100% { fill: rgba(26, 26, 26, 0.16); }
+  0%, 60%, 100% { fill: rgba(35, 37, 58, 0.16); }
   20%, 40% { fill: var(--p-ink); }
 }
 
@@ -2246,7 +2246,7 @@ textarea:focus-visible,
   width: 116%;
   height: 116%;
   transform: translate3d(-50%, -50%, 0);
-  background: radial-gradient(closest-side, rgba(26, 26, 26, 0.13), rgba(26, 26, 26, 0) 76%);
+  background: radial-gradient(closest-side, rgba(35, 37, 58, 0.13), rgba(35, 37, 58, 0) 76%);
   pointer-events: none;
 }
 
@@ -2294,7 +2294,7 @@ textarea:focus-visible,
   border-radius: 36px;
   padding: 10px;
   background: var(--p-ink);
-  border-color: rgba(26, 26, 26, 0.9);
+  border-color: rgba(35, 37, 58, 0.9);
 }
 /* The island, sized in percentages of the shell rather than pixels so it
    keeps its place in the status bar as the frame scales. */
@@ -2626,7 +2626,7 @@ textarea:focus-visible,
   border: 1px solid var(--p-border-soft);
 }
 .mock__cover { flex: 0 0 46px; height: 46px; border-radius: 8px; }
-.mock__cover--a { background: linear-gradient(140deg, #2b2b29, #5f5c56); }
+.mock__cover--a { background: linear-gradient(140deg, #35364A, #5f5c56); }
 .mock__cover--b { background: linear-gradient(140deg, #6d6a63, #c6c3bc); }
 .mock__cover--c { background: linear-gradient(140deg, #3e3c39, #8c8982); }
 .mock__product-body { flex: 1 1 auto; min-width: 0; }
@@ -2726,7 +2726,7 @@ textarea:focus-visible,
   top: 10px;
   border-style: solid;
   border-width: 7px 0 7px 11px;
-  border-color: transparent transparent transparent #1a1a1a;
+  border-color: transparent transparent transparent #23253A;
 }
 .mock__player-title { font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
 .mock__player-meta { font-size: 10.5px; color: rgba(255, 255, 255, 0.6); margin: 4px 0 9px; }
@@ -2753,7 +2753,7 @@ textarea:focus-visible,
   stroke-dasharray: 300;
   stroke-dashoffset: 300;
 }
-.mock__spark-area { fill: rgba(26, 26, 26, 0.06); stroke: none; opacity: 0; transition: opacity 700ms var(--p-ease) 600ms; }
+.mock__spark-area { fill: rgba(35, 37, 58, 0.06); stroke: none; opacity: 0; transition: opacity 700ms var(--p-ease) 600ms; }
 .mock__rail-meta { font-size: 10.5px; color: var(--p-faint); margin-top: 8px; }
 
 .mock__cert {
@@ -2879,7 +2879,7 @@ textarea:focus-visible,
   justify-content: center;
   height: 130px;
   border-radius: 14px;
-  background: linear-gradient(140deg, #2f2d2b, #6e6b64);
+  background: linear-gradient(140deg, #35364A, #6e6b64);
 }
 .mockp__hero-play { width: 44px; height: 44px; }
 .mockp__hero-play::after {
@@ -2889,7 +2889,7 @@ textarea:focus-visible,
   top: 13px;
   border-style: solid;
   border-width: 9px 0 9px 14px;
-  border-color: transparent transparent transparent #1a1a1a;
+  border-color: transparent transparent transparent #23253A;
 }
 .mockp__hero-tag {
   position: absolute;
@@ -3027,7 +3027,7 @@ textarea:focus-visible,
   justify-content: center;
   height: 168px;
   border-radius: 14px;
-  background: linear-gradient(140deg, #26241f, #625f58);
+  background: linear-gradient(140deg, #35364A, #625f58);
 }
 .mockp__video-scrub {
   position: absolute;
@@ -3185,7 +3185,7 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(140deg, #2f2d2a, #6f6c65);
+  background: linear-gradient(140deg, #35364A, #6f6c65);
 }
 .mock__stagevid-tag {
   position: absolute;
@@ -3216,7 +3216,7 @@ textarea:focus-visible,
   border: 1px solid var(--p-border-soft);
 }
 .mock__sets li.is-live {
-  border-color: rgba(26, 26, 26, 0.3);
+  border-color: rgba(35, 37, 58, 0.3);
   background: var(--p-surface-2);
 }
 .mock__set-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: 600; letter-spacing: -0.015em; }
@@ -3467,7 +3467,7 @@ textarea:focus-visible,
 .pres-cat:hover {
   --lift: -5px;
   box-shadow: var(--p-shadow-md);
-  border-color: rgba(26, 26, 26, 0.2);
+  border-color: rgba(35, 37, 58, 0.2);
 }
 .pres-cat__icon {
   display: flex;
@@ -3678,7 +3678,7 @@ textarea:focus-visible,
     box-shadow var(--p-dur) var(--p-ease);
 }
 .pres-value__item:hover {
-  border-color: rgba(26, 26, 26, 0.22);
+  border-color: rgba(35, 37, 58, 0.22);
   box-shadow: var(--p-shadow-md);
 }
 
@@ -3763,7 +3763,7 @@ textarea:focus-visible,
     box-shadow var(--p-dur) var(--p-ease);
 }
 .pres-camp__card:hover {
-  border-color: rgba(26, 26, 26, 0.22);
+  border-color: rgba(35, 37, 58, 0.22);
   box-shadow: var(--p-shadow-md);
 }
 
@@ -4068,7 +4068,7 @@ textarea:focus-visible,
 }
 .pres-soon__card:hover {
   transform: translateY(-3px);
-  border-color: rgba(26, 26, 26, 0.22);
+  border-color: rgba(35, 37, 58, 0.22);
   box-shadow: var(--p-shadow-md);
 }
 
@@ -4262,10 +4262,10 @@ textarea:focus-visible,
   width: 26px;
   height: 4px;
   border-radius: 100px;
-  background: rgba(26, 26, 26, 0.12);
+  background: rgba(35, 37, 58, 0.12);
   transition: background-color var(--p-dur) var(--p-ease), opacity var(--p-dur) var(--p-ease);
 }
-.pres-setup__dot.is-done { background: rgba(26, 26, 26, 0.4); }
+.pres-setup__dot.is-done { background: rgba(35, 37, 58, 0.4); }
 .pres-setup__dot.is-active { background: var(--p-ink); }
 /* A step the current answers skip past. Still shown — the viewer should
    be able to see that choosing "platform only" removed four questions
@@ -4284,7 +4284,7 @@ textarea:focus-visible,
 .pres-setup__progress {
   height: 3px;
   border-radius: 100px;
-  background: rgba(26, 26, 26, 0.09);
+  background: rgba(35, 37, 58, 0.09);
   overflow: hidden;
   margin-bottom: clamp(22px, 2.6vw, 32px);
 }
@@ -4410,7 +4410,7 @@ textarea:focus-visible,
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1.5px solid rgba(26, 26, 26, 0.28);
+  border: 1.5px solid rgba(35, 37, 58, 0.28);
   background: var(--p-surface);
   transition:
     background-color var(--p-dur) var(--p-ease),
@@ -4437,7 +4437,7 @@ textarea:focus-visible,
 }
 
 .pres-setup__opt:hover .pres-setup__opt-box {
-  border-color: rgba(26, 26, 26, 0.28);
+  border-color: rgba(35, 37, 58, 0.28);
   background: var(--p-surface);
 }
 
@@ -4626,7 +4626,7 @@ textarea:focus-visible,
   outline: none;
   background: var(--p-surface);
   border-color: var(--p-ink);
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.08);
 }
 .pres-field__input--area {
   min-height: 116px;
@@ -4680,7 +4680,7 @@ textarea:focus-visible,
   animation: pres-spin 700ms linear infinite;
 }
 .pres-btn--secondary.is-busy::after {
-  border-color: rgba(26, 26, 26, 0.25);
+  border-color: rgba(35, 37, 58, 0.25);
   border-top-color: var(--p-ink);
 }
 .pres-btn { position: relative; }
@@ -4757,7 +4757,7 @@ textarea:focus-visible,
 .pres-footer__owner {
   margin-top: 6px;
   letter-spacing: 0.06em;
-  color: rgba(26, 26, 26, 0.34);
+  color: rgba(35, 37, 58, 0.34);
 }
 
 /* -----------------------------------------------------------------------
@@ -5041,7 +5041,7 @@ textarea:focus-visible,
 .pres-gate__input:focus {
   outline: none;
   border-color: var(--p-ink);
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.08);
 }
 .pres-gate__error {
   margin-top: 10px;

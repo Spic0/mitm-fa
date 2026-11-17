@@ -34,7 +34,7 @@ const ROOT = path.join(__dirname, "..");
 const SRC = path.join(ROOT, "assets/images/logo/fa-logo.svg");
 const FONT_DIR = path.join(ROOT, "assets/fonts/montserrat");
 
-const BG = "#1a1a1a"; // --color-primary in assets/css/style.css
+const BG = "#23253A"; // --dusk-2 (= --color-primary) in assets/css/style.css
 const FG = "#ffffff";
 const MARK_SCALE = 0.7;
 const MASKABLE_SCALE = 0.6;

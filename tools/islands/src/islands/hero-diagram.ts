@@ -104,7 +104,7 @@ export async function mount(el: HTMLElement): Promise<void> {
     return;
   }
 
-  const text = cssVar("--color-text", "#1a1a1a");
+  const text = cssVar("--color-text", "#23253A");
   const faint = cssVar("--color-text-faint", "#9c9993");
   const surface = cssVar("--color-surface", "#fdfdfc");
   const accent = "#c08a2e";
@@ -148,7 +148,7 @@ export async function mount(el: HTMLElement): Promise<void> {
     const a = (i / n) * Math.PI * 2;
     const p = new Vector3(Math.sin(a) * RADIUS, 0, Math.cos(a) * RADIUS);
     local.push(p);
-    const mat = new SpriteMaterial({ map: cardTexture(images[i], surface, "rgba(26,26,26,0.14)"), transparent: true });
+    const mat = new SpriteMaterial({ map: cardTexture(images[i], surface, "rgba(35,37,58,0.14)"), transparent: true });
     const sp = new Sprite(mat);
     sp.position.copy(p);
     wheel.add(sp);

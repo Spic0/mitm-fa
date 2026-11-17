@@ -39,7 +39,7 @@
     opacity: 0.5;
     /* Sits over uploaded artwork of unknown brightness — the shadow keeps the
        inactive dots legible on a white or washed-out frame. */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 1px 3px rgba(35, 37, 58, 0.45);
     transition: opacity 0.2s ease, width 0.2s ease;
 }
 #productGallery .shop-single-pagination .swiper-pagination-bullet-active {
@@ -155,10 +155,10 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    box-shadow: 0 4px 16px rgba(26, 26, 26, 0.28);
+    box-shadow: 0 4px 16px rgba(35, 37, 58, 0.28);
     transition: var(--transition);
 }
-.btn-add-to-bag:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(26, 26, 26, 0.36); color: #ffffff; }
+.btn-add-to-bag:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(35, 37, 58, 0.36); color: #ffffff; }
 .btn-add-to-bag:active { transform: translateY(0); }
 .btn-add-to-bag.added { background: var(--success); box-shadow: 0 6px 22px rgba(5, 150, 105, 0.32); }
 

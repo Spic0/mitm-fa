@@ -39,18 +39,18 @@ type Settings = {
 
 const THEMES: Record<'dark' | 'light', Palette> = {
   dark: {
-    surface: '#111111',
+    surface: '#23253A',
     border: 'rgba(255, 255, 255, 0.08)',
-    shadow: '0 24px 48px -24px rgba(0, 0, 0, 0.6)',
+    shadow: '0 24px 48px -24px rgba(35, 37, 58, 0.6)',
     light: '#ffffff',
     fill: 1,
     edge: 1
   },
   light: {
     surface: '#ffffff',
-    border: 'rgba(24, 24, 27, 0.1)',
-    shadow: '0 1px 2px rgba(24, 24, 27, 0.04), 0 18px 40px -20px rgba(24, 24, 27, 0.16)',
-    light: '#18181b',
+    border: 'rgba(35, 37, 58, 0.1)',
+    shadow: '0 1px 2px rgba(35, 37, 58, 0.04), 0 18px 40px -20px rgba(35, 37, 58, 0.16)',
+    light: '#23253A',
     fill: 0.28,
     edge: 0.7
   }
@@ -167,7 +167,7 @@ const SpotlightCard = ({
       }
       light.style.opacity = String(Math.min(1, state.presence * s.intensity * boost));
       edge.style.opacity = String(Math.min(1, state.presence * s.borderGlow * boost));
-      const grainy = s.grain > 0 ? gradient(s, size, state.x, state.y, '#000 0%, transparent 100%') : 'none';
+      const grainy = s.grain > 0 ? gradient(s, size, state.x, state.y, '#23253A 0%, transparent 100%') : 'none';
       if (grainy !== drawn.noise) {
         drawn.noise = grainy;
         noise.style.webkitMaskImage = grainy;

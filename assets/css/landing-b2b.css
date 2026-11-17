@@ -158,7 +158,7 @@
   z-index: 1;
   background: var(--surface-sheet);
   border-radius: 24px 24px 0 0;
-  box-shadow: 0 -16px 36px rgba(26, 26, 26, 0.07), 0 -1px 0 rgba(26, 26, 26, 0.05);
+  box-shadow: 0 -16px 36px rgba(35, 37, 58, 0.07), 0 -1px 0 rgba(35, 37, 58, 0.05);
   min-height: 100vh;
   min-height: 100svh;
 }
@@ -754,7 +754,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(26, 26, 26, 0.16) 1px, rgba(26, 26, 26, 0) 1.5px) 50% 0 / 22px 22px;
+  background: radial-gradient(circle, rgba(35, 37, 58, 0.16) 1px, rgba(35, 37, 58, 0) 1.5px) 50% 0 / 22px 22px;
   -webkit-mask-image: radial-gradient(60% 70% at 78% 44%, #141414 0%, rgba(20, 20, 20, 0.35) 55%, rgba(20, 20, 20, 0) 100%);
   mask-image: radial-gradient(60% 70% at 78% 44%, #141414 0%, rgba(20, 20, 20, 0.35) 55%, rgba(20, 20, 20, 0) 100%);
 }

@@ -37,12 +37,12 @@
   --ac-bg: var(--color-bg, #fafaf9);
   --ac-surface: var(--color-surface, #fdfdfc);
   --ac-surface-2: var(--color-surface-2, #f2f1ee);
-  --ac-ink: var(--color-text, #1a1a1a);
-  --ac-ink-hover: var(--color-primary-hover, #2e2e2c);
+  --ac-ink: var(--color-text, var(--dusk-2));
+  --ac-ink-hover: var(--color-primary-hover, var(--dusk-2-hover));
   --ac-muted: var(--color-text-muted, #55534f);
   --ac-faint: var(--color-text-faint, #9c9993);
-  --ac-border: var(--color-border, rgba(26, 26, 26, 0.1));
-  --ac-border-soft: rgba(26, 26, 26, 0.06);
+  --ac-border: var(--color-border, rgba(35, 37, 58, 0.1));
+  --ac-border-soft: rgba(35, 37, 58, 0.06);
   --ac-success: #059669;
   --ac-danger: #dc2626;
 
@@ -288,7 +288,7 @@
 .ac-select:focus {
   outline: none;
   border-color: var(--ac-ink);
-  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.08);
 }
 .ac-input[readonly] { background: var(--ac-surface-2); color: var(--ac-muted); }
 .ac-input.is-invalid { border-color: var(--ac-danger); }
@@ -339,7 +339,7 @@
   height: 6px;
   min-width: 60px;
   border-radius: var(--ac-radius-pill);
-  background: rgba(26, 26, 26, 0.09);
+  background: rgba(35, 37, 58, 0.09);
   overflow: hidden;
 }
 .ac-progress__bar {
@@ -406,7 +406,7 @@
    content that replaces them so the swap does not move the page.
    -------------------------------------------------------------------- */
 .ac-skel {
-  background: linear-gradient(90deg, var(--ac-surface-2) 25%, rgba(26, 26, 26, 0.05) 37%, var(--ac-surface-2) 63%);
+  background: linear-gradient(90deg, var(--ac-surface-2) 25%, rgba(35, 37, 58, 0.05) 37%, var(--ac-surface-2) 63%);
   background-size: 400% 100%;
   animation: ac-shimmer 1.3s ease-in-out infinite;
   border-radius: var(--ac-radius);
@@ -636,7 +636,7 @@
 .ac-continue__scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(12, 12, 12, 0.92) 0%, rgba(12, 12, 12, 0.66) 26%, rgba(12, 12, 12, 0) 62%);
+  background: linear-gradient(to top, rgba(35, 37, 58, 0.92) 0%, rgba(35, 37, 58, 0.66) 26%, rgba(35, 37, 58, 0) 62%);
   pointer-events: none;
 }
 .ac-continue__body {
@@ -656,8 +656,8 @@
   overflow-wrap: break-word;
 }
 .ac-continue__meta { font-size: var(--ac-small); color: rgba(255, 255, 255, 0.78); margin: 0 0 14px; }
-.ac-continue .ac-btn--primary { background: #fff; color: #141414; }
-.ac-continue .ac-btn--primary:hover { background: rgba(255, 255, 255, 0.88); color: #141414; }
+.ac-continue .ac-btn--primary { background: #fff; color: var(--dusk-2); }
+.ac-continue .ac-btn--primary:hover { background: rgba(255, 255, 255, 0.88); color: var(--dusk-2); }
 /* The progress bar sits on dark art here, so its track and fill invert. */
 .ac-continue .ac-progress { color: rgba(255, 255, 255, 0.8); margin-bottom: 14px; }
 .ac-continue .ac-progress__track { background: rgba(255, 255, 255, 0.26); }
@@ -687,7 +687,7 @@
   .ac-continue .ac-btn--primary { background: var(--ac-ink); color: var(--ac-surface); align-self: flex-start; }
   .ac-continue .ac-btn--primary:hover { background: var(--ac-ink-hover); color: var(--ac-surface); }
   .ac-continue .ac-progress { color: var(--ac-muted); }
-  .ac-continue .ac-progress__track { background: rgba(26, 26, 26, 0.09); }
+  .ac-continue .ac-progress__track { background: rgba(35, 37, 58, 0.09); }
   .ac-continue .ac-progress__bar { background: var(--ac-ink); }
   .ac-continue .ac-progress__val { color: var(--ac-ink); }
 }
@@ -827,7 +827,7 @@
 /* Progress: one segment per step. Reads as position without a percentage,
    which is what a five-step form needs. */
 .ac-wz__steps { display: flex; gap: 6px; margin-bottom: 10px; }
-.ac-wz__seg { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(26, 26, 26, 0.1); overflow: hidden; }
+.ac-wz__seg { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(35, 37, 58, 0.1); overflow: hidden; }
 .ac-wz__seg span { display: block; height: 100%; width: 0; background: var(--ac-ink); border-radius: inherit; transition: width var(--ac-dur-slow) var(--ac-ease-soft); }
 .ac-wz__seg.is-done span, .ac-wz__seg.is-current span { width: 100%; }
 .ac-wz__count { font-size: var(--ac-micro); color: var(--ac-faint); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -857,7 +857,7 @@
 
 /* Password strength — three bars, no numeric score. */
 .ac-strength { display: flex; gap: 5px; margin-top: 10px; }
-.ac-strength__bar { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(26, 26, 26, 0.1); transition: background var(--ac-dur) var(--ac-ease); }
+.ac-strength__bar { flex: 1; height: 4px; border-radius: var(--ac-radius-pill); background: rgba(35, 37, 58, 0.1); transition: background var(--ac-dur) var(--ac-ease); }
 .ac-strength.is-1 .ac-strength__bar:nth-child(1) { background: #d97706; }
 .ac-strength.is-2 .ac-strength__bar:nth-child(-n+2) { background: #d97706; }
 .ac-strength.is-3 .ac-strength__bar { background: var(--ac-success); }

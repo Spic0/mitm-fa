@@ -44,8 +44,8 @@
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(110% 75% at 50% 45%, rgba(10, 10, 9, 0.5), rgba(10, 10, 9, 0.82)),
-    linear-gradient(to bottom, rgba(10, 10, 9, 0.35), rgba(10, 10, 9, 0.7));
+    radial-gradient(110% 75% at 50% 45%, rgba(35, 37, 58, 0.5), rgba(35, 37, 58, 0.82)),
+    linear-gradient(to bottom, rgba(35, 37, 58, 0.35), rgba(35, 37, 58, 0.7));
 }
 .ph__inner { width: 100%; max-width: 760px; padding: 64px var(--pt-gutter, 16px) 104px; }
 .ph__kicker {
@@ -202,16 +202,16 @@
 .pt-card:nth-child(odd) p { color: var(--pt-on-dark-muted); }
 .pt .pt-card:nth-child(odd) .pt-card__icon { background-color: rgba(255, 255, 255, 0.12); color: #ffffff; }
 @media (hover: hover) {
-  .pt-card.is-revealed:hover, html:not(.reveal-on) .pt-card:hover { transform: translateY(-3px); border-color: rgba(26, 26, 26, 0.22); box-shadow: 0 14px 34px rgba(26, 26, 26, 0.12); }
-  .pt-card:nth-child(odd).is-revealed:hover, html:not(.reveal-on) .pt-card:nth-child(odd):hover { background-color: #2b2b29; border-color: transparent; box-shadow: 0 14px 34px rgba(26, 26, 26, 0.28); }
+  .pt-card.is-revealed:hover, html:not(.reveal-on) .pt-card:hover { transform: translateY(-3px); border-color: rgba(35, 37, 58, 0.22); box-shadow: 0 14px 34px rgba(35, 37, 58, 0.12); }
+  .pt-card:nth-child(odd).is-revealed:hover, html:not(.reveal-on) .pt-card:nth-child(odd):hover { background-color: var(--dusk-2-hover); border-color: transparent; box-shadow: 0 14px 34px rgba(35, 37, 58, 0.28); }
 }
 
 /* ---- Device frame (the hero's floating phone) ---- */
-.dev__screen { position: relative; overflow: hidden; background-color: #111110; }
+.dev__screen { position: relative; overflow: hidden; background-color: var(--dusk-2); }
 .dev__screen picture, .dev__screen img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .dev--phone .dev__screen {
   aspect-ratio: 390 / 844;
-  border: 7px solid #1d1d1c;
+  border: 7px solid var(--dusk-2);
   border-radius: 28px;
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.22);
 }
@@ -224,7 +224,7 @@
   width: 32%;
   height: 12px;
   border-radius: 10px;
-  background-color: #1d1d1c;
+  background-color: var(--dusk-2);
   transform: translateX(-50%);
 }
 
@@ -354,7 +354,7 @@
   overflow: hidden;
   background-color: #fdfdfc;
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.05), 0 10px 30px rgba(26, 26, 26, 0.08);
+  box-shadow: 0 1px 2px rgba(35, 37, 58, 0.05), 0 10px 30px rgba(35, 37, 58, 0.08);
 }
 .pt-cal iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; opacity: 0; transition: opacity 0.2s ease-out; }
 .pt-cal.is-ready iframe { opacity: 1; }
@@ -386,7 +386,7 @@
 .partnership-page .scroll-up { display: none; }
 
 /* ---- The setup wizard frame ---- */
-.pt-offer { max-width: 1080px; margin: 0 auto; overflow: hidden; border-radius: 20px; background-color: var(--color-bg); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); }
+.pt-offer { max-width: 1080px; margin: 0 auto; overflow: hidden; border-radius: 20px; background-color: var(--color-bg); box-shadow: 0 30px 80px rgba(35, 37, 58, 0.35); }
 /* Close to the first step's height; the frame reports its real height. */
 /* Placeholder heights only (the first step, measured), so the section does not
    jump when the frame loads; assets/js/offer-frame.js then sizes it to its body. */
@@ -431,8 +431,8 @@ html.pt-demo-lock { overflow: hidden; }
   width: min(1280px, 100%);
   height: min(860px, 100%);
   border-radius: 18px;
-  background-color: #121211;
-  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
+  background-color: var(--dusk-2);
+  box-shadow: 0 40px 120px rgba(35, 37, 58, 0.5);
   overflow: hidden;
 }
 .pt-demo[open] .pt-demo__panel { animation: pt-demo-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
@@ -441,7 +441,7 @@ html.pt-demo-lock { overflow: hidden; }
 .pt-demo.is-warming:not([open]) { display: flex; align-items: center; justify-content: center; left: -300vw; right: 300vw; visibility: hidden; pointer-events: none; }
 /* The hero's floating phone would sit beside the viewer, through the backdrop. */
 html.pt-demo-lock .ph__float { visibility: hidden; }
-.pt-demo::backdrop { background-color: rgba(10, 10, 9, 0.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.pt-demo::backdrop { background-color: rgba(35, 37, 58, 0.82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .pt-demo__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 12px 12px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .pt-demo__title { margin: 0; font-family: var(--prosto-one); font-size: 17px; font-weight: 700; color: #ffffff; }
 .pt-demo__tabs, .pt-demo__devs { display: flex; gap: 2px; padding: 4px; border-radius: var(--radius-pill); background-color: rgba(255, 255, 255, 0.07); }
@@ -474,7 +474,7 @@ html.pt-demo-lock .ph__float { visibility: hidden; }
 .pt-demo__close .pt-icon { width: 20px; height: 20px; }
 .pt-demo__stage { position: relative; display: grid; place-items: center; min-height: 0; padding: 20px; overflow: hidden; }
 .pt-demo__device { position: relative; }
-.pt-demo__screen { position: relative; box-sizing: content-box; overflow: hidden; border: 9px solid #2b2b29; border-radius: 14px; background-color: #fafaf9; }
+.pt-demo__screen { position: relative; box-sizing: content-box; overflow: hidden; border: 9px solid var(--dusk-2-hover); border-radius: 14px; background-color: #fafaf9; }
 .pt-demo__stage[data-device="desktop"] .pt-demo__screen { border-bottom-width: 13px; border-radius: 14px 14px 4px 4px; }
 .pt-demo__stage[data-device="desktop"] .pt-demo__device::after { content: ""; display: block; height: 10px; margin: 0 -5%; border-radius: 0 0 12px 12px; background: linear-gradient(#5b5a56, #393835); }
 .pt-demo__stage[data-device="phone"] .pt-demo__screen { border-width: 8px; border-radius: 34px; }

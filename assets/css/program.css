@@ -50,12 +50,12 @@
   --pg-bg: var(--pg-fog-1);
   --pg-surface: #fdfdfc;
   --pg-surface-2: color-mix(in srgb, var(--pg-fog-1) 80%, var(--pg-fog-2));
-  --pg-ink: #1a1a1a;
-  --pg-ink-hover: #2e2e2c;
+  --pg-ink: #23253A;
+  --pg-ink-hover: #35364A;
   --pg-muted: #55534f;
   --pg-faint: #585b63; /* style.css --on-fog-faint */
-  --pg-border: rgba(26, 26, 26, 0.1);
-  --pg-border-soft: rgba(26, 26, 26, 0.06);
+  --pg-border: rgba(35, 37, 58, 0.1);
+  --pg-border-soft: rgba(35, 37, 58, 0.06);
   --pg-success: #059669;
   --pg-warning: #d97706;
   --pg-danger: #dc2626;
@@ -238,7 +238,7 @@ h1, h2, h3, h4, h5 {
 .pg-btn--ghost:hover { background: var(--pg-surface-2); border-color: var(--pg-ink); }
 
 .pg-btn--quiet { background: var(--pg-surface-2); color: var(--pg-ink); }
-.pg-btn--quiet:hover { background: rgba(26, 26, 26, 0.1); }
+.pg-btn--quiet:hover { background: rgba(35, 37, 58, 0.1); }
 
 .pg-btn--lg { min-height: 56px; padding: 16px 30px; font-size: 16.5px; width: 100%; }
 .pg-btn--sm { min-height: 40px; padding: 8px 16px; font-size: 13.5px; }
@@ -574,7 +574,7 @@ h1, h2, h3, h4, h5 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to top, rgba(12, 12, 11, 0.62) 0%, rgba(12, 12, 11, 0.26) 55%, rgba(12, 12, 11, 0.3) 100%);
+    linear-gradient(to top, rgba(35, 37, 58, 0.62) 0%, rgba(35, 37, 58, 0.26) 55%, rgba(35, 37, 58, 0.3) 100%);
 }
 
 .pg-hero__body { min-width: 0; color: #ffffff; }
@@ -985,7 +985,7 @@ h1, h2, h3, h4, h5 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(12, 12, 11, 0.72), rgba(12, 12, 11, 0) 58%);
+  background: linear-gradient(to top, rgba(35, 37, 58, 0.72), rgba(35, 37, 58, 0) 58%);
 }
 .pg-tile__play {
   position: absolute;
@@ -1233,7 +1233,7 @@ h1, h2, h3, h4, h5 {
 .pg-sheet__scrim {
   position: absolute;
   inset: 0;
-  background: rgba(12, 12, 11, 0.42);
+  background: rgba(35, 37, 58, 0.42);
   opacity: 0;
   transition: opacity var(--pg-dur) var(--pg-ease);
 }
@@ -1338,9 +1338,9 @@ body.pg-sheet-open { overflow: hidden; }
    already tinted (a completed day) still reads as flashing. */
 .is-flash { animation: pgFlash 1.6s var(--pg-ease) 1; border-radius: var(--pg-radius); }
 @keyframes pgFlash {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
-  18% { box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.16); }
-  70% { box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.16); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(35, 37, 58, 0); }
+  18% { box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.16); }
+  70% { box-shadow: 0 0 0 3px rgba(35, 37, 58, 0.16); }
 }
 
 /* -----------------------------------------------------------------------

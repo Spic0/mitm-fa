@@ -941,8 +941,9 @@ export function MarketsGlobe({
       dark: onDark ? 1 : 0,
       diffuse: onDark ? 1.2 : 0.4,
       mapBrightness: onDark ? 6 : 1.2,
-      baseColor: mix(base, foreground, onDark ? 0.3 : 0.05),
-      glowColor: mix(base, foreground, onDark ? 0.45 : 0.14),
+      // A section can name the globe's colours outright (--globe-base/--globe-glow).
+      baseColor: resolveColor(root, ["var(--globe-base)"]) ?? mix(base, foreground, onDark ? 0.3 : 0.05),
+      glowColor: resolveColor(root, ["var(--globe-glow)"]) ?? mix(base, foreground, onDark ? 0.45 : 0.14),
       markers: [],
     });
     kickRef.current();

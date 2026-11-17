@@ -72,13 +72,53 @@ CSS TABLE OF CONTENTS
      var(--primary-color)/var(--paragraph)/etc. call sites across this file
      and every page pick up the new palette without being touched one by one.
      --------------------------------------------------------------------- */
-  --color-bg: #fafaf9;
-  --color-surface: #fdfdfc;
-  --color-surface-2: #f2f1ee;
+  /* ---- Fog + Dusk: the page grounds. Light sections are Fog, dark ones
+     Dusk; Fog ends at --fog-2 and Dusk starts at --dusk-1, so the two meet
+     without a hard cut. Text never sits on --fog-2 or --dusk-1: those two
+     stops live only inside the --edge transition zone, which every section
+     keeps inside its own padding. ---- */
+  --fog-1: #EEF1F6;  --fog-2: #A9B4C6;
+  --dusk-1: #8D99AE; --dusk-2: #23253A;
+  --grad-fog:  linear-gradient(180deg, var(--fog-1) 0%, var(--fog-2) 100%);
+  --grad-dusk: linear-gradient(180deg, var(--dusk-1) 0%, var(--dusk-2) 100%);
+  --grad-fog-soft: linear-gradient(180deg, var(--fog-1) 0%, color-mix(in srgb, var(--fog-1) 60%, var(--fog-2)) 100%);
+  --grad-dusk-deep: linear-gradient(180deg, color-mix(in srgb, var(--dusk-1) 35%, var(--dusk-2)) 0%, var(--dusk-2) 100%);
+  --grad-bridge: linear-gradient(180deg, var(--fog-1) 0%, var(--fog-2) 38%, var(--dusk-1) 55%, var(--dusk-2) 100%);
+  --dusk-deep-0: color-mix(in srgb, var(--dusk-1) 35%, var(--dusk-2)); /* lightest stop text may sit on */
+  --edge: clamp(40px, 5vw, 64px);
+  /* A Dusk section: dusk-1 only in the top/bottom --edge, deep behind the text. */
+  --grad-dusk-band:
+    linear-gradient(180deg, var(--dusk-1), var(--dusk-deep-0)) 0 0 / 100% var(--edge) no-repeat,
+    linear-gradient(0deg, var(--dusk-1), var(--dusk-2)) 0 100% / 100% var(--edge) no-repeat,
+    var(--grad-dusk-deep);
+  /* The Fog side of the same seam, for a light section above / below Dusk. */
+  --fog-end-bottom: linear-gradient(180deg, transparent, var(--fog-2)) 0 100% / 100% var(--edge) no-repeat;
+  --fog-end-top: linear-gradient(0deg, transparent, var(--fog-2)) 0 0 / 100% var(--edge) no-repeat;
+  /* ~2.5% grey grain over the big gradients, so they do not band. */
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --on-fog: #1a1a1a;
+  --on-fog-muted: #55534f;
+  --on-fog-faint: #585b63; /* was #9c9993, which failed AA even on the old paper */
+  --on-dusk: #f2f0eb;
+  --on-dusk-muted: #cfd3dc; /* 5.5:1 on --dusk-deep-0 */
+  --card-fog: rgba(255, 255, 255, 0.55);
+  --card-fog-border: rgba(169, 180, 198, 0.45);
+  --card-dusk: rgba(255, 255, 255, 0.06);
+  --card-dusk-border: rgba(255, 255, 255, 0.10);
+  --card-dusk-hover: rgba(255, 255, 255, 0.12);
+  /* The pre-Fog paper, kept only so the site header renders exactly as before. */
+  --paper: #fafaf9;
+  --paper-2: #f2f1ee;
+  --paper-faint: #9c9993;
+  --paper-light: #6e6b66;
 
-  --color-text: #1a1a1a;
-  --color-text-muted: #55534f;
-  --color-text-faint: #9c9993;
+  --color-bg: var(--fog-1);
+  --color-surface: #fdfdfc;
+  --color-surface-2: color-mix(in srgb, var(--fog-1) 80%, var(--fog-2));
+
+  --color-text: var(--on-fog);
+  --color-text-muted: var(--on-fog-muted);
+  --color-text-faint: var(--on-fog-faint);
 
   --color-primary: #1a1a1a;
   --color-primary-hover: #2e2e2c;
@@ -94,7 +134,7 @@ CSS TABLE OF CONTENTS
   --sub-bg: var(--color-surface-2);
   --heading-color: var(--color-text);
   --paragraph: var(--color-text-muted);
-  --paragraph-light: #6e6b66;
+  --paragraph-light: var(--on-fog-muted); /* was #6e6b66: under 4.5:1 on Fog */
   --span: var(--color-text);
   --border: var(--color-border);
   --border-light: rgba(26, 26, 26, 0.06);
@@ -2542,7 +2582,7 @@ input {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: color-mix(in srgb, var(--dusk-2) 62%, transparent);
   z-index: 0;
 }
 .page-banner .container {
@@ -9743,3 +9783,95 @@ main.co-page ~ .footer-area {
     padding: 20px 16px;
   }
 }
+
+/* ===================================================
+   FOG + DUSK GROUNDS (tokens in :root)
+   =================================================== */
+/* One page-long Fog gradient behind everything that does not paint its own
+   ground; the grain stops it banding over a tall page. */
+body {
+  background-color: var(--fog-1);
+  background-image: var(--noise), var(--grad-fog-soft);
+}
+
+/* The header renders exactly as before: it reads the pre-Fog paper. Legacy
+   aliases resolve where they are declared, so they are re-declared too. */
+.site-header {
+  --color-bg: var(--paper);
+  --color-surface-2: var(--paper-2);
+  --color-text-faint: var(--paper-faint);
+  --paragraph-light: var(--paper-light);
+  --black: var(--paper);
+  --secondary-color: var(--paper);
+  --sub-bg: var(--paper-2);
+}
+
+/* Dusk scope: re-points the colour tokens (and the legacy aliases that read
+   them), so existing rules inside follow without new type. */
+.footer-area:not(.lb ~ *),
+.on-dusk {
+  --color-bg: var(--dusk-2);
+  --color-surface: var(--card-dusk);
+  --color-surface-2: var(--card-dusk);
+  --color-text: var(--on-dusk);
+  --color-text-muted: var(--on-dusk-muted);
+  --color-text-faint: var(--on-dusk-muted);
+  --color-border: var(--card-dusk-border);
+  --color-primary: var(--on-dusk);
+  --heading-color: var(--on-dusk);
+  --paragraph: var(--on-dusk-muted);
+  --paragraph-light: var(--on-dusk-muted);
+  --span: var(--on-dusk);
+  --white: var(--on-dusk);
+  --black: var(--dusk-2);
+  --secondary-color: var(--dusk-2);
+  --sub-bg: var(--card-dusk);
+  --footer-color: var(--on-dusk-muted);
+  --border: var(--card-dusk-border);
+  --border-light: var(--card-dusk-border);
+  --border-1px: 1px solid var(--card-dusk-border);
+  color: var(--on-dusk-muted);
+}
+
+/* Footer: Dusk, entered through the bridge inside its own top padding. The
+   landing ends on a Dusk call to action, so there it stays Fog (two Dusk
+   bands never touch). !important only because the base rule uses it to
+   kill the theme's inline footer photo. */
+.footer-area:not(.lb ~ *) {
+  background-color: var(--dusk-2);
+  background-image: var(--noise), var(--grad-bridge), linear-gradient(180deg, var(--dusk-2), color-mix(in srgb, var(--dusk-deep-0) 50%, var(--dusk-2))) !important;
+  background-size: auto, 100% var(--edge), 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-position: 0 0; /* .bg-image centres it */
+  border-top: 0;
+}
+.footer-area:not(.lb ~ *) .logo img { filter: invert(0.94); }
+.lb ~ .footer-area {
+  background-color: var(--fog-1);
+  background-image: var(--noise), linear-gradient(180deg, var(--fog-2), transparent var(--edge)), linear-gradient(var(--fog-1), var(--fog-1)) !important;
+  background-size: auto, 100% 100%, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-position: 0 0;
+  border-top: 0;
+}
+
+/* Inner-page photo banner: one soft Fog highlight over its scrim. */
+.page-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 90% at 50% 0%, color-mix(in srgb, var(--fog-1) 10%, transparent), transparent 70%);
+}
+
+/* Filled near-black controls whose label read --white, which is the INK in
+   this palette, so the label was black on black (invisible). Contrast fix
+   only: the label takes the paper colour, nothing else changes. */
+.blog-pegi:hover,
+.blog-pegi.active,
+.blog-slingle.blog-area .go_blog,
+.form-area form button,
+.login__image .btn-wrp .active,
+.login__form form button:not(:hover),
+.blog-slingle.blog-area .image-tag a:first-child { color: var(--paper); }
+.blog-slingle .btn-one span { color: inherit; }

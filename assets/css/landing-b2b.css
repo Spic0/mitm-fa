@@ -16,9 +16,6 @@
   --lb-violet: #7a62a8;
   --lb-coral: #cf6a55;
   --lb-radius: 18px;
-  /* The light neighbours, resolved here so a dark section can still paint them. */
-  --lb-light: var(--color-bg);
-  --lb-light-2: var(--color-surface-2);
 }
 .lb ul, .lb ol { list-style: none; margin: 0; padding: 0; }
 .lb h3 { margin: 0; color: var(--color-text); }
@@ -159,7 +156,7 @@
 .hero-stack > .lb-sheet {
   position: relative;
   z-index: 1;
-  background-color: var(--color-bg);
+  background: var(--noise), var(--fog-1);
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -16px 36px rgba(26, 26, 26, 0.07), 0 -1px 0 rgba(26, 26, 26, 0.05);
   min-height: 100vh;
@@ -167,8 +164,13 @@
 }
 
 /* ---- Sections ---- */
-.lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; background-color: var(--color-bg); }
-.lb-share { background-color: var(--color-surface-2); }
+.lb-section { position: relative; padding: clamp(56px, 9vw, 112px) 0; }
+/* Light sections are see-through onto the page's Fog; next to a Dusk band
+   they run out to --fog-2 inside their own padding, where Dusk picks up. */
+.hero-stack:has(+ .lb-dark) > .lb-sheet { background: var(--fog-end-bottom), var(--noise), var(--fog-1); }
+.lb-section:has(+ .lb-dark) { background: var(--fog-end-bottom); }
+.lb-dark + .lb-section { background: var(--fog-end-top); }
+.lb-dark + .lb-section:has(+ .lb-dark) { background: var(--fog-end-top), var(--fog-end-bottom); }
 .lb-head { margin-bottom: clamp(28px, 4vw, 48px); }
 .lb-head .value__sub { max-width: 46ch; }
 .lb .lb-h2 { max-width: 22ch; }
@@ -195,9 +197,9 @@
 .lb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .lb-card {
   position: relative;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--card-fog-border);
   border-radius: var(--lb-radius);
-  background: var(--color-surface);
+  background: var(--card-fog);
   overflow: hidden;
 }
 .lb-card .lb-card__spot {
@@ -214,7 +216,7 @@
   place-items: center;
   aspect-ratio: 4 / 3;
   border-radius: 12px;
-  background: radial-gradient(circle, var(--color-border) 1px, rgba(250, 250, 249, 0) 1.5px) 50% 50% / 14px 14px var(--color-bg);
+  background: radial-gradient(circle, var(--color-border) 1px, transparent 1.5px) 50% 50% / 14px 14px var(--card-fog);
 }
 .lb-card__art .lb-ico { width: 76px; height: 76px; stroke-width: 1.1; }
 .lb-grid { --lb-stagger: 80ms; }
@@ -306,9 +308,9 @@
 /* ---- 5. Off your plate ---- */
 .lb-plate__grid { display: grid; gap: 16px; }
 .lb-plate__us, .lb-plate__you {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--card-fog-border);
   border-radius: var(--lb-radius);
-  background: var(--color-surface);
+  background: var(--card-fog);
   padding: clamp(20px, 3vw, 36px);
 }
 .lb-plate__you { background: var(--color-surface-2); display: grid; gap: 20px; align-items: center; }
@@ -391,9 +393,9 @@
 /* ---- 8. Who it is for ---- */
 .lb-who__grid { display: grid; gap: 12px; }
 .lb-who__grid li {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--card-fog-border);
   border-radius: var(--lb-radius);
-  background: var(--color-surface);
+  background: var(--card-fog);
   padding: clamp(20px, 2.6vw, 30px);
 }
 @media (min-width: 768px) {
@@ -450,23 +452,27 @@
 .lb-hero { display: flex; align-items: center; min-height: calc(100vh - 40px); min-height: calc(100svh - 40px); }
 .lb-hero > .container { width: 100%; }
 
-/* ---- Dark reverse sections: How it works, Markets, Final CTA ----
-   The section itself keeps its light neighbours' colour and paints the dark
-   panel as a rounded ::before, the same 24px cut as the sheet over the hero.
-   Inside, the style.css colour tokens are re-pointed, so every rule above
-   (and the islands, which read the same tokens) follows without new type. */
+/* ---- Dusk sections: How it works, Markets, Final CTA ----
+   The section keeps the Fog seam colour (--fog-2) behind its corners and
+   paints the Dusk panel as a rounded ::before, the same 24px cut as the sheet
+   over the hero. Inside, the style.css colour tokens are re-pointed, so every
+   rule above (and the islands, which read the same tokens) follows without
+   new type. */
 .lb-dark {
-  --color-bg: #141414;
-  --color-surface: #1e1d1b;
-  --color-surface-2: #1e1d1b;
-  --color-text: #f2f0eb;
-  --color-text-muted: #a8a39b;
-  --color-text-faint: #a8a39b;
-  --color-border: #2c2a27;
-  --color-primary: #f2f0eb;
-  --color-primary-hover: #dcd9d2;
+  --color-bg: var(--dusk-2);
+  --color-surface: var(--card-dusk);
+  --color-surface-2: var(--card-dusk);
+  --color-text: var(--on-dusk);
+  --color-text-muted: var(--on-dusk-muted);
+  --color-text-faint: var(--on-dusk-muted);
+  --color-border: var(--card-dusk-border);
+  --color-primary: var(--on-dusk);
+  --color-primary-hover: var(--on-dusk-muted);
+  /* cobe globe: base and glow straight from Dusk. */
+  --globe-base: var(--dusk-deep-0);
+  --globe-glow: var(--dusk-1);
   isolation: isolate;
-  background-color: var(--lb-light);
+  background-color: var(--fog-2);
   color: var(--color-text);
 }
 .lb-dark::before {
@@ -475,19 +481,18 @@
   inset: 0;
   z-index: -1;
   border-radius: 24px;
-  background: #141414;
+  background: var(--noise), var(--grad-dusk-band);
 }
-.lb-markets.lb-dark { background: linear-gradient(to bottom, var(--lb-light) 50%, var(--lb-light-2) 50%); }
 .lb-cta.lb-dark::before { border-radius: 24px 24px 0 0; }
 .lb-cta.lb-dark .lb-cta__bg { z-index: -1; border-radius: 24px 24px 0 0; overflow: hidden; }
 /* style.css colours every <span>; in a dark panel it must follow its parent. */
 :where(.lb-dark) span { color: inherit; }
 .lb-dark .value__title { color: var(--color-text); }
 .lb-dark .value__sub, .lb-dark p { color: var(--color-text-muted); }
-.lb-dark .btn-one, .lb-dark .btn-one:hover { background-color: #f2f0eb; color: #141414; border-color: transparent; }
-.lb-dark .btn-one:hover { background-color: #dcd9d2; }
-.lb-dark .btn-two, .lb-dark .btn-two:hover { background-color: #1e1d1b; color: #f2f0eb; border-color: #2c2a27; }
-.lb-dark .btn-two:hover { background-color: #2c2a27; border-color: #a8a39b; }
+.lb-dark .btn-one, .lb-dark .btn-one:hover { background-color: var(--on-dusk); color: var(--dusk-2); border-color: transparent; }
+.lb-dark .btn-one:hover { background-color: var(--on-dusk-muted); }
+.lb-dark .btn-two, .lb-dark .btn-two:hover { background-color: var(--card-dusk); color: var(--on-dusk); border-color: var(--card-dusk-border); }
+.lb-dark .btn-two:hover { background-color: var(--card-dusk-hover); border-color: var(--on-dusk-muted); }
 
 /* ---- Line icons (inline SVG in index.html) ----
    24x24 grid, one stroke weight (about 1.75px at every rendered size, hence
@@ -734,7 +739,17 @@
    One static layer behind the hero's content: a soft amber glow under the
    diagram and the cards' dot grid fading out
    towards the headline and the edges. No motion, no image, no extra request;
-   the hero's own box, type and cover-on-scroll are untouched. */
+   the hero's own box, type and cover-on-scroll are untouched. The ground is
+   the soft Fog with one Fog highlight lifting the lower half back up. */
+.lb-hero {
+  background:
+    var(--noise),
+    radial-gradient(55% 50% at 28% 78%, color-mix(in srgb, var(--fog-1) 75%, transparent), transparent 70%),
+    var(--grad-fog-soft);
+}
+@media (max-width: 991px) {
+  .lb-hero { background: var(--noise), radial-gradient(90% 40% at 50% 30%, color-mix(in srgb, var(--fog-1) 75%, transparent), transparent 70%), var(--grad-fog-soft); }
+}
 .lb-hero::before {
   content: "";
   position: absolute;

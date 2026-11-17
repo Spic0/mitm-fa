@@ -13,7 +13,8 @@
   --pt-on-dark: #fafaf9;
   --pt-on-dark-muted: rgba(250, 250, 249, 0.76);
   --pt-dark: var(--color-primary);
-  --pt-tint: #f2f1ee;
+  --pt-tint: var(--color-surface-2);
+  --pt-card-dusk: color-mix(in srgb, var(--dusk-2) 92%, var(--on-dusk)); /* an opaque --card-dusk, for cards the diagram's lines run behind */
   --pt-gutter: 16px;
 }
 .pt { overflow-x: clip; }
@@ -31,7 +32,7 @@
   place-items: center;
   text-align: center;
   color: var(--pt-on-dark);
-  background-color: #0e0e0d;
+  background-color: var(--dusk-2);
 }
 @media (min-width: 768px) { .ph { min-height: min(86vh, 780px); } }
 .ph__media { position: absolute; inset: -8% 0 0; z-index: -2; will-change: transform; }
@@ -43,6 +44,7 @@
   inset: 0;
   z-index: -1;
   background:
+    radial-gradient(50% 45% at 50% 42%, color-mix(in srgb, var(--fog-1) 8%, transparent), transparent 70%),
     radial-gradient(110% 75% at 50% 45%, rgba(10, 10, 9, 0.5), rgba(10, 10, 9, 0.82)),
     linear-gradient(to bottom, rgba(10, 10, 9, 0.35), rgba(10, 10, 9, 0.7));
 }
@@ -232,7 +234,7 @@
    left and the "grow" return to the left of it. >=1024px: a snake, row 1
    left to right (1-4), row 2 right to left (5-8), the return loop under
    row 2. Each step's --h (0..1, set by the script) is its highlight. ---- */
-.pt .pt-proc-sec { background-color: #0a0a09; }
+.pt .pt-proc-sec { background-color: var(--dusk-2); }
 .pt-proc { --badge: 40px; position: relative; max-width: 1180px; margin: 0 auto; padding-left: 30px; }
 .pt-proc__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pt-proc__base { fill: none; stroke: rgba(255, 255, 255, 0.26); stroke-width: 1.5; }
@@ -251,25 +253,25 @@
   margin-top: 10px;
   border: 1.5px solid rgba(255, 255, 255, calc(0.45 + var(--h) * 0.55));
   border-radius: 50%;
-  background-color: #0a0a09;
+  background-color: var(--dusk-2);
   box-shadow: 0 0 calc(var(--h) * 22px) rgba(255, 255, 255, calc(var(--h) * 0.45));
   font-size: 15px;
   font-weight: 700;
   color: #ffffff;
 }
 .pt-proc__n::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 50%; background-color: #ffffff; opacity: var(--h); }
-.pt-proc__step.is-on .pt-proc__n { color: #0a0a09; }
+.pt-proc__step.is-on .pt-proc__n { color: var(--dusk-2); }
 .pt-proc__card {
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, calc(0.12 + var(--h) * 0.5));
   border-radius: 14px;
-  background-color: #141413;
+  background-color: var(--pt-card-dusk);
   box-shadow: 0 0 calc(var(--h) * 28px) rgba(255, 255, 255, calc(var(--h) * 0.12));
 }
 .pt .pt-proc__card h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; line-height: 1.3; color: #ffffff; }
 .pt .pt-proc__card p { margin: 0; font-size: 14px; line-height: 1.45; color: rgba(255, 255, 255, 0.72); }
 .pt-proc__grow { --h: 0; margin: 16px 0 0 calc(var(--badge) + 14px); font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, calc(0.72 + var(--h) * 0.28)); }
-.pt-proc__grow > span:first-child { display: inline-block; padding: 7px 14px; border: 1px dashed rgba(255, 255, 255, calc(0.3 + var(--h) * 0.6)); border-radius: var(--radius-pill); background-color: #0a0a09; }
+.pt-proc__grow > span:first-child { display: inline-block; padding: 7px 14px; border: 1px dashed rgba(255, 255, 255, calc(0.3 + var(--h) * 0.6)); border-radius: var(--radius-pill); background-color: var(--dusk-2); }
 .pt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (min-width: 1024px) {
   .pt-proc { padding: 0 44px 96px; }
@@ -535,3 +537,37 @@ html.reveal-on [data-reveal]:not(.is-revealed) { opacity: 0; transform: translat
   .pt-grid .pt-card { transition: none; }
   .pt-card.is-revealed:hover, html:not(.reveal-on) .pt-card:hover { transform: none; }
 }
+
+/* ---- Fog + Dusk (tokens in style.css) ----
+   Dusk bands: the process cycle, the model and the written offer. Each one
+   carries the whole seam inside its own padding: --grad-bridge in at the top,
+   the same bridge mirrored out at the bottom, deep Dusk behind the text. So a
+   light neighbour (some, like #book, have almost no padding) needs nothing.
+   The second of two dark bands in a row ("How it works") turns Fog, so two
+   Dusk bands never touch. */
+.pt {
+  --pt-edge: clamp(48px, 6vw, 80px);
+  --pt-dusk:
+    var(--grad-bridge) 0 0 / 100% var(--pt-edge) no-repeat,
+    linear-gradient(0deg, var(--fog-1) 0%, var(--fog-2) 38%, var(--dusk-1) 55%, var(--dusk-2) 100%) 0 100% / 100% var(--pt-edge) no-repeat;
+}
+.pt .pt-sec--dark, .pt .pt-sec--inv { background: var(--noise), var(--pt-dusk), linear-gradient(180deg, var(--dusk-2), var(--dusk-deep-0) 50%, var(--dusk-2)); }
+.pt .pt-sec--texture {
+  background-image: var(--noise), var(--grad-bridge), linear-gradient(0deg, var(--fog-1) 0%, var(--fog-2) 38%, var(--dusk-1) 55%, var(--dusk-2) 100%), linear-gradient(color-mix(in srgb, var(--dusk-2) 55%, transparent), color-mix(in srgb, var(--dusk-2) 55%, transparent)), image-set(url("/assets/images/partnership/texture-1344.avif") type("image/avif"), url("/assets/images/partnership/texture-1344.webp") type("image/webp"));
+  background-size: auto, 100% var(--pt-edge), 100% var(--pt-edge), cover, cover;
+  background-position: 0 0, 0 0, 0 100%, 0 0, center;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+}
+.pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) {
+  --pt-on-dark: var(--on-fog);
+  --pt-on-dark-muted: var(--on-fog-muted);
+  background: none;
+  color: var(--on-fog);
+}
+.pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) .pt-h2 { color: var(--on-fog); }
+.pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) .pt-step { background-color: var(--card-fog); border-color: var(--card-fog-border); }
+.pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) .pt-step h3 { color: var(--on-fog); }
+.pt .pt-sec--dark + .pt-sec--dark:not(.pt-sec--texture) .pt-step__n { background-color: var(--dusk-2); color: var(--on-dusk); }
+.pt .pt-sec--tint { background-color: var(--pt-tint); }
+.pt-step { background-color: var(--card-dusk); border-color: var(--card-dusk-border); }
+.pt-card:nth-child(odd) { background-color: var(--dusk-2); }
